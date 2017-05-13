@@ -821,8 +821,8 @@ begin: DCCParse_Attr(attr);
 LEXPRIV void
 DCCSym_CalculateStructureOffsets(struct DCCDecl *__restrict self) {
  int use_ms_alignment,is_union,pack_structure;
- target_off_t current_offset,max_size;
- target_ptr_t max_alignment,s,a;
+ target_off_t current_offset;
+ target_siz_t max_alignment,s,a,max_size;
  unsigned int bitpos = 0; /* bit-position offset added to 'current_offset' */
  struct DCCAttrDecl *attr;
  struct DCCStructField *iter,*end;
@@ -840,8 +840,7 @@ DCCSym_CalculateStructureOffsets(struct DCCDecl *__restrict self) {
  if ((attr = self->d_attr) != NULL) {
   if (attr->a_flags&DCC_ATTRFLAG_PACKED) pack_structure = 1;
   if (attr->a_flags&DCC_ATTRFLAG_MSSTRUCT) use_ms_alignment = 1;
-  if (attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN)
-      max_alignment = attr->a_align;
+  if (attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN) max_alignment = attr->a_align;
  }
  end = (iter = self->d_tdecl.td_fieldv)+self->d_tdecl.td_size;
  (void)use_ms_alignment; /* TODO: Special ms algorithm. */
@@ -850,7 +849,7 @@ DCCSym_CalculateStructureOffsets(struct DCCDecl *__restrict self) {
   attr = iter->sf_decl->d_attr;
   s = DCCType_Sizeof(&iter->sf_decl->d_type,&a,0);
   if (iter->sf_bitfld != (sflag_t)-1) {
-   target_off_t ceil_offset;
+   target_siz_t ceil_offset;
    sflag_t field_size = iter->sf_bitfld;
    /* Make bitfields in unions are always located at the beginning. */
    if (is_union) current_offset = 0,bitpos = 0;
@@ -870,7 +869,7 @@ DCCSym_CalculateStructureOffsets(struct DCCDecl *__restrict self) {
    bitpos         += field_size;
    current_offset += (bitpos/DCC_TARGET_BITPERBYTE);
    bitpos         %= DCC_TARGET_BITPERBYTE;
-   ceil_offset     = current_offset;
+   ceil_offset     = (target_siz_t)current_offset;
    if (bitpos) ++ceil_offset;
    /* Must use the ceiling of the current offset when checking against max_size. */
    if (max_size < ceil_offset)
@@ -898,11 +897,17 @@ no_bitfield:
   else current_offset = (current_offset+(a-1))&~(a-1);
   iter->sf_off = current_offset;
   current_offset += s;
-  if (max_size < current_offset)
-      max_size = current_offset;
+  if (max_size < (target_siz_t)current_offset)
+      max_size = (target_siz_t)current_offset;
 check_align:
   if (max_alignment < a)
       max_alignment = a;
+ }
+ if (self->d_attr &&
+    (self->d_attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN) &&
+     max_alignment > self->d_attr->a_align) {
+  WARN(W_TYPE_STRUCT_EXPLICIT_ALIGNMENT_TOO_LOW,
+       self,self->d_attr->a_align,max_alignment);
  }
  self->d_tdecl.td_struct_size  = max_size;
  self->d_tdecl.td_struct_align = max_alignment;

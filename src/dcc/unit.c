@@ -1453,8 +1453,8 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_text                 */{
  /* sc_text.tb_begin        */NULL,
  /* sc_text.tb_end          */NULL,
- /* sc_text.tb_max          */NULL,
- /* sc_text.tb_pos          */NULL},
+ /* sc_text.tb_max          */(uint8_t *)(uintptr_t)(intptr_t)-1,
+ /* sc_text.tb_pos          */(uint8_t *)(uintptr_t)(intptr_t)-1},
  /* sc_free                 */{
  /* sc_free.fd_begin        */NULL},
  /* sc_align                */1,

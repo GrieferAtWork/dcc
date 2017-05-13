@@ -81,6 +81,14 @@ inherit_sym(/*ref*/struct DCCSym *__restrict srcsym) {
   }
  }
  if (srcsym->sy_sec) {
+  if (srcsym->sy_sec == &DCCSection_Abs) {
+   /* Special case: Symbol from the ABS section. */
+   if (srcsym == &DCCSection_Abs.sc_start) {
+    /* Special case: This is the ABS section. */
+    goto already_inherited;
+   }
+   goto ins_ndef_sym;
+  }
   assert(srcsym->sy_sec_pself);
   dstsec = DCCUnit_GetSec(srcsym->sy_sec->sc_start.sy_name);
   assert(dstsec);
@@ -104,6 +112,7 @@ inherit_sym(/*ref*/struct DCCSym *__restrict srcsym) {
   assert(!srcsym->sy_sec);
   assert(!srcsym->sy_sec_pself);
   assert(!srcsym->sy_sec_next);
+ins_ndef_sym:
   if (srcsym->sy_unit_next ||
       unit.u_nsym == srcsym) {
 already_inherited:
@@ -195,6 +204,7 @@ validate_sym(struct DCCSym *__restrict sym) {
   target_siz_t sec_size;
   DCCUnit_ENUMSEC(sec) if (sec == sym->sy_sec) goto found_sec;
   DCCUnit_ENUMIMP(sec) if (sec == sym->sy_sec) goto found_sec;
+  if (sym->sy_sec == &DCCSection_Abs) goto found_sec;
   assertf(0,"Section '%s' of symbol '%s' is not part of the unit",
           sym->sy_sec->sc_start.sy_name->k_name,
           sym->sy_name->k_name);

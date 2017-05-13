@@ -168,13 +168,9 @@ int main(int argc, char *argv[]) {
  /* Dynamically export PE symbols. */
  compiler.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 
- /* Ugly hack to get minimal stdio in tests. */
- def("printf",(void *)&printf);
- //def("printf",(void *)0xDEADBEEF);
-
- /* Prepare generated code for execution/output to file. */
+#if 1
+ /* Prepare generated code for output to file. */
  DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);
-#if 0
  { stream_t hout = s_openw("a.exe");
    DCCBin_Generate(hout); /* Generate the binary. */
    s_close(hout);
@@ -183,6 +179,10 @@ int main(int argc, char *argv[]) {
  {
   struct DCCSym *entry_sym;
   void(*entry)(void);
+
+  /* Ugly hack to get minimal stdio in tests. */
+  def("printf",(void *)&printf);
+  //def("printf",(void *)0xDEADBEEF);
 
   /* Search for an entry point. */
   entry_sym = DCCUnit_GetSyms("__start");

@@ -3125,7 +3125,7 @@ DCCVStack_Cast(struct DCCType const *__restrict t,
   /* Anything can be cast to void. */
   vbottom->sv_reg          = DCC_RC_CONST;
   vbottom->sv_reg2         = DCC_RC_CONST;
-  vbottom->sv_flags        = DCC_SFLAG_NONE;
+  vbottom->sv_flags        = DCC_SFLAG_RVALUE;
   vbottom->sv_const.it     = 0;
   vbottom->sv_sym          = NULL;
   DCCType_Quit(&vbottom->sv_ctype);
@@ -3139,6 +3139,11 @@ DCCVStack_Cast(struct DCCType const *__restrict t,
  if (wid) WARN(wid,&vbottom->sv_ctype,t);
 
  DCCStackValue_Cast(vbottom,t);
+ if (DCCTYPE_GROUP(t->t_type) == DCCTYPE_LVALUE) {
+  vbottom->sv_flags &= ~(DCC_SFLAG_RVALUE);
+ } else {
+  vbottom->sv_flags |=  (DCC_SFLAG_RVALUE);
+ }
 }
 
 

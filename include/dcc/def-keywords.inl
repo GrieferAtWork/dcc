@@ -727,13 +727,11 @@ print_declaration:
 print_typed_declaration_load:
  decl = ARG(struct DCCDecl *);
 //print_typed_declaration:
- if (!text) text = "See reference to declaration";
- WARNF(TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
-       ? "%s(%d) : " : "%s:%d: ",
-       TPPFile_Filename(decl->d_file,NULL),(int)decl->d_line+1);
  type_text = DCCType_ToTPPString(&decl->d_type,decl->d_name);
  WARNF(text,type_text->s_text);
  TPPString_Decref(type_text);
+ text = NULL;
+ goto print_declaration;
 } break;
 #endif
 #define DECL_LOAD()              decl = ARG(struct DCCDecl *)
@@ -970,7 +968,7 @@ DEF_WARNING(W_STMT_ASM_EXPECTED_STRING,(WG_SYNTAX),WSTATE_WARN,
             WARNF("Expected string after __asm__, but got " TOK_S,TOK_A))
 DEF_WARNING(W_CONSTANT_EXPR_DEPENDS_ON_SYMBOL,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,{
  DECL_LOAD();
- WARNF("A constant expression here can't depend on a symbol '%s'",DECL_NAME());
+ WARNF("A constant expression here can't depend on a symbol '%s'\n",DECL_NAME());
  DECL_PRINT(NULL);
 })
 DEF_WARNING(W_EXPECTED_CONSTANT_EXPRESSION,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,WARNF("Expected a constant expression"))
@@ -1035,13 +1033,20 @@ DEF_WARNING(W_DECL_NESTED_FUNCTION_DECLARATION,(WG_NESTED_FUNCTIONS,WG_EXTENSION
 })
 DEF_WARNING(W_TYPE_STRUCT_EMPTY,(WG_EMPTY_STRUCTURES,WG_EXTENSIONS),WSTATE_WARN,{
  DECL_LOAD();
- WARNF("Declared empty structure type '%s'",DECL_NAME(),KWDNAME());
+ WARNF("Declared empty structure type '%s'\n",DECL_NAME(),KWDNAME());
  DECL_PRINT("See reference to first declaration");
 })
 DEF_WARNING(W_TYPE_STRUCT_BITFIELD_NEGATIVE,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("Negative value for bit-field '%s'"))
 DEF_WARNING(W_TYPE_STRUCT_BITFIELD_SCALAR,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("bit-field '%s' requires scalar type"))
 DEF_WARNING(W_TYPE_STRUCT_BITFIELD_LARGER_THAN_BASE,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("bit-field '%s' exceeds size of underlying type"))
 DEF_WARNING(W_TYPE_STRUCT_BITFIELD_TOO_LARGE,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("bit-field '%s' is too long"))
+DEF_WARNING(W_TYPE_STRUCT_EXPLICIT_ALIGNMENT_TOO_LOW,(WG_VALUE),WSTATE_WARN,{
+ target_siz_t used_alignment;
+ DECL_LOAD(); used_alignment = ARG(target_siz_t);
+ WARNF("Explicit alignment '%lu' of structure type '%s' is too low (Minimum alignment is '%lu')\n",
+       (unsigned long)used_alignment,DECL_NAME(),(unsigned long)ARG(target_siz_t));
+ DECL_PRINT(NULL);
+})
 DEF_WARNING(W_OLD_STYLE_FUNCTION_DECLARATION,(WG_OLD_FUNCTION_DECL,WG_EXTENSIONS),WSTATE_WARN,WARNF("An old-style function declarations was used"))
 DEF_WARNING(W_MIXED_DECLARATIONS,(WG_MIXED_DECLARATIONS,WG_C99,WG_EXTENSIONS),WSTATE_WARN,
             WARNF("Mixing statements with declarations requires a C99-compliant compiler"))
