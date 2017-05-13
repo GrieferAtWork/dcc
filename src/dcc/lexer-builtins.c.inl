@@ -1271,6 +1271,96 @@ DCCParse_SyncUnary(void) {
 }
 
 
+
+
+/* https://gcc.gnu.org/onlinedocs/gcc/Return-Address.html */
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_BuiltinReturnAddr(void) {
+ struct DCCStackValue sval;
+ int want_frame;
+ target_off_t level;
+ assert(TOK == KWD___builtin_return_address ||
+        TOK == KWD___builtin_frame_address);
+ want_frame = TOK == KWD___builtin_frame_address;
+ YIELD();
+ DCCParse_ParPairBegin();
+ pushf();
+ DCCParse_Expr1();
+ /* unsigned ptrdiff makes more sense in my opinion... */
+ vcast_t(DCCTYPE_PTRDIFF|DCCTYPE_UNSIGNED,0);
+ if (visconst_int()) level = (target_off_t)vgtconst_int();
+ else WARN(W_BUILTIN_RETURN_ADDRESS_CONST_LEVEL),level = 0;
+ if (level < 0) WARN(W_BUILTIN_RETURN_ADDRESS_NEG_LEVEL),level = -level;
+ vpop(1);
+ popf();
+ DCCParse_ParPairEnd();
+ if (level == 0) {
+  if (want_frame) {
+   /* Simply push the frame register. */
+   sval.sv_ctype.t_type = DCCTYPE_VOID;
+   sval.sv_ctype.t_base = NULL;
+   DCCType_MkPointer(&sval.sv_ctype);
+   sval.sv_flags        = DCC_SFLAG_NONE;
+   sval.sv_reg          = DCCDISP_RETURNFRAME_REG;
+   sval.sv_reg2         = DCC_RC_CONST;
+   sval.sv_const.it     = 0;
+   sval.sv_sym          = NULL;
+   goto end_pushsval;
+  } else {
+   /* Special case: Same as the ASM '.'-extension (aka. current text address)
+    * >> For this case, no code must be generated! */
+   struct DCCSym *sym = DCCUnit_AllocSym();
+   sym ? vpushs(sym),t_defsym(sym)
+       : DCCVStack_PushAddr(unit.u_curr,t_addr); /* fallback... */
+   vgen1('&');
+  }
+  return;
+ }
+ sval.sv_ctype.t_type = DCCTYPE_VOID;
+ sval.sv_ctype.t_base = NULL;
+ DCCType_MkPointer(&sval.sv_ctype);
+ sval.sv_flags        = DCC_SFLAG_LVALUE;
+ sval.sv_reg2         = DCC_RC_CONST;
+ sval.sv_const.it     = want_frame ? DCCDISP_RETURNFRAME_OFF : DCCDISP_RETURNADDR_OFF;
+ sval.sv_sym          = NULL;
+ if (level == 1) {
+  /* Special case: The first-level return address can be accessed directly. */
+  sval.sv_reg = DCCDISP_RETURNADDR_REG;
+#if DCCDISP_RETURNFRAME_REG != DCCDISP_RETURNADDR_REG
+  if (want_frame) sval.sv_reg = DCCDISP_RETURNFRAME_REG;
+#endif
+ } else {
+  struct DCCMemLoc parent_frame;
+  /* Difficult case: Must actually generate code to access the return/frame address. */
+  sval.sv_reg         = DCCVStack_GetReg(DCC_RC_PTR,1);
+  parent_frame.ml_reg = DCCDISP_RETURNFRAME_REG;
+  parent_frame.ml_off = DCCDISP_RETURNFRAME_OFF;
+  parent_frame.ml_sym = NULL;
+  while (level-- >= 2) {
+   DCCDisp_MemMovReg(&parent_frame,sval.sv_reg);
+   parent_frame.ml_reg = sval.sv_reg;
+  }
+ }
+end_pushsval:
+ vpush(&sval);
+ assert(sval.sv_ctype.t_base);
+ DCCDecl_Decref(sval.sv_ctype.t_base);
+}
+
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_BuiltinExtractReturnAddr(void) {
+ assert(TOK == KWD___builtin_extract_return_addr ||
+        TOK == KWD___builtin_frob_return_address);
+ YIELD();
+ /* None of DCC's targets so weird stuff to the pointer! */
+ DCCParse_ParPairBegin();
+ DCCParse_Expr1();
+ vcast_pt(DCCTYPE_VOID,0);
+ DCCParse_ParPairEnd();
+}
+
+
+
 DCC_DECL_END
 
 #endif /* !GUARD_DCC_LEXER_BUILTINS_C_INL */

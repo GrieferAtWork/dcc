@@ -1063,14 +1063,13 @@ fill_data:
   do {
    YIELD();
    cval = DCCParse_AsmExprI();
-#if DCC_HOST_BYTEORDER == 4321
-   /* Adjust for big endian. */
-   cval >>= (sizeof(int_t)-csize)*8;
-#elif DCC_HOST_BYTEORDER != 1234
-#   error FIXME
-#endif
 #if DCC_HOST_BYTEORDER != DCC_TARGET_BYTEORDER
-   /* TODO: cval = bswap64(cval); */
+   switch (csize) {
+   case 2: cval = (int_t)DCC_H2T16((uint16_t)cval); break;
+   case 4: cval = (int_t)DCC_H2T32((uint32_t)cval); break;
+   case 8: cval = (int_t)DCC_H2T64((uint64_t)cval); break;
+   default: break;
+   }
 #endif
    t_write(&cval,csize);
   } while (TOK == ',');
@@ -1092,14 +1091,13 @@ fill_data:
     fval = DCCParse_AsmExprI();
    }
   }
-#if DCC_HOST_BYTEORDER == 4321
-  /* Adjust for big endian. */
-  fval >>= (sizeof(int_t)-fsize)*8;
-#elif DCC_HOST_BYTEORDER != 1234
-#   error FIXME
-#endif
 #if DCC_HOST_BYTEORDER != DCC_TARGET_BYTEORDER
-  /* TODO: fval = bswap64(fval); */
+  switch (fsize) {
+  case 2: fval = (int_t)DCC_H2T16((uint16_t)fval); break;
+  case 4: fval = (int_t)DCC_H2T32((uint32_t)fval); break;
+  case 8: fval = (int_t)DCC_H2T64((uint64_t)fval); break;
+  default: break;
+  }
 #endif
   buffer = (uint8_t *)t_alloc(frepeat*fsize);
   if likely(buffer) while (frepeat--) {

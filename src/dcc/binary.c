@@ -952,17 +952,7 @@ pe_writefile(stream_t target) {
  hdr.fhdr.NumberOfSections = (WORD)pe.pe_secc;
  hdr.ohdr.ImageBase        = pe.pe_imgbase;
  hdr.ohdr.Subsystem        = pe.pe_subsystem;
- if (pe.pe_type == PETYPE_DLL) {
-  /* TODO: Don't use absolute constants here.
-   * >> Replace with or'd macros from windows headers. */
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
-  hdr.fhdr.Characteristics = 0x222E;
-#elif DCC_TARGET_IA32(0)
-  hdr.fhdr.Characteristics = 0x230E;
-#else
-#error FIXME
-#endif
- }
+ if (pe.pe_type == PETYPE_DLL) hdr.fhdr.Characteristics |= IMAGE_FILE_DLL;
  if (!pe.pe_reloc) {
   /* Setup the relocs-stripped flag correctly. */
   hdr.fhdr.Characteristics |= IMAGE_FILE_RELOCS_STRIPPED;

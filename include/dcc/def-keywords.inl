@@ -183,6 +183,10 @@ DEF_BUILTIN(__builtin_memset)
 DEF_BUILTIN(__builtin_memcmp)
 DEF_BUILTIN(__builtin_strlen)
 
+DEF_BUILTIN(__builtin_return_address)
+DEF_BUILTIN(__builtin_frame_address)
+DEF_BUILTIN(__builtin_extract_return_addr)
+DEF_BUILTIN(__builtin_frob_return_address)
 
 // TODO: __builtin_ctz
 // TODO: __builtin_popcount
@@ -857,6 +861,8 @@ DEF_WARNING(W_BUILTIN_MEMMOVE_POINTERS_NEVER_OVERLAP,(WG_QUALITY),WSTATE_WARN,WA
 DEF_WARNING(W_BUILTIN_MEMCPY_POINTERS_ALWAYS_OVERLAP,(WG_QUALITY),WSTATE_WARN,WARNF("Overlapping pointers passed to 'memcpy'. For proper behavior, 'memmove' must be used"))
 DEF_WARNING(W_BUILTIN_MEMCPY_POINTERS_ALWAYS_EQUAL,(WG_QUALITY),WSTATE_WARN,WARNF("Equal pointers passed to 'memcpy/memmove' makes the call redundant"))
 DEF_WARNING(W_BUILTIN_MEMCMP_POINTERS_ALWAYS_EQUAL,(WG_QUALITY),WSTATE_WARN,WARNF("Equal pointers passed to 'memcmp' makes the call redundant"))
+DEF_WARNING(W_BUILTIN_RETURN_ADDRESS_CONST_LEVEL,(WG_VALUE),WSTATE_WARN,WARNF("__builtin_return_address/__builtin_frame_address expect a constant integral as argument"))
+DEF_WARNING(W_BUILTIN_RETURN_ADDRESS_NEG_LEVEL,(WG_VALUE),WSTATE_WARN,WARNF("__builtin_return_address/__builtin_frame_address expect a positive integral as argument"))
 #undef TYPE_WARNING
 #ifdef DECLARE_WARNING_MESSAGES
 }
@@ -1224,7 +1230,8 @@ WARNING_NAMESPACE(WN_LIBLOADER,3000)
 /* Library loader warnings. */
 DEF_WARNING(W_LIB_NOT_FOUND,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Library not found: '%s'",ARG(char *)))
 DEF_WARNING(W_LIB_PE_INVMAGIC,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Invalid header magic in PE library '%s'",ARG(char *)))
-DEF_WARNING(W_LIB_PE_NO_RELOCATIONS,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Can't link against PE library '%s' without relocations",ARG(char *)))
+DEF_WARNING(W_LIB_PE_NO_DLL,(WG_QUALITY,WG_LIBLOAD),WSTATE_WARN,WARNF("Library '%s' is not a dll.",ARG(char *)))
+DEF_WARNING(W_LIB_PE_NO_RELOCATIONS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Can't link against PE library '%s' without relocations",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_EXPORT_TABLE,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s' has no export table",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_SECTIONS,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s' has no sections",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_SECTION_MAPPING,(WG_LIBLOAD),WSTATE_ERROR,{ char *name = ARG(char *); WARNF("No section of PE binary '%s' maps to virtual address %p",name,ARG(void *)); })

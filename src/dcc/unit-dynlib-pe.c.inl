@@ -141,15 +141,10 @@ DCCUnit_DynLoadPE(char *__restrict name, stream_t fd) {
   * But besides that, we know that the library is OK to use at this point! */
  /* Make sure that the binary has relocations, because
   * otherwise it would be impossible to safely link against it. */
- if (hdr.fhdr.Characteristics&IMAGE_FILE_RELOCS_STRIPPED) {
-  WARN(W_LIB_PE_NO_RELOCATIONS,name);
-  if (!OK) goto end;
- }
- if (HAS_FIELD(ohdr.Magic) &&
-     hdr.ohdr.Magic != DCC_PE_TARGET_IMAGE_OPTIONAL_HEADER_MAGIC) {
-  WARN(W_LIB_PE_INVMAGIC,name);
-  if (!OK) goto end;
- }
+ if (hdr.fhdr.Characteristics&IMAGE_FILE_RELOCS_STRIPPED) { WARN(W_LIB_PE_NO_RELOCATIONS,name); if (!OK) goto end; }
+ if (!(hdr.fhdr.Characteristics&IMAGE_FILE_DLL)) { WARN(W_LIB_PE_NO_DLL,name); if (!OK) goto end; }
+ if (HAS_FIELD(ohdr.Magic) && hdr.ohdr.Magic !=
+     DCC_PE_TARGET_IMAGE_OPTIONAL_HEADER_MAGIC) { WARN(W_LIB_PE_INVMAGIC,name); if (!OK) goto end; }
  if (!HAS_DIR(IMAGE_DIRECTORY_ENTRY_EXPORT)) {
 no_export_table:
   WARN(W_LIB_PE_NO_EXPORT_TABLE,name);
