@@ -1,4 +1,4 @@
-# dcc - Direct C Compiler
+## dcc - Direct C Compiler
 
 A C compiler with extensions implementing many extensions and features, as well as arbirary-length arithmetic. (Yes: you could declare & use an integer type 2048-bits long, or even more if you feel like it)
 
@@ -10,365 +10,365 @@ DCC support AT&T inline assembly syntax, emulating gcc's \_\_asm\_\_ statement a
 
 Using TPP as preprocessor, DCC also implements many GCC extensions such as the above mentioned \_\_asm\_\_, \_\_builtin_constant_p, many \_\_attribute\_\_-s, \_\_typeof\_\_, \_\_auto_type, and many more, including my own twist on awesome C extensions.
 
-Current state:
+# Current state:
 Note that DCC is still fairly early in its development, meaning that anything can still change and that more features will be added eventually.
- - Link against windows PE libraries (.dll)
- - Output windows PE binary (.exe)
- - Process and merge multiple source files
- - Compiling DCC is only tested and working in Visual Studio
+  - Link against windows PE libraries (.dll)
+  - Output windows PE binary (.exe)
+  - Process and merge multiple source files
+  - Compiling DCC is only tested and working in Visual Studio
  
-Planned features:
- - Full ELF target binary support
- - Support for X86-64/AMD64 CPU architectures
- - Statically link against already-existing DLLs/EXEs/ELF binaries
- - Dynamically link against ELF shared binaries
- - Compiling DCC under GCC (may already work; won't be too hard if it doesn't)
- - Compiling DCC on linux (most of the work's already there, but nothing's tested yet)
- - Compiling DCC with DCC (because every C compiler must be able to do that!)
- - Generation of debug information (recognizeable by gdb)
- - Finish many partially implemented features (see below)
+# Planned features:
+  - Full ELF target binary support
+  - Support for X86-64/AMD64 CPU architectures
+  - Statically link against already-existing DLLs/EXEs/ELF binaries
+  - Dynamically link against ELF shared binaries
+  - Compiling DCC under GCC (may already work; won't be too hard if it doesn't)
+  - Compiling DCC on linux (most of the work's already there, but nothing's tested yet)
+  - Compiling DCC with DCC (because every C compiler must be able to do that!)
+  - Generation of debug information (recognizeable by gdb)
+  - Finish many partially implemented features (see below)
 
-Features (Compiler):
- - DCC as host compiler can easily be detected with 'defined(\_\_DCC_VERSION\_\_)'
- - Using TPP as preprocessor, _every_ _existing_ preprocessor extension is supported, as well as the new ones only available by it
- - Live-compilation-mode directly generates assembly
- - C-conforming symbol forward/backward declaration
- - Supports all C standard types
- - Supports 64-bit 'long long' integrals (using double-register storage)
- - Supports all C control statements
- - Supports C11 '_Generic'
- - Supports C11 '_Atomic' (Not fully implemented)
- - Supports C99 '_Bool'
- - Supports C99 \_\_func\_\_ builtin identifier.
- - Supports Variable declaration in if-expressions and for-initializers.
- - Supports GCC builtin macros for fixed-length integral constants ('\_\_(U)INT(8|16|32|64|MAX)_C(...)')
- - Supports nested function declaration, as well as access to surrounding variables.
- - Supports C++ lvalue types ('int y = 10; int &x = y;')
- - Supports C structure bitfields (Parse for this is currently missing; code generator is already capable of this; s.a.: '\_\_builtin_bitfield')
- - Support for GCC builtin macros, such as \_\_SIZEOF_POINTER\_\_, \_\_SIZE_TYPE\_\_, etc.
- - Support for GCC statement-expressions: 'int x = ({ int z = 10; z+20; }); // x == 30'
- - Support for \_\_FUNCTION\_\_ and \_\_PRETTY_FUNCTION\_\_, including use by concat with other strings: 'char *s = "Function " \_\_FUNCTION\_\_ " was called"; printf("%s\n",s);'
- - GCC-compatible predefined CPU macros, such as '\_\_i386\_\_' or '\_\_LP64\_\_'
- - Support for GCC '\_\_sync_*' builtin functions ('\_\_sync_val_compare_and_swap(&x,10,20)')
- - Supports all compiler-slangs for 'alignof': '_Alignof', '\_\_alignof', '\_\_alignof\_\_', '\_\_builtin_alignof'
- - Support for compile-time type deduction from expressions: 'typeof', '\_\_typeof', '\_\_typeof\_\_'
- - Support for GCC scoped labels: '\_\_label\_\_'
- - Support for GCC-style inline assembly: '\_\_asm\_\_("ret")'
- - Support for MSVC fixed-length integer types: '\_\_int(8|16|32|64)'
- - Support for GCC \_\_auto_type (as well as special interpretation of 'auto' when not used as storage class. - 'auto int x = 42' auto is storage class; 'static auto y = 10'; auto declares automatic type deduction)
- - Support for C99 variable-length arrays: 'int x = 10; int y[x*2]; assert(sizeof(x) == 80);'
- - Support for old (pre-STDC) function declarations/implementations
- - Support for new (post-STDC) function declarations/implementations
- - Support for floating-point types (Assembly generator is not implemented yet)
- - Inherited from assembly: Named register identifiers.
-  - "int x = %eax;" (CPU-specific, on i386 compiles to 'mov %eax, x')
- - Inherited from assembly: Get current text address.
-  - "void *p = .;" (Same '.' evaluates to the current text address with 'void *' typing)
- - Use label names in expressions:
-  - "void *p = &&my_label; my_label: printf("p = %p\n",p);"
- - Support for new & old GCC structure/array initializer:
-  - dot-field: "struct { int x,y; } p = { .x = 10, .y = 20 }"
-  - field-collon: "struct point { int x,y; } p = { x: 10, y: 20 }"
-  - array-subscript: "int alpha[256] = { ['a' ... 'z'] = 1, ['A' ... 'Z'] = 1, ['_'] = 1 }"
- - Support for unnamed struct/union inlining:
-  - "union foo { \_\_int32 x; struct { \_\_int16 a,b; }; };"
-   - offsetof(union foo.x) == 0, offsetof(union foo.a) == 0, offsetof(union foo.b) == 2
- - Support for builtin functions offering special compile-time optimizations, or functionality (Every builtin can be queried with '\_\_has_builtin(...)'):
-  - char const (&\_\_builtin_typestr(type_or_expr t))[];
-   - Accepting arguments just like 'sizeof', return a human-readable representation of the [expression's] type as a compile-time array of characters allocated in the '.string' section.
-  - _Bool \_\_builtin_constant_p(expr x);
-  - expr \_\_builtin_choose_expr(constexpr _Bool c, expr tt, expr ff);
-  - _Bool \_\_builtin_types_compatible_p(type t1, type t2);
-  - void \_\_builtin_unreachable(void) \_\_attribute\_\_((noreturn));
-  - void \_\_builtin_trap(void) \_\_attribute\_\_((noreturn));
-  - void \_\_builtin_breakpoint(void);
-   - Emit a CPU-specific instruction to break into a debugging environment
-  - void *\_\_builtin_alloca(size_t s);
-  - void *\_\_builtin_alloca_with_align(size_t s, size_t a);
-  - void \_\_builtin_assume(expr x);
-  - long \_\_builtin_expect(long x, long e);
-  - int \_\_builtin_FILE(void);
-  - int \_\_builtin_LINE(void);
-  - char (&\_\_builtin_FUNCTION(void))[];
-  - void *\_\_builtin_assume_aligned(void *p, size_t align, ...);
-  - size_t \_\_builtin_offsetof(typename T, members...);
-  - T (\_\_builtin_bitfield(T expr, constexpr int const_index, constexpr int const_size)) : const_size;
-   - Access a given sub-range of bits of any integral expression, the same way access is performed for structure bit-fields.
-  - typedef ... \_\_builtin_va_list;
-  - void \_\_builtin_va_start(\_\_builtin_va_list &ap, T &start);
-  - void \_\_builtin_va_end(\_\_builtin_va_list &ap);
-  - void \_\_builtin_va_copy(\_\_builtin_va_list &dstap, \_\_builtin_va_list &srcap);
-  - T \_\_builtin_va_arg(\_\_builtin_va_list &ap, typename T);
-   - Compiler-provided var-args helpers for generating smallest-possible code
-  - int \_\_builtin_setjmp(T &buf);
-  - void \_\_builtin_longjmp(T &buf, int sig) \_\_attribute\_\_((noreturn));
-   - Requires: 'sizeof(T) == \_\_SIZEOF_JMP_BUF\_\_'
-   - Compile-time best-result code generation for register save to 'buf'
-   - Optimizations for 'sig' known to never be '0'
-  - uint16_t \_\_builtin_bswap16(uint16_t x);
-  - uint32_t \_\_builtin_bswap32(uint32_t x);
-  - uint64_t \_\_builtin_bswap64(uint64_t x);
-  - int \_\_builtin_ffs(int x);
-  - int \_\_builtin_ffsl(long x);
-  - int \_\_builtin_ffsll(long long x);
-  - int \_\_builtin_clz(int x);
-  - int \_\_builtin_clzl(long x);
-  - int \_\_builtin_clzll(long long x);
-   - Generate inline code with per-case optimizations for best results
-  - T \_\_builtin_bswapcc(T x, size_t s = sizeof(T));
-  - int \_\_builtin_ffscc(T x, size_t s = sizeof(T));
-  - int \_\_builtin_clzcc(T x, size_t s = sizeof(T));
-   - General purpose functions that works for any size
-  - void *\_\_builtin_memcpy(void *dst, void const *src, size_t s);
-   - Replace with inlined code for sizes known at compile-time
-   - Warn about dst/src known to overlap
-  - void *\_\_builtin_memmove(void *dst, void const *src, size_t s);
-   - Optimize away dst == src cases
-   - Hint about dst/src never overlapping
-  - void *\_\_builtin_memset(void *dst, int byte, size_t s);
-   - Replace with inlined code for sizes known at compile-time
-  - int \_\_builtin_memcmp(void const *a, void const *b, size_t s);
-   - Replace with compile-time constant for constant
-   - Replace with inline code for sizes known at compile-time
-  - size_t \_\_builtin_strlen(char const *s);
-   - Resolve lenhth of static strings at compile-time
- - Split between declaration and assembly name (aka. '\_\_asm\_\_("foo")' suffix in declarations)
- - Arbitrary size arithmetic operations (The sky's the limit; as well as your binary size bloated with hundreds of add-instructions for one line of source code).
- - Support for deemon's 'path' keyword (now called '\_\_pack'):
-  - Can be used to emit parenthesis almost everywhere (except in the preprocessor, or when calling macros)
- - Explicit alignment of code, data, or entire sections in-source
- - Support for '#pragma comment(lib,"foo")' to link against a given library "foo"
- - Support for '#pragma pack(...)' (Currently missing; will _most_definitly_ be implemented)
+# Features (Compiler):
+  - DCC as host compiler can easily be detected with 'defined(\_\_DCC_VERSION\_\_)'
+  - Using TPP as preprocessor, _every_ _existing_ preprocessor extension is supported, as well as the new ones only available by it
+  - Live-compilation-mode directly generates assembly
+  - C-conforming symbol forward/backward declaration
+  - Supports all C standard types
+  - Supports 64-bit 'long long' integrals (using double-register storage)
+  - Supports all C control statements
+  - Supports C11 '_Generic'
+  - Supports C11 '_Atomic' (Not fully implemented)
+  - Supports C99 '_Bool'
+  - Supports C99 \_\_func\_\_ builtin identifier.
+  - Supports Variable declaration in if-expressions and for-initializers.
+  - Supports GCC builtin macros for fixed-length integral constants ('\_\_(U)INT(8|16|32|64|MAX)_C(...)')
+  - Supports nested function declaration, as well as access to surrounding variables.
+  - Supports C++ lvalue types ('int y = 10; int &x = y;')
+  - Supports C structure bitfields (Parse for this is currently missing; code generator is already capable of this; s.a.: '\_\_builtin_bitfield')
+  - Support for GCC builtin macros, such as \_\_SIZEOF_POINTER\_\_, \_\_SIZE_TYPE\_\_, etc.
+  - Support for GCC statement-expressions: 'int x = ({ int z = 10; z+20; }); // x == 30'
+  - Support for \_\_FUNCTION\_\_ and \_\_PRETTY_FUNCTION\_\_, including use by concat with other strings: 'char *s = "Function " \_\_FUNCTION\_\_ " was called"; printf("%s\n",s);'
+  - GCC-compatible predefined CPU macros, such as '\_\_i386\_\_' or '\_\_LP64\_\_'
+  - Support for GCC '\_\_sync_*' builtin functions ('\_\_sync_val_compare_and_swap(&x,10,20)')
+  - Supports all compiler-slangs for 'alignof': '_Alignof', '\_\_alignof', '\_\_alignof\_\_', '\_\_builtin_alignof'
+  - Support for compile-time type deduction from expressions: 'typeof', '\_\_typeof', '\_\_typeof\_\_'
+  - Support for GCC scoped labels: '\_\_label\_\_'
+  - Support for GCC-style inline assembly: '\_\_asm\_\_("ret")'
+  - Support for MSVC fixed-length integer types: '\_\_int(8|16|32|64)'
+  - Support for GCC \_\_auto_type (as well as special interpretation of 'auto' when not used as storage class. - 'auto int x = 42' auto is storage class; 'static auto y = 10'; auto declares automatic type deduction)
+  - Support for C99 variable-length arrays: 'int x = 10; int y[x*2]; assert(sizeof(x) == 80);'
+  - Support for old (pre-STDC) function declarations/implementations
+  - Support for new (post-STDC) function declarations/implementations
+  - Support for floating-point types (Assembly generator is not implemented yet)
+  - Inherited from assembly: Named register identifiers.
+    - "int x = %eax;" (CPU-specific, on i386 compiles to 'mov %eax, x')
+  - Inherited from assembly: Get current text address.
+    - "void *p = .;" (Same '.' evaluates to the current text address with 'void *' typing)
+  - Use label names in expressions:
+    - "void *p = &&my_label; my_label: printf("p = %p\n",p);"
+  - Support for new & old GCC structure/array initializer:
+    - dot-field: "struct { int x,y; } p = { .x = 10, .y = 20 }"
+    - field-collon: "struct point { int x,y; } p = { x: 10, y: 20 }"
+    - array-subscript: "int alpha[256] = { ['a' ... 'z'] = 1, ['A' ... 'Z'] = 1, ['_'] = 1 }"
+  - Support for unnamed struct/union inlining:
+    - "union foo { \_\_int32 x; struct { \_\_int16 a,b; }; };"
+      - offsetof(union foo.x) == 0, offsetof(union foo.a) == 0, offsetof(union foo.b) == 2
+  - Support for builtin functions offering special compile-time optimizations, or functionality (Every builtin can be queried with '\_\_has_builtin(...)'):
+    - char const (&\_\_builtin_typestr(type_or_expr t))[];
+      - Accepting arguments just like 'sizeof', return a human-readable representation of the [expression's] type as a compile-time array of characters allocated in the '.string' section.
+    - _Bool \_\_builtin_constant_p(expr x);
+    - expr \_\_builtin_choose_expr(constexpr _Bool c, expr tt, expr ff);
+    - _Bool \_\_builtin_types_compatible_p(type t1, type t2);
+    - void \_\_builtin_unreachable(void) \_\_attribute\_\_((noreturn));
+    - void \_\_builtin_trap(void) \_\_attribute\_\_((noreturn));
+    - void \_\_builtin_breakpoint(void);
+      - Emit a CPU-specific instruction to break into a debugging environment
+    - void *\_\_builtin_alloca(size_t s);
+    - void *\_\_builtin_alloca_with_align(size_t s, size_t a);
+    - void \_\_builtin_assume(expr x);
+    - long \_\_builtin_expect(long x, long e);
+    - int \_\_builtin_FILE(void);
+    - int \_\_builtin_LINE(void);
+    - char (&\_\_builtin_FUNCTION(void))[];
+    - void *\_\_builtin_assume_aligned(void *p, size_t align, ...);
+    - size_t \_\_builtin_offsetof(typename T, members...);
+    - T (\_\_builtin_bitfield(T expr, constexpr int const_index, constexpr int const_size)) : const_size;
+      - Access a given sub-range of bits of any integral expression, the same way access is performed for structure bit-fields.
+    - typedef ... \_\_builtin_va_list;
+    - void \_\_builtin_va_start(\_\_builtin_va_list &ap, T &start);
+    - void \_\_builtin_va_end(\_\_builtin_va_list &ap);
+    - void \_\_builtin_va_copy(\_\_builtin_va_list &dstap, \_\_builtin_va_list &srcap);
+    - T \_\_builtin_va_arg(\_\_builtin_va_list &ap, typename T);
+      - Compiler-provided var-args helpers for generating smallest-possible code
+    - int \_\_builtin_setjmp(T &buf);
+    - void \_\_builtin_longjmp(T &buf, int sig) \_\_attribute\_\_((noreturn));
+      - Requires: 'sizeof(T) == \_\_SIZEOF_JMP_BUF\_\_'
+      - Compile-time best-result code generation for register save to 'buf'
+      - Optimizations for 'sig' known to never be '0'
+    - uint16_t \_\_builtin_bswap16(uint16_t x);
+    - uint32_t \_\_builtin_bswap32(uint32_t x);
+    - uint64_t \_\_builtin_bswap64(uint64_t x);
+    - int \_\_builtin_ffs(int x);
+    - int \_\_builtin_ffsl(long x);
+    - int \_\_builtin_ffsll(long long x);
+    - int \_\_builtin_clz(int x);
+    - int \_\_builtin_clzl(long x);
+    - int \_\_builtin_clzll(long long x);
+      - Generate inline code with per-case optimizations for best results
+    - T \_\_builtin_bswapcc(T x, size_t s = sizeof(T));
+    - int \_\_builtin_ffscc(T x, size_t s = sizeof(T));
+    - int \_\_builtin_clzcc(T x, size_t s = sizeof(T));
+      - General purpose functions that works for any size
+    - void *\_\_builtin_memcpy(void *dst, void const *src, size_t s);
+      - Replace with inlined code for sizes known at compile-time
+      - Warn about dst/src known to overlap
+    - void *\_\_builtin_memmove(void *dst, void const *src, size_t s);
+      - Optimize away dst == src cases
+      - Hint about dst/src never overlapping
+    - void *\_\_builtin_memset(void *dst, int byte, size_t s);
+      - Replace with inlined code for sizes known at compile-time
+    - int \_\_builtin_memcmp(void const *a, void const *b, size_t s);
+      - Replace with compile-time constant for constant
+      - Replace with inline code for sizes known at compile-time
+    - size_t \_\_builtin_strlen(char const *s);
+      - Resolve lenhth of static strings at compile-time
+  - Split between declaration and assembly name (aka. '\_\_asm\_\_("foo")' suffix in declarations)
+  - Arbitrary size arithmetic operations (The sky's the limit; as well as your binary size bloated with hundreds of add-instructions for one line of source code).
+  - Support for deemon's 'path' keyword (now called '\_\_pack'):
+    - Can be used to emit parenthesis almost everywhere (except in the preprocessor, or when calling macros)
+  - Explicit alignment of code, data, or entire sections in-source
+  - Support for '#pragma comment(lib,"foo")' to link against a given library "foo"
+  - Support for '#pragma pack(...)' (Currently missing; will _most_definitly_ be implemented)
 
-Features (Attributes):
- - All attributes can be written in three ways:
-  - GCC attribte syntax (e.g.: '\_\_attribute\_\_((noreturn))')
-  - cxx-11 attributes syntax (e.g.: '[[noreturn]]')
-  - msvc declspec syntax (e.g.: '\_\_declspec(noreturn)')
- - The name of an attribute (in the above examples 'noreturn') can be written with any number of leading, or terminating underscores to prevent ambiguity with user-defined macros:
-  - '\_\_attribute\_\_((\_\_\_\_noreturn_))' is the same as '\_\_attribute\_\_((noreturn))'
- - The following attributes (as supported by other compiler) are recognized:
-  - '\_\_attribute\_\_((noreturn*))'
-  - '\_\_attribute\_\_((warn_unused_result*))'
-  - '\_\_attribute\_\_((weak*))'
-  - '\_\_attribute\_\_((dllexport*))'
-  - '\_\_attribute\_\_((dllimport*))'
-  - '\_\_attribute\_\_((visibility("default")))'
-  - '\_\_attribute\_\_((alias("my_alias")))'
-  - '\_\_attribute\_\_((weakref("my_alias")))'
-  - '\_\_attribute\_\_((used*))'
-  - '\_\_attribute\_\_((unused*))'
-  - '\_\_attribute\_\_((cdecl*))'
-  - '\_\_attribute\_\_((stdcall*))'
-  - '\_\_attribute\_\_((thiscall*))'
-  - '\_\_attribute\_\_((fastcall*))'
-  - '\_\_attribute\_\_((section(".text")))'
-  - '\_\_attribute\_\_((regparm(x)))'
-  - '\_\_attribute\_\_((naked*))'
-  - '\_\_attribute\_\_((deprecated))'
-  - '\_\_attribute\_\_((deprecated(msg)))'
-  - '\_\_attribute\_\_((aligned(x)))'
-  - '\_\_attribute\_\_((packed))'
-  - '\_\_attribute\_\_((transparent_union))'
-  - '\_\_attribute\_\_((mode(x)))'  (NOTE: Underscores surrounding 'x' are ignored)
-  - All attribute names marked with '*' accept an optional suffix that adds an enabled-dependency on a compiler-time expression. (e.g.: '\_\_attribute\_\_((noreturn(sizeof(int) == 4)))' - Mark as noreturn, if 'int' is 4 bytes wide)
- - Attributes not currently implemented (But planned to be):
-  - '\_\_attribute\_\_((constructor))'
-  - '\_\_attribute\_\_((constructor(priority)))'
-  - '\_\_attribute\_\_((destructor))'
-  - '\_\_attribute\_\_((destructor(priority)))'
-  - '\_\_attribute\_\_((ms_struct))'
-  - '\_\_attribute\_\_((gcc_struct))'
- - Attributes ignored without warning:
-  - '\_\_attribute\_\_((noinline...))'
-  - '\_\_attribute\_\_((returns_twice...))'
-  - '\_\_attribute\_\_((force_align_arg_pointer...))'
-  - '\_\_attribute\_\_((cold...))'
-  - '\_\_attribute\_\_((hot...))'
-  - '\_\_attribute\_\_((pure...))'
-  - '\_\_attribute\_\_((nothrow...))'
-  - '\_\_attribute\_\_((noclone...))'
-  - '\_\_attribute\_\_((nonnull...))'
-  - '\_\_attribute\_\_((malloc...))'
-  - '\_\_attribute\_\_((leaf...))'
-  - '\_\_attribute\_\_((format_arg...))'
-  - '\_\_attribute\_\_((format...))'
-  - '\_\_attribute\_\_((externally_visible...))'
-  - '\_\_attribute\_\_((alloc_size...))'
-  - '\_\_attribute\_\_((always_inline...))'
-  - '\_\_attribute\_\_((gnu_inline...))'
-  - '\_\_attribute\_\_((artificial...))'
- - New attributes added by DCC:
-  - '\_\_attribute\_\_((dll("foo")))'
-   - Most effective for PE targets: 'foo' is the name of the DLL file that the associated declaration should be linked against.
-   - Using this attribute, one can link against DLL files that don't exist at compile-time, or create artificial dependencies on ELF targets.
-  - '\_\_attribute\_\_((arithmetic*))'
-   - Used on struct types of arbirary size to enable arithmetic operations with said structure. Using this attribute you could easily create e.g.: a 512-bit integer type.
-    - Most operators are implemented through inline-code, but some (mul,div,mod,shl,shr,sar) generate calls to external symbols.
-   - When this attribute is present, the associated structure type can be modified with 'signed'/'unsigned' to control the sign-behavior.
- - In addition, the following keywords can be used anywhere attributes are allowed.
-  - {_}_cdecl: Same as \_\_attribute\_\_((cdecl))
-  - {_}_stdcall: Same as \_\_attribute\_\_((stdcall))
-  - {_}_fastcall: Same as \_\_attribute\_\_((fastcall))
-  - \_\_thiscall: Same as \_\_attribute\_\_((thiscall))
+# Features (Attributes):
+  - All attributes can be written in three ways:
+    - GCC attribte syntax (e.g.: '\_\_attribute\_\_((noreturn))')
+    - cxx-11 attributes syntax (e.g.: '[[noreturn]]')
+    - msvc declspec syntax (e.g.: '\_\_declspec(noreturn)')
+  - The name of an attribute (in the above examples 'noreturn') can be written with any number of leading, or terminating underscores to prevent ambiguity with user-defined macros:
+    - '\_\_attribute\_\_((\_\_\_\_noreturn_))' is the same as '\_\_attribute\_\_((noreturn))'
+  - The following attributes (as supported by other compiler) are recognized:
+    - '\_\_attribute\_\_((noreturn*))'
+    - '\_\_attribute\_\_((warn_unused_result*))'
+    - '\_\_attribute\_\_((weak*))'
+    - '\_\_attribute\_\_((dllexport*))'
+    - '\_\_attribute\_\_((dllimport*))'
+    - '\_\_attribute\_\_((visibility("default")))'
+    - '\_\_attribute\_\_((alias("my_alias")))'
+    - '\_\_attribute\_\_((weakref("my_alias")))'
+    - '\_\_attribute\_\_((used*))'
+    - '\_\_attribute\_\_((unused*))'
+    - '\_\_attribute\_\_((cdecl*))'
+    - '\_\_attribute\_\_((stdcall*))'
+    - '\_\_attribute\_\_((thiscall*))'
+    - '\_\_attribute\_\_((fastcall*))'
+    - '\_\_attribute\_\_((section(".text")))'
+    - '\_\_attribute\_\_((regparm(x)))'
+    - '\_\_attribute\_\_((naked*))'
+    - '\_\_attribute\_\_((deprecated))'
+    - '\_\_attribute\_\_((deprecated(msg)))'
+    - '\_\_attribute\_\_((aligned(x)))'
+    - '\_\_attribute\_\_((packed))'
+    - '\_\_attribute\_\_((transparent_union))'
+    - '\_\_attribute\_\_((mode(x)))'  (NOTE: Underscores surrounding 'x' are ignored)
+    - All attribute names marked with '*' accept an optional suffix that adds an enabled-dependency on a compiler-time expression. (e.g.: '\_\_attribute\_\_((noreturn(sizeof(int) == 4)))' - Mark as noreturn, if 'int' is 4 bytes wide)
+  - Attributes not currently implemented (But planned to be):
+    - '\_\_attribute\_\_((constructor))'
+    - '\_\_attribute\_\_((constructor(priority)))'
+    - '\_\_attribute\_\_((destructor))'
+    - '\_\_attribute\_\_((destructor(priority)))'
+    - '\_\_attribute\_\_((ms_struct))'
+    - '\_\_attribute\_\_((gcc_struct))'
+  - Attributes ignored without warning:
+    - '\_\_attribute\_\_((noinline...))'
+    - '\_\_attribute\_\_((returns_twice...))'
+    - '\_\_attribute\_\_((force_align_arg_pointer...))'
+    - '\_\_attribute\_\_((cold...))'
+    - '\_\_attribute\_\_((hot...))'
+    - '\_\_attribute\_\_((pure...))'
+    - '\_\_attribute\_\_((nothrow...))'
+    - '\_\_attribute\_\_((noclone...))'
+    - '\_\_attribute\_\_((nonnull...))'
+    - '\_\_attribute\_\_((malloc...))'
+    - '\_\_attribute\_\_((leaf...))'
+    - '\_\_attribute\_\_((format_arg...))'
+    - '\_\_attribute\_\_((format...))'
+    - '\_\_attribute\_\_((externally_visible...))'
+    - '\_\_attribute\_\_((alloc_size...))'
+    - '\_\_attribute\_\_((always_inline...))'
+    - '\_\_attribute\_\_((gnu_inline...))'
+    - '\_\_attribute\_\_((artificial...))'
+  - New attributes added by DCC:
+    - '\_\_attribute\_\_((dll("foo")))'
+      - Most effective for PE targets: 'foo' is the name of the DLL file that the associated declaration should be linked against.
+      - Using this attribute, one can link against DLL files that don't exist at compile-time, or create artificial dependencies on ELF targets.
+    - '\_\_attribute\_\_((arithmetic*))'
+      - Used on struct types of arbirary size to enable arithmetic operations with said structure. Using this attribute you could easily create e.g.: a 512-bit integer type.
+        - Most operators are implemented through inline-code, but some (mul,div,mod,shl,shr,sar) generate calls to external symbols.
+      - When this attribute is present, the associated structure type can be modified with 'signed'/'unsigned' to control the sign-behavior.
+  - In addition, the following keywords can be used anywhere attributes are allowed.
+    - {_}_cdecl: Same as \_\_attribute\_\_((cdecl))
+    - {_}_stdcall: Same as \_\_attribute\_\_((stdcall))
+    - {_}_fastcall: Same as \_\_attribute\_\_((fastcall))
+    - \_\_thiscall: Same as \_\_attribute\_\_((thiscall))
 
-Features (Warnings):
- - DCC features an enourmous amount of warnings covering everything from code quality, to value truncation, to syntax errors, to unresolved references during linkage, etc...
- - Any warning can be configured as
-  - disabled: (Compilation is continued, but based on severity, generated assembly/binary may be wrong)
-  - enabled: Emit a warning, but continue compilation as if it was disabled
-  - error: Emit an error message and halt compilation at the next convenient location
-  - supress: Works recursively: Handle the warning as 'disabled' for every time it is suppressed before reverting its state to before it was.
- - Warnings are sorted into named groups that can be disabled as a whole. The main group of a warning is always displayed when it is emit. (e.g.: W1401("-WSyntax"): Expected ']', but got ...)
- - The global warning state can be pushed/popped from usercode:
-  - Push:
-   - '#pragma warning(push)'
-   - '#pragma GCC diagnostic push'
-  - Pop:
-   - '#pragma warning(pop)'
-   - '#pragma GCC diagnostic pop'
- - Individual warnings/warning group states can be explicitly defined from usercode:
-  - Disable:
-   - '#pragma warning("[-][W]no-\<name\>")'
-   - '#pragma warning(disable: \<IDS\>)'
-   - '#pragma warning(disable: "[-][W]\<name\>")'
-   - '#pragma GCC diagnostic ignored "[-][W]\<name\>"'
-  - Enabled:
-   - '#pragma warning(enable: \<IDS\>)'
-   - '#pragma warning(enable: "[-][W]\<name\>")'
-   - '#pragma GCC diagnostic warning "[-][W]\<name\>"'
-  - Error:
-   - '#pragma warning(error: \<IDS\>)'
-   - '#pragma warning(error: "[-][W]\<name\>")'
-   - '#pragma GCC diagnostic error "[-][W]\<name\>"'
-  - Suppress (once for every time a warning/group is listed):
-   - '#pragma warning(suppress: \<IDS\>)'
-   - '#pragma warning(suppress: "[-][W]\<name\>")'
-   - '#pragma warning("[-][W]sup-\<name\>")'
-   - '#pragma warning("[-][W]suppress-\<name\>")'
-  - Revert to default state:
-   - '#pragma warning(default: \<IDS\>)'
-   - '#pragma warning(default: "[-][W]\<name\>")'
-   - '#pragma warning("[-][W]def-\<name\>")'
-  - 'IDS' is a space-separated list of individual warning IDS as integral constants
-   - Besides belonging to any number of groups, each warning also has an ID
-   - Use of these IDS should be refrained from, as they might change randomly
-  - Similar to the 'extension'-pragma, '#pragma warning(...)' accepts a comma-seperated list of commands.
-   - '#pragma warning(push,disable: "-Wsyntax")'
- - All warnings can be enabled/disabled on-the-fly using pragmas:
-  - '#pragma warning(push|pop)' Push/pop currently enabled extensions
-  - '#pragma warning("-W\<name\>")' Enable warning 'name'
-  - '#pragma warning("-Wno-\<name\>")' Disable warning 'name'
- - '#pragma GCC system_header' treats the current input file as though all warnings disabled
-  - Mainly meant for headers in '/fixinclude' which may re-define type declarations, but are not meant to cause any problems
+# Features (Warnings):
+  - DCC features an enourmous amount of warnings covering everything from code quality, to value truncation, to syntax errors, to unresolved references during linkage, etc...
+  - Any warning can be configured as
+    - disabled: (Compilation is continued, but based on severity, generated assembly/binary may be wrong)
+    - enabled: Emit a warning, but continue compilation as if it was disabled
+    - error: Emit an error message and halt compilation at the next convenient location
+    - supress: Works recursively: Handle the warning as 'disabled' for every time it is suppressed before reverting its state to before it was.
+  - Warnings are sorted into named groups that can be disabled as a whole. The main group of a warning is always displayed when it is emit. (e.g.: W1401("-WSyntax"): Expected ']', but got ...)
+  - The global warning state can be pushed/popped from usercode:
+    - Push:
+      - '#pragma warning(push)'
+      - '#pragma GCC diagnostic push'
+    - Pop:
+      - '#pragma warning(pop)'
+      - '#pragma GCC diagnostic pop'
+  - Individual warnings/warning group states can be explicitly defined from usercode:
+    - Disable:
+      - '#pragma warning("[-][W]no-\<name\>")'
+      - '#pragma warning(disable: \<IDS\>)'
+      - '#pragma warning(disable: "[-][W]\<name\>")'
+      - '#pragma GCC diagnostic ignored "[-][W]\<name\>"'
+    - Enabled:
+      - '#pragma warning(enable: \<IDS\>)'
+      - '#pragma warning(enable: "[-][W]\<name\>")'
+      - '#pragma GCC diagnostic warning "[-][W]\<name\>"'
+    - Error:
+      - '#pragma warning(error: \<IDS\>)'
+      - '#pragma warning(error: "[-][W]\<name\>")'
+      - '#pragma GCC diagnostic error "[-][W]\<name\>"'
+    - Suppress (once for every time a warning/group is listed):
+      - '#pragma warning(suppress: \<IDS\>)'
+      - '#pragma warning(suppress: "[-][W]\<name\>")'
+      - '#pragma warning("[-][W]sup-\<name\>")'
+      - '#pragma warning("[-][W]suppress-\<name\>")'
+    - Revert to default state:
+      - '#pragma warning(default: \<IDS\>)'
+      - '#pragma warning(default: "[-][W]\<name\>")'
+      - '#pragma warning("[-][W]def-\<name\>")'
+    - 'IDS' is a space-separated list of individual warning IDS as integral constants
+      - Besides belonging to any number of groups, each warning also has an ID
+      - Use of these IDS should be refrained from, as they might change randomly
+    - Similar to the 'extension'-pragma, '#pragma warning(...)' accepts a comma-seperated list of commands.
+      - '#pragma warning(push,disable: "-Wsyntax")'
+  - All warnings can be enabled/disabled on-the-fly using pragmas:
+    - '#pragma warning(push|pop)' Push/pop currently enabled extensions
+    - '#pragma warning("-W\<name\>")' Enable warning 'name'
+    - '#pragma warning("-Wno-\<name\>")' Disable warning 'name'
+  - '#pragma GCC system_header' treats the current input file as though all warnings disabled
+    - Mainly meant for headers in '/fixinclude' which may re-define type declarations, but are not meant to cause any problems
 
-Features (Extensions):
- - Extensions are implemented in two different ways:
-  - Extensions that are always enabled, but emit a warning when used.
-   - The warning can either be disabled individually (e.g.: '#pragma warning("-Wno-declaration-in-if")')
-   - Or all extension warnings can be disabled using '#pragma warning("-Wno-extensions")'
-   - Don't let yourself be fooled. Writing '-Wno-extensions' disables warnings about extensions, not extensions themself!
-   - Some warnings are also emit for deprecated or newer language features
-   - "constant-case-expressions": Emit for old-style function declarations
-   - "old-function-decl": Emit for old-style function declarations
-  - Extensions that may change semantics and can therefor be disabled.
-   - All of these extensions can be enabled/disabled on-the-fly using pragmas:
-    - As comma-seperated list in '#pragma extension(...)'
-     - 'push' Push currently enabled extensions (e.g.: '#pragma extension(push)')
-     - 'pop' Pop previously enabled extensions (e.g.: '#pragma extension(pop)')
-     - '"[-][f]\<name\>"' Enable extension 'name' (e.g.: '#pragma extension("-fmacro-recursion")')
-     - '"[-][f]no-\<name\>"' Disable extension 'name' (e.g.: '#pragma extension("-fno-macro-recursion")')
-   - "expression-statements": Recognize GCC statement-expressions
-   - "label-expressions": Allow use of labels in expression (prefixed by '&&')
-   - "local-labels": Allow labels to be scoped (using GCC's '\_\_label\_\_' syntax)
-   - "gcc-attributes": Recognize GCC "\_\_attribute\_\_((...))" syntax
-   - "msvc-attributes": Recognize MSVC "\_\_declspec(...)" syntax
-   - "cxx-11-attributes": Recognize c++11 "[[...]]" syntax
-   - "attribute-conditions": Allow optional conditional expression to follow a switch-attribute
-   - "calling-convention-attributes": Recognize MSVC stand-alone calling convention attributes (e.g.: '\_\_cdecl')
-   - "fixed-length-integer-types": Recognize fixed-length integer types ('\_\_int(8|16|32|64)')
-   - "asm-registers-in-expressions": Allow assembly registers to be used in expressions (e.g.: 'int x = %eax;')
-   - "asm-address-in-expressions": Allow assembly registers to be used in expressions (e.g.: 'int x = %eax;')
-   - "void-arithmetic": sizeof(void) == \_\_has_extension("void-arithmetic") ? 1 : 0
-   - "struct-compatible": When enabled, same-layout structures are compatible, when disabled, only same-declaration structs are
-   - "auto-in-type-expressions": Allow 'auto' be be used either as storage class, or as alias for '\_\_auto_type'
-   - "variable-length-arrays": Allow declaration of C99 VLA variables.
-   - "function-string-literals": Treat \_\_FUNCTION\_\_ and \_\_PRETTY_FUNCTION\_\_ as language-level string literals.
-   - "if-else-optional-true": Recognize GCC if-else syntax "int x = (p ?: other_p)-\>x; // Same as '(p ? p : other_p)-\>x'"
-   - "fixed-length-integrals": Recognize MSVC fixed-length integer suffix: "\_\_int32 x = 42i32;"
-   - "macro-recursion": Enable/Disable TCC recursive macro declaration
-   - Many more extensions are provided by TPP to control preprocessor syntax, such as '#include_next' directives. Their list is too long to be documented here
+# Features (Extensions):
+  - Extensions are implemented in two different ways:
+    - Extensions that are always enabled, but emit a warning when used.
+      - The warning can either be disabled individually (e.g.: '#pragma warning("-Wno-declaration-in-if")')
+      - Or all extension warnings can be disabled using '#pragma warning("-Wno-extensions")'
+      - Don't let yourself be fooled. Writing '-Wno-extensions' disables warnings about extensions, not extensions themself!
+      - Some warnings are also emit for deprecated or newer language features
+      - "constant-case-expressions": Emit for old-style function declarations
+      - "old-function-decl": Emit for old-style function declarations
+    - Extensions that may change semantics and can therefor be disabled.
+      - All of these extensions can be enabled/disabled on-the-fly using pragmas:
+        - As comma-seperated list in '#pragma extension(...)'
+          - 'push' Push currently enabled extensions (e.g.: '#pragma extension(push)')
+          - 'pop' Pop previously enabled extensions (e.g.: '#pragma extension(pop)')
+          - '"[-][f]\<name\>"' Enable extension 'name' (e.g.: '#pragma extension("-fmacro-recursion")')
+          - '"[-][f]no-\<name\>"' Disable extension 'name' (e.g.: '#pragma extension("-fno-macro-recursion")')
+      - "expression-statements": Recognize GCC statement-expressions
+      - "label-expressions": Allow use of labels in expression (prefixed by '&&')
+      - "local-labels": Allow labels to be scoped (using GCC's '\_\_label\_\_' syntax)
+      - "gcc-attributes": Recognize GCC "\_\_attribute\_\_((...))" syntax
+      - "msvc-attributes": Recognize MSVC "\_\_declspec(...)" syntax
+      - "cxx-11-attributes": Recognize c++11 "[[...]]" syntax
+      - "attribute-conditions": Allow optional conditional expression to follow a switch-attribute
+      - "calling-convention-attributes": Recognize MSVC stand-alone calling convention attributes (e.g.: '\_\_cdecl')
+      - "fixed-length-integer-types": Recognize fixed-length integer types ('\_\_int(8|16|32|64)')
+      - "asm-registers-in-expressions": Allow assembly registers to be used in expressions (e.g.: 'int x = %eax;')
+      - "asm-address-in-expressions": Allow assembly registers to be used in expressions (e.g.: 'int x = %eax;')
+      - "void-arithmetic": sizeof(void) == \_\_has_extension("void-arithmetic") ? 1 : 0
+      - "struct-compatible": When enabled, same-layout structures are compatible, when disabled, only same-declaration structs are
+      - "auto-in-type-expressions": Allow 'auto' be be used either as storage class, or as alias for '\_\_auto_type'
+      - "variable-length-arrays": Allow declaration of C99 VLA variables.
+      - "function-string-literals": Treat \_\_FUNCTION\_\_ and \_\_PRETTY_FUNCTION\_\_ as language-level string literals.
+      - "if-else-optional-true": Recognize GCC if-else syntax "int x = (p ?: other_p)-\>x; // Same as '(p ? p : other_p)-\>x'"
+      - "fixed-length-integrals": Recognize MSVC fixed-length integer suffix: "\_\_int32 x = 42i32;"
+      - "macro-recursion": Enable/Disable TCC recursive macro declaration
+      - Many more extensions are provided by TPP to control preprocessor syntax, such as '#include_next' directives. Their list is too long to be documented here
 
-Features (Optimization):
- - Dead code elimination
-  - Correct deduction on merging branches, such as if-statement with two dead branches
-  - Re-enable control flow when encountering a label
-  - Correctly interpretation of '\_\_builtin_unreachable()'
-  - Correctly interpretation of '\_\_assume(0)'
- - Automatic constant propagation
-  - Even capable of handling generic offsetof: '(size_t)&((struct foo *)0)-\>bar'
- - Automatic removal of unused symbols/data
-  - Recursively delete unused functions/data symbols from generated binary
-  - Can be suppressed for any symbol using '\_\_attribute\_\_((used))'
- - Automatic merging of data in sections marked with 'M' (merge) (Not fully implemented, because of missing re-use counter; the rest already works)
-  - Using the same string (or sub-string) more than once will only allocate a single data segment:
-   - 'printf("foobar\n"); printf("bar\n");' Re-use "bar\n\0" as a sub-string of "foobar\n\0"
+# Features (Optimization):
+  - Dead code elimination
+    - Correct deduction on merging branches, such as if-statement with two dead branches
+    - Re-enable control flow when encountering a label
+    - Correctly interpretation of '\_\_builtin_unreachable()'
+    - Correctly interpretation of '\_\_assume(0)'
+  - Automatic constant propagation
+    - Even capable of handling generic offsetof: '(size_t)&((struct foo *)0)-\>bar'
+  - Automatic removal of unused symbols/data
+    - Recursively delete unused functions/data symbols from generated binary
+    - Can be suppressed for any symbol using '\_\_attribute\_\_((used))'
+  - Automatic merging of data in sections marked with 'M' (merge) (Not fully implemented, because of missing re-use counter; the rest already works)
+    - Using the same string (or sub-string) more than once will only allocate a single data segment:
+      - 'printf("foobar\n"); printf("bar\n");' Re-use "bar\n\0" as a sub-string of "foobar\n\0"
 
-Features (Assembler):
- - Full AT&T Assembly support
- - Extension for fixed-length
- - Supported assembly directives are:
-  - '.align \<N\> [, \<FILL\>]'
-  - '.skip \<N\> [, \<FILL\>]'
-  - '.space \<N\> [, \<FILL\>]'
-  - '.quad \<I\>'
-  - '.short \<I\>'
-  - '.byte \<I\>'
-  - '.word \<I\>'
-  - '.hword \<I\>'
-  - '.octa \<I\>'
-  - '.long \<I\>'
-  - '.int \<I\>'
-  - '.fill \<REPEAT\> [, \<SIZE\> [, \<FILL\>]]'
-  - '. = \<ORG\>'
-  - '.org \<ORG\>'
-  - '.extern \<SYM\>'
-  - '.global \<SYM\>'
-  - '.globl \<SYM\>'
-  - '.weak \<SYM\>'
-  - '.string \<STR\>'
-  - '.ascii \<STR\>'
-  - '.asciz \<STR\>'
-  - '.text'
-  - '.data'
-  - '.bss'
-  - '.section'
-  - '.previous'
-  - '.set \<SYM\>, \<VAL\>'
-  - '.include \<NAME\>'
-  - '.incbin \<NAME\> [, \<SKIP\> [, \<MAX\>]]'
- - CPU-specific, recognized directives:
-  - I386+
-   - '.code16'
-   - '.code32'
-  - X86-64
-   - '.code64'
- - Directives ignored without warning:
-  - '.file ...'
-  - '.ident ...'
-  - '.size ...'
-  - '.type ...'
-  - '.lflags ...'
-  - '.line ...'
-  - '.ln ...'
+# Features (Assembler):
+  - Full AT&T Assembly support
+  - Extension for fixed-length
+  - Supported assembly directives are:
+    - '.align \<N\> [, \<FILL\>]'
+    - '.skip \<N\> [, \<FILL\>]'
+    - '.space \<N\> [, \<FILL\>]'
+    - '.quad \<I\>'
+    - '.short \<I\>'
+    - '.byte \<I\>'
+    - '.word \<I\>'
+    - '.hword \<I\>'
+    - '.octa \<I\>'
+    - '.long \<I\>'
+    - '.int \<I\>'
+    - '.fill \<REPEAT\> [, \<SIZE\> [, \<FILL\>]]'
+    - '. = \<ORG\>'
+    - '.org \<ORG\>'
+    - '.extern \<SYM\>'
+    - '.global \<SYM\>'
+    - '.globl \<SYM\>'
+    - '.weak \<SYM\>'
+    - '.string \<STR\>'
+    - '.ascii \<STR\>'
+    - '.asciz \<STR\>'
+    - '.text'
+    - '.data'
+    - '.bss'
+    - '.section'
+    - '.previous'
+    - '.set \<SYM\>, \<VAL\>'
+    - '.include \<NAME\>'
+    - '.incbin \<NAME\> [, \<SKIP\> [, \<MAX\>]]'
+  - CPU-specific, recognized directives:
+    - I386+
+      - '.code16'
+      - '.code32'
+    - X86-64
+      - '.code64'
+  - Directives ignored without warning:
+    - '.file ...'
+    - '.ident ...'
+    - '.size ...'
+    - '.type ...'
+    - '.lflags ...'
+    - '.line ...'
+    - '.ln ...'
 
-Features (Linker):
- - Integrated linker allows for direct (and very fast) creation of executables
- - Merge multiple source files into a single compilation unit
- - ELF-style visibility control/attributes ('\_\_attribute\_\_((visibility(...)))')
- - Directly link against already-generated PE binaries
- - Add new library dependencies from source code ('#pragma comment(lib,...)')
- - Output to PE binary (*.exe/*.dll)
+# Features (Linker):
+  - Integrated linker allows for direct (and very fast) creation of executables
+  - Merge multiple source files into a single compilation unit
+  - ELF-style visibility control/attributes ('\_\_attribute\_\_((visibility(...)))')
+  - Directly link against already-generated PE binaries
+  - Add new library dependencies from source code ('#pragma comment(lib,...)')
+  - Output to PE binary (*.exe/*.dll)
  
  
  
