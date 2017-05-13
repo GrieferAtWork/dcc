@@ -679,6 +679,7 @@ DCCType_PutPrefix(char *buf, size_t buflen,
    case DCCTYPE_FLOAT: basic_name = "float"; break;
    case DCCTYPE_DOUBLE: basic_name = "double"; break;
    case DCCTYPE_LDOUBLE: basic_name = "long double"; break;
+   case DCCTYPE_BOOL: basic_name = "_Bool"; break;
    case DCCTYPE_AUTO: basic_name = "__auto_type"; break;
    case DCCTYPE_VOID: basic_name = "void"; break;
   }

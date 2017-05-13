@@ -659,7 +659,7 @@ begin: DCCParse_Attr(attr);
   YIELD();
   DCCParse_Attr(attr);
   if (TPP_ISKEYWORD(TOK)) {
-   decl = DCCCompiler_NewDecl(TOKEN.t_kwd,DCC_NS_LOCALS);
+   decl = DCCCompiler_NewDecl(TOKEN.t_kwd,DCC_NS_STRUCT);
    if unlikely(!decl) break;
    YIELD();
    DCCParse_Attr(attr);

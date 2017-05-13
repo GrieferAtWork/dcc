@@ -43,18 +43,17 @@ again:
   if (DCC_MACRO_FALSE) { case TOK_TILDE_TILDE: t = '~'; }
   YIELD();
   vdup(1);  /* x, dx */
-  vswap();  /* dx, x */
-  vgen1(t); /* dx, x* */
-  vpop(1);  /* dx */
+  vrval();  /* x, rdx */
+  vswap();  /* rdx, x */
+  vgen1(t); /* rdx, x* */
+  vpop(1);  /* rdx */
   goto again;
  } break;
 
  case '[':
   YIELD();
   /* Array sub-script. */
-  vdup(1);          /* x, dx */
-  vswap();          /* dx, x */
-  vpop(1);          /* dx */
+  vrcopy();         /* dx */
   DCCParse_Expr1(); /* dx, y */
   if (TOK != ']') WARN(W_EXPECTED_RBRACKET); else YIELD();
   vgen2('+');       /* dx+y */
@@ -641,10 +640,9 @@ parse_string:
    /* don't duplicate the value for this operator! */
    vgen1(t); /* x */
   } else if (t != '+') {
-   vdup(1);  /* x, dx  */
-   vgen1(t); /* x, *dx */
-   vswap();  /* *dx, x */
-   vpop(1);  /* *dx */
+   vrcopy(); /* dx  */
+   vgen1(t); /* dnx */
+   vrval();  /* rdnx */
   }
  } break;
 
@@ -877,11 +875,10 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprProd(void) {
  while (TOK == '*' || TOK == '/' || TOK == '%') {
   func = TOK;
   YIELD();
-  vdup(1);              /* x, dx */
-  vswap();              /* dx, x */
-  vpop(1);              /* dx */
+  vrcopy();             /* dx */
   DCCParse_ExprUnary(); /* dx, y */
   vgen2(func);          /* dx#y */
+  vrval();              /* rdx#y */
  }
 }
 
@@ -891,11 +888,10 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprSum(void) {
  while (TOK == '+' || TOK == '-') {
   func = TOK;
   YIELD();
-  vdup(1);             /* x, dx */
-  vswap();             /* dx, x */
-  vpop(1);             /* dx */
+  vrcopy();            /* dx */
   DCCParse_ExprProd(); /* dx, y */
   vgen2(func);         /* dx#y */
+  vrval();             /* rdx#y */
  }
 }
 
@@ -905,11 +901,10 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprShift(void) {
  while (TOK == TOK_SHL || TOK == TOK_SHR) {
   func = TOK;
   YIELD();
-  vdup(1);            /* x, dx */
-  vswap();            /* dx, x */
-  vpop(1);            /* dx */
+  vrcopy();           /* dx */
   DCCParse_ExprSum(); /* dx, y */
   vgen2(func);        /* dx#y */
+  vrval();            /* rdx#y */
  }
 }
 
@@ -922,11 +917,10 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCmp(void) {
         TOK == TOK_GREATER_EQUAL) {
   func = TOK;
   YIELD();
-  vdup(1);              /* x, dx */
-  vswap();              /* dx, x */
-  vpop(1);              /* dx */
+  vrcopy();             /* dx */
   DCCParse_ExprShift(); /* dx, y */
   vgen2(func);          /* dx#y */
+  vrval();              /* rdx#y */
  }
 }
 
@@ -937,11 +931,10 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCmpEq(void) {
         TOK == TOK_NOT_EQUAL) {
   func = TOK;
   YIELD();
-  vdup(1);            /* x, dx */
-  vswap();            /* dx, x */
-  vpop(1);            /* dx */
+  vrcopy();           /* dx */
   DCCParse_ExprCmp(); /* dx, y */
   vgen2(func);        /* dx#y */
+  vrval();            /* rdx#y */
  }
 }
 
@@ -949,22 +942,20 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprAnd(void) {
  DCCParse_ExprCmpEq();
  while (TOK == '&') {
   YIELD();
-  vdup(1);              /* x, dx */
-  vswap();              /* dx, x */
-  vpop(1);              /* dx */
+  vrcopy();             /* dx */
   DCCParse_ExprCmpEq(); /* dx, y */
   vgen2('&');           /* dx#y */
+  vrval();              /* rdx#y */
  }
 }
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprXor(void) {
  DCCParse_ExprAnd();
  while (TOK == '^') {
   YIELD();
-  vdup(1);            /* x, dx */
-  vswap();            /* dx, x */
-  vpop(1);            /* dx */
+  vrcopy();           /* dx */
   DCCParse_ExprAnd(); /* dx, y */
   vgen2('^');         /* dx#y */
+  vrval();            /* rdx#y */
  }
 }
 
@@ -972,11 +963,10 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprOr(void) {
  DCCParse_ExprXor();
  while (TOK == '|') {
   YIELD();
-  vdup(1);            /* x, dx */
-  vswap();            /* dx, x */
-  vpop(1);            /* dx */
+  vrcopy();           /* dx */
   DCCParse_ExprXor(); /* dx, y */
   vgen2('|');         /* dx#y */
+  vrval();            /* rdx#y */
  }
 }
 
@@ -1018,9 +1008,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLXor(void) {
  DCCParse_ExprLAnd();
  while (TOK == TOK_LXOR && HAS(EXT_LXOR)) {
   YIELD();
-  vdup(1);               /* x, dx */
-  vswap();               /* dx, x */
-  vpop(1);                /* dx */
+  vrcopy();              /* dx */
   DCCParse_ExprLAnd();   /* dx, y */
   vgen2('^');            /* dx#y */
   vgen1('!'),vgen1('!'); /* Force to boolean. */
@@ -1251,6 +1239,10 @@ PUBLIC void DCC_PARSE_CALL DCCParse_Expr1(void) {
    target.ml_reg = vbottom->sv_reg;
    target.ml_sym = vbottom->sv_sym;
    target.ml_off = vbottom->sv_const.offset;
+   if (vbottom->sv_ctype.t_type&DCCTYPE_CONST)
+       WARN(W_BINARY_CONSTANT_TYPE,&vbottom->sv_ctype,&vbottom->sv_ctype);
+   if (vbottom->sv_flags&DCC_SFLAG_RVALUE)
+       WARN(W_BINARY_RVALUE_TYPE,&vbottom->sv_ctype,&vbottom->sv_ctype);
    DCCParse_Init(&vbottom->sv_ctype,NULL,&target,0);
    vpop(0);
   } else {
@@ -1273,7 +1265,7 @@ PUBLIC void DCC_PARSE_CALL DCCParse_Expr1(void) {
   if (DCC_MACRO_FALSE) { case TOK_XOR_EQUAL: t = '^'; }
   YIELD();
   DCCParse_Expr1();
-  vgen2(t);
+  vgen2(t);  /* nx */
  } break;
 
  default: goto done;

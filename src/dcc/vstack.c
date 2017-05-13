@@ -124,7 +124,7 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_ReplaceCopy(void) {
  assert(vsize >= 1);
  /* Nothing else really needs to take place for this to happen... */
- vbottom->sv_flags |= DCC_SFLAG_COPY;
+ vbottom->sv_flags |= (DCC_SFLAG_COPY|DCC_SFLAG_RVALUE);
 }
 PUBLIC void DCC_VSTACK_CALL DCCVStack_Dup(int copy) {
  assert(vsize >= 1);
@@ -165,7 +165,7 @@ DCCVStack_PushInt(tyid_t type, int_t v) {
  struct DCCStackValue slot;
  slot.sv_ctype.t_type = type;
  slot.sv_ctype.t_base = NULL;
- slot.sv_flags        = DCC_SFLAG_NONE;
+ slot.sv_flags        = DCC_SFLAG_RVALUE;
  slot.sv_reg          = DCC_RC_CONST;
  slot.sv_reg2         = DCC_RC_CONST;
  slot.sv_const.it     = v;
@@ -176,7 +176,7 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_PushCst(struct DCCType const *__restrict type, int_t v) {
  struct DCCStackValue slot;
  slot.sv_ctype    = *type;
- slot.sv_flags    = DCC_SFLAG_NONE;
+ slot.sv_flags    = DCC_SFLAG_RVALUE;
  slot.sv_reg      = DCC_RC_CONST;
  slot.sv_reg2     = DCC_RC_CONST;
  slot.sv_const.it = v;
@@ -281,7 +281,7 @@ DCCVStack_PushSizeof(struct DCCType const *__restrict t) {
      t->t_base->d_kind == DCC_DECLKIND_VLA) {
   struct DCCMemDecl offset;
   /* Special case: VLA offset. */
-  slot.sv_flags        = DCC_SFLAG_LVALUE;
+  slot.sv_flags        = DCC_SFLAG_LVALUE|DCC_SFLAG_RVALUE;
   offset.md_loc.ml_reg = DCC_RR_XBP;
   offset.md_loc.ml_off = t->t_base->d_tdecl.td_vlaoff;
   offset.md_loc.ml_sym = NULL;
@@ -289,7 +289,7 @@ DCCVStack_PushSizeof(struct DCCType const *__restrict t) {
   DCCStackValue_SetMemDecl(&slot,&offset);
  } else {
   slot.sv_reg      = DCC_RC_CONST;
-  slot.sv_flags    = DCC_SFLAG_NONE;
+  slot.sv_flags    = DCC_SFLAG_RVALUE;
   slot.sv_const.it = (int_t)DCCType_Sizeof(t,NULL,1);
  }
  vpush(&slot);
@@ -984,6 +984,7 @@ DCCStackValue_Dup(struct DCCStackValue *__restrict self) {
  }
  /* Generate a regular, old store. */
  DCCStackValue_Store(self,&copy,1);
+ copy.sv_flags |= (self->sv_flags&DCC_SFLAG_RVALUE);
  DCCSym_XDecref(self->sv_sym);
  *self = copy; /* Inherit data. */
  assert(!(self->sv_flags&DCC_SFLAG_COPY));
@@ -2597,6 +2598,13 @@ DCCVStack_KillTst(void) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Unary(tok_t op) {
  assert(vsize >= 1);
+ if (op != '!' && op != '*' &&
+   !(vbottom->sv_flags&DCC_SFLAG_COPY)) {
+  if (vbottom->sv_ctype.t_type&DCCTYPE_CONST)
+      WARN(W_UNARY_CONSTANT_TYPE,&vbottom->sv_ctype);
+  if (vbottom->sv_flags&DCC_SFLAG_RVALUE)
+      WARN(W_UNARY_RVALUE_TYPE,&vbottom->sv_ctype);
+ }
  if ((op == TOK_INC || op == TOK_DEC) &&
      (vbottom->sv_ctype.t_type&DCCTYPE_POINTER)) {
   struct DCCStackValue multiplier;
@@ -2621,6 +2629,11 @@ DCCVStack_Unary(tok_t op) {
  }
 gen_unary:
  DCCStackValue_Unary(vbottom,op);
+ if (op == '!' || op == '&') {
+  vbottom->sv_flags |=  (DCC_SFLAG_RVALUE);
+ } else {
+  vbottom->sv_flags &= ~(DCC_SFLAG_RVALUE);
+ }
 }
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Bitfld(uint8_t shift, uint8_t size) {
@@ -2648,7 +2661,12 @@ DCCVStack_Binary(tok_t op) {
  /* Promote array types. */
  DCCStackValue_Promote(vbottom+1);
  vprom();
-
+ if (op != '?' && !(vbottom[1].sv_flags&DCC_SFLAG_COPY)) {
+  if (vbottom[1].sv_ctype.t_type&DCCTYPE_CONST)
+      WARN(W_BINARY_CONSTANT_TYPE,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
+  if (vbottom[1].sv_flags&DCC_SFLAG_RVALUE)
+      WARN(W_BINARY_RVALUE_TYPE,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
+ }
  switch (op) {
  case '+':
  case '-':
@@ -2667,14 +2685,13 @@ DCCVStack_Binary(tok_t op) {
    multiplier.sv_reg2         = DCC_RC_CONST;
    multiplier.sv_sym          = NULL;
    /* Check the pointer base for being a complete type. */
-   if (!DCCType_IsComplete(pointer_base))
-    WARN(W_POINTER_ARITHMETIC_INCOMPLETE,pointer_base),
-    multiplier.sv_const.it = 1;
-   else if ((multiplier.sv_const.it = (int_t)DCCType_Sizeof(pointer_base,NULL,0)) == 0) {
+   if ((multiplier.sv_const.it = (int_t)DCCType_Sizeof(pointer_base,NULL,0)) == 0) {
     if (DCCTYPE_GROUP(pointer_base->t_type) == DCCTYPE_FUNCTION ||
         DCCTYPE_ISBASIC(pointer_base->t_type,DCCTYPE_VOID)) {
      if (HAS(EXT_VOID_ARITHMETIC)) multiplier.sv_const.ptr = 1;
      else WARN(W_POINTER_ARITHMETIC_VOID,pointer_base);
+    } else if (!DCCType_IsComplete(pointer_base)) {
+     WARN(W_POINTER_ARITHMETIC_INCOMPLETE,pointer_base);
     }
    }
    if (op == '-' && (vbottom[0].sv_ctype.t_type&DCCTYPE_POINTER)) {
@@ -2694,7 +2711,7 @@ DCCVStack_Binary(tok_t op) {
     /* Check if vbottom is an integral type and warn if it isn't */
     WARN(W_POINTER_ARITHMETIC_EXPECTED_INTEGRAL,&vbottom->sv_ctype);
    }
-   /* Mark 'vbottom' to be copied, as we're about to modify it. */
+   /* Mark 'vbottom' for copy-on-write, as we're about to modify it. */
    vbottom->sv_flags |= DCC_SFLAG_COPY;
    DCCStackValue_Binary(&multiplier,vbottom,'*');
    goto genbinary;
@@ -2724,6 +2741,14 @@ genbinary:
  DCCStackValue_Binary(vbottom,vbottom+1,op);
 end_pop:
  vpop(1);
+ if (op != '?' &&
+     op != TOK_LOWER && op != TOK_LOWER_EQUAL &&
+     op != TOK_EQUAL && op != TOK_NOT_EQUAL &&
+     op != TOK_GREATER && op != TOK_GREATER_EQUAL) {
+  vbottom->sv_flags &= ~(DCC_SFLAG_RVALUE);
+ } else {
+  vbottom->sv_flags |=  (DCC_SFLAG_RVALUE);
+ }
 }
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Store(int initial_store) {
@@ -2745,9 +2770,11 @@ DCCVStack_Store(int initial_store) {
         target_type = &target_type->t_base->d_type;
  /* NOTE: Allow assignment to a constant only during the initial store! */
  if (!initial_store &&
-      target_type->t_type&DCCTYPE_CONST) {
-  WARN(W_ASSIGN_CONSTANT_TYPE,&vbottom->sv_ctype,target_type);
- }
+    (target_type->t_type&DCCTYPE_CONST))
+     WARN(W_ASSIGN_CONSTANT_TYPE,&vbottom->sv_ctype,target_type);
+ if (target->sv_flags&DCC_SFLAG_RVALUE)
+     WARN(W_ASSIGN_RVALUE_TYPE,&vbottom->sv_ctype,target_type);
+
  /* Allow unqualified array assignment during an initial
   * store, as the contents are copied in that case. */
  switch (DCCTYPE_GROUP(target_type->t_type)) {
@@ -3264,6 +3291,7 @@ after_typefix:
  /* TODO: What about caller-allocated structure memory? */
 
  DCCVStack_PushReturn(pfunction_type);
+ vbottom->sv_flags |= DCC_SFLAG_RVALUE;
  if (pfunction_type) DCCDecl_XDecref(function_type.t_base);
 }
 #ifdef _MSC_VER
