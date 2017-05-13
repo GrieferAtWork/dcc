@@ -142,7 +142,7 @@ DCCDAT struct DCCType const DCCType_BuiltinConstPointers[16];
 DCCFUN void DCCType_MkPointer(struct DCCType *__restrict self);
 DCCFUN void DCCType_MkLValue(struct DCCType *__restrict self);
 DCCFUN void DCCType_MkBase(struct DCCType *__restrict self);
-DCCFUN void DCCType_MkArray(struct DCCType *__restrict self, DCC(target_ptr_t) n_elem);
+DCCFUN void DCCType_MkArray(struct DCCType *__restrict self, DCC(target_siz_t) n_elem);
 DCCFUN void DCCType_MkVArray(struct DCCType *__restrict self);
 DCCFUN void DCCType_MkOldFunc(struct DCCType *__restrict self);
 DCCFUN void DCCType_MkVLA(struct DCCType *__restrict self,
@@ -159,9 +159,9 @@ DCCFUN int DCCType_IsComplete(struct DCCType const *__restrict self);
 DCCFUN void DCCType_FixComplete(struct DCCType *__restrict self);
 
 /* Determine size and alignment of the type described by 'self' */
-DCCFUN DCC(target_ptr_t)
+DCCFUN DCC(target_siz_t)
 DCCType_Sizeof(struct DCCType const *__restrict self,
-               DCC(target_ptr_t) *__restrict align,
+               DCC(target_siz_t) *__restrict align,
                int real_sizeof);
 
 

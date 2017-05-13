@@ -255,6 +255,8 @@ DCC_DECL_END
 #define DCC_COMPILER_VERSION 1 /* Compiler version. */
 #define DCC_API_VERSION      1 /* Api version (Version of this api). */
 
+#include <stdint.h>
+
 DCC_DECL_BEGIN
 
 /* DCC Allocation functions.
@@ -262,9 +264,9 @@ DCC_DECL_BEGIN
  * upon failure will start clearing unit/global caches
  * in an attempt to free up available memory before trying again.
  * If all attempts fail, 'DCC_AllocFailed' is called. */
-DCCFUN void *DCC_Malloc(size_t s);
-DCCFUN void *DCC_Calloc(size_t s);
-DCCFUN void *DCC_Realloc(void *p, size_t s);
+DCCFUN void *DCC_Malloc(size_t s, uint32_t flush_exclude);
+DCCFUN void *DCC_Calloc(size_t s, uint32_t flush_exclude);
+DCCFUN void *DCC_Realloc(void *p, size_t s, uint32_t flush_exclude);
 DCCFUN void  DCC_Free(void *p);
 
 /* Emit warnings about failed allocations. */
@@ -276,10 +278,10 @@ DCC_LOCAL void *dcc_check_pointer(void *p, size_t s) {
  if (!p) DCC_AllocFailed(s);
  return p;
 }
-#define DCC_Malloc(s)    dcc_check_pointer(malloc(s),s)
-#define DCC_Calloc(s)    dcc_check_pointer(calloc(1,s),s)
-#define DCC_Realloc(p,s) dcc_check_pointer(realloc(p,s),s)
-#define DCC_Free(p)      free(p)
+#define DCC_Malloc(s,flush_exclude)    dcc_check_pointer(malloc(s),s)
+#define DCC_Calloc(s,flush_exclude)    dcc_check_pointer(calloc(1,s),s)
+#define DCC_Realloc(p,s,flush_exclude) dcc_check_pointer(realloc(p,s),s)
+#define DCC_Free(p)                    free(p)
 #endif
 
 DCC_DECL_END

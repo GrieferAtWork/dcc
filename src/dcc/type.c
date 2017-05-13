@@ -189,7 +189,7 @@ DCCType_MkBase(struct DCCType *__restrict self) {
 }
 PUBLIC void
 DCCType_MkArray(struct DCCType *__restrict self,
-                target_ptr_t n_elem) {
+                target_siz_t n_elem) {
  struct DCCDecl *array_base;
  assert(self);
  assert(!t_builtin(self));
@@ -367,11 +367,11 @@ DCCType_FixComplete(struct DCCType *__restrict self) {
 
 
 
-PUBLIC target_ptr_t
+PUBLIC target_siz_t
 DCCType_Sizeof(struct DCCType const *__restrict self,
-               target_ptr_t *align,
+               target_siz_t *align,
                int real_sizeof) {
- target_ptr_t result;
+ target_siz_t result;
  assert(self);
 again:
  switch (DCCTYPE_GROUP(self->t_type)) {

@@ -678,7 +678,7 @@ PRIVATE void pe_build_sections(void) {
   return;
  }
  sec_order = (struct DCCSection **)DCC_Malloc(unit.u_secc*
-                                              sizeof(struct DCCSection *));
+                                              sizeof(struct DCCSection *),0);
  if unlikely(!sec_order) return;
  iter = sec_order;
  for (section_type = 0;
@@ -693,7 +693,7 @@ PRIVATE void pe_build_sections(void) {
  }
  pe.pe_secc = (size_t)((end = iter)-sec_order);
  pe.pe_secv = (struct secinfo *)DCC_Calloc(pe.pe_secc*
-                                           sizeof(struct secinfo));
+                                           sizeof(struct secinfo),0);
  if unlikely(!pe.pe_secv) pe.pe_secc = 0;
  else {
   info = pe.pe_secv;

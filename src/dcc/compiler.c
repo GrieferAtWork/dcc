@@ -227,7 +227,7 @@ DCCDecl_FixLValue(struct DCCDecl *__restrict self) {
 PUBLIC void
 DCCDecl_AllocStorage(struct DCCDecl *__restrict self, int has_init,
                      struct TPPKeyword const *asmname) {
- int is_global,is_const; tyid_t storage; target_ptr_t s,a;
+ int is_global,is_const; tyid_t storage; target_siz_t s,a;
  struct DCCAttrDecl *attr;
  symflag_t symflags;
  assert(self);
@@ -592,7 +592,7 @@ DCCCompiler_Quit(struct DCCCompiler *__restrict self) {
  }
 
  /* Delete miscellaneous data. */
- DCCFreeData_Quit(&self->c_stack.hws_free);
+ DCCFreeData_Quit(&self->c_hwstack.hws_free);
  assertf(self->c_vstack.v_bottom == 
          self->c_vstack.v_end,
          "Invalid v-stack size: %lu too many",
@@ -683,32 +683,32 @@ DCCCompiler_HWStackAlloc(target_siz_t size,
  target_ptr_t result;
  target_siz_t free_offset;
  if (DCCCompiler_ISCGEN()) {
-  if (compiler.c_stack.hws_minalign < align)
-      compiler.c_stack.hws_minalign = align;
+  if (compiler.c_hwstack.hws_minalign < align)
+      compiler.c_hwstack.hws_minalign = align;
  }
  free_offset = offset;
  if (align > size) free_offset += align-size;
- result = DCCFreeData_Acquire(&compiler.c_stack.hws_free,
+ result = DCCFreeData_Acquire(&compiler.c_hwstack.hws_free,
                               size,align,free_offset);
  if (result != DCC_FREEDATA_INVPTR) {
   result += size;
   assertf(!((result-offset) & (align-1)),"Invalid alignment");
  } else {
-  result  =  compiler.c_stack.hws_curoffset+size;
+  result  =  compiler.c_hwstack.hws_curoffset+size;
   result  = (result+(align-1)-offset) & ~(align-1);
   result +=  offset;
-  free_offset = (result-compiler.c_stack.hws_curoffset);
+  free_offset = (result-compiler.c_hwstack.hws_curoffset);
   assert(free_offset >= size);
   free_offset -= size;
   if (free_offset) {
    /* Make the alignment offset as free data. */
-   DCCFreeData_Release(&compiler.c_stack.hws_free,
-                       compiler.c_stack.hws_curoffset,
+   DCCFreeData_Release(&compiler.c_hwstack.hws_free,
+                       compiler.c_hwstack.hws_curoffset,
                        free_offset);
   }
-  compiler.c_stack.hws_curoffset = result;
-  if (result > compiler.c_stack.hws_maxoffset)
-   compiler.c_stack.hws_maxoffset = result;
+  compiler.c_hwstack.hws_curoffset = result;
+  if (result > compiler.c_hwstack.hws_maxoffset)
+   compiler.c_hwstack.hws_maxoffset = result;
  }
  return -(target_off_t)result;
 }
@@ -717,16 +717,51 @@ DCCCompiler_HWStackFree(target_off_t addr, target_siz_t size) {
  assert(addr+size <= 0);
  if unlikely(!size) return;
  addr = -addr;
- if ((target_ptr_t)addr == compiler.c_stack.hws_curoffset) {
+ if ((target_ptr_t)addr == compiler.c_hwstack.hws_curoffset) {
   /* Simple case: Take away from the current offset. */
-  compiler.c_stack.hws_curoffset -= size;
+  compiler.c_hwstack.hws_curoffset -= size;
  } else {
   addr -= size;
   assert(addr >= 0);
   /* Mark the given address range as free. */
-  DCCFreeData_Release(&compiler.c_stack.hws_free,addr,size);
+  DCCFreeData_Release(&compiler.c_hwstack.hws_free,addr,size);
  }
 }
+
+
+
+
+PUBLIC void DCCCompiler_PackPush(void) {
+ target_siz_t *vec = compiler.c_pack.ps_stackv;
+ if (compiler.c_pack.ps_stackc ==
+     compiler.c_pack.ps_stacka) {
+  size_t newsize = compiler.c_pack.ps_stacka;
+  if (!newsize) newsize = 1;
+  newsize *= 2;
+  vec = (target_siz_t *)DCC_Realloc(vec,newsize*sizeof(target_siz_t),
+                                    DCCCOMPILER_FLUSHFLAG_PACKSTACK);
+  if unlikely(!vec) return;
+  compiler.c_pack.ps_stackv = vec;
+  compiler.c_pack.ps_stacka = newsize;
+ }
+ assert(compiler.c_pack.ps_stackc <
+        compiler.c_pack.ps_stacka);
+ vec[compiler.c_pack.ps_stackc++] = compiler.c_pack.ps_pack;
+}
+PUBLIC void DCCCompiler_PackPop(void) {
+ if (!compiler.c_pack.ps_stackc) {
+  WARN(W_PRAGMA_PACK_NOTHING_TO_POP);
+  return;
+ }
+ /* Store old packing value. */
+ compiler.c_pack.ps_pack = compiler.c_pack.ps_stackv[
+                         --compiler.c_pack.ps_stackc];
+}
+
+
+
+
+
 
 #if DCC_DEBUG
 PUBLIC void DCCCompiler_ClearCache(void) {}

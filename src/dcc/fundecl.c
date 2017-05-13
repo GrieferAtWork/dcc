@@ -130,7 +130,7 @@ DCCFunctionFrame_Leave(struct DCCFunctionFrame *__restrict self) {
         compiler.c_fun,unit.u_curr,self->ff_new_section);
   }
   if (self->ff_flags&DCC_FUNCTIONFRAME_FLAG_NAKED) {
-   if (compiler.c_stack.hws_maxoffset) WARN(W_ATTRIBUTE_NAKED_USES_STACK,compiler.c_fun);
+   if (compiler.c_hwstack.hws_maxoffset) WARN(W_ATTRIBUTE_NAKED_USES_STACK,compiler.c_fun);
    if (!(compiler.c_flags&DCC_COMPILER_FLAG_DEAD)) WARN(W_ATTRIBUTE_NAKED_RETURNS_NORMALLY,compiler.c_fun);
   }
  }

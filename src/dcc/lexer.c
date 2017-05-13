@@ -95,6 +95,28 @@ DCCParse_WarnAllocaInLoop(void) {
 PUBLIC int DCCParse_Pragma(void) {
  switch (TOK) {
 
+ {
+ case KWD_pack:
+  YIELD();
+  if (TOK != '(') WARN(W_EXPECTED_LPAREN); else YIELD();
+  while (TOK != ')') {
+        if (TOK == KWD_push) DCCCompiler_PackPush();
+   else if (TOK == KWD_pop) DCCCompiler_PackPop();
+   else {
+    target_siz_t packval = (target_siz_t)DCCParse_CExpr(1);
+    if (packval & (packval-1))
+        WARN(W_PRAGMA_PACK_EXPECTED_POWER_OF_TWO,packval);
+    compiler.c_pack.ps_pack = packval;
+    goto skip_yield_after_pack;
+   }
+   YIELD();
+skip_yield_after_pack:
+   if (TOK != ',') break;
+   YIELD();
+  }
+  if (TOK != ')') WARN(W_EXPECTED_RPAREN); else YIELD();
+ } break;
+
  { /* Emit a comment for the compiler/linker. */
   tok_t comment_group;
   struct TPPString *comment_string;

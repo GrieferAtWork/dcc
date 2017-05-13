@@ -269,19 +269,30 @@ do{ struct DCCHWStack const _old_hw_stack = *(self);\
 }while(DCC_MACRO_FALSE)
 
 
+struct DCCPackStack {
+ /* Structure packing stack for '#pragma pack(...)' */
+ size_t        ps_stackc; /*< Amount of pushed pack-values currently in use
+                           *  NOTE: The next pop-value is located in 'ps_stackv[ps_stackc-1]'. */
+ size_t        ps_stacka; /*< Allocated amount of old pack-values. */
+ target_siz_t *ps_stackv; /*< [0..ps_stackc|alloc(ps_stacka)][owned] Vector of old pack-values. */
+ target_siz_t  ps_pack;   /*< Current packing value. NOTE: When ZERO(0), ignore this modifier. */
+};
+
+
 struct DCCCompiler {
  /* C-language-specific per-unit members. */
- struct DCCScope        c_scope;  /*< Current scope. */
- struct DCCHWStack      c_stack;  /*< Stack allocator. */
- struct DCCVStack       c_vstack; /*< Virtual operand stack. */
- struct DCCSym         *c_return; /*< [0..1] Symbol to jump to for frame cleanup before returning. */
- struct DCCDecl        *c_fun;    /*< [0..1] When non-NULL: the declaration of the current function. */
- struct DCCSym         *c_bsym;   /*< [0..1] Symbol used as target during 'break' statements. */
- struct DCCSym         *c_csym;   /*< [0..1] Symbol used as target during 'continue' statements. */
- struct DCCSym         *c_defsym; /*< [0..1] Symbol used as target when defining switch-default cases. */
- struct DCCSym         *c_deadjmp;/*< [0..1] Symbol used as target when a dead branch is re-enabled through use of a label. */
- struct DCCSym         *c_casejmp;/*< [0..1] Symbol for jumping to the next case of a switch-statement. */
- struct DCCStackValue   c_sexpr;  /*< Switch expression (owned by the switch statement). */
+ struct DCCScope        c_scope;   /*< Current scope. */
+ struct DCCHWStack      c_hwstack; /*< Stack allocator. */
+ struct DCCVStack       c_vstack;  /*< Virtual operand stack. */
+ struct DCCSym         *c_return;  /*< [0..1] Symbol to jump to for frame cleanup before returning. */
+ struct DCCDecl        *c_fun;     /*< [0..1] When non-NULL: the declaration of the current function. */
+ struct DCCSym         *c_bsym;    /*< [0..1] Symbol used as target during 'break' statements. */
+ struct DCCSym         *c_csym;    /*< [0..1] Symbol used as target during 'continue' statements. */
+ struct DCCSym         *c_defsym;  /*< [0..1] Symbol used as target when defining switch-default cases. */
+ struct DCCSym         *c_deadjmp; /*< [0..1] Symbol used as target when a dead branch is re-enabled through use of a label. */
+ struct DCCSym         *c_casejmp; /*< [0..1] Symbol for jumping to the next case of a switch-statement. */
+ struct DCCStackValue   c_sexpr;   /*< Switch expression (owned by the switch statement). */
+ struct DCCPackStack    c_pack;    /*< Structure packing information. */
 #define DCC_COMPILER_FLAG_NONE      0x00000000
 #define DCC_COMPILER_FLAG_CODE16    0x00000001 /*< Inside a '.code16' assembler block (WARNING: Not necessary respected in code generated outside the assembler). */
 #define DCC_COMPILER_FLAG_NOCGEN    0x00000002 /*< Don't generate code (Used for sizeof()-style expressions). */
@@ -303,7 +314,7 @@ struct DCCCompiler {
 #define DCC_COMPILER_FLAG_NOFUNNOP  0x20000000 /*< Don't place NOPs at the end of functions. */
 #define DCC_COMPILER_FLAG_NOSHARED  0x40000000 /*< Don't share stack memory between variables not visible to each other. */
 #define DCC_COMPILER_FLAG_NOUNREACH 0x80000000 /*< Unless set, generate traps for __builtin_unreachable(), as well as other unreachable code locations. */
- uint32_t               c_flags;  /*< Current c-related code flags. */
+ uint32_t               c_flags;   /*< Current c-related code flags (Set of 'DCC_COMPILER_FLAG_*'). */
 #define DCC_LINKER_FLAG_SHARED       0x00000001 /*< Create shared libraries. */
 #define DCC_LINKER_FLAG_NOSTDLIB     0x00000002 /*< Don't include standard libraries. */
 #define DCC_LINKER_FLAG_NOUNDERSCORE 0x00000004 /*< Don't prepend leading underscores. */
@@ -316,7 +327,7 @@ struct DCCCompiler {
                                                   *  WARNING: You probably don't want to enable this flag, because something as simple as '#pragma comment(lib,"ntdll.dll")'
                                                   *           will cause _ALL_ symbols from ntdll to be both imported _AND_ exported from your application (It'll work, but it's a damn stupid thing to do...) */
 #endif
- uint32_t               l_flags;  /*< Current linker-related flags. */
+ uint32_t               l_flags;   /*< Current linker-related flags (Set of 'DCC_LINKER_FLAG_*'). */
 };
 
 /* Global object: The current compiler. */
@@ -328,13 +339,13 @@ DCCFUN void DCCCompiler_Quit(struct DCCCompiler *__restrict self);
 /* Clear any preallocated memory reachable from 'self'
  * NOTE: Some flush operations are always performed:
  *        - Clear unused relocation.
- * @param: flags: A set of 'DCCCOMPILER_FLUSHFLAG_**'
- */
+ * @param: flags: A set of 'DCCCOMPILER_FLUSHFLAG_**' */
 DCCFUN void DCCCompiler_Flush(struct DCCCompiler *__restrict self, uint32_t flags);
-#define DCCCOMPILER_FLUSHFLAG_NONE     0x00000000
-#define DCCCOMPILER_FLUSHFLAG_DECLTAB  0x00000008 /*< Shrink the allocated size of declaration hash tables to the minimum assumed by automatic rehashing. */
-#define DCCCOMPILER_FLUSHFLAG_TABMIN   0x00000010 /*< More aggressive behavior for 'DCCUNIT_FLUSHFLAG_DECLTAB': Reduce the hash size to ONE(1) (Only use this as last way out) */
-#define DCCCOMPILER_FLUSHFLAG_VSTACK   0x00000020 /*< Free unused v-stack entries. */
+#define DCCCOMPILER_FLUSHFLAG_NONE      0x00000000
+#define DCCCOMPILER_FLUSHFLAG_DECLTAB   0x00000008 /*< Shrink the allocated size of declaration hash tables to the minimum assumed by automatic rehashing. */
+#define DCCCOMPILER_FLUSHFLAG_TABMIN    0x00000010 /*< More aggressive behavior for 'DCCUNIT_FLUSHFLAG_DECLTAB': Reduce the hash size to ONE(1) (Only use this as last way out) */
+#define DCCCOMPILER_FLUSHFLAG_VSTACK    0x00000020 /*< Free unused v-stack entries. */
+#define DCCCOMPILER_FLUSHFLAG_PACKSTACK 0x00000040 /*< Free unused pack-stack entries. */
 
 #define DCCCompiler_Pushf() \
 do{ uint32_t const _old_flags = DCCCompiler_Current.c_flags
@@ -364,9 +375,9 @@ do{ struct DCCScope _old_fun_scope; \
     DCCCompiler_Current.c_scope.s_prev = &_old_fun_scope; \
     DCCCompiler_Current.c_scope.s_id   = _old_fun_scope.s_id+1;\
     DCCCompiler_Current.c_scope.s_kind = DCC_SCOPEKIND_FUNC;\
-    DCCHWStack_PushNew(&DCCCompiler_Current.c_stack)
+    DCCHWStack_PushNew(&DCCCompiler_Current.c_hwstack)
 #define DCCCompiler_PopFunctionScope() \
-    DCCHWStack_PopNew(&DCCCompiler_Current.c_stack);\
+    DCCHWStack_PopNew(&DCCCompiler_Current.c_hwstack);\
     DCC_ASSERT(DCCCompiler_Current.c_scope.s_prev == &_old_fun_scope);\
     DCCScope_Quit(&DCCCompiler_Current.c_scope);\
     memcpy(&DCCCompiler_Current.c_scope,&_old_fun_scope,sizeof(struct DCCScope));\
@@ -379,9 +390,9 @@ do{ struct DCCScope _old_loc_scope; \
     DCCCompiler_Current.c_scope.s_prev = &_old_loc_scope; \
     DCCCompiler_Current.c_scope.s_id   = _old_loc_scope.s_id;\
     DCCCompiler_Current.c_scope.s_kind = DCC_SCOPEKIND_LOCAL;\
-    DCCHWStack_Push(&DCCCompiler_Current.c_stack)
+    DCCHWStack_Push(&DCCCompiler_Current.c_hwstack)
 #define DCCCompiler_PopLocalScope() \
-    DCCHWStack_Pop(&DCCCompiler_Current.c_stack);\
+    DCCHWStack_Pop(&DCCCompiler_Current.c_hwstack);\
     DCC_ASSERT(DCCCompiler_Current.c_scope.s_prev == &_old_loc_scope);\
     DCCScope_Quit(&DCCCompiler_Current.c_scope);\
     memcpy(&DCCCompiler_Current.c_scope,&_old_loc_scope,sizeof(struct DCCScope));\
@@ -429,6 +440,12 @@ DCCFUN struct DCCDecl *DCCCompiler_NewLabel(struct TPPKeyword const *__restrict 
  * NOTE: These are all no-ops when the 'DCC_COMPILER_FLAG_NOCGEN' flag is set. */
 DCCFUN DCC(target_off_t) DCCCompiler_HWStackAlloc(DCC(target_siz_t) size, DCC(target_siz_t) align, DCC(target_siz_t) offset);
 DCCFUN void DCCCompiler_HWStackFree(DCC(target_off_t) addr, DCC(target_siz_t) size);
+
+
+/* Push/pop the current structure packing state.
+ * NOTE: [DCCCompiler_PackPop] If no old state is available, emit a warning. */
+DCCFUN void DCCCompiler_PackPush(void);
+DCCFUN void DCCCompiler_PackPop(void);
 
 
 /* Clear the cache of pre-allocated decls. */

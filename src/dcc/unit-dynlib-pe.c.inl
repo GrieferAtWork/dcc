@@ -167,7 +167,7 @@ no_export_table:
   * To get its actual address, we must now iterate all sections in order
   * to find the associated section and know here it exists within the file. */
  sections = (IMAGE_SECTION_HEADER *)DCC_Malloc(section_header_count*
-                                               sizeof(IMAGE_SECTION_HEADER));
+                                               sizeof(IMAGE_SECTION_HEADER),0);
  if unlikely(!sections) goto end;
  s_seek(fd,section_header_offset,SEEK_SET);
  read_error = s_read(fd,sections,section_header_count*

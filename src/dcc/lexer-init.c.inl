@@ -149,7 +149,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
    } else if (kind == KIND_VARRAY) {
     /* Because the work-around for this, as found below is _so_ inefficient, warn about it. */
     WARN(W_LOCAL_VARRAY_VERY_INEFFICIENT,type);
-    base_target.ml_off = -(target_off_t)compiler.c_stack.hws_curoffset;
+    base_target.ml_off = -(target_off_t)compiler.c_hwstack.hws_curoffset;
     goto stack_target;
    } else { /* Local storage duration. */
     base_target.ml_off = DCCCompiler_HWStackAlloc(type_s,type_a,0);
@@ -209,9 +209,9 @@ parse_field:
     if (field_curr == field_end) {
      target_ptr_t old_offset;
      WARN(W_STRUCTURE_FULLY_INITIALIZED);
-     old_offset = compiler.c_stack.hws_curoffset;
+     old_offset = compiler.c_hwstack.hws_curoffset;
      DCCParse_Expr1();
-     compiler.c_stack.hws_curoffset = old_offset;
+     compiler.c_hwstack.hws_curoffset = old_offset;
      vpop(1);
     } else {
      assert(field_curr);
@@ -291,8 +291,8 @@ parse_field:
        neg_array_base = (target_ptr_t)-new_array_base;
        /* Allocate stack memory */
        if (DCCCompiler_ISCGEN()) {
-        if (neg_array_base > compiler.c_stack.hws_curoffset) compiler.c_stack.hws_curoffset = neg_array_base;
-        if (neg_array_base > compiler.c_stack.hws_maxoffset) compiler.c_stack.hws_maxoffset = neg_array_base;
+        if (neg_array_base > compiler.c_hwstack.hws_curoffset) compiler.c_hwstack.hws_curoffset = neg_array_base;
+        if (neg_array_base > compiler.c_hwstack.hws_maxoffset) compiler.c_hwstack.hws_maxoffset = neg_array_base;
        }
        /* memmove(%EBP+new_array_base,%EBP+array_base,target_maxindex*elem_size); */
        src.ml_reg = dst.ml_reg = elem_target.ml_reg;

@@ -141,7 +141,7 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   YIELD();
   DCCParse_ParPairBegin();
   if (function->k_id == KWD_aligned) {
-   self->a_align  = (target_ptr_t)DCCParse_CExpr(0);
+   self->a_align  = (target_siz_t)DCCParse_CExpr(0);
    self->a_flags |= DCC_ATTRFLAG_FIXEDALIGN;
    if (self->a_align&(self->a_align-1)) {
     WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);

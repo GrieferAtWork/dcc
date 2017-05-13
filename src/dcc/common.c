@@ -93,44 +93,44 @@ static uint32_t const cm_level_flags[CM_MAX_LEVEL][2] = {
                 DCCUNIT_FLUSHFLAG_SYMTAB|DCCUNIT_FLUSHFLAG_TABMIN}
 };
 
-PRIVATE void DCC_ClearMem(int level) {
+PRIVATE void DCC_ClearMem(int level, uint32_t flush_exclude) {
  assert(level >= 0 && level < CM_MAX_LEVEL);
  /* Flush global cache objects. */
  DCCCompiler_ClearCache();
  DCCUnit_ClearCache();
  if (level == 0) return;
  /* Flush compiler/unit memory. */
- DCCCompiler_Flush(&compiler,cm_level_flags[level][0]);
- DCCUnit_Flush(&unit,cm_level_flags[level][1]);
+ DCCCompiler_Flush(&compiler,cm_level_flags[level][0]&~flush_exclude);
+ DCCUnit_Flush(&unit,cm_level_flags[level][1]&~flush_exclude);
 }
 
 #undef DCC_Malloc
-PUBLIC void *DCC_Malloc(size_t s) {
+PUBLIC void *DCC_Malloc(size_t s, uint32_t flush_exclude) {
  void *result; int level = 0;
 again:
  if ((result = malloc(s)) == NULL) {
   if (level == CM_MAX_LEVEL) DCC_AllocFailed(s);
-  else { DCC_ClearMem(level++); goto again; }
+  else { DCC_ClearMem(level++,flush_exclude); goto again; }
  }
  return result;
 }
 #undef DCC_Calloc
-PUBLIC void *DCC_Calloc(size_t s) {
+PUBLIC void *DCC_Calloc(size_t s, uint32_t flush_exclude) {
  void *result; int level = 0;
 again:
  if ((result = calloc(1,s)) == NULL) {
   if (level == CM_MAX_LEVEL) DCC_AllocFailed(s);
-  else { DCC_ClearMem(level++); goto again; }
+  else { DCC_ClearMem(level++,flush_exclude); goto again; }
  }
  return result;
 }
 #undef DCC_Realloc
-PUBLIC void *DCC_Realloc(void *p, size_t s) {
+PUBLIC void *DCC_Realloc(void *p, size_t s, uint32_t flush_exclude) {
  void *result; int level = 0;
 again:
  if ((result = realloc(p,s)) == NULL) {
   if (level == CM_MAX_LEVEL) DCC_AllocFailed(s);
-  else { DCC_ClearMem(level++); goto again; }
+  else { DCC_ClearMem(level++,flush_exclude); goto again; }
  }
  return result;
 }

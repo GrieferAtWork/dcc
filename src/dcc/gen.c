@@ -358,7 +358,7 @@ DCCDisp_GenProlog(struct DCCDispFunction *__restrict info) {
  target_ptr_t stack_size;
  /* Write the prologue. */
  assert(info);
- stack_size = compiler.c_stack.hws_maxoffset;
+ stack_size = compiler.c_hwstack.hws_maxoffset;
  prologue = unit.u_tbuf.tb_begin+info->df_proaddr;
  *prologue++ = 0x50+DCC_ASMREG_EBP;     /* push %ebp */
  *prologue++ = 0x89,*prologue++ = 0xe5; /* mov %esp, %ebp */

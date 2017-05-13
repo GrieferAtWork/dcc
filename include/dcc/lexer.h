@@ -144,7 +144,7 @@ struct DCCAttrDecl {
  struct DCCSection       *a_section;  /*< [0..1] Used for __attribute__((section(...))) */
  /*ref*/struct DCCSym    *a_alias;    /*< [0..1] Used for __attribute__((alias(...))) */
  /*ref*/struct TPPString *a_reach;    /*< [0..1] Used for __attribute__((deprecated(...))) */
- DCC(target_ptr_t)        a_align;    /*< Used by 'DCC_ATTRFLAG_FIXEDALIGN' */
+ DCC(target_siz_t)        a_align;    /*< Used by 'DCC_ATTRFLAG_FIXEDALIGN' */
  int                      a_c_prio;   /*< Constructor priority, or '0' when using default. */
  int                      a_d_prio;   /*< Destructor priority, or '0' when using default. */
 };
