@@ -1,4 +1,4 @@
-## dcc - Direct C Compiler
+# dcc - Direct C Compiler
 
 A C compiler with extensions implementing many extensions and features, as well as arbirary-length arithmetic. (Yes: you could declare & use an integer type 2048-bits long, or even more if you feel like it)
 
@@ -10,14 +10,14 @@ DCC support AT&T inline assembly syntax, emulating gcc's \_\_asm\_\_ statement a
 
 Using TPP as preprocessor, DCC also implements many GCC extensions such as the above mentioned \_\_asm\_\_, \_\_builtin_constant_p, many \_\_attribute\_\_-s, \_\_typeof\_\_, \_\_auto_type, and many more, including my own twist on awesome C extensions.
 
-# Current state:
+## Current state:
 Note that DCC is still fairly early in its development, meaning that anything can still change and that more features will be added eventually.
   - Link against windows PE libraries (.dll)
   - Output windows PE binary (.exe)
   - Process and merge multiple source files
   - Compiling DCC is only tested and working in Visual Studio
  
-# Planned features:
+## Planned features:
   - Full ELF target binary support
   - Support for X86-64/AMD64 CPU architectures
   - Statically link against already-existing DLLs/EXEs/ELF binaries
@@ -28,7 +28,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Generation of debug information (recognizeable by gdb)
   - Finish many partially implemented features (see below)
 
-# Features (Compiler):
+## Features (Compiler):
   - DCC as host compiler can easily be detected with 'defined(\_\_DCC_VERSION\_\_)'
   - Using TPP as preprocessor, _every_ _existing_ preprocessor extension is supported, as well as the new ones only available by it
   - Live-compilation-mode directly generates assembly
@@ -140,7 +140,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Support for '#pragma comment(lib,"foo")' to link against a given library "foo"
   - Support for '#pragma pack(...)' (Currently missing; will _most_definitly_ be implemented)
 
-# Features (Attributes):
+## Features (Attributes):
   - All attributes can be written in three ways:
     - GCC attribte syntax (e.g.: '\_\_attribute\_\_((noreturn))')
     - cxx-11 attributes syntax (e.g.: '[[noreturn]]')
@@ -212,7 +212,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - {_}_fastcall: Same as \_\_attribute\_\_((fastcall))
     - \_\_thiscall: Same as \_\_attribute\_\_((thiscall))
 
-# Features (Warnings):
+## Features (Warnings):
   - DCC features an enourmous amount of warnings covering everything from code quality, to value truncation, to syntax errors, to unresolved references during linkage, etc...
   - Any warning can be configured as
     - disabled: (Compilation is continued, but based on severity, generated assembly/binary may be wrong)
@@ -262,7 +262,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - '#pragma GCC system_header' treats the current input file as though all warnings disabled
     - Mainly meant for headers in '/fixinclude' which may re-define type declarations, but are not meant to cause any problems
 
-# Features (Extensions):
+## Features (Extensions):
   - Extensions are implemented in two different ways:
     - Extensions that are always enabled, but emit a warning when used.
       - The warning can either be disabled individually (e.g.: '#pragma warning("-Wno-declaration-in-if")')
@@ -299,7 +299,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
       - "macro-recursion": Enable/Disable TCC recursive macro declaration
       - Many more extensions are provided by TPP to control preprocessor syntax, such as '#include_next' directives. Their list is too long to be documented here
 
-# Features (Optimization):
+## Features (Optimization):
   - Dead code elimination
     - Correct deduction on merging branches, such as if-statement with two dead branches
     - Re-enable control flow when encountering a label
@@ -314,7 +314,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - Using the same string (or sub-string) more than once will only allocate a single data segment:
       - 'printf("foobar\n"); printf("bar\n");' Re-use "bar\n\0" as a sub-string of "foobar\n\0"
 
-# Features (Assembler):
+## Features (Assembler):
   - Full AT&T Assembly support
   - Extension for fixed-length
   - Supported assembly directives are:
@@ -362,7 +362,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - '.line ...'
     - '.ln ...'
 
-# Features (Linker):
+## Features (Linker):
   - Integrated linker allows for direct (and very fast) creation of executables
   - Merge multiple source files into a single compilation unit
   - ELF-style visibility control/attributes ('\_\_attribute\_\_((visibility(...)))')
