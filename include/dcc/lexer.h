@@ -162,6 +162,7 @@ DCCFUN int DCCAttrDecl_IsEmpty(struct DCCAttrDecl const *__restrict self);
 
 /* The pragma parser hook for tpp. */
 DCCFUN int DCCParse_Pragma(void);
+DCCFUN int DCCParse_GCCPragma(void);
 DCCFUN int DCCParse_InsComment(struct TPPString *__restrict comment);
 
 /* For the sake of optimization, the parser calls using fastcall. */

@@ -271,7 +271,7 @@ do{ struct DCCHWStack const _old_hw_stack = *(self);\
 
 
 struct DCCPackStack {
- /* Structure packing stack for '#pragma pack(...)' */
+ /* Structure packing stack for '#pragma pack(push|pop)' */
  size_t        ps_stackc; /*< Amount of pushed pack-values currently in use
                            *  NOTE: The next pop-value is located in 'ps_stackv[ps_stackc-1]'. */
  size_t        ps_stacka; /*< Allocated amount of old pack-values. */
@@ -279,21 +279,31 @@ struct DCCPackStack {
  target_siz_t  ps_pack;   /*< Current packing value. NOTE: When ZERO(0), ignore this modifier. */
 };
 
+struct DCCVisibilityStack {
+ /* Default visibility stack for '#pragma GCC visibility push|pop' */
+ size_t          vs_stackc; /*< Amount of pushed visibility-values currently in use
+                             *  NOTE: The next pop-value is located in 'vs_stackv[vs_stackc-1]'. */
+ size_t          vs_stacka; /*< Allocated amount of old visibility-values. */
+ DCC(symflag_t) *vs_stackv; /*< [0..vs_stackc|alloc(vs_stacka)][owned] Vector of old visibility-values. */
+ DCC(symflag_t)  vs_viscur; /*< Current default visibility. */
+};
+
 
 struct DCCCompiler {
  /* C-language-specific per-unit members. */
- struct DCCScope        c_scope;   /*< Current scope. */
- struct DCCHWStack      c_hwstack; /*< Stack allocator. */
- struct DCCVStack       c_vstack;  /*< Virtual operand stack. */
- struct DCCSym         *c_return;  /*< [0..1] Symbol to jump to for frame cleanup before returning. */
- struct DCCDecl        *c_fun;     /*< [0..1] When non-NULL: the declaration of the current function. */
- struct DCCSym         *c_bsym;    /*< [0..1] Symbol used as target during 'break' statements. */
- struct DCCSym         *c_csym;    /*< [0..1] Symbol used as target during 'continue' statements. */
- struct DCCSym         *c_defsym;  /*< [0..1] Symbol used as target when defining switch-default cases. */
- struct DCCSym         *c_deadjmp; /*< [0..1] Symbol used as target when a dead branch is re-enabled through use of a label. */
- struct DCCSym         *c_casejmp; /*< [0..1] Symbol for jumping to the next case of a switch-statement. */
- struct DCCStackValue   c_sexpr;   /*< Switch expression (owned by the switch statement). */
- struct DCCPackStack    c_pack;    /*< Structure packing information. */
+ struct DCCScope           c_scope;      /*< Current scope. */
+ struct DCCHWStack         c_hwstack;    /*< Stack allocator. */
+ struct DCCVStack          c_vstack;     /*< Virtual operand stack. */
+ struct DCCSym            *c_return;     /*< [0..1] Symbol to jump to for frame cleanup before returning. */
+ struct DCCDecl           *c_fun;        /*< [0..1] When non-NULL: the declaration of the current function. */
+ struct DCCSym            *c_bsym;       /*< [0..1] Symbol used as target during 'break' statements. */
+ struct DCCSym            *c_csym;       /*< [0..1] Symbol used as target during 'continue' statements. */
+ struct DCCSym            *c_defsym;     /*< [0..1] Symbol used as target when defining switch-default cases. */
+ struct DCCSym            *c_deadjmp;    /*< [0..1] Symbol used as target when a dead branch is re-enabled through use of a label. */
+ struct DCCSym            *c_casejmp;    /*< [0..1] Symbol for jumping to the next case of a switch-statement. */
+ struct DCCStackValue      c_sexpr;      /*< Switch expression (owned by the switch statement). */
+ struct DCCPackStack       c_pack;       /*< Structure packing information. */
+ struct DCCVisibilityStack c_visibility; /*< Default symbol visibility information. */
 #define DCC_COMPILER_FLAG_NONE      0x00000000
 #if DCC_TARGET_IA32(386)
 #define DCC_COMPILER_FLAG_CODE16    0x00000001 /*< Inside a '.code16' assembler block (WARNING: Not necessary respected in code generated outside the assembler). */
@@ -317,7 +327,7 @@ struct DCCCompiler {
 #define DCC_COMPILER_FLAG_NOFUNNOP  0x20000000 /*< Don't place NOPs at the end of functions. */
 #define DCC_COMPILER_FLAG_NOSHARED  0x40000000 /*< Don't share stack memory between variables not visible to each other. */
 #define DCC_COMPILER_FLAG_NOUNREACH 0x80000000 /*< Unless set, generate traps for __builtin_unreachable(), as well as other unreachable code locations. */
- uint32_t               c_flags;   /*< Current c-related code flags (Set of 'DCC_COMPILER_FLAG_*'). */
+ uint32_t                  c_flags;   /*< Current c-related code flags (Set of 'DCC_COMPILER_FLAG_*'). */
 #define DCC_LINKER_FLAG_SHARED       0x00000001 /*< Create shared libraries. */
 #define DCC_LINKER_FLAG_NOSTDLIB     0x00000002 /*< Don't include standard libraries. */
 #define DCC_LINKER_FLAG_NOUNDERSCORE 0x00000004 /*< Don't prepend leading underscores. */
@@ -330,7 +340,7 @@ struct DCCCompiler {
                                                   *  WARNING: You probably don't want to enable this flag, because something as simple as '#pragma comment(lib,"ntdll.dll")'
                                                   *           will cause _ALL_ symbols from ntdll to be both imported _AND_ exported from your application (It'll work, but it's a damn stupid thing to do...) */
 #endif
- uint32_t               l_flags;   /*< Current linker-related flags (Set of 'DCC_LINKER_FLAG_*'). */
+ uint32_t                  l_flags;   /*< Current linker-related flags (Set of 'DCC_LINKER_FLAG_*'). */
 };
 
 /* Global object: The current compiler. */
@@ -349,6 +359,7 @@ DCCFUN void DCCCompiler_Flush(struct DCCCompiler *__restrict self, uint32_t flag
 #define DCCCOMPILER_FLUSHFLAG_TABMIN    0x00000010 /*< More aggressive behavior for 'DCCUNIT_FLUSHFLAG_DECLTAB': Reduce the hash size to ONE(1) (Only use this as last way out) */
 #define DCCCOMPILER_FLUSHFLAG_VSTACK    0x00000020 /*< Free unused v-stack entries. */
 #define DCCCOMPILER_FLUSHFLAG_PACKSTACK 0x00000040 /*< Free unused pack-stack entries. */
+#define DCCCOMPILER_FLUSHFLAG_VISISTACK 0x00000040 /*< Free unused visibility-stack entries. */
 
 #define DCCCompiler_Pushf() \
 do{ uint32_t const _old_flags = DCCCompiler_Current.c_flags
@@ -449,6 +460,11 @@ DCCFUN void DCCCompiler_HWStackFree(DCC(target_off_t) addr, DCC(target_siz_t) si
  * NOTE: [DCCCompiler_PackPop] If no old state is available, emit a warning. */
 DCCFUN void DCCCompiler_PackPush(void);
 DCCFUN void DCCCompiler_PackPop(void);
+
+/* Push/pop the current structure packing state.
+ * NOTE: [DCCCompiler_VisibilityPop] If no old state is available, emit a warning. */
+DCCFUN void DCCCompiler_VisibilityPush(void);
+DCCFUN void DCCCompiler_VisibilityPop(void);
 
 
 /* Clear the cache of pre-allocated decls. */

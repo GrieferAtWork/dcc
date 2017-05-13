@@ -30,7 +30,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
 
 ## Features (Compiler):
   - DCC as host compiler can easily be detected with <code>defined(\_\_DCC\_VERSION\_\_)</code>.
-  - Using TPP as preprocessor, <b>every existing</b> preprocessor extension is supported, as well as all that are exclusive to it.
+  - Using TPP as preprocessor, <b>every existing</b> preprocessor extension is supported, as well as all that are exclusive to mine.
   - Live-compilation-mode directly generates assembly.
   - C-conforming symbol forward/backward declaration.
   - Supports all C standard types.
@@ -41,14 +41,11 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Supports C99 <code>\_Bool</code>.
   - Supports C99 <code>\_\_func\_\_</code> builtin identifier.
   - Supports Variable declaration in if-expressions and for-initializers.
-  - Supports GCC builtin macros for fixed-length integral constants (<code>\_\_(U)INT(8|16|32|64|MAX)\_C(...)</code>).
-  - Supports nested function declaration, as well as access to surrounding variables.
+  - Supports nested function declaration, as well as access to variables from surrounding scopes.
   - Supports C++ lvalue types (<code>int y = 10; int &x = y;</code>).
   - Supports C structure bitfields
-  - Support for GCC builtin macros, such as <code>\_\_SIZEOF\_POINTER\_\_</code>, <code>\_\_SIZE\_TYPE\_\_</code>, etc.
   - Support for GCC statement-expressions: <code>int x = ({ int z = 10; z+20; }); // x == 30</code>.
   - Support for <code>\_\_FUNCTION\_\_</code> and <code>\_\_PRETTY\_FUNCTION\_\_</code>, including use by concat with other strings: <code>char *s = "Function " \_\_FUNCTION\_\_ " was called"; printf("%s\n",s);</code>.
-  - GCC-compatible predefined CPU macros, such as <code>\_\_i386\_\_</code> or <code>\_\_LP64\_\_</code>.
   - Support for GCC <code>\_\_sync\_*</code> builtin functions (<code>\_\_sync\_val\_compare\_and\_swap(&x,10,20)</code>).
   - Supports all compiler-slangs for alignof: <code>\_Alignof</code>, <code>\_\_alignof</code>, <code>\_\_alignof\_\_</code> and <code>\_\_builtin\_alignof</code>.
   - Support for compile-time type deduction from expressions: <code>typeof</code>, <code>\_\_typeof</code>, <code>\_\_typeof\_\_</code>.
@@ -70,6 +67,8 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - dot-field: <code>struct { int x,y; } p = { .x = 10, .y = 20 };</code>
     - field-collon: <code>struct point { int x,y; } p = { x: 10, y: 20 };</code>
     - array-subscript: <code>int alpha[256] = { ['a' ... 'z'] = 1, ['A' ... 'Z'] = 1, ['\_'] = 1 };</code>
+  - Support for runtime brace-initializers: <code>struct point p = { .x = get_x(), .y = get_y() };</code>
+  - Split between struct/union/enum, declaration and label namespaces:<code>foo: struct foo foo; // Valid code and 3 different 'foo'</code>
   - Support for unnamed struct/union inlining:
     - <code>union foo { \_\_int32 x; struct { \_\_int16 a,b; }; };</code>
       - <code>offsetof(union foo.x) == 0</code>, <code>offsetof(union foo.a) == 0</code>, <code>offsetof(union foo.b) == 2</code>
@@ -87,9 +86,9 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - <code>void *\_\_builtin\_alloca\_with\_align(size\_t s, size\_t a);</code>
     - <code>void \_\_builtin\_assume(expr x),\_\_assume(expr x);</code>
     - <code>long \_\_builtin\_expect(long x, long e);</code>
-    - <code>int \_\_builtin\_FILE(void);</code>
+    - <code>const char (&\_\_builtin\_FILE(void))[];</code>
     - <code>int \_\_builtin\_LINE(void);</code>
-    - <code>char (&\_\_builtin\_FUNCTION(void))[];</code>
+    - <code>const char (&\_\_builtin\_FUNCTION(void))[];</code>
     - <code>void *\_\_builtin\_assume\_aligned(void *p, size\_t align, ...);</code>
     - <code>size\_t \_\_builtin\_offsetof(typename T, members...);</code>
     - <code>T (\_\_builtin\_bitfield(T expr, constexpr int const\_index, constexpr int const\_size)) : const\_size;</code>
@@ -131,7 +130,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
       - Replace with compile-time constant for constant
       - Replace with inline code for sizes known at compile-time
     - <code>size\_t \_\_builtin\_strlen(char const *s);</code>
-      - Resolve lenhth of static strings at compile-time
+      - Resolve length of static strings at compile-time
   - Split between declaration and assembly name (aka. <code>\_\_asm\_\_("foo")</code> suffix in declarations)
   - Arbitrary size arithmetic operations (The sky's the limit; as well as your binary size bloated with hundreds of add-instructions for one line of source code).
   - Support for deemon's 'pack' keyword (now called <code>\_\_pack</code>):
@@ -139,12 +138,15 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Explicit alignment of code, data, or entire sections in-source
   - Support for <code>#pragma comment(lib,"foo")</code> to link against a given library "foo"
   - Support for <code>#pragma pack(...)</code>
+  - Supports GCC builtin macros for fixed-length integral constants (<code>\_\_(U)INT(8|16|32|64|MAX)\_C(...)</code>).
+  - GCC-compatible predefined CPU macros, such as <code>\_\_i386\_\_</code> or <code>\_\_LP64\_\_</code>.
+  - Support for GCC builtin macros, such as <code>\_\_SIZEOF\_POINTER\_\_</code>, <code>\_\_SIZE\_TYPE\_\_</code>, etc.
 
 ## Features (Attributes):
-  - All attributes can be written in three ways:
+  - Ever attribute can be written in one of three ways:
     - GCC attribte syntax (e.g.: <code>\_\_attribute\_\_((noreturn))</code>)
     - cxx-11 attributes syntax (e.g.: <code>[[noreturn]]</code>)
-    - msvc declspec syntax (e.g.: <code>\_\_declspec(noreturn)</code>)
+    - MSVC declspec syntax (e.g.: <code>\_\_declspec(noreturn)</code>)
   - The name of an attribute (in the above examples <code>noreturn</code>) can be written with any number of leading, or terminating underscores to prevent ambiguity with user-defined macros:
     - <code>\_\_attribute\_\_((\_\_\_\_noreturn\_))</code> is the same as <code>\_\_attribute\_\_((noreturn))</code>
   - The following attributes (as supported by other compiler) are recognized:
@@ -168,8 +170,8 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - <code>\_\_attribute\_\_((deprecated))</code>
     - <code>\_\_attribute\_\_((deprecated(msg)))</code>
     - <code>\_\_attribute\_\_((aligned(x)))</code>
-    - <code>\_\_attribute\_\_((packed))</code>
-    - <code>\_\_attribute\_\_((transparent\_union))</code>
+    - <code>\_\_attribute\_\_((packed*))</code>
+    - <code>\_\_attribute\_\_((transparent\_union*))</code>
     - <code>\_\_attribute\_\_((mode(x)))</code> (Underscores surrounding <code>x</code> are ignored)
     - All attribute names marked with '*' accept an optional suffix that adds an enabled-dependency on a compiler-time expression. (e.g.: <code>\_\_attribute\_\_((noreturn(sizeof(int) == 4)))</code> - Mark as noreturn, if <code>int</code> is <code>4</code> bytes wide)
   - Attributes not currently implemented (But planned to be):

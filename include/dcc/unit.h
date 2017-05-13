@@ -86,7 +86,9 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 #define DCC_SYMFLAG_PRIVATE   0x00000002 /*< '[[visibility("hidden")]]': Private symbol (don't export from a binary/library). */
 #define DCC_SYMFLAG_INTERNAL  0x00000003 /*< '[[visibility("internal")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
 #define DCC_SYMFLAG_STATIC    0x00000004 /*< 'static': FLAG: Protected symbol (don't export from the compilation unit). */
-#define DCC_SYMFLAG_WEAK      0x00000008 /*< '[[weak]]': FLAG: Weak symbol. */
+#define DCC_SYMFLAG_WEAK      0x00000008 /*< '[[weak]]': FLAG: Weak symbol. A weak symbols can be overwritten at any time by another
+                                          *   symbol, meaning should assumptions may be made about its address, or its relation.
+                                          *   Access to such a symbol should take place exclusively through relocations. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #define DCC_SYMFLAG_DLLIMPORT 0x00000010 /*< '[[dllimport]]': On PE targets: explicit dllimport. */
 #define DCC_SYMFLAG_DLLEXPORT 0x00000020 /*< '[[dllexport]]': On PE targets: explicit dllexport. */
@@ -220,6 +222,21 @@ struct DCCSym {
 #define DCCSym_XIncref(self)   ((self) ? DCCSym_Incref(self) : (void)0)
 #define DCCSym_XDecref(self)   ((self) ? DCCSym_Decref(self) : (void)0)
 DCCFUN void _DCCSym_Delete(struct DCCSym *__restrict self);
+
+/* Convert a given string 'text' into the correct ELF-style symbol visibility class:
+ * NOTE: This function is used by:
+ *   - '#pragma GCC visibility push(...)'
+ *   - '__attribute__((visibility(...)))'
+ * The names are mapped as follows:
+ *   - "default"   >> DCC_SYMFLAG_NONE
+ *   - "protected" >> DCC_SYMFLAG_PROTECTED
+ *   - "hidden"    >> DCC_SYMFLAG_PRIVATE
+ *   - "internal"  >> DCC_SYMFLAG_INTERNAL
+ * @return: (symflag_t)-1: The given 'text' was none of the above.
+ *                         In this case, the caller must decide what should happen,
+ *                         as no warning will have been emit by this function. */
+DCCFUN DCC(symflag_t) DCCSymflag_FromString(struct TPPString const *__restrict text);
+
 
 #define DCCSym_Clear(self) \
  (DCCSym_ISSECTION(self) ? DCCSection_Clear(DCCSym_TOSECTION(self)) : (void)0)

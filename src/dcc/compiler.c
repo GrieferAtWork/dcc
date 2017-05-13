@@ -192,20 +192,25 @@ DCCDecl_CalculateSymflags(struct DCCDecl const *__restrict self) {
  struct DCCAttrDecl *attr;
  assert(self);
  if ((attr = self->d_attr) != NULL) {
-  switch (attr->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) {
-  default: break; /* TODO: '-fvisibility=...' */
-  case DCC_ATTRFLAG_VIS_DEFAULT  : result |= DCC_SYMFLAG_NONE; break;
-  case DCC_ATTRFLAG_VIS_HIDDEN   : result |= DCC_SYMFLAG_PRIVATE; break;
-  case DCC_ATTRFLAG_VIS_PROTECTED: result |= DCC_SYMFLAG_PROTECTED; break;
-  case DCC_ATTRFLAG_VIS_INTERNAL : result |= DCC_SYMFLAG_INTERNAL; break;
-  }
 #if DCC_TARGET_BIN == DCC_BINARY_PE
   if (attr->a_flags&DCC_ATTRFLAG_DLLIMPORT) result |= DCC_SYMFLAG_DLLIMPORT;
   if (attr->a_flags&DCC_ATTRFLAG_DLLEXPORT) result |= DCC_SYMFLAG_DLLEXPORT;
 #endif
   if (attr->a_flags&DCC_ATTRFLAG_WEAK) result |= DCC_SYMFLAG_WEAK;
   if (attr->a_flags&DCC_ATTRFLAG_USED) result |= DCC_SYMFLAG_USED;
+  switch (attr->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) {
+  default: goto default_visibility;
+  case DCC_ATTRFLAG_VIS_DEFAULT  : result |= DCC_SYMFLAG_NONE; break;
+  case DCC_ATTRFLAG_VIS_HIDDEN   : result |= DCC_SYMFLAG_PRIVATE; break;
+  case DCC_ATTRFLAG_VIS_PROTECTED: result |= DCC_SYMFLAG_PROTECTED; break;
+  case DCC_ATTRFLAG_VIS_INTERNAL : result |= DCC_SYMFLAG_INTERNAL; break;
+  }
+ } else {
+default_visibility:
+  /* Load the default symbol visibility. */
+  result |= compiler.c_visibility.vs_viscur;
  }
+
  if ((self->d_type.t_type&DCCTYPE_STOREMASK) == DCCTYPE_STATIC)
       result |= DCC_SYMFLAG_STATIC; /* Hide inside unit. */
  return result;
@@ -746,18 +751,46 @@ PUBLIC void DCCCompiler_PackPush(void) {
  }
  assert(compiler.c_pack.ps_stackc <
         compiler.c_pack.ps_stacka);
- vec[compiler.c_pack.ps_stackc++] = compiler.c_pack.ps_pack;
+ vec[compiler.c_pack.ps_stackc++] =
+     compiler.c_pack.ps_pack;
 }
 PUBLIC void DCCCompiler_PackPop(void) {
  if (!compiler.c_pack.ps_stackc) {
   WARN(W_PRAGMA_PACK_NOTHING_TO_POP);
   return;
  }
- /* Store old packing value. */
+ /* Restore the old packing value. */
  compiler.c_pack.ps_pack = compiler.c_pack.ps_stackv[
                          --compiler.c_pack.ps_stackc];
 }
 
+PUBLIC void DCCCompiler_VisibilityPush(void) {
+ symflag_t *vec = compiler.c_visibility.vs_stackv;
+ if (compiler.c_visibility.vs_stackc ==
+     compiler.c_visibility.vs_stacka) {
+  size_t newsize = compiler.c_visibility.vs_stacka;
+  if (!newsize) newsize = 1;
+  newsize *= 2;
+  vec = (symflag_t *)DCC_Realloc(vec,newsize*sizeof(symflag_t),
+                                 DCCCOMPILER_FLUSHFLAG_VISISTACK);
+  if unlikely(!vec) return;
+  compiler.c_visibility.vs_stackv = vec;
+  compiler.c_visibility.vs_stacka = newsize;
+ }
+ assert(compiler.c_visibility.vs_stackc <
+        compiler.c_visibility.vs_stacka);
+ vec[compiler.c_visibility.vs_stackc++] =
+     compiler.c_visibility.vs_viscur;
+}
+PUBLIC void DCCCompiler_VisibilityPop(void) {
+ if (!compiler.c_visibility.vs_stackc) {
+  WARN(W_PRAGMA_GCC_VISIBILITY_NOTHING_TO_POP);
+  return;
+ }
+ /* Restore the old default visibility. */
+ compiler.c_visibility.vs_viscur = compiler.c_visibility.vs_stackv[
+                                 --compiler.c_visibility.vs_stackc];
+}
 
 
 

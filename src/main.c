@@ -127,8 +127,9 @@ int main(int argc, char *argv[]) {
   }
   /* Yield the initial token. */
   TPPLexer_PushFileInherited(infile);
-  TPPLexer_Current->l_callbacks.c_parse_pragma = &DCCParse_Pragma;
-  TPPLexer_Current->l_callbacks.c_ins_comment  = &DCCParse_InsComment;
+  TPPLexer_Current->l_callbacks.c_parse_pragma     = &DCCParse_Pragma;
+  TPPLexer_Current->l_callbacks.c_parse_pragma_gcc = &DCCParse_GCCPragma;
+  TPPLexer_Current->l_callbacks.c_ins_comment      = &DCCParse_InsComment;
   TPPLexer_Current->l_extokens = (TPPLEXER_TOKEN_LANG_C|
                                   TPPLEXER_TOKEN_TILDETILDE);
   if (!first) {

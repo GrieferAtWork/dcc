@@ -739,6 +739,11 @@ struct TPPCallbacks {
  // @return: 1: Successfully parsed the given pragma.
  int (*c_parse_pragma)(void);
  //////////////////////////////////////////////////////////////////////////
+ // Same as 'c_parse_pragma', but invoked for unknown GCC-namespace pragmas
+ // >> #pragma GCC visibility(push)
+ //                ^^^^^^^^^^ Invoked on this token
+ int (*c_parse_pragma_gcc)(void);
+ //////////////////////////////////////////////////////////////////////////
  // Insert the given text into the ".comment" section of the current object file.
  // @return: 0: Error occurred (Set a lexer error if not already set)
  // @return: 1: Successfully inserted the given text.

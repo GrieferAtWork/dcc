@@ -170,7 +170,6 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
 
  {
   struct TPPString *text;
-  uint32_t new_visibility;
  case KWD_deprecated:
  case KWD_warning:
  case KWD_error:
@@ -255,24 +254,16 @@ set_text:
   } break;
 
   { /* Set visibility. */
+   symflag_t new_visibility;
   case KWD_visibility:
    if (!text) {
     new_visibility = DCC_ATTRFLAG_VIS_NONE;
-    goto set_visibility;
-   } else {
-#define CHECK(s) \
-    (sizeof(s)/sizeof(char)-1 == text->s_size && \
-    !memcmp(s,text->s_text,sizeof(s)-sizeof(char)))
-         if (CHECK("default"))   new_visibility = DCC_ATTRFLAG_VIS_DEFAULT;
-    else if (CHECK("hidden"))    new_visibility = DCC_ATTRFLAG_VIS_HIDDEN;
-    else if (CHECK("protected")) new_visibility = DCC_ATTRFLAG_VIS_PROTECTED;
-    else if (CHECK("internal"))  new_visibility = DCC_ATTRFLAG_VIS_INTERNAL;
-    else { WARN(W_ATTRIBUTE_VISIBILITY_UNKNOWN_VISIBILITY,text->s_text); goto cleanup_text; }
-#undef CHECK
-set_visibility :
-    self->a_flags &= ~(DCC_ATTRFLAG_MASK_ELFVISIBILITY);
-    self->a_flags |= new_visibility;
+   } else if ((new_visibility = DCCSymflag_FromString(text)) == (symflag_t)-1) {
+    WARN(W_ATTRIBUTE_VISIBILITY_UNKNOWN_VISIBILITY,text->s_text);
+    goto cleanup_text;
    }
+   self->a_flags &= ~(DCC_ATTRFLAG_MASK_ELFVISIBILITY);
+   self->a_flags |= new_visibility;
   } break;
 
   default: break;

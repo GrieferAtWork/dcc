@@ -86,6 +86,34 @@ LOCAL void DCCSym_Free(struct DCCSym *__restrict self);
 
 
 
+PUBLIC symflag_t
+DCCSymflag_FromString(struct TPPString const *__restrict text) {
+ assert(text);
+ switch (text->s_size) {
+#define CASE(name,result) \
+ case (sizeof(name)/sizeof(char))-1: \
+   if (!memcmp(text->s_text,name,sizeof(name)-sizeof(char))) \
+       return result;\
+   break
+ CASE("default",  DCC_SYMFLAG_NONE);
+ CASE("protected",DCC_SYMFLAG_PROTECTED);
+ CASE("hidden",   DCC_SYMFLAG_PRIVATE);
+ CASE("internal", DCC_SYMFLAG_INTERNAL);
+#undef CASE
+ default: break;
+ }
+ return (symflag_t)-1;
+}
+
+
+
+
+
+
+
+
+
+
 PUBLIC int
 DCCFreeData_InitCopy(struct DCCFreeData *__restrict self,
                      struct DCCFreeData const *__restrict right) {

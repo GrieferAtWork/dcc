@@ -8593,6 +8593,9 @@ yield_after_extension:
     /* Set the system-header flag in the current file (thus suppressing warnings) */
     textfile->f_textfile.f_flags |= TPP_TEXTFILE_FLAG_SYSHEADER;
     return 1;
+   } else if (current.l_callbacks.c_parse_pragma_gcc) {
+    /* Call the user-provided GCC pragma hook. */
+    return (*current.l_callbacks.c_parse_pragma_gcc)();
    }
   } break;
 

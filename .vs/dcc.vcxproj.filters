@@ -181,5 +181,8 @@
     <None Include="..\src\tpp\tpp-gcc-defs.inl">
       <Filter>src\tpp</Filter>
     </None>
+    <None Include="..\src\dcc\binary-pe.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
   </ItemGroup>
 </Project>

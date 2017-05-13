@@ -149,6 +149,39 @@ skip_yield_after_pack:
  return 1; /* Never re-emit pragmas. */
 }
 
+PUBLIC int DCCParse_GCCPragma(void) {
+ switch (TOK) {
+ case KWD_visibility:
+  /* #pragma GCC visibility push("visibility") */
+  /* #pragma GCC visibility pop */
+  YIELD();
+  if (TOK == KWD_push) {
+   struct TPPString *vis_text;
+   DCCCompiler_VisibilityPush();
+   YIELD();
+   if (TOK != '(') WARN(W_EXPECTED_LPAREN); else YIELD();
+   if (TOK != TOK_STRING) WARN(W_PRAGMA_GCC_VISIBILITY_EXPECTED_STRING);
+   else if ((vis_text = TPPLexer_ParseString()) != NULL) {
+    symflag_t newvis = DCCSymflag_FromString(vis_text);
+    if (newvis == (symflag_t)-1)
+     WARN(W_PRAGMA_GCC_VISIBILITY_UNKNOWN_VISIBILITY,vis_text->s_text);
+    else compiler.c_visibility.vs_viscur = newvis;
+    TPPString_Decref(vis_text);
+   }
+   if (TOK != ')') WARN(W_EXPECTED_LPAREN); else YIELD();
+  } else if (TOK == KWD_pop) {
+   DCCCompiler_VisibilityPop();
+   YIELD();
+  } else {
+   WARN(W_PRAGMA_GCC_VISIBILITY_EXPECTED_PUSH_OR_POP);
+  }
+  break;
+ default: break;
+ }
+ return 1; /* Never re-emit pragmas. */
+}
+
+
 PUBLIC int
 DCCParse_InsComment(struct TPPString *__restrict comment) {
  struct DCCSection *sec;
