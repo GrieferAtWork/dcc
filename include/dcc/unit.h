@@ -145,6 +145,23 @@ struct DCCSym {
                                             *         to this symbol, this symbol is actually a section and behaves as pointing to the
                                             *         start of that same section.
                                             *   WARNING: This field _must_ be NULL when 'sy_alias' isn't NULL, and the same holds true the other way around. */
+ /* TODO: 'sy_addr' should act as an offset in aliased symbols!
+  *       The ability to do this is required for proper symbol declaration in assembly:
+  *       >> # 'foobar' must be an alias for 'foo', with an offset of '8'.
+  *       >> # If it isn't, the symbol will be linked improperly if the linker descides to move foo
+  *       >> foobar = foo+8
+  *       >> 
+  *       >> _start:
+  *       >>    call foobar
+  *       >>    ret
+  *       >> 
+  *       >> foo:
+  *       >>    .skip 8
+  *       >>    push $text
+  *       >>    call printf
+  *       >>    add $4, %esp
+  *       >>    ret
+  */
 #ifdef DCC_PRIVATE_API
  target_ptr_t              sy_addr;        /*< [const_if(sy_sec != NULL)] Symbol address (offset from associated section; undefined if 'sy_sec == NULL')
                                             *   NOTE: When this symbol depends on a library, this field may be used as a linker hint. */

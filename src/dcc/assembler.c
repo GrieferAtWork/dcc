@@ -998,6 +998,10 @@ done_instr:
 }
 
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4701)
+#endif
 PUBLIC void DCCParse_AsmDirective(void) {
  tok_t mode = TOK;
  switch (mode) {
@@ -1108,11 +1112,11 @@ fill_data:
 
  { /* Define symbol visibility. */
   uint16_t new_vis;
- case KWD_extern:
- case KWD_global:
- case KWD_globl:
- case KWD_weak:
-  new_vis = mode == KWD_weak ? DCC_SYMFLAG_WEAK : DCC_SYMFLAG_NONE;
+ case KWD_extern: case KWD_weak:
+  if (DCC_MACRO_FALSE) { case KWD_global: case KWD_globl: new_vis = DCC_SYMFLAG_NONE; }
+  if (DCC_MACRO_FALSE) { case KWD_protected: new_vis = DCC_SYMFLAG_PROTECTED; }
+  if (DCC_MACRO_FALSE) { case KWD_hidden:    new_vis = DCC_SYMFLAG_PRIVATE; }
+  if (DCC_MACRO_FALSE) { case KWD_internal:  new_vis = DCC_SYMFLAG_INTERNAL; }
   do {
    struct DCCSym *sym;
    YIELD();
@@ -1122,8 +1126,11 @@ fill_data:
    }
    sym = DCCUnit_NewSym(TOKEN.t_kwd,new_vis);
    if unlikely(!sym) break;
-   sym->sy_flags &= ~(DCC_SYMFLAG_VISIBILITY);
-   sym->sy_flags |=   new_vis;
+   if (mode == KWD_weak) sym->sy_flags |= DCC_SYMFLAG_WEAK;
+   else if (mode != KWD_extern) {
+    sym->sy_flags &= ~(DCC_SYMFLAG_VISIBILITYBASE);
+    sym->sy_flags |=   new_vis;
+   }
    YIELD();
   } while (TOK == ',');
  } break;
@@ -1356,6 +1363,9 @@ fill_data:
   break;
  }
 }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 
 

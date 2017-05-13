@@ -612,6 +612,9 @@ DEF_K(org)
 /* DEF_K(extern) */
 DEF_K(global)
 DEF_K(globl)
+DEF_K(protected)
+DEF_K(hidden)
+DEF_K(internal)
 /* DEF_K(weak) // Already an __attribute__ */
 DEF_K(string)
 DEF_K(ascii)

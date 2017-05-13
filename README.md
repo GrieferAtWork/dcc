@@ -335,6 +335,9 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - <code>.extern \<SYM\></code>
     - <code>.global \<SYM\></code>
     - <code>.globl \<SYM\></code>
+    - <code>.protected \<SYM\></code>
+    - <code>.hidden \<SYM\></code>
+    - <code>.internal \<SYM\></code>
     - <code>.weak \<SYM\></code>
     - <code>.string \<STR\></code>
     - <code>.ascii \<STR\></code>
