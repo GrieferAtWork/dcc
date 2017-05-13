@@ -95,7 +95,33 @@ DCCParse_WarnAllocaInLoop(void) {
 PUBLIC int DCCParse_Pragma(void) {
  switch (TOK) {
 
- {
+ { /* #pragma weak foo */
+   /* #pragma weak foo = bar */
+  struct DCCSym *weaksym,*alias;
+ case KWD_weak:
+  /* declare a given symbol as weak. */
+  YIELD();
+  if (!TPP_ISKEYWORD(TOK)) { WARN(W_PRAGMA_WEAK_EXPECTES_KEYWORD); break; }
+  weaksym = DCCUnit_NewSym(TOKEN.t_kwd,DCC_SYMFLAG_NONE);
+  if unlikely(!weaksym) break;
+  YIELD();
+  if (weaksym->sy_flags&DCC_SYMFLAG_WEAK)
+      WARN(W_PRAGMA_WEAK_ALREADY_WEAK,weaksym->sy_name);
+  weaksym->sy_flags |= DCC_SYMFLAG_WEAK;
+  if (TOK == '=') {
+   YIELD();
+   if (!TPP_ISKEYWORD(TOK)) { WARN(W_PRAGMA_WEAK_EXPECTES_KEYWORD_AFTER_EQUAL); break; }
+   alias = DCCUnit_NewSym(TOKEN.t_kwd,DCC_SYMFLAG_NONE);
+   if unlikely(!alias) break;
+   /* Define 'weaksym' to be an alias for 'alias' */
+   DCCSym_Alias(weaksym,alias);
+   YIELD();
+  }
+ } break;
+
+ { /* #pragma pack(8) */
+   /* #pragma pack(push) */
+   /* #pragma pack(pop) */
  case KWD_pack:
   YIELD();
   if (TOK != '(') WARN(W_EXPECTED_LPAREN); else YIELD();
@@ -117,10 +143,11 @@ skip_yield_after_pack:
   if (TOK != ')') WARN(W_EXPECTED_RPAREN); else YIELD();
  } break;
 
- { /* Emit a comment for the compiler/linker. */
+ { /* #pragma comment(lib,"foo.dll") */
   tok_t comment_group;
   struct TPPString *comment_string;
  case KWD_comment:
+  /* Emit a comment for the compiler/linker. */
   YIELD();
   if (TOK != '(') WARN(W_EXPECTED_LPAREN); else YIELD();
   comment_group = TOK;
@@ -141,9 +168,10 @@ skip_yield_after_pack:
   if (TOK != ')') WARN(W_EXPECTED_RPAREN); else YIELD();
  } break;
 
+ {
  default:
   WARN(W_PRAGMA_UNKNOWN);
-  break;
+ } break;
  }
 
  return 1; /* Never re-emit pragmas. */
@@ -151,9 +179,10 @@ skip_yield_after_pack:
 
 PUBLIC int DCCParse_GCCPragma(void) {
  switch (TOK) {
+
+ { /* #pragma GCC visibility push("visibility") */
+   /* #pragma GCC visibility pop */
  case KWD_visibility:
-  /* #pragma GCC visibility push("visibility") */
-  /* #pragma GCC visibility pop */
   YIELD();
   if (TOK == KWD_push) {
    struct TPPString *vis_text;
@@ -175,8 +204,11 @@ PUBLIC int DCCParse_GCCPragma(void) {
   } else {
    WARN(W_PRAGMA_GCC_VISIBILITY_EXPECTED_PUSH_OR_POP);
   }
-  break;
- default: break;
+ } break;
+
+ {
+ default: ;
+ } break;
  }
  return 1; /* Never re-emit pragmas. */
 }
