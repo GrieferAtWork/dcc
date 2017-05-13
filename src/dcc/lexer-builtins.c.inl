@@ -250,7 +250,7 @@ DCCParse_BuiltinAlloca(void) {
  vgen2('-');          /* %esp */
  vpop(1);             /* Force apply disposition. */
  vpushxr(DCC_RR_XSP); /* Push the ESP register again. */
- vcast(&DCCType_BuiltinPointers[DCCTYPE_VOID],1);
+ vcast_pt(DCCTYPE_VOID,1);
 }
 
 
@@ -283,7 +283,7 @@ DCCParse_BuiltinAllocaWithAlign(void) {
  vpushxr(DCC_RR_XSP); /* na, %esp */
  vswap();             /* %esp, na */
  vgen2('&');          /* %esp &= na */
- vcast(&DCCType_BuiltinPointers[DCCTYPE_VOID],1);
+ vcast_pt(DCCTYPE_VOID,1);
  DCCParse_ParPairEnd();
 }
 
@@ -332,6 +332,7 @@ DCCParse_BuiltinExpect(void) {
  vpop(1); /* Simply ignore assumptions. */
  popf();
  DCCParse_ParPairEnd();
+ vrval();
 }
 
 
@@ -446,6 +447,7 @@ DCCParse_BuiltinAssumeAligned(void) {
  YIELD();
  DCCParse_ParPairBegin();
  DCCParse_Expr1();
+ vcast_pt(DCCTYPE_VOID,0);
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
  /* Discard all other arguments. */
  DCCParse_ExprDiscard();
@@ -558,6 +560,7 @@ default_ffs:
            : DCCDisp_FFSRegs(vbottom->sv_reg,vbottom->sv_reg2,result_register);
  }
  vpop(1);                 /* res */
+ vrval();                 /* rres */
 }
 
 // TODO: int __builtin_ctz(unsigned int x);
@@ -589,7 +592,7 @@ DCCParse_BuiltinVaStart(void) {
  vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,alignment);
  vgen2('+');
  /* Store the calculated address in 'ap'. */
- vcast(&DCCType_BuiltinPointers[DCCTYPE_CHAR],1);
+ vcast_pt(DCCTYPE_CHAR,1);
  vstore(0);
  vpop(1);
  vpushv();
@@ -653,6 +656,7 @@ DCCParse_BuiltinVaArg(void) {
  vcast(&va_type,1); /* (T *)dap */
  DCCType_Quit(&va_type);
  vgen1('*');        /* *(T *)dap */
+ vrval();           /* Cause warnings when the caller tries to assign to the VA-argument. */
 }
 
 
@@ -702,6 +706,7 @@ DCCParse_BuiltinSetJmp(void) {
  t_defsym(eip.sa_sym);
  /* Push the longjmp register. */
  vpushr(TARGET_LONGJMP_REGISTER);
+ vrval();
 }
 
 /*  __builtin_longjmp  */
@@ -821,7 +826,7 @@ DCCParse_BuiltinMemcpy(void) {
 fix_stack:
    vpop(1);  /* dst, src */
    vpop(1);  /* dst */
-   vrcopy(); /* cdst */
+   vrcopy(); /* ddst */
    return;
   }
   /* Generate a compile-time memcpy. */
@@ -857,12 +862,12 @@ fix_stack:
   /* Mark the destination pointer to copy-on-write. */
   vpop(1);  /* dst, src */
   vswap();  /* src, dst */
-  vrcopy(); /* src, cdst */
-  vswap();  /* cdst, src */
+  vrcopy(); /* src, ddst */
+  vswap();  /* ddst, src */
   /* Dispense compiler-generated memcpy() instructions. */
   DCCDisp_MemMovMem(&src_loc,copy_size,
                     &dst_loc,copy_size,1);
-  vpop(1);  /* cdst */
+  vpop(1);  /* ddst */
  } else {
   struct DCCSym *funsym;
 call_extern:
@@ -901,7 +906,7 @@ DCCParse_BuiltinMemset(void) {
    /* Special case: Empty memset. */
    vpop(1);  /* dst, byt */
    vpop(1);  /* dst */
-   vrcopy(); /* cdst */
+   vrcopy(); /* ddst */
    return;
   }
   if (vbottom[2].sv_flags&DCC_SFLAG_LVALUE) DCCStackValue_Load(&vbottom[2]);
@@ -915,8 +920,8 @@ DCCParse_BuiltinMemset(void) {
   dst_loc.ml_sym = vbottom[2].sv_sym;
   vpop(1);  /* dst, byt */
   vswap();  /* byt, dst */
-  vrcopy(); /* byt, cdst */
-  vswap();  /* cdst, byt */
+  vrcopy(); /* byt, ddst */
+  vswap();  /* ddst, byt */
   if (vbottom->sv_reg == DCC_RC_CONST) {
    /* The filler byte is known at compile-time. */
    DCCDisp_BytMovMem(vbottom->sv_const.u8,fill_size,&dst_loc,fill_size,1);
@@ -1010,6 +1015,7 @@ fix_stack:
   }
   /* push the result register. */
   vpushr(resreg);
+  vrval();
   /* Allocate a second temporary register.
    * NOTE: Only do so after we've pushed the result register,
    *       so-as to prevent the same register from being allocated. */
@@ -1131,6 +1137,7 @@ DCCParse_SyncCompareAndSwap(void) {
  vswap(); /* [test], EAX, *dst */
  vpop(1); /* [test], EAX */
  if (bool_mode) vpop(1); /* test */
+ vrval(); /* rEAX/rtext */
 }
 
 
@@ -1198,6 +1205,7 @@ DCCParse_SyncBinary(void) {
  DCCDisp_AtomicRegBinMem(opcode,fmode,vbottom[0].sv_reg,&cas_mem);
  vswap(); /* value, ptr */
  vpop(1); /* value */
+ vrval(); /* rvalue */
  if (fmode == DCCDISP_ATOMICBIN_FETCHNEVER) {
   vpop(1);  /* . */
   vpushv(); /* void */
@@ -1248,7 +1256,7 @@ DCCParse_SyncUnary(void) {
  result.sv_reg2     = DCC_RC_CONST;
  result.sv_const.it = 0;
  result.sv_sym      = NULL;
- result.sv_flags    = DCC_SFLAG_NONE;
+ result.sv_flags    = DCC_SFLAG_RVALUE;
  if (fmode != DCCDISP_ATOMICBIN_FETCHNEVER) {
   result.sv_reg = DCCVStack_GetReg(result.sv_reg,1);
   DCCType_InitCopy(&result.sv_ctype,cas_type);
@@ -1300,7 +1308,7 @@ DCCParse_BuiltinReturnAddr(void) {
    sval.sv_ctype.t_type = DCCTYPE_VOID;
    sval.sv_ctype.t_base = NULL;
    DCCType_MkPointer(&sval.sv_ctype);
-   sval.sv_flags        = DCC_SFLAG_NONE;
+   sval.sv_flags        = DCC_SFLAG_RVALUE;
    sval.sv_reg          = DCCDISP_RETURNFRAME_REG;
    sval.sv_reg2         = DCC_RC_CONST;
    sval.sv_const.it     = 0;
@@ -1313,13 +1321,14 @@ DCCParse_BuiltinReturnAddr(void) {
    sym ? vpushs(sym),t_defsym(sym)
        : DCCVStack_PushAddr(unit.u_curr,t_addr); /* fallback... */
    vgen1('&');
+   vrval();
   }
   return;
  }
  sval.sv_ctype.t_type = DCCTYPE_VOID;
  sval.sv_ctype.t_base = NULL;
  DCCType_MkPointer(&sval.sv_ctype);
- sval.sv_flags        = DCC_SFLAG_LVALUE;
+ sval.sv_flags        = DCC_SFLAG_LVALUE|DCC_SFLAG_RVALUE;
  sval.sv_reg2         = DCC_RC_CONST;
  sval.sv_const.it     = want_frame ? DCCDISP_RETURNFRAME_OFF : DCCDISP_RETURNADDR_OFF;
  sval.sv_sym          = NULL;
@@ -1343,6 +1352,7 @@ DCCParse_BuiltinReturnAddr(void) {
  }
 end_pushsval:
  vpush(&sval);
+ assert(vbottom->sv_flags&DCC_SFLAG_RVALUE);
  assert(sval.sv_ctype.t_base);
  DCCDecl_Decref(sval.sv_ctype.t_base);
 }

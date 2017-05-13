@@ -350,7 +350,7 @@ DCCVStack_PushStr(char const *__restrict p, size_t s) {
  /* Use a character array as typing for the string. */
  DCCType_MkArray(&slot.sv_ctype,s);
  assert(slot.sv_ctype.t_base);
- slot.sv_flags    = DCC_SFLAG_LVALUE;
+ slot.sv_flags    = DCC_SFLAG_LVALUE|DCC_SFLAG_RVALUE;
  slot.sv_reg      = DCC_RC_CONST;
  slot.sv_reg2     = DCC_RC_CONST;
  slot.sv_const.it = 0;

@@ -31,6 +31,28 @@ DCC_DECL_BEGIN
 
 /* For the sake of optimization, the vstack makes the following assumptions:
  *   - No section except for '&DCCSection_Abs' can be loaded at address ZERO
+ *   - No (meaningful) symbol can be loaded at address ZERO
+ *     This assumption is made to allow code like this to be optimized:
+ *     >> #include <stddef.h>
+ *     >> #include <stdio.h>
+ *     >> 
+ *     >> extern int value;
+ *     >> 
+ *     >> int main()
+ *     >>     int    argc;
+ *     >>     char **argv;
+ *     >> {
+ *     >>     if (&value != NULL) {
+ *     >>         printf("");
+ *     >>     }
+ *     >>     return 0;
+ *     >> }
+ *     >> 
+ *     >> // Above, the compiler will have assumed that the
+ *     >> // address of 'value' can never be NULL, even though
+ *     >> // we can now break that assumption by doing this:
+ *     >> __asm__("value = 0"); // ups...
+ *     >> 
  *   - The %esp and %ebp registers are never NULL
  */
 #define DCC_VSTACK_CALL  DCC_ATTRIBUTE_FASTCALL
