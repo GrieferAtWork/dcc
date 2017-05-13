@@ -153,17 +153,17 @@ DCCFunctionFrame_Leave(struct DCCFunctionFrame *__restrict self) {
   }
  }
 
+ /* Place a NOP byte after the function end to ease assembly readability. */
+ if (!(compiler.c_flags&DCC_COMPILER_FLAG_NOFUNNOP) &&
+     !(self->ff_flags&DCC_FUNCTIONFRAME_FLAG_NAKED)
+     ) t_putb(DCCGEN_NOPBYTE); /* nop */
+
  assert(self->ff_funsym);
  if (unit.u_curr == self->ff_new_section) {
   /* Fill in the actual size of this function. */
   self->ff_funsym->sy_size = t_addr-self->ff_funsym->sy_addr;
  }
  
- /* Place a NOP byte after the function end to ease assembly readability. */
- if (!(compiler.c_flags&DCC_COMPILER_FLAG_NOFUNNOP) &&
-     !(self->ff_flags&DCC_FUNCTIONFRAME_FLAG_NAKED)
-     ) t_putb(DCCGEN_NOPBYTE); /* nop */
-
  /* Restore all the things... */
  if (self->ff_old_section != unit.u_curr)
      DCCUnit_SetCurr(self->ff_old_section);
