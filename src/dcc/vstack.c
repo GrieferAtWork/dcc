@@ -459,9 +459,11 @@ DCCVStack_Push(struct DCCStackValue const *__restrict sval) {
  memcpy(dst_slot,sval,sizeof(struct DCCStackValue));
  if (dst_slot->sv_ctype.t_base) DCCDecl_Incref(dst_slot->sv_ctype.t_base);
  if (dst_slot->sv_sym) {
-  if (DCCSym_SECTION(dst_slot->sv_sym) == &DCCSection_Abs) {
+  if (DCCSym_SECTION(dst_slot->sv_sym) == &DCCSection_Abs &&
+    !(dst_slot->sv_sym->sy_flags&DCC_SYMFLAG_WEAK)) {
    /* Special case: The symbol is part of the global section.
-    *               To simplify optimization code, we convert it to a constant value here.  */
+    *               To simplify optimization code, we convert it to a constant value here. 
+    * NOTE: We have to make sure not to do so for weak symbols, as those may be overwritten again! */
    dst_slot->sv_const.it += dst_slot->sv_sym->sy_addr;
    dst_slot->sv_sym       = NULL;
   } else {

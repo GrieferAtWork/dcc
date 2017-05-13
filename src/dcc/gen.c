@@ -93,7 +93,9 @@ DCCDisp_PutAddrRel(struct DCCSymAddr const *__restrict addr, rel_t rel) {
  if ((xsym = addr->sa_sym) != NULL) {
   while ((DCCSym_ASSERT(xsym),xsym->sy_alias)) xsym = xsym->sy_alias;
 #if 1
-  if (DCCSym_SECTION(xsym) && DCCSection_HASBASE(DCCSym_SECTION(xsym))) {
+  if (DCCSym_SECTION(xsym) &&
+      DCCSection_HASBASE(DCCSym_SECTION(xsym)) &&
+    !(xsym->sy_flags&DCC_SYMFLAG_WEAK)) {
    /* The associated section has a fixed base associated with it.
     * >> We don't need to emit a relocation, because
     *    we can simply add the base value here!
