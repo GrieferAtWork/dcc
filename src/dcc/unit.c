@@ -501,11 +501,12 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
    DCCSym_Decref(self->sy_alias);
   } else if (self->sy_sec) {
    if (self->sy_size) {
-    if ((self->sy_flags&(DCC_SYMFLAG_STATIC|DCC_SYMFLAG_UNUSED)) ==
-                        (DCC_SYMFLAG_STATIC) &&
-         self->sy_name != &TPPKeyword_Empty) {
-     /* Emit a warning about removing unused, static symbols. */
-     WARN(W_LINKER_DELETE_UNUSED_STATIC_SYMBOL,self->sy_name);
+    if (!(self->sy_flags&DCC_SYMFLAG_UNUSED) &&
+          self->sy_name != &TPPKeyword_Empty) {
+     /* Emit a warning about removing unused symbols. */
+     WARN((self->sy_flags&DCC_SYMFLAG_STATIC)
+          ? W_LINKER_DELETE_UNUSED_STATIC_SYMBOL
+          : W_LINKER_DELETE_UNUSED_SYMBOL,self->sy_name);
     }
     DCCSection_DFree(self->sy_sec,
                      self->sy_addr,
@@ -892,10 +893,17 @@ begin: while (iter != end) {
 #endif
   default: goto next;
   }
+#if 1
+  /* Turn this relocation into an empty one (Need to be
+   * done this way to keep the dependency graph alive). */
+  iter->r_type = DCC_R_NONE;
+  ++result;
+#else
   /* Delete this relocation. */
   DCCSym_Decref(iter->r_sym);
   --end,--self->sc_relc,++result;
   memmove(iter,iter+1,(end-iter)*sizeof(struct DCCRel));
+#endif
  }
  return result;
 }

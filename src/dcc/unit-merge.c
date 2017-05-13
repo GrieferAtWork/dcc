@@ -171,6 +171,7 @@ inherit_named_sym(/*ref*/struct DCCSym *__restrict srcsym) {
     if (!DCCSection_ISIMPORT(dstsec))
          merge_addr += dstsec->sc_merge;
     DCCSym_Define(dstsym,dstsec,merge_addr,srcsym->sy_size);
+    srcsym->sy_size = 0; /* Inherit all section data. */
    }
   }
 drop_srcsym:
