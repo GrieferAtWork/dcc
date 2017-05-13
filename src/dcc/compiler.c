@@ -604,6 +604,8 @@ DCCCompiler_Quit(struct DCCCompiler *__restrict self) {
         (unsigned long)(self->c_vstack.v_end-
                         self->c_vstack.v_bottom));
  free(self->c_vstack.v_begin);
+ free(self->c_pack.ps_stackv);
+ free(self->c_visibility.vs_stackv);
 }
 
 PUBLIC struct DCCDecl *
