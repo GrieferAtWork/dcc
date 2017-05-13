@@ -109,6 +109,7 @@ DCC_DECL_BEGIN
 #define DCC_TARGET_SIZEOF_INT_FAST32_T  4
 #define DCC_TARGET_SIZEOF_INT_FAST64_T  8
 #define DCC_TARGET_SIZEOF_INTMAX_T      8
+#define DCC_TARGET_BITPERBYTE           8
 
 /* Stack-alignment of variadic arguments. */
 #define DCC_TARGET_VA_ALIGN             DCC_TARGET_SIZEOF_POINTER

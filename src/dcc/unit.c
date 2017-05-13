@@ -1355,6 +1355,8 @@ DCCSection_DFree(struct DCCSection *__restrict self,
   /* Special case: The given address range is located just at the end of theoretical memory.
    * >> With that in mind, we can simply free the associated memory range by moving the address-max downwards. */
   self->sc_text.tb_max -= size;
+  if (self->sc_text.tb_pos > self->sc_text.tb_max)
+      self->sc_text.tb_pos = self->sc_text.tb_max;
  } else {
   /* Fallback: Register a free memory region. */
   DCCFreeData_Release(&self->sc_free,addr,size);

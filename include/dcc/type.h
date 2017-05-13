@@ -152,6 +152,7 @@ DCCFUN void DCCType_ForceDynamic(struct DCCType *__restrict self);
 
 /* Returns non-ZERO(0) if the given type is complete. */
 DCCFUN int DCCType_IsComplete(struct DCCType const *__restrict self);
+DCCFUN int DCCType_IsScalar(struct DCCType const *__restrict self);
 
 /* Try to fix an incomplete type, doing some guessing as to what the intended type was.
  * NOTE: no-op if 'DCCType_IsComplete' would have returned ZERO(0)

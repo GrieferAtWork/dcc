@@ -863,7 +863,8 @@ load_reg: /* Make sure we're operating on a register. */
    val.sv_const.it     = bits-(off+siz);
    DCCStackValue_Binary(&val,self,TOK_SHL);
    val.sv_const.it     = bits-siz;
-   DCCStackValue_Binary(&val,self,TOK_SHR);
+   DCCStackValue_Binary(&val,self,DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type)
+                        ? TOK_RANGLE3 : TOK_SHR);
   }
  }
 }
@@ -2179,7 +2180,6 @@ DCCStackValue_Subscript(struct DCCStackValue *__restrict self,
   *       If the struct is only forward-declared, it will have an empty field vector. */
  field = DCCDecl_FindStructField(self->sv_ctype.t_base,member_name);
  if unlikely(!field) goto err;
- /* TODO: bitfields. */
  DCCStackValue_AddOffset(self,field->sf_off);
  /* Inherit the typing of this field. */
  field_type_base = field->sf_decl->d_type.t_base;
@@ -2190,6 +2190,18 @@ DCCStackValue_Subscript(struct DCCStackValue *__restrict self,
  DCCDecl_Decref(self->sv_ctype.t_base);
  self->sv_ctype.t_base = field_type_base;
  assert(self->sv_flags&DCC_SFLAG_LVALUE);
+ /* Check for a bitfield modifier. */
+ if (field->sf_bitfld) {
+  DCCStackValue_FixTest(self);
+  if (!(self->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_FixRegOffset(self);
+  DCCStackValue_FixBitfield(self);
+  self->sv_flags |= field->sf_bitfld;
+  assert(!(self->sv_flags&DCC_SFLAG_TEST));
+  /* Quickly fix constant bitfields. */
+  if (!(self->sv_flags&DCC_SFLAG_LVALUE) &&
+       (self->sv_reg == DCC_RC_CONST)
+       ) DCCStackValue_FixBitfield(self);
+ }
  return;
 err:
  WARN(W_UNKNOWN_FIELD,&self->sv_ctype,member_name);

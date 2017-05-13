@@ -219,7 +219,7 @@ union DCCConstValue {
 #define DCC_SFLAG_TEST_SHIFT     28         /*< Shift for test ids. */
 #define DCC_SFLAG_MKTEST(t)     (DCC_SFLAG_TEST|(((t) << DCC_SFLAG_TEST_SHIFT)&DCC_SFLAG_TEST_MASK))
 #define DCC_SFLAG_GTTEST(f)     (((f)&DCC_SFLAG_TEST_MASK) >> DCC_SFLAG_TEST_SHIFT)
-#define DCC_SFLAG_BITFLD         0x00000020 /*< The stack value describes a bit-field. (both off and siz are 0..31) */
+#define DCC_SFLAG_BITFLD         0x00000020 /*< The stack value describes a bit-field. (both off and siz are 0..63) */
 #define DCC_SFLAG_BITOFF_SHIFT   26         /*< Shift for accessing the bitfield offset (aka. bit-shift). */
 #define DCC_SFLAG_BITOFF_MASK    0xfc000000 /*< Mask for accessing the bitfield offset (aka. bit-shift). */
 #define DCC_SFLAG_BITSIZ_SHIFT   20         /*< Shift for accessing the bitfield size. */

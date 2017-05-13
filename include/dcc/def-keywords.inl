@@ -716,12 +716,27 @@ print_declaration:
        TPPFile_Filename(decl->d_file,NULL),(int)decl->d_line+1);
  WARNF(text);
  break;
+{
+ struct TPPString *type_text;
+print_typed_declaration_load:
+ decl = ARG(struct DCCDecl *);
+//print_typed_declaration:
+ if (!text) text = "See reference to declaration";
+ WARNF(TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+       ? "%s(%d) : " : "%s:%d: ",
+       TPPFile_Filename(decl->d_file,NULL),(int)decl->d_line+1);
+ type_text = DCCType_ToTPPString(&decl->d_type,decl->d_name);
+ WARNF(text,type_text->s_text);
+ TPPString_Decref(type_text);
+} break;
 #endif
-#define DECL_LOAD()       decl = ARG(struct DCCDecl *)
-#define DECL_KWD()        decl->d_name
-#define DECL_NAME()       decl->d_name->k_name
-#define DECL_TYPE()     (&decl->d_type)
-#define DECL_PRINT(msg) { text = msg; goto print_declaration; }
+#define DECL_LOAD()              decl = ARG(struct DCCDecl *)
+#define DECL_KWD()               decl->d_name
+#define DECL_NAME()              decl->d_name->k_name
+#define DECL_TYPE()            (&decl->d_type)
+#define DECL_PRINT(msg)        { text = msg; goto print_declaration; }
+#define DECL_PRINTTY(msg)      { text = msg; goto print_typed_declaration; }
+#define DECL_PRINTTY_LOAD(msg) { text = msg; goto print_typed_declaration_load; }
 
 WARNING_NAMESPACE(WN_ASM,1000)
 DEF_WARNING(W_ASM_EXPECTED_INSTR,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected assembly instruction, but got " TOK_S,TOK_A))
@@ -1005,11 +1020,15 @@ DEF_WARNING(W_DECL_NESTED_FUNCTION_DECLARATION,(WG_NESTED_FUNCTIONS,WG_EXTENSION
        nested_name,DECL_NAME());
  DECL_PRINT("See reference to surrounding function");
 })
-DEF_WARNING(W_TYPE_EMPTY_STRUCTURE,(WG_EMPTY_STRUCTURES,WG_EXTENSIONS),WSTATE_WARN,{
+DEF_WARNING(W_TYPE_STRUCT_EMPTY,(WG_EMPTY_STRUCTURES,WG_EXTENSIONS),WSTATE_WARN,{
  DECL_LOAD();
  WARNF("Declared empty structure type '%s'",DECL_NAME(),KWDNAME());
  DECL_PRINT("See reference to first declaration");
 })
+DEF_WARNING(W_TYPE_STRUCT_BITFIELD_NEGATIVE,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("Negative value for bit-field '%s'"))
+DEF_WARNING(W_TYPE_STRUCT_BITFIELD_SCALAR,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("bit-field '%s' requires scalar type"))
+DEF_WARNING(W_TYPE_STRUCT_BITFIELD_LARGER_THAN_BASE,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("bit-field '%s' exceeds size of underlying type"))
+DEF_WARNING(W_TYPE_STRUCT_BITFIELD_TOO_LARGE,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("bit-field '%s' is too long"))
 DEF_WARNING(W_OLD_STYLE_FUNCTION_DECLARATION,(WG_OLD_FUNCTION_DECL,WG_EXTENSIONS),WSTATE_WARN,WARNF("An old-style function declarations was used"))
 DEF_WARNING(W_MIXED_DECLARATIONS,(WG_MIXED_DECLARATIONS,WG_C99,WG_EXTENSIONS),WSTATE_WARN,
             WARNF("Mixing statements with declarations requires a C99-compliant compiler"))
@@ -1205,6 +1224,8 @@ DEF_WARNING(W_LIB_PE_NO_SECTIONS,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s'
 DEF_WARNING(W_LIB_PE_NO_SECTION_MAPPING,(WG_LIBLOAD),WSTATE_ERROR,{ char *name = ARG(char *); WARNF("No section of PE binary '%s' maps to virtual address %p",name,ARG(void *)); })
 DEF_WARNING(W_LIB_PE_EMPTY_EXPORT_TABLE,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s' has an empty export table",ARG(char *)))
 
+#undef DECL_PRINTTY_LOAD
+#undef DECL_PRINTTY
 #undef DECL_PRINT
 #undef DECL_NAME
 #undef DECL_LOAD

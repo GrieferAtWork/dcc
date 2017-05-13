@@ -341,6 +341,22 @@ DCCType_IsComplete(struct DCCType const *__restrict self) {
  }
  return result;
 }
+
+PUBLIC int
+DCCType_IsScalar(struct DCCType const *__restrict self) {
+ tyid_t tyid = self->t_type;
+ switch (DCCTYPE_GROUP(tyid)) {
+ case DCCTYPE_BUILTIN:
+  tyid &= DCCTYPE_BASICMASK;
+  return (tyid < DCCTYPE_FLOAT) || tyid == DCCTYPE_BOOL;
+ case DCCTYPE_STRUCTURE:
+  assert(self->t_base);
+  return self->t_base->d_attr && !!(self->t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC);
+ default: break;
+ }
+ return 0;
+}
+
 PUBLIC void
 DCCType_FixComplete(struct DCCType *__restrict self) {
  assert(self);

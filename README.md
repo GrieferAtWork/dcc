@@ -44,7 +44,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Supports GCC builtin macros for fixed-length integral constants (<code>\_\_(U)INT(8|16|32|64|MAX)\_C(...)</code>).
   - Supports nested function declaration, as well as access to surrounding variables.
   - Supports C++ lvalue types (<code>int y = 10; int &x = y;</code>).
-  - Supports C structure bitfields (Parse for this is currently missing; code generator is already capable of this; s.a.: '\_\_builtin\_bitfield').
+  - Supports C structure bitfields
   - Support for GCC builtin macros, such as <code>\_\_SIZEOF\_POINTER\_\_</code>, <code>\_\_SIZE\_TYPE\_\_</code>, etc.
   - Support for GCC statement-expressions: <code>int x = ({ int z = 10; z+20; }); // x == 30</code>.
   - Support for <code>\_\_FUNCTION\_\_</code> and <code>\_\_PRETTY\_FUNCTION\_\_</code>, including use by concat with other strings: <code>char *s = "Function " \_\_FUNCTION\_\_ " was called"; printf("%s\n",s);</code>.
@@ -138,7 +138,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - Can be used to emit parenthesis almost everywhere (except in the preprocessor, or when calling macros)
   - Explicit alignment of code, data, or entire sections in-source
   - Support for <code>#pragma comment(lib,"foo")</code> to link against a given library "foo"
-  - Support for <code>#pragma pack(...)</code> (Currently missing; will \_most\_definitly\_ be implemented)
+  - Support for <code>#pragma pack(...)</code>
 
 ## Features (Attributes):
   - All attributes can be written in three ways:

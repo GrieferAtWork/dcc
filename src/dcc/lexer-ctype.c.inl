@@ -823,6 +823,7 @@ DCCSym_CalculateStructureOffsets(struct DCCDecl *__restrict self) {
  int use_ms_alignment,is_union,pack_structure;
  target_off_t current_offset,max_size;
  target_ptr_t max_alignment,s,a;
+ unsigned int bitpos = 0; /* bit-position offset added to 'current_offset' */
  struct DCCAttrDecl *attr;
  struct DCCStructField *iter,*end;
  assert(self);
@@ -847,21 +848,57 @@ DCCSym_CalculateStructureOffsets(struct DCCDecl *__restrict self) {
  for (; iter != end; ++iter) {
   assert(iter->sf_decl);
   attr = iter->sf_decl->d_attr;
-  /* TODO: Bit-fields. */
   s = DCCType_Sizeof(&iter->sf_decl->d_type,&a,0);
+  if (iter->sf_bitfld != (sflag_t)-1) {
+   target_off_t ceil_offset;
+   sflag_t field_size = iter->sf_bitfld;
+   /* Make bitfields in unions are always located at the beginning. */
+   if (is_union) current_offset = 0,bitpos = 0;
+   /* Warn if the bit-field is larger than the underlying type. */
+   if (field_size > s*DCC_TARGET_BITPERBYTE) WARN(W_TYPE_STRUCT_BITFIELD_TOO_LARGE,iter->sf_decl);
+   /* Special case: No need for a bit-field, everything is already aligning. */
+   if (field_size == s*DCC_TARGET_BITPERBYTE && !bitpos) goto no_bitfield;
+   if (field_size > 63) {
+    WARN(W_TYPE_STRUCT_BITFIELD_TOO_LARGE,iter->sf_decl);
+    field_size = 63; /* This is an actual implementation limit! */
+   }
+   iter->sf_off    = current_offset;
+   /* Generate the bitfield flags. */
+   iter->sf_bitfld = DCC_SFLAG_MKBITFLD(bitpos,field_size);
+   bitpos         += field_size;
+   current_offset += (bitpos/DCC_TARGET_BITPERBYTE);
+   bitpos         %= DCC_TARGET_BITPERBYTE;
+   ceil_offset     = current_offset;
+   if (bitpos) ++ceil_offset;
+   /* Must use the ceiling of the current offset when checking against max_size. */
+   if (max_size < ceil_offset)
+       max_size = ceil_offset;
+   goto check_align;
+  } else {
+   if (bitpos) {
+    /* If the last field was a non-empty bit-field,
+     * advance the structure pointer to prevent overlap. */
+    bitpos = 0;
+    ++current_offset;
+   }
+no_bitfield:
+   iter->sf_bitfld = 0;
+  }
   /* Allow per-field alignment override. */
   if (attr && (attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN)) {
    if (a < attr->a_align) a = attr->a_align;
   } else if (pack_structure || (attr && attr->a_flags&DCC_ATTRFLAG_PACKED)) a = 1;
   else if (compiler.c_pack.ps_pack &&
            compiler.c_pack.ps_pack < a) a = compiler.c_pack.ps_pack;
-
+  /* Force ZERO-offsets in unions, thus
+   * allocating all fields in the same position. */
   if (is_union) current_offset = 0;
   else current_offset = (current_offset+(a-1))&~(a-1);
   iter->sf_off = current_offset;
   current_offset += s;
   if (max_size < current_offset)
       max_size = current_offset;
+check_align:
   if (max_alignment < a)
       max_alignment = a;
  }
@@ -888,6 +925,7 @@ DCCParse_Struct(struct DCCDecl *__restrict struct_decl) {
   if (!DCCParse_CTypePrefix(&base,&attr)) break;
   DCCType_InitCopy(&part,&base);
   for (;;) {
+   sflag_t bitfield = (sflag_t)-1;
    field_name = DCCParse_CTypeSuffix(&part,&attr);
    assert(field_name);
    if (fieldc == fielda) {
@@ -898,12 +936,28 @@ DCCParse_Struct(struct DCCDecl *__restrict struct_decl) {
     fielda = new_fielda;
     fieldv = new_fieldv;
    }
+   /* TODO: Warn if 'field_name' was already used in this structure.
+    * NOTE: Must check unnamed structures recursively for this! */
    field_decl = DCCDecl_New(field_name);
    if unlikely(!field_decl) goto seterr;
    field_decl->d_kind = DCC_DECLKIND_TYPE;
    field_decl->d_type = part,part.t_base = NULL; /* Inherit reference. */
    DCCDecl_SetAttr(field_decl,&attr);
-   fieldv[fieldc].sf_decl = field_decl;
+   if (TOK == ':') {
+    int_t field_size;
+    /* Bit-field declaration. */
+    YIELD();
+    field_size = DCCParse_CExpr(1);
+    if (field_size < 0) WARN(W_TYPE_STRUCT_BITFIELD_NEGATIVE,field_decl);
+    else bitfield = (sflag_t)field_size;
+    /* Check the field type for being a scalar. */
+    if (!DCCType_IsScalar(&field_decl->d_type))
+        WARN(W_TYPE_STRUCT_BITFIELD_SCALAR,field_decl);
+    /* TODO: Didn't STD-C only allow 'unsigned int/int' for bitfields?
+     *    >> If so, emit an extension-warning if something else is used! */
+   }
+   fieldv[fieldc].sf_decl   = field_decl;
+   fieldv[fieldc].sf_bitfld = bitfield;
    ++fieldc;
 next_field:
    DCCType_Quit(&part);
@@ -925,7 +979,7 @@ next_field:
  struct_decl->d_tdecl.td_size   = fieldc;
  struct_decl->d_tdecl.td_fieldv = fieldv; /* Inherit data. */
  /* Warn about empty structures. */
- if (!fieldc) WARN(W_TYPE_EMPTY_STRUCTURE,struct_decl);
+ if (!fieldc) WARN(W_TYPE_STRUCT_EMPTY,struct_decl);
 }
 
 

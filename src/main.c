@@ -169,12 +169,12 @@ int main(int argc, char *argv[]) {
  compiler.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 
  /* Ugly hack to get minimal stdio in tests. */
- //def("printf",(void *)&printf);
+ def("printf",(void *)&printf);
  //def("printf",(void *)0xDEADBEEF);
 
  /* Prepare generated code for execution/output to file. */
  DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);
-#if 1
+#if 0
  { stream_t hout = s_openw("a.exe");
    DCCBin_Generate(hout); /* Generate the binary. */
    s_close(hout);
@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
 end:
  if (!OK) { fprintf(stderr,"A fatal error caused dcc to abort!\n"); }
  result = OK ? 0 : 1;
- /*if (!OK)*/ dump_symbols();
+ if (!OK) dump_symbols();
 
  DCCCompiler_Quit(&compiler);
  DCCUnit_Quit(&unit);
