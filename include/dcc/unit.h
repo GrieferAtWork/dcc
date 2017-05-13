@@ -94,6 +94,7 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 #define DCC_SYMFLAG_DLLEXPORT 0x00000020 /*< '[[dllexport]]': On PE targets: explicit dllexport. */
 #endif
 #define DCC_SYMFLAG_USED      0x00000040 /*< '[[used]]': FLAG: Don't delete this symbol, even if it appears unused. */
+#define DCC_SYMFLAG_UNUSED    0x00000080 /*< '[[unused]]': FLAG: Don't warn if this symbol is deleted during unused symbol collection. */
 #define DCC_SYMFLAG_VISIBILITY     0x000000ff /*< Mask for visibility symbol flags. */
 #define DCC_SYMFLAG_VISIBILITYBASE 0x00000003 /*< Mask for base visibility. */
 
@@ -278,6 +279,7 @@ typedef uint32_t DCC(rel_t); /* One of 'DCC_R_*', or CPU-specific ELF relocation
 
 /* ELF relocation types. */
 #if DCC_TARGET_IA32(386)
+#   define DCC_R_NONE      R_386_NONE /* Empty relocation (used for symbol dependency) */
 #   define DCC_R_DATA_8    R_386_8
 #   define DCC_R_DATA_16   R_386_16
 #   define DCC_R_DATA_32   R_386_32
@@ -289,6 +291,7 @@ typedef uint32_t DCC(rel_t); /* One of 'DCC_R_*', or CPU-specific ELF relocation
 #   define DCC_R_COPY      R_386_COPY
 #   define DCC_R_RELATIVE  R_386_RELATIVE
 #elif DCC_TARGET_CPU == DCC_TARGET_X86_64
+#   define DCC_R_NONE      R_X86_64_NONE
 #   define DCC_R_DATA_8    R_X86_64_8
 #   define DCC_R_DATA_16   R_X86_64_16
 #   define DCC_R_DATA_32   R_X86_64_32

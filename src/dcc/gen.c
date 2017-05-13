@@ -102,13 +102,12 @@ DCCDisp_PutAddrRel(struct DCCSymAddr const *__restrict addr, rel_t rel) {
     */
    xval += (target_off_t)xsym->sy_addr;
    xval += (target_off_t)(target_ptr_t)DCCSym_SECTION(xsym)->sc_base;
-  } else
-#endif
-  {
-   /* Generate a relocation at the current address.
-    * >> This relocation must later add its base to the symbol. */
-   t_putrel(rel,xsym);
+   rel = DCC_R_NONE;
   }
+#endif
+  /* Generate a relocation at the current address.
+   * >> This relocation must later add its base to the symbol. */
+  t_putrel(rel,xsym);
  }
  return xval;
 }
@@ -125,14 +124,15 @@ DCCDisp_PutDispRel(struct DCCSymAddr const *__restrict addr, rel_t rel) {
     * NOTE: Weak symbols still produce a relocation,
     *       because the call may be overwritten later! */
    xval += xsym->sy_addr;
-  } else {
-   t_putrel(rel,xsym);
+   rel   = DCC_R_NONE;
   }
+  t_putrel(rel,xsym);
   xval -= t_addr;
  } else {
   if (unit.u_curr == &DCCSection_Abs) {
    /* Emit to current section (no relocation required). */
    xval += xsym->sy_addr;
+   /* NOTE: No need to create an empty relocation for symbols in the ABS section! */
   } else {
    /* Because this is a DISP, we must create a
     * fake symbol apart of the global section. */

@@ -468,7 +468,12 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
 #if DCC_TARGET_BIN == DCC_BINARY_PE
  DCCSym_XDecref(self->sy_peind);
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
+#if DCC_DEBUG
+ assert(!self->sy_unit_next);
+#endif
+
  if (self->sy_sec_pself) {
+  assert(*self->sy_sec_pself == self);
   if ((*self->sy_sec_pself = self->sy_sec_next) != NULL) {
    self->sy_sec_next->sy_sec_pself = self->sy_sec_pself;
    DCCSym_ASSERT(self->sy_sec_next);
@@ -496,6 +501,12 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
    DCCSym_Decref(self->sy_alias);
   } else if (self->sy_sec) {
    if (self->sy_size) {
+    if ((self->sy_flags&(DCC_SYMFLAG_STATIC|DCC_SYMFLAG_UNUSED)) ==
+                        (DCC_SYMFLAG_STATIC) &&
+         self->sy_name != &TPPKeyword_Empty) {
+     /* Emit a warning about removing unused, static symbols. */
+     WARN(W_LINKER_DELETE_UNUSED_STATIC_SYMBOL,self->sy_name);
+    }
     DCCSection_DFree(self->sy_sec,
                      self->sy_addr,
                      self->sy_size);
@@ -814,8 +825,9 @@ DCCSection_Delrel(struct DCCSection *__restrict self,
  end = del_end = (begin = self->sc_relv)+self->sc_relc;
  while (del_end != begin && del_end[-1].r_addr > addr_end) --del_end;
  del_begin = del_end;
- while (del_begin != begin && del_begin[-1].r_addr <= addr) --del_end;
- result = (size_t)(end-del_end);
+ while (del_begin != begin && del_begin[-1].r_addr >= addr) --del_begin;
+ result = (size_t)(del_end-del_begin);
+ if (!result)  goto done;
  /* Safe all relocation symbols. */
  if (result >= 512) { /* Use malloc for large relocation counts. */
   old_symv = (struct DCCSym **)malloc(result*sizeof(struct DCCSym *));
@@ -826,9 +838,11 @@ stack_alloc_oldsym:
   old_symv = (struct DCCSym **)alloca(result*sizeof(struct DCCSym *));
  }
  for (begin = del_begin,sym_iter = old_symv;
-      begin != del_end; ++begin,++sym_iter) *sym_iter = begin->r_sym;
- assert(result >= self->sc_relc);
- memmove(del_begin,del_end,result*sizeof(struct DCCRel));
+      begin != del_end; ++begin,++sym_iter)
+      assert(begin->r_sym),*sym_iter = begin->r_sym;
+ assert(sym_iter == old_symv+result);
+ assert(result <= self->sc_relc);
+ memmove(del_begin,del_end,(size_t)(end-del_end)*sizeof(struct DCCRel));
  self->sc_relc -= result;
  sym_end = (sym_iter = old_symv)+result;
  /* Drop references from the old relocation symbols.
@@ -839,6 +853,7 @@ stack_alloc_oldsym:
   * in a consistent state every time we're decref-ing a symbol. */
  for (; sym_iter != sym_end; ++sym_iter) DCCSym_Decref(*sym_iter);
  if (is_malloc_ptr) free(old_symv);
+done:
  return result;
 }
 
@@ -1372,7 +1387,8 @@ DCCSection_DFree(struct DCCSection *__restrict self,
  addr_ptr = self->sc_text.tb_begin+addr;
  if (addr_ptr < self->sc_text.tb_end) {
   allocated_size = (size_t)(self->sc_text.tb_end-addr_ptr);
-  if (size < allocated_size) allocated_size = size;
+  if (allocated_size > size)
+      allocated_size = size;
  } else {
   allocated_size = 0;
  }
@@ -1390,6 +1406,8 @@ DCCSection_DFree(struct DCCSection *__restrict self,
   DCCFreeData_Release(&self->sc_free,addr,size);
  }
  assert(self->sc_text.tb_max >= self->sc_text.tb_begin);
+ /* Delete all relocations. */
+ DCCSection_Delrel(self,addr,size);
 }
 
 
@@ -1597,7 +1615,8 @@ PUBLIC size_t DCCUnit_ClearStatic(void) {
  for (; sym_iter != sym_end; ++sym_iter) {
   piter = sym_iter;
   while ((iter = *piter) != NULL) {
-   if (iter->sy_flags&DCC_SYMFLAG_STATIC) {
+   if ((iter->sy_flags&(DCC_SYMFLAG_STATIC|DCC_SYMFLAG_USED)) ==
+                       (DCC_SYMFLAG_STATIC)) {
     *piter = iter->sy_unit_next; /* Inherit reference. */
     iter->sy_unit_next = NULL;   /* Inherit reference. */
     DCCSym_Decref(iter);         /* Drop reference. */
@@ -1656,6 +1675,7 @@ DCCUnit_Quit(struct DCCUnit *__restrict self) {
  /* Delete unnamed symbols. */
  { struct DCCSym *iter,*next;
    iter = self->u_nsym;
+   self->u_nsym = NULL;
    while (iter) {
     next = iter->sy_unit_next;
     iter->sy_unit_next = NULL;
@@ -1669,6 +1689,7 @@ DCCUnit_Quit(struct DCCUnit *__restrict self) {
    bend = (biter = self->u_symv)+self->u_syma;
    for (; biter != bend; ++biter) {
     iter = *biter;
+    *biter = NULL;
     while (iter) {
      next = iter->sy_unit_next;
      iter->sy_unit_next = NULL;

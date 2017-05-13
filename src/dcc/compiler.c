@@ -196,8 +196,9 @@ DCCDecl_CalculateSymflags(struct DCCDecl const *__restrict self) {
   if (attr->a_flags&DCC_ATTRFLAG_DLLIMPORT) result |= DCC_SYMFLAG_DLLIMPORT;
   if (attr->a_flags&DCC_ATTRFLAG_DLLEXPORT) result |= DCC_SYMFLAG_DLLEXPORT;
 #endif
-  if (attr->a_flags&DCC_ATTRFLAG_WEAK) result |= DCC_SYMFLAG_WEAK;
-  if (attr->a_flags&DCC_ATTRFLAG_USED) result |= DCC_SYMFLAG_USED;
+  if (attr->a_flags&DCC_ATTRFLAG_WEAK)   result |= DCC_SYMFLAG_WEAK;
+  if (attr->a_flags&DCC_ATTRFLAG_USED)   result |= DCC_SYMFLAG_USED;
+  if (attr->a_flags&DCC_ATTRFLAG_UNUSED) result |= DCC_SYMFLAG_UNUSED;
   switch (attr->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) {
   default: goto default_visibility;
   case DCC_ATTRFLAG_VIS_DEFAULT  : result |= DCC_SYMFLAG_NONE; break;

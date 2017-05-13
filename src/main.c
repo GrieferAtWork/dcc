@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
 end:
  if (!OK) { fprintf(stderr,"A fatal error caused dcc to abort!\n"); }
  result = OK ? 0 : 1;
- if (!OK) dump_symbols();
+ /*if (!OK) */dump_symbols();
 
  DCCCompiler_Quit(&compiler);
  DCCUnit_Quit(&unit);
