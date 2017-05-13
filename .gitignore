@@ -1,6 +1,6 @@
 bin/*
 build/*
-lib/*
+src/tpp/frontend.c
 .vs/*.sdf
 .vs/*.suo
 .vs/*.opensdf
