@@ -533,7 +533,8 @@ PREDEFINED_MACRO_IF(__CHAR_UNSIGNED__,TPPLexer_Current->l_flags&TPPLEXER_FLAG_CH
 PREDEFINED_MACRO(__WCHAR_UNSIGNED__,"1")
 
 /* Predefine with empty text to simply ignore it everywhere...
- * >> This may change  */
+ * TODO: Now that DCC's starting to get more and more extension
+ *       warnings, we might want to start using this... */
 PREDEFINED_MACRO(__extension__,"")
 
 
@@ -643,6 +644,7 @@ EXTENSION(EXT_ASM_ATT,"asm-atnt",1)
  * >> 128 --> (no mnemonic)
  * >> I   --> l/q (based on assembly target; aka. __SIZEOF_POINTER__) */
 EXTENSION(EXT_ASM_FIXED_LENGTH,"asm-fixed-length",1)
+EXTENSION(EXT_ASM_CASE_INSENSITIVE,"asm-case-insensitive",1) /* Case-insensitive opcode mnemonics. */
 
 /* Allow c-style strings as immediate arguments:
  * >> mov $"foobar", %eax
@@ -764,6 +766,9 @@ DEF_WARNING(W_ASM_UNKNOWN_SYMBOL_IN_ABSOLUTE_LABEL,(WG_ASM,WG_VALUE),WSTATE_WARN
 DEF_WARNING(W_ASM_DIRECTIVE_SET_EXPECTED_KEYWORD,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after '.set', but got " TOK_S,TOK_A))
 DEF_WARNING(W_ASM_DIRECTIVE_INCLUDE_EXPECTED_STRING,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected string after '.include', but got " TOK_S,TOK_A))
 DEF_WARNING(W_ASM_CONSTEXPR_INVALID_OPERATION,(WG_SYNTAX),WSTATE_WARN,WARNF("Invalid operation in constant expression"))
+#if DCC_TARGET_IA32(386)
+DEF_WARNING(W_ASM_386_RM_SHIFT_IN_CODE16,(WG_SYNTAX),WSTATE_WARN,WARNF("Register shifts are not supported in .code16 regions"))
+#endif
 
 WARNING_NAMESPACE(WN_PRAGMA,1200)
 DEF_WARNING(W_PRAGMA_UNKNOWN,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Unknown pragma " TOK_S,TOK_A))
@@ -1154,7 +1159,8 @@ DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTAT
 /* Switch to the Linker warning namespace. */
 WARNING_NAMESPACE(WN_LINKER,2000)
 DEF_WARNING(W_OUT_OF_MEMORY,(WG_LINKER),WSTATE_ERROR,WARNF("Out of memory when allocating '%lu' bytes",(unsigned long)ARG(size_t)))
-DEF_WARNING(W_CANNOT_RELOCATE,(WG_LINKER,WG_USAGE),WSTATE_WARN,WARNF("Expression cannot be relocated"))
+DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMPLUSSYM,(WG_LINKER),WSTATE_WARN,WARNF("Symbol+Symbol expression cannot be relocated"))
+DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM,(WG_LINKER),WSTATE_WARN,WARNF("Symbol-Symbol expressions can only be relocated when both symbols are declared and exist in the same section"))
 DEF_WARNING(W_MISSING_ENTRY_POINT,(WG_LINKER,WG_USAGE),WSTATE_WARN,WARNF("Missing entry point '%s' (Using start of default .text section)",ARG(char *)))
 DEF_WARNING(W_SYMBOL_ALREADY_DEFINED,(WG_LINKER),WSTATE_WARN,
             WARNF("Symbol '%s' was already defined\n",ARG(char *)))

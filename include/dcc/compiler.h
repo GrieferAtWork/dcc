@@ -295,7 +295,9 @@ struct DCCCompiler {
  struct DCCStackValue   c_sexpr;   /*< Switch expression (owned by the switch statement). */
  struct DCCPackStack    c_pack;    /*< Structure packing information. */
 #define DCC_COMPILER_FLAG_NONE      0x00000000
+#if DCC_TARGET_IA32(386)
 #define DCC_COMPILER_FLAG_CODE16    0x00000001 /*< Inside a '.code16' assembler block (WARNING: Not necessary respected in code generated outside the assembler). */
+#endif
 #define DCC_COMPILER_FLAG_NOCGEN    0x00000002 /*< Don't generate code (Used for sizeof()-style expressions). */
 #define DCC_COMPILER_FLAG_DEAD      0x00000004 /*< When used in conjunction with 'DCC_COMPILER_FLAG_NOCGEN', allow both flags to be removed in the event that a label appears.
                                                 *  This can be used to make sure that a label is capable of re-enabling code inside a dead branch.

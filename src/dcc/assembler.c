@@ -33,6 +33,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _MSC_VER
+#include <malloc.h>
+#else
+#include <alloca.h>
+#endif
+
 #include "x86_util.h"
 
 DCC_DECL_BEGIN
@@ -157,7 +163,9 @@ done_register:;
     if (TOK != ',') op->ao_reg2 = asm_parse_register();
     if (TOK == ',') {
      YIELD();
-     /* TODO: Not available in '.code16'. */
+     /* Not available in '.code16'. */
+     if (compiler.c_flags&DCC_COMPILER_FLAG_CODE16)
+         WARN(W_ASM_386_RM_SHIFT_IN_CODE16);
      op->ao_shift = DCCParse_AsmShift();
     }
    }
@@ -383,7 +391,7 @@ asm_parse_expr_sum(struct DCCSymAddr *v) {
    if (mode == '+') {
     v->sa_off += rhs.sa_off;
          if (!v->sa_sym) v->sa_sym = rhs.sa_sym;
-    else if (rhs.sa_sym) goto reloc_error; /* symbol+symbol */
+    else if (rhs.sa_sym) WARN(W_LINKER_CANNOT_RELOCATE_SYMPLUSSYM); /* symbol+symbol */
    } else {
     assert(mode == '-');
     v->sa_off -= rhs.sa_off;
@@ -401,9 +409,7 @@ asm_parse_expr_sum(struct DCCSymAddr *v) {
      } else {
       /* Special case: undefined symbols, or symbols from different sections.
        * TODO: Store two symbols in an expression to work around this! */
-reloc_error:
-      /* TODO: Better explanation _why_ this can't be relocated! */
-      WARN(W_CANNOT_RELOCATE);
+      WARN(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM);
      }
     }
    }
@@ -705,7 +711,6 @@ asm_gen_op(struct x86_opcode const *op,
     goto got_modrm_op;
    }
   }
-  /* TODO? */
   goto emit_args;
 got_modrm_op:
   if (op->o_flags&DCC_ASMOPC_GROUP_REG) {
@@ -862,6 +867,27 @@ no_overload:
  WARN(W_ASM_NO_SUCH_OVERLOAD);
 }
 
+PRIVATE struct TPPKeyword *
+lookup_asm_opkwd(char const *__restrict name, size_t size) {
+ struct TPPKeyword *result;
+ result = TPPLexer_LookupKeyword(name,size,0);
+ if ((!result || TPP_ISUSERKEYWORD(result->k_id)) &&
+       HAS(EXT_ASM_CASE_INSENSITIVE)) {
+  /* Search again, but with a lower-case opcode string. */
+  char ch,*dst,*buf = (char *)alloca(size*sizeof(char));
+  char const *src,*end;
+  dst = buf;
+  end = (src = name)+size;
+  for (; src != end; ++src,++dst) {
+   ch = *src;
+   if (ch >= 'A' && ch <= 'Z') ch += ('a'-'A');
+   *dst = ch;
+  }
+  result = TPPLexer_LookupKeyword(buf,size,0);
+ }
+ return result;
+}
+
 PUBLIC void DCCParse_AsmInstr(void) {
  struct x86_opcode const *ops;
  size_t size_override = 0;
@@ -950,8 +976,8 @@ check_instr_name:
   /* Check again after removing the last character. */
   assert(suffix_length);
   assert(instr_kwd->k_size >= suffix_length);
-  instr_kwd = TPPLexer_LookupKeyword(instr_kwd->k_name,
-                                     instr_kwd->k_size-suffix_length,0);
+  instr_kwd = lookup_asm_opkwd(instr_kwd->k_name,
+                               instr_kwd->k_size-suffix_length);
   if unlikely(!instr_kwd) goto unknown_instr;
   /* Load the instruction name. */
   instr_name = instr_kwd->k_id;

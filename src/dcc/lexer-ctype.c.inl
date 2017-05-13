@@ -858,10 +858,12 @@ DCCSym_CalculateStructureOffsets(struct DCCDecl *__restrict self) {
    if (field_size > s*DCC_TARGET_BITPERBYTE) WARN(W_TYPE_STRUCT_BITFIELD_TOO_LARGE,iter->sf_decl);
    /* Special case: No need for a bit-field, everything is already aligning. */
    if (field_size == s*DCC_TARGET_BITPERBYTE && !bitpos) goto no_bitfield;
-   if (field_size > 63) {
+#define MAX_BITFIELD_SIZE   (DCC_SFLAG_BITSIZ_MASK >> DCC_SFLAG_BITSIZ_SHIFT)
+   if (field_size > MAX_BITFIELD_SIZE) {
     WARN(W_TYPE_STRUCT_BITFIELD_TOO_LARGE,iter->sf_decl);
-    field_size = 63; /* This is an actual implementation limit! */
+    field_size = MAX_BITFIELD_SIZE; /* This is an actual implementation limit! */
    }
+#undef MAX_BITFIELD_SIZE
    iter->sf_off    = current_offset;
    /* Generate the bitfield flags. */
    iter->sf_bitfld = DCC_SFLAG_MKBITFLD(bitpos,field_size);
