@@ -1,0 +1,185 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{cda78eda-b19b-4d47-8417-c11383d571ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\dcc">
+      <UniqueIdentifier>{f85df382-33c9-4cb9-a898-661135d49ef6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{f6a2bd93-e8e0-444d-969f-72ad34739b05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\dcc">
+      <UniqueIdentifier>{b60c7fc6-7be7-4937-9c4b-cba2173418c0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\tpp">
+      <UniqueIdentifier>{5f7bb787-b613-4aa3-af94-0cf9c5734398}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\main.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\lexer.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\tpp-wrapper.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\assembler.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\common.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\vstack.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\type.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\binary.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\gen.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\unit.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\fundecl.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\unit-merge.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\unit-dynlib.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\compiler.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tpp\tpp.c">
+      <Filter>src\tpp</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\dcc\lexer.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\common.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\assembler.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\target.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\vstack.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\gen.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\dcc\x86_util.h">
+      <Filter>src\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\dcc\lexer-priv.h">
+      <Filter>src\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\type.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\byteorder.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\binary.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\elf.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\unit.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\fundecl.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\stream.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\dcc\binary-pe.h">
+      <Filter>src\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\compiler.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\tpp\tpp-backwards-compatibility.h">
+      <Filter>src\tpp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\tpp\tpp.h">
+      <Filter>src\tpp</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\src\dcc\lexer-attributes.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\lexer-ctype.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\lexer-expr.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\lexer-stmt.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\include\dcc\def-keywords.inl">
+      <Filter>include\dcc</Filter>
+    </None>
+    <None Include="..\include\dcc\def-asm.inl">
+      <Filter>include\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\lexer-asm.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\lexer-builtins.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\lexer-init.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\gen-mov.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\gen-bin.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\gen-jmp.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\gen-one.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\gen-large.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\gen-misc.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\lexer-decl.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\unit-dynlib-pe.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\tpp\tpp-defs.inl">
+      <Filter>src\tpp</Filter>
+    </None>
+    <None Include="..\src\tpp\tpp-gcc-defs.inl">
+      <Filter>src\tpp</Filter>
+    </None>
+  </ItemGroup>
+</Project>

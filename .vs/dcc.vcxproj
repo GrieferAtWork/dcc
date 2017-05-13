@@ -1,0 +1,149 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\dcc\assembler.c" />
+    <ClCompile Include="..\src\dcc\binary.c" />
+    <ClCompile Include="..\src\dcc\common.c" />
+    <ClCompile Include="..\src\dcc\compiler.c" />
+    <ClCompile Include="..\src\dcc\fundecl.c" />
+    <ClCompile Include="..\src\dcc\gen.c" />
+    <ClCompile Include="..\src\dcc\lexer.c" />
+    <ClCompile Include="..\src\dcc\tpp-wrapper.c" />
+    <ClCompile Include="..\src\dcc\type.c" />
+    <ClCompile Include="..\src\dcc\unit-dynlib.c" />
+    <ClCompile Include="..\src\dcc\unit-merge.c" />
+    <ClCompile Include="..\src\dcc\unit.c" />
+    <ClCompile Include="..\src\dcc\vstack.c" />
+    <ClCompile Include="..\src\main.c" />
+    <ClCompile Include="..\src\tpp\tpp.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\dcc\assembler.h" />
+    <ClInclude Include="..\include\dcc\binary.h" />
+    <ClInclude Include="..\include\dcc\byteorder.h" />
+    <ClInclude Include="..\include\dcc\common.h" />
+    <ClInclude Include="..\include\dcc\compiler.h" />
+    <ClInclude Include="..\include\dcc\fundecl.h" />
+    <ClInclude Include="..\include\dcc\gen.h" />
+    <ClInclude Include="..\include\dcc\lexer.h" />
+    <ClInclude Include="..\include\dcc\stream.h" />
+    <ClInclude Include="..\include\dcc\target.h" />
+    <ClInclude Include="..\include\dcc\type.h" />
+    <ClInclude Include="..\include\dcc\unit.h" />
+    <ClInclude Include="..\include\dcc\vstack.h" />
+    <ClInclude Include="..\include\elf.h" />
+    <ClInclude Include="..\src\dcc\binary-pe.h" />
+    <ClInclude Include="..\src\dcc\lexer-priv.h" />
+    <ClInclude Include="..\src\dcc\x86_util.h" />
+    <ClInclude Include="..\src\tpp\tpp-backwards-compatibility.h" />
+    <ClInclude Include="..\src\tpp\tpp.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\include\dcc\def-asm.inl" />
+    <None Include="..\include\dcc\def-keywords.inl" />
+    <None Include="..\src\dcc\gen-bin.c.inl" />
+    <None Include="..\src\dcc\gen-jmp.c.inl" />
+    <None Include="..\src\dcc\gen-large.c.inl" />
+    <None Include="..\src\dcc\gen-misc.c.inl" />
+    <None Include="..\src\dcc\gen-mov.c.inl" />
+    <None Include="..\src\dcc\gen-one.c.inl" />
+    <None Include="..\src\dcc\lexer-asm.c.inl" />
+    <None Include="..\src\dcc\lexer-attributes.c.inl" />
+    <None Include="..\src\dcc\lexer-builtins.c.inl" />
+    <None Include="..\src\dcc\lexer-ctype.c.inl" />
+    <None Include="..\src\dcc\lexer-decl.c.inl" />
+    <None Include="..\src\dcc\lexer-expr.c.inl" />
+    <None Include="..\src\dcc\lexer-init.c.inl" />
+    <None Include="..\src\dcc\lexer-stmt.c.inl" />
+    <None Include="..\src\dcc\unit-dynlib-pe.c.inl" />
+    <None Include="..\src\tpp\tpp-defs.inl" />
+    <None Include="..\src\tpp\tpp-gcc-defs.inl" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{86D226C5-EF62-4562-AC06-E6A753DFA7CF}</ProjectGuid>
+    <RootNamespace>dcc</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(ProjectDir)..\bin\</OutDir>
+    <IncludePath>$(ProjectDir)\..\include;$(IncludePath)</IncludePath>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <IntDir>$(ProjectDir)..\build\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IncludePath>$(ProjectDir)\..\include;$(IncludePath)</IncludePath>
+    <OutDir>$(ProjectDir)..\bin\</OutDir>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <IntDir>$(ProjectDir)..\build\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <ShowIncludes>false</ShowIncludes>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <PreprocessorDefinitions>DCC_PRIVATE_API;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <PreprocessorDefinitions>DCC_PRIVATE_API;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
