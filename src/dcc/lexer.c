@@ -62,8 +62,6 @@ LEXPRIV struct TPPKeyword *DCC_PARSE_CALL tok_without_underscores(void) {
  return result;
 }
 
-extern uint8_t const chrattr[256];
-
 extern char *skip_whitespace_and_comments(char *iter, char *end);
 
 LEXPRIV char *DCC_PARSE_CALL peek_next_token(void) {

@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
  /* Dynamically export PE symbols. */
  compiler.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 
-#if 0
+#if 1
  /* Prepare generated code for output to file. */
  DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);
  { stream_t hout = s_openw("a.exe");

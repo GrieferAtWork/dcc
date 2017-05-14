@@ -8669,11 +8669,25 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
   TPP_USERLINES
 #endif
 
+  {
   default:
-   WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
-         ? "%s(%d,%d) : " : "%s:%d:%d: "
-         ,true_filename,TPPLexer_TRUE_LINE()+1,TPPLexer_TRUE_COLUMN()+1);
-   break; 
+#if 1
+   /* For better compatibility with custom parsers,
+    * make sure that the token pointer can be used. */
+   if (current.l_token.t_begin < current.l_token.t_file->f_begin ||
+       current.l_token.t_begin > current.l_token.t_file->f_end) {
+    macro_name = NULL;
+    WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+          ? "%s(%d) : " : "%s:%d: "
+          ,true_filename,TPPLexer_LINE()+1,TPPLexer_COLUMN()+1);
+   } else
+#endif
+   {
+    WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+          ? "%s(%d,%d) : " : "%s:%d:%d: "
+          ,true_filename,TPPLexer_TRUE_LINE()+1,TPPLexer_TRUE_COLUMN()+1);
+   }
+  } break; 
  }
  if (macro_name) WARNF("In macro '%.*s': ",macro_name_size,macro_name);
  WARNF("%c%04d(",(behavior == TPP_WARNINGMODE_ERROR) ? 'E' : 'W',wnum);

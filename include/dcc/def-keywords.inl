@@ -1269,6 +1269,7 @@ WARNING_NAMESPACE(WN_LIBLOADER,3000)
 
 /* Library loader warnings. */
 DEF_WARNING(W_LIB_NOT_FOUND,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Library not found: '%s'",ARG(char *)))
+#if DCC_LIBFORMAT_PE
 DEF_WARNING(W_LIB_PE_INVMAGIC,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Invalid header magic in PE library '%s'",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_DLL,(WG_QUALITY,WG_LIBLOAD),WSTATE_WARN,WARNF("Library '%s' is not a dll.",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_RELOCATIONS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Can't link against PE library '%s' without relocations",ARG(char *)))
@@ -1276,6 +1277,10 @@ DEF_WARNING(W_LIB_PE_NO_EXPORT_TABLE,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary 
 DEF_WARNING(W_LIB_PE_NO_SECTIONS,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s' has no sections",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_SECTION_MAPPING,(WG_LIBLOAD),WSTATE_ERROR,{ char *name = ARG(char *); WARNF("No section of PE binary '%s' maps to virtual address %p",name,ARG(void *)); })
 DEF_WARNING(W_LIB_PE_EMPTY_EXPORT_TABLE,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s' has an empty export table",ARG(char *)))
+#endif /* DCC_LIBFORMAT_PE */
+#if DCC_LIBFORMAT_DEF
+DEF_WARNING(W_LIB_DEF_EXPECTED_EXPORTS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Expected 'EXPORTS', but got '%s'",ARG(char *)))
+#endif /* DCC_LIBFORMAT_DEF */
 
 #undef DECL_PRINTTY_LOAD
 #undef DECL_PRINTTY
@@ -1285,4 +1290,5 @@ DEF_WARNING(W_LIB_PE_EMPTY_EXPORT_TABLE,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE bina
 #ifdef DECLARE_WARNING_MESSAGES
 }
 #endif
+
 

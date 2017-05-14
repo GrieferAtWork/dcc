@@ -46,6 +46,10 @@ DCC_DECL_BEGIN
 #define DCC_TARGET_BIN    DCC_BINARY_PE
 #endif
 
+/* Recognized library formats. */
+#define DCC_LIBFORMAT_PE  1 /* Recognize PE binaries as valid libraries. */
+#define DCC_LIBFORMAT_DEF 1 /* Recognize *.def files as valid libraries. */
+
 
 #if DCC_TARGET_CPU == DCC_TARGET_I386
 #   define DCC_TARGET_IA32_VERSION  386

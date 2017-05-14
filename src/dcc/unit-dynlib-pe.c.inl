@@ -22,6 +22,9 @@
 #define DCC(x) x
 
 #include <dcc/common.h>
+#include <dcc/target.h>
+
+#if DCC_LIBFORMAT_PE
 #include <dcc/unit.h>
 #include <dcc/stream.h>
 
@@ -105,8 +108,10 @@ ret_null:
 }
 
 
-PUBLIC struct DCCSection *
-DCCUnit_DynLoadPE(char *__restrict name, stream_t fd) {
+INTERN struct DCCSection *
+DCCUnit_DynLoadPE(char *__restrict filename,
+                  char *__restrict name,
+                  stream_t fd) {
  struct b32_hdr hdr;
  size_t hdr_size;
  size_t section_header_offset;
@@ -116,6 +121,7 @@ DCCUnit_DynLoadPE(char *__restrict name, stream_t fd) {
  struct DCCSection *result = NULL;
  IMAGE_SECTION_HEADER *sections = NULL;
  IMAGE_SECTION_HEADER *sec,*sec_end;
+ assert(filename);
  assert(name);
  section_header_offset = (size_t)read_hdr(fd);
  if (!section_header_offset) goto end;
@@ -248,7 +254,7 @@ end:
  return result;
 }
 
-
 DCC_DECL_END
+#endif /* DCC_LIBFORMAT_PE */
 
 #endif /* !GUARD_DCC_UNIT_DYNLIB_PE_C_INL */

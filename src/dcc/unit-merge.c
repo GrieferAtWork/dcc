@@ -139,13 +139,11 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
   }
  }
 
-#if 1
  {
   struct DCCSym **symv,*iter,*follow,*next;
   struct DCCSym **next_free,**sym_iter,**sym_end,**old_end;
-  size_t symc = other->u_symc;
-  iter = other->u_nsym;
-  while (iter) ++symc,iter = iter->sy_unit_next;
+  size_t symc;
+  symc = other->u_symc+other->u_nsymc;
   symv = other->u_symv;
   /* Flatten the hash-map into a vector. */
   if (other->u_syma < symc) {
@@ -180,7 +178,8 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
 
   /* Merge unnamed symbols. */
   follow = other->u_nsym;
-  other->u_nsym = NULL;
+  other->u_nsymc = 0;
+  other->u_nsym  = NULL;
   while (follow) {
    while (*next_free) assert(next_free != sym_end),++next_free;
    assert(follow->sy_name == &TPPKeyword_Empty);
@@ -335,35 +334,6 @@ merge_symflags:
   /* Don't continue if something went wrong! */
   if unlikely(!OK) return;
  }
-#else
- /* Now it's time to move all the symbols. */
- sym_end = (sym_iter = other->u_symv)+other->u_syma;
- for (; sym_iter != sym_end; ++sym_iter) {
-  psym = sym_iter;
-  while ((srcsym = *psym) != NULL) {
-   DCCSym_ASSERT(srcsym);
-   assert(srcsym->sy_name != &TPPKeyword_Empty);
-   if (!DCCSym_ISSECTION(srcsym)) {
-    *psym = srcsym->sy_unit_next;
-    srcsym->sy_unit_next = NULL; /* Ensure consistent state. */
-    inherit_named_sym(srcsym);
-   } else {
-    psym = &srcsym->sy_unit_next;
-   }
-  }
- }
-
- /* Inherit all unnamed symbols. */
- for (srcsym = other->u_nsym; srcsym; ) {
-  nextsym = srcsym->sy_unit_next;
-  DCCSym_ASSERT(srcsym);
-  srcsym->sy_unit_next = NULL;
-  /* No need to check for name matches (they're all unnamed!) */
-  inherit_sym(srcsym);
-  srcsym = nextsym;
- }
- other->u_nsym = NULL;
-#endif
 
  /* Now copy all the relocations. */
  for (srcsec = other->u_secs; srcsec; srcsec = srcsec->sc_next) {
@@ -432,6 +402,11 @@ merge_symflags:
  /* Finally, we must drop the section references we've
   * inherited during symbol inheritance Step #2. */
  for (srcsec = other->u_secs; srcsec;) {
+  struct DCCSection *secnext = srcsec->sc_next;
+  DCCSection_Decref(srcsec);
+  srcsec = secnext;
+ }
+ for (srcsec = other->u_imps; srcsec;) {
   struct DCCSection *secnext = srcsec->sc_next;
   DCCSection_Decref(srcsec);
   srcsec = secnext;

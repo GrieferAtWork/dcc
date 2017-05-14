@@ -667,25 +667,26 @@ DCCFUN void DCCSection_TPutb(struct DCCSection *__restrict self,
 
 struct DCCUnit {
  /* Compilation unit. */
- size_t                 u_symc; /*< Amount of symbols in 'u_symv'. */
- size_t                 u_syma; /*< Allocated bucket count in 'u_symv'. */
- /*ref*/struct DCCSym **u_symv; /*< [0..1][chain(sy_sec_pself->...)][0..u_syma][owned]
-                                 *   Hash-map of all public/private/protected symbols & section
-                                 *   declared within this compilation unit. */
- size_t                 u_secc; /*< Amount of sections reachable through the 'u_secs->sc_next->...' chain. */
- struct DCCSection     *u_secs; /*< [0..1][chain(sc_next->...)] Pointer to the lastly allocated section, or NULL if no sections exist.
-                                 *   NOTE: This chain does _NOT_ contain library imports. */
- size_t                 u_impc; /*< Amount of imports reachable through the 'u_imps->sc_next->...' chain. */
- struct DCCSection     *u_imps; /*< [0..1][chain(sc_next->...)] Pointer to the lastly allocated import, or NULL if no imports exist.
-                                 *   NOTE: This chain _ONLY_ contains library imports. */
- /*ref*/struct DCCSym  *u_nsym; /*< [0..1] Linked list of unnamed symbols. */
- struct DCCSection     *u_text; /*< [0..1] Default section: '.text' (Used for read/execute code) */
- struct DCCSection     *u_data; /*< [0..1] Default section: '.data' (Used for read-only data) */
- struct DCCSection     *u_bss;  /*< [0..1] Default section: '.text' (Used for read/write data) */
- struct DCCSection     *u_str;  /*< [0..1] Default section: '.str'  (Used for read-only, mergeable data) */
- struct DCCSection     *u_prev; /*< [0..1] The section selected before the current one (or NULL if none was). */
- struct DCCSection     *u_curr; /*< [0..1] Currently selected section (target for writing text). */
- struct DCCTextBuf      u_tbuf; /*< Current text buffer (in-lined local cache for 'u_curr->sc_text') */
+ size_t                 u_symc;  /*< Amount of symbols in 'u_symv'. */
+ size_t                 u_syma;  /*< Allocated bucket count in 'u_symv'. */
+ /*ref*/struct DCCSym **u_symv;  /*< [0..1][chain(sy_sec_pself->...)][0..u_syma][owned]
+                                  *   Hash-map of all public/private/protected symbols & section
+                                  *   declared within this compilation unit. */
+ size_t                 u_secc;  /*< Amount of sections reachable through the 'u_secs->sc_next->...' chain. */
+ struct DCCSection     *u_secs;  /*< [0..1][chain(sc_next->...)] Pointer to the lastly allocated section, or NULL if no sections exist.
+                                  *   NOTE: This chain does _NOT_ contain library imports. */
+ size_t                 u_impc;  /*< Amount of imports reachable through the 'u_imps->sc_next->...' chain. */
+ struct DCCSection     *u_imps;  /*< [0..1][chain(sc_next->...)] Pointer to the lastly allocated import, or NULL if no imports exist.
+                                  *   NOTE: This chain _ONLY_ contains library imports. */
+ /*ref*/struct DCCSym  *u_nsym;  /*< [0..1] Linked list of unnamed symbols. */
+ size_t                 u_nsymc; /*< Amount of unnamed symbols reachable through 'u_nsym'. */
+ struct DCCSection     *u_text;  /*< [0..1] Default section: '.text' (Used for read/execute code) */
+ struct DCCSection     *u_data;  /*< [0..1] Default section: '.data' (Used for read-only data) */
+ struct DCCSection     *u_bss;   /*< [0..1] Default section: '.text' (Used for read/write data) */
+ struct DCCSection     *u_str;   /*< [0..1] Default section: '.str'  (Used for read-only, mergeable data) */
+ struct DCCSection     *u_prev;  /*< [0..1] The section selected before the current one (or NULL if none was). */
+ struct DCCSection     *u_curr;  /*< [0..1] Currently selected section (target for writing text). */
+ struct DCCTextBuf      u_tbuf;  /*< Current text buffer (in-lined local cache for 'u_curr->sc_text') */
 };
 
 /* Global object: The current compilation unit. */
@@ -783,9 +784,9 @@ DCCFUN struct DCCSection *DCCUnit_NewSecs(char const *__restrict name, DCC(symfl
  *                A critical error occurred while parsing the given stream 's'. (A lexer error was set)
  * @return: * :   Pointer to the library-section that was dynamically linked.
  */
-DCCFUN struct DCCSection *DCCUnit_DynLoadPE(char *__restrict name, DCC(stream_t) s);
 DCCFUN struct DCCSection *DCCUnit_DynLoad(char *__restrict name, int warn_unknown);
-DCCFUN struct DCCSection *DCCUnit_DynLoadStream(char *__restrict name, DCC(stream_t) s, int warn_unknown);
+DCCFUN struct DCCSection *DCCUnit_DynLoadStream(char *__restrict filename, char *__restrict name,
+                                                DCC(stream_t) s, int warn_unknown);
 
 
 /* Extended version of 'DCCUnit_NewSym' that allows the name to be a printf-style string. */

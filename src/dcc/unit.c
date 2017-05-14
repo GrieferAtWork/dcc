@@ -667,9 +667,8 @@ DCCSym_Alias(struct DCCSym *__restrict self,
  /* Don't warn when re-declared as the same alias. */
  if (self->sy_alias == alias_sym &&
      self->sy_addr == offset) return;
- /* Make sure this alias doesn't produce an infinite recursion,
-  * which could happen when 'self' can be reached through 'alias_sym' */
- {
+ { /* Make sure this alias doesn't produce an infinite recursion,
+    * which could happen when 'self' can be reached through 'alias_sym' */
   struct DCCSym *alias_iter = alias_sym;
   while (alias_iter) {
    if (alias_iter == self) {
@@ -1673,6 +1672,8 @@ PUBLIC size_t DCCUnit_ClearUnused(void) {
    iter->sy_refcnt = 0;
 #endif
    _DCCSym_Delete(iter);
+   assert(unit.u_nsymc);
+   --unit.u_nsymc;
    ++result;
   } else {
    piter = &iter->sy_unit_next;
@@ -1769,6 +1770,8 @@ DCCUnit_Quit(struct DCCUnit *__restrict self) {
  assert(self);
  /* Delete unnamed symbols. */
  { struct DCCSym *iter,*next;
+   assert((unit.u_nsymc != 0) ==
+          (unit.u_nsym != NULL));
    iter = self->u_nsym;
    self->u_nsym = NULL;
    while (iter) {
@@ -1830,8 +1833,10 @@ void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym) {
   * the regular per-unit symbol table. */
  if (sym->sy_name == &TPPKeyword_Empty) {
   assert(sym != unit.u_nsym);
+  assert((unit.u_nsymc != 0) == (unit.u_nsym != NULL));
   sym->sy_unit_next = unit.u_nsym;
   unit.u_nsym       = sym; /* Inherit reference. */
+  ++unit.u_nsymc;
  } else {
   DCCUnit_CheckRehash();
   if unlikely(!unit.u_syma) goto seterr;

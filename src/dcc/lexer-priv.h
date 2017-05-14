@@ -153,6 +153,31 @@ LEXDECL /*ref*/struct TPPString *DCC_PARSE_CALL DCCParse_GetPrettyFunction(void)
 LEXPRIV /*ref*/struct TPPString *DCC_PARSE_CALL DCCParse_OneStringExt(void);
 
 
+/* Re-used from TPP */
+#define CH_ISALPHA     0x01
+#define CH_ISDIGIT     0x02
+#define CH_ISSPACE     0x04
+#define CH_ISANSI      0x08 /*< The character is an ansi-alpha character. */
+#define CH_ISTRIGRAPH  0x10 /*< The character can be used as the 3th byte of a trigraph. */
+#define CH_ISMULTICHAR 0x20 /*< The character is the first byte of a multi-character token (non-keyword; non-number; non-string). */
+#define CH_ISLF        0x40 /*< The character is '\r' or '\n'. */
+#define CH_ISZERO      0x80 /*< The character is '\0'. */
+
+extern uint8_t const chrattr[256];
+#define tpp_isalpha(ch)         (chrattr[(uint8_t)(ch)]&CH_ISALPHA)
+#define tpp_isdigit(ch)         (chrattr[(uint8_t)(ch)]&CH_ISDIGIT)
+#define tpp_isalnum(ch)         (chrattr[(uint8_t)(ch)]&(CH_ISALPHA|CH_ISDIGIT))
+#define tpp_isansi(ch)          (chrattr[(uint8_t)(ch)]&CH_ISANSI)
+#define tpp_isspace(ch)         (chrattr[(uint8_t)(ch)]&CH_ISSPACE)
+#define tpp_isspace_nz(ch)     ((chrattr[(uint8_t)(ch)]&(CH_ISSPACE|CH_ISZERO))==CH_ISSPACE)
+#define tpp_islf(ch)            (chrattr[(uint8_t)(ch)]&CH_ISLF)
+#define tpp_islforzero(ch)      (chrattr[(uint8_t)(ch)]&(CH_ISLF|CH_ISZERO))
+#define tpp_isspace_nolf(ch)   ((chrattr[(uint8_t)(ch)]&(CH_ISSPACE|CH_ISLF))==CH_ISSPACE)
+#define tpp_isnospace_orlf(ch) ((chrattr[(uint8_t)(ch)]&(CH_ISSPACE|CH_ISLF))!=CH_ISSPACE)
+#define tpp_istrigraph(ch)      (chrattr[(uint8_t)(ch)]&CH_ISTRIGRAPH)
+#define tpp_ismultichar(ch)     (chrattr[(uint8_t)(ch)]&CH_ISMULTICHAR)
+
+
 DCC_DECL_END
 
 #endif /* !GUARD_DCC_LEXER_PRIV_H */

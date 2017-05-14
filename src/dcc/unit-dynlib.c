@@ -33,7 +33,9 @@ DCC_DECL_BEGIN
  * @return: NULL: Data form the given stream 's' does not describe a binary. (No lexer error was set)
  *                A critical error occurred while parsing the given stream 's'. (A lexer error was set)
  * @return: * :   Pointer to the library-section that was dynamically linked. */
-typedef struct DCCSection *(*PLibLoader)(char *__restrict name, stream_t s);
+typedef struct DCCSection *(*PLibLoader)(char *__restrict filename,
+                                         char *__restrict name,
+                                         stream_t s);
 
 #define LIBLOADER_MAXMAGIC  4
 struct PLibLoaderDecl {
@@ -42,8 +44,23 @@ struct PLibLoaderDecl {
  uint8_t     ld_magic[LIBLOADER_MAXMAGIC]; /*< [ld_msize] Magic header for quickly identifying this kind of loader. */
 };
 
+
+#if DCC_LIBFORMAT_PE
+INTERN struct DCCSection *DCCUnit_DynLoadPE(char *__restrict filename,
+                                            char *__restrict name, stream_t fd);
+#endif /* DCC_LIBFORMAT_PE */
+#if DCC_LIBFORMAT_DEF
+INTERN struct DCCSection *DCCUnit_DynLoadDEF(char *__restrict filename,
+                                             char *__restrict name, stream_t fd);
+#endif /* DCC_LIBFORMAT_DEF */
+
 static struct PLibLoaderDecl const lib_loaders[] = {
- {&DCCUnit_DynLoadPE,2,{'M','Z'}},
+#if DCC_LIBFORMAT_PE
+ {&DCCUnit_DynLoadPE,2,{'M','Z'}}, /* '*.exe/*.dll' PE binaries. */
+#endif /* DCC_LIBFORMAT_PE */
+#if DCC_LIBFORMAT_DEF
+ {&DCCUnit_DynLoadDEF,0,{0}},      /* '*.def' library files. */
+#endif /* DCC_LIBFORMAT_DEF */
  {NULL,0,{0}},
 };
 
@@ -51,7 +68,8 @@ static struct PLibLoaderDecl const lib_loaders[] = {
 
 
 PUBLIC struct DCCSection *
-DCCUnit_DynLoadStream(char *__restrict name,
+DCCUnit_DynLoadStream(char *__restrict filename,
+                      char *__restrict name,
                       stream_t s, int warn_unknown) {
  uint8_t magic[LIBLOADER_MAXMAGIC];
  ptrdiff_t max_magic;
@@ -64,14 +82,14 @@ DCCUnit_DynLoadStream(char *__restrict name,
   if (iter->ld_msize && iter->ld_msize <= (size_t)max_magic &&
      !memcmp(iter->ld_magic,magic,iter->ld_msize)) {
    /* Got a magic match. */
-   result = (*iter->ld_loader)(name,s);
+   result = (*iter->ld_loader)(filename,name,s);
    if (result || !OK) goto done;
   }
  }
  /* Check for magic-less formats. */
  for (iter = lib_loaders; iter->ld_loader; ++iter) {
   if (!iter->ld_msize) {
-   result = (*iter->ld_loader)(name,s);
+   result = (*iter->ld_loader)(filename,name,s);
    if (result || !OK) goto done;
   }
  }
@@ -83,13 +101,13 @@ done:
 
 
 PRIVATE struct DCCSection *
-DCCUnit_DynLoadWithPath2(char const *__restrict filename,
+DCCUnit_DynLoadWithPath2(char *__restrict filename,
                          char *__restrict name) {
  stream_t s = s_openr(filename);
  struct DCCSection *result;
  //printf("Checking: '%s'\n",filename);
  if (s == TPP_STREAM_INVALID) return NULL;
- result = DCCUnit_DynLoadStream(name,s,0);
+ result = DCCUnit_DynLoadStream(filename,name,s,0);
  s_close(s);
  return result;
 }
@@ -163,6 +181,7 @@ end:
 DCC_DECL_END
 
 #ifndef __INTELLISENSE__
+#include "unit-dynlib-def.c.inl"
 #include "unit-dynlib-pe.c.inl"
 #endif
 

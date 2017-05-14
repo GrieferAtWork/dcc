@@ -69,6 +69,7 @@
     <None Include="..\src\dcc\lexer-expr.c.inl" />
     <None Include="..\src\dcc\lexer-init.c.inl" />
     <None Include="..\src\dcc\lexer-stmt.c.inl" />
+    <None Include="..\src\dcc\unit-dynlib-def.c.inl" />
     <None Include="..\src\dcc\unit-dynlib-pe.c.inl" />
     <None Include="..\src\tpp\tpp-defs.inl" />
     <None Include="..\src\tpp\tpp-gcc-defs.inl" />
