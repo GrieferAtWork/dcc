@@ -47,7 +47,7 @@ PRIVATE uint8_t asm_parse_register(void) {
  uint8_t result;
  if (TOK != '%') goto exp_reg;
  YIELD();
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
  if (TOK >= KWD_ax && TOK <= KWD_rdi)
 #else
  if (TOK >= KWD_ax && TOK <= KWD_edi)
@@ -1228,7 +1228,7 @@ fill_data:
   YIELD();
  } break;
 #endif
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
  case code64: YIELD(); break;
 #endif
 

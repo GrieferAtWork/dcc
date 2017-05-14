@@ -25,39 +25,153 @@
 
 DCC_DECL_BEGIN
 
-/* Known target names. */
-#define DCC_TARGET_I386   0
-#define DCC_TARGET_I486   1
-#define DCC_TARGET_I586   2
-#define DCC_TARGET_I686   3
-#define DCC_TARGET_X86_64 4
+/* Known CPU names. */
+#define DCC_CPU_UNKNOWN 0
+#define DCC_CPU_I386    1
+#define DCC_CPU_I486    2
+#define DCC_CPU_I586    3
+#define DCC_CPU_I686    4
+#define DCC_CPU_X86_64  5
 
+/* Known OS names. */
+#define DCC_OS_UNKNOWN        0x00
+#define DCC_OS_WINDOWS        0x01
+#define DCC_OS_LINUX          0x02
+#define DCC_OS_FREEBSD        0x12
+#define DCC_OS_FREEBSD_KERNEL 0x32
 
-#define DCC_BINARY_ELF  0 /* Linux-style ELF binary. */
-#define DCC_BINARY_PE   1 /* Windows-style PE binary. */
+/* Known BINARY format names. */
+#define DCC_BINARY_UNKNOWN 0x00
+#define DCC_BINARY_PE      0x01
+#define DCC_BINARY_ELF     0x02
 
-/* DCC Master CPU target switch. */
 #ifndef DCC_TARGET_CPU
-#define DCC_TARGET_CPU    DCC_TARGET_I686
+/* DCC Master CPU target switch. */
+#define DCC_TARGET_CPU     DCC_HOST_CPU
 #endif
 
-/* DCC Master Binary target format switch. */
 #ifndef DCC_TARGET_BIN
-#define DCC_TARGET_BIN    DCC_BINARY_PE
+/* DCC Master Binary target format switch. */
+#define DCC_TARGET_BIN     DCC_HOST_BIN
 #endif
 
-/* Recognized library formats. */
+#ifndef DCC_TARGET_OS
+/* DCC Master target OS switch. */
+#define DCC_TARGET_OS      DCC_HOST_OS
+#endif
+
+
+/* Recognized library formats during linking. */
 #define DCC_LIBFORMAT_PE  1 /* Recognize PE binaries as valid libraries. */
 #define DCC_LIBFORMAT_DEF 1 /* Recognize *.def files as valid libraries. */
 
 
-#if DCC_TARGET_CPU == DCC_TARGET_I386
+
+
+
+
+
+/* Figure out the host CPU. */
+#ifndef DCC_HOST_CPU
+#if defined(__amd64__) || defined(__amd64) || \
+    defined(__x86_64__) || defined(__x86_64) || \
+    defined(_M_X64) || defined(_M_AMD64)
+#   define DCC_HOST_CPU DCC_CPU_X86_64
+#elif defined(__I86__)
+#if __I86__ >= 6
+#   define DCC_HOST_CPU DCC_CPU_I686
+#elif __I86__ >= 5
+#   define DCC_HOST_CPU DCC_CPU_I586
+#elif __I86__ >= 4
+#   define DCC_HOST_CPU DCC_CPU_I486
+#else
+#   define DCC_HOST_CPU DCC_CPU_I386
+#endif
+#elif defined(_M_IX86)
+#if _M_IX86 >= 600
+#   define DCC_HOST_CPU DCC_CPU_I686
+#elif _M_IX86 >= 500
+#   define DCC_HOST_CPU DCC_CPU_I586
+#elif _M_IX86 >= 400
+#   define DCC_HOST_CPU DCC_CPU_I486
+#else
+#   define DCC_HOST_CPU DCC_CPU_I386
+#endif
+#elif defined(__i686__) || defined(__i686) || defined(i686)
+#   define DCC_HOST_CPU DCC_CPU_I686
+#elif defined(__i586__) || defined(__i586) || defined(i586)
+#   define DCC_HOST_CPU DCC_CPU_I586
+#elif defined(__i486__) || defined(__i486) || defined(i486)
+#   define DCC_HOST_CPU DCC_CPU_I486
+#elif defined(__i386__) || defined(__i386) || defined(i386) || \
+      defined(__X86__) || defined(_X86_) || \
+      defined(__THW_INTEL__) || defined(__INTEL__)
+#   define DCC_HOST_CPU DCC_CPU_I386
+#endif
+#ifndef DCC_HOST_CPU
+#   define DCC_HOST_CPU DCC_CPU_UNKNOWN
+#endif
+#endif /* !DCC_HOST_CPU */
+
+#ifndef DCC_HOST_OS
+#if defined(_WIN16) || defined(WIN16) || \
+    defined(_WIN32) || defined(WIN32) || \
+    defined(_WIN64) || defined(WIN64) || \
+    defined(__WIN32__) || defined(__TOS_WIN__) || \
+    defined(_WIN32_WCE) || defined(WIN32_WCE)
+#   define DCC_HOST_OS DCC_OS_WINDOWS
+#elif defined(__FreeBSD_kernel__)
+#   define DCC_HOST_OS DCC_OS_FREEBSD_KERNEL
+#elif defined(__FreeBSD__)
+#   define DCC_HOST_OS DCC_OS_FREEBSD
+#elif defined(__unix__) || defined(__unix) \
+      defined(unix) || defined(__ANDROID__) || \
+      defined(__ANDROID) || defined(__android__) || \
+      defined(__android) || defined(__linux__) || \
+      defined(__linux) || defined(linux) || \
+      defined(__MACOS__) || defined(__MACOSX__) || \
+      defined(__POSIX__)
+#   define DCC_HOST_OS DCC_OS_LINUX
+#else
+#   define DCC_HOST_OS DCC_OS_UNKNOWN
+#endif
+#endif /* !DCC_HOST_OS */
+
+#ifndef DCC_HOST_BIN
+#ifdef __ELF__
+#   define DCC_HOST_BIN    DCC_BINARY_ELF
+#elif defined(__PE__)
+#   define DCC_HOST_BIN    DCC_BINARY_PE
+#elif DCC_HOST_OS == DCC_OS_WINDOWS
+#   define DCC_HOST_BIN    DCC_BINARY_PE
+#elif DCC_HOST_OS == DCC_OS_LINUX || \
+      DCC_HOST_OS == DCC_OS_FREEBSD || \
+      DCC_HOST_OS == DCC_OS_FREEBSD_KERNEL
+#   define DCC_HOST_BIN    DCC_BINARY_ELF
+#else
+#   define DCC_HOST_BIN    DCC_BINARY_UNKNOWN
+#endif
+#endif /* !DCC_HOST_BIN */
+
+
+
+
+
+
+
+
+
+
+
+
+
+#if DCC_TARGET_CPU == DCC_CPU_I386
 #   define DCC_TARGET_IA32_VERSION  386
-#elif DCC_TARGET_CPU == DCC_TARGET_I486
+#elif DCC_TARGET_CPU == DCC_CPU_I486
 #   define DCC_TARGET_IA32_VERSION  486
-#elif DCC_TARGET_CPU == DCC_TARGET_I586
+#elif DCC_TARGET_CPU == DCC_CPU_I586
 #   define DCC_TARGET_IA32_VERSION  586
-#elif DCC_TARGET_CPU == DCC_TARGET_I686
+#elif DCC_TARGET_CPU == DCC_CPU_I686
 #   define DCC_TARGET_IA32_VERSION  686
 #endif
 
@@ -66,20 +180,34 @@ DCC_DECL_BEGIN
 #else
 #   define DCC_TARGET_IA32(v)    0
 #endif
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 #   define DCC_TARGET_IA64(v)    1
 #else
 #   define DCC_TARGET_IA64(v)    0
 #endif
 
-#if DCC_TARGET_IA32(0) || (DCC_TARGET_CPU == DCC_TARGET_X86_64)
+#if DCC_TARGET_IA32(0) || (DCC_TARGET_CPU == DCC_CPU_X86_64)
 #   define DCC_TARGET_X86    1
+#endif
+
+#ifndef DCC_TARGET_ELFINTERP
+#if DCC_TARGET_BIN == DCC_BINARY_ELF
+#if DCC_TARGET_OS == DCC_OS_FREEBSD
+#   define DCC_TARGET_ELFINTERP "/libexec/ld-elf.so.1"
+#elif DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
+#   define DCC_TARGET_ELFINTERP "/lib/ld.so.1"
+#elif DCC_TARGET_CPU == DCC_CPU_X86_64
+#   define DCC_TARGET_ELFINTERP "/lib64/ld-linux-x86-64.so.2"
+#else
+#   define DCC_TARGET_ELFINTERP "/lib/ld-linux.so.2"
+#endif
+#endif
 #endif
 
 
 #   define DCC_TARGET_BYTEORDER        1234
 #   define DCC_TARGET_FLOAT_WORD_ORDER 1234
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 #   define DCC_TARGET_SIZEOF_POINTER   8
 #else
 #   define DCC_TARGET_SIZEOF_POINTER   4
@@ -211,48 +339,6 @@ typedef DCC(target_ptr_t) DCC(target_siz_t);
 /* Register class/descriptor:
  * One of 'DCC_RC_*', potentially or'd together with one of 'DCC_ASMREG_*'. */
 typedef uint16_t DCC(rc_t);
-
-
-/* Figure out the host CPU. */
-#if defined(__amd64__) || defined(__amd64) || \
-    defined(__x86_64__) || defined(__x86_64) || \
-    defined(_M_X64) || defined(_M_AMD64)
-#   define DCC_HOST_CPU DCC_TARGET_X86_64
-#elif defined(__I86__)
-#if __I86__ >= 6
-#   define DCC_HOST_CPU DCC_TARGET_I686
-#elif __I86__ >= 5
-#   define DCC_HOST_CPU DCC_TARGET_I586
-#elif __I86__ >= 4
-#   define DCC_HOST_CPU DCC_TARGET_I486
-#else
-#   define DCC_HOST_CPU DCC_TARGET_I386
-#endif
-#elif defined(_M_IX86)
-#if _M_IX86 >= 600
-#   define DCC_HOST_CPU DCC_TARGET_I686
-#elif _M_IX86 >= 500
-#   define DCC_HOST_CPU DCC_TARGET_I586
-#elif _M_IX86 >= 400
-#   define DCC_HOST_CPU DCC_TARGET_I486
-#else
-#   define DCC_HOST_CPU DCC_TARGET_I386
-#endif
-#elif defined(__i686__) || defined(__i686) || defined(i686)
-#   define DCC_HOST_CPU DCC_TARGET_I686
-#elif defined(__i586__) || defined(__i586) || defined(i586)
-#   define DCC_HOST_CPU DCC_TARGET_I586
-#elif defined(__i486__) || defined(__i486) || defined(i486)
-#   define DCC_HOST_CPU DCC_TARGET_I486
-#elif defined(__i386__) || defined(__i386) || defined(i386) || \
-      defined(__X86__) || defined(_X86_) || \
-      defined(__THW_INTEL__) || defined(__INTEL__)
-#   define DCC_HOST_CPU DCC_TARGET_I386
-#endif
-
-#ifndef DCC_HOST_CPU
-#define DCC_HOST_CPU  (-1)
-#endif
 
 
 

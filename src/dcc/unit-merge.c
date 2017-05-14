@@ -389,7 +389,7 @@ merge_symflags:
     case R_386_PC8:     *(int8_t  *)reldata -= (int8_t )merge_base; break;
     case R_386_PC16:    *(int16_t *)reldata -= (int16_t)merge_base; break;
     case R_386_PC32:    *(int32_t *)reldata -= (int32_t)merge_base; break;
-#elif DCC_TARGET_CPU == DCC_TARGET_X86_64
+#elif DCC_TARGET_CPU == DCC_CPU_X86_64
     case R_X86_64_PC8:  *(int8_t  *)reldata -= (int8_t )merge_base; break;
     case R_X86_64_PC16: *(int16_t *)reldata -= (int16_t)merge_base; break;
     case R_X86_64_PC32: *(int32_t *)reldata -= (int32_t)merge_base; break;

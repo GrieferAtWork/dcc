@@ -331,7 +331,7 @@ ARCH_MACRO3(i586)
 #if DCC_TARGET_IA32(600)
 ARCH_MACRO3(i686)
 #endif
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 PREDEFINED_MACRO(__x86_64__,"1")
 #endif
 #undef ARCH_MACRO3
@@ -554,7 +554,7 @@ DEF_K(sp) DEF_K(bp) DEF_K(si) DEF_K(di)
 DEF_K(eax) DEF_K(ecx) DEF_K(edx) DEF_K(ebx)
 DEF_K(esp) DEF_K(ebp) DEF_K(esi) DEF_K(edi)
 
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 /* 64-bit registers. */
 DEF_K(rax) DEF_K(rcx) DEF_K(rdx) DEF_K(rbx)
 DEF_K(rsp) DEF_K(rbp) DEF_K(rsi) DEF_K(rdi)
@@ -631,7 +631,7 @@ DEF_K(previous)
 DEF_K(code16)
 DEF_K(code32)
 #endif
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 DEF_K(code64)
 #endif
 DEF_K(set)

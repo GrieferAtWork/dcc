@@ -331,6 +331,7 @@ struct DCCCompiler {
 #define DCC_LINKER_FLAG_SHARED       0x00000001 /*< Create shared libraries. */
 #define DCC_LINKER_FLAG_NOSTDLIB     0x00000002 /*< Don't include standard libraries. */
 #define DCC_LINKER_FLAG_NOUNDERSCORE 0x00000004 /*< Don't prepend leading underscores. */
+#define DCC_LINKER_FLAG_STATIC       0x00000008 /*< Perform static linking. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #define DCC_LINKER_FLAG_PEDYNAMIC     0x10000000 /*< On PE targets: Consider C/ELF visibility when generating an export table.
                                                   *  >> When this flag is set, any non-static definition matching '__attribute__((visibility("default")))'

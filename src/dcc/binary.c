@@ -24,6 +24,8 @@
 
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #include "binary-pe.c.inl"
+#elif DCC_TARGET_BIN == DCC_BINARY_ELF
+#include "binary-elf.c.inl"
 #else
 #error FIXME
 #endif

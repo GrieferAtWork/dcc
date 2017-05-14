@@ -54,6 +54,7 @@
   <ItemGroup>
     <None Include="..\include\dcc\def-asm.inl" />
     <None Include="..\include\dcc\def-keywords.inl" />
+    <None Include="..\src\dcc\binary-elf.c.inl" />
     <None Include="..\src\dcc\binary-pe.c.inl" />
     <None Include="..\src\dcc\gen-bin.c.inl" />
     <None Include="..\src\dcc\gen-jmp.c.inl" />

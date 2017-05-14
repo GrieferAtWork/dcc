@@ -934,7 +934,7 @@ begin: while (iter != end) {
   case R_386_PC8:  *(int8_t  *)rel_addr += (int8_t )rel_value; break;
   case R_386_PC16: *(int16_t *)rel_addr += (int16_t)rel_value; break;
   case R_386_PC32: *(int32_t *)rel_addr += (int32_t)rel_value; break;
-#elif DCC_TARGET_CPU == DCC_TARGET_X86_64
+#elif DCC_TARGET_CPU == DCC_CPU_X86_64
   case R_X86_64_PC8:  *(int8_t  *)rel_addr += (int8_t )rel_value; break;
   case R_X86_64_PC16: *(int16_t *)rel_addr += (int16_t)rel_value; break;
   case R_X86_64_PC32: *(int32_t *)rel_addr += (int32_t)rel_value; break;
@@ -1033,7 +1033,7 @@ DCCSection_Reloc(struct DCCSection *__restrict self) {
   case R_386_PC8:     *(int8_t  *)reldata += (int8_t )(rel_value-base_address); break;
   case R_386_PC16:    *(int16_t *)reldata += (int16_t)(rel_value-base_address); break;
   case R_386_PC32:    *(int32_t *)reldata += (int32_t)(rel_value-base_address); break;
-#elif DCC_TARGET_CPU == DCC_TARGET_X86_64
+#elif DCC_TARGET_CPU == DCC_CPU_X86_64
   case R_X86_64_8:    *(int8_t  *)reldata += (int8_t )rel_value; break;
   case R_X86_64_16:   *(int16_t *)reldata += (int16_t)rel_value; break;
   case R_X86_64_32:   *(int32_t *)reldata += (int32_t)rel_value; break;

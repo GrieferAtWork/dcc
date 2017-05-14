@@ -108,7 +108,7 @@ DCC_RC_FORTYPE(struct DCCType const *__restrict t) {
  switch (DCCType_Sizeof(t,NULL,1)) {
  case 1: result = DCC_RC_I8;  break;
  case 2: result = DCC_RC_I16|DCC_RC_I8; break;
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
  case 4: result = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8; break;
  default: result = DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8; break;
 #else

@@ -66,7 +66,7 @@ struct DCCSymAddr;
 #define DCC_ASMREG_ESI  6 /*< Source pointer. */
 #define DCC_ASMREG_EDI  7 /*< Destination pointer. */
 
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 /* DCC_ASMOP_R_64: 64-bit registers. */
 #define DCC_ASMREG_RAX  0 /*< Accumulator. */
 #define DCC_ASMREG_RCX  1 /*< Counter register. */
@@ -182,7 +182,7 @@ struct DCCSymAddr;
 #define DCC_ASMOPT_R_8    0x0000 /*< 8-bit register. */
 #define DCC_ASMOPT_R_16   0x0001 /*< 16-bit register. */
 #define DCC_ASMOPT_R_32   0x0002 /*< 32-bit register. */
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 #define DCC_ASMOPT_R_64   0x0003 /*< 64-bit register. */
 #define DCC_ASMOPT_R_MMX  0x0004 /*< MMX register. */
 #else
@@ -200,7 +200,7 @@ struct DCCSymAddr;
 #define DCC_ASMOPT_IMM_8  0x000d /*< 8-bit, unsigned immediate value. */
 #define DCC_ASMOPT_IMM_16 0x000e /*< 16-bit, unsigned immediate value. */
 #define DCC_ASMOPT_IMM_32 0x000f /*< 32-bit, unsigned immediate value. */
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 #define DCC_ASMOPT_IMM_64 0x0010 /*< 64-bit, unsigned immediate value. */
 #endif
 #define DCC_ASMOPT_ADDR   0x0011 /*< An absolute memory location. */
@@ -223,7 +223,7 @@ struct DCCSymAddr;
 #define DCC_ASMOPT_A8     0x0000 /*< Used with 'DCC_ASMOPT_ADDR': 8-bit address/disp. */
 #define DCC_ASMOPT_A16    0x4000 /*< Used with 'DCC_ASMOPT_ADDR': 16-bit address/disp. */
 #define DCC_ASMOPT_A32    0x8000 /*< Used with 'DCC_ASMOPT_ADDR': 32-bit address/disp. */
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 #define DCC_ASMOPT_A64    0xc000 /*< Used with 'DCC_ASMOPT_ADDR': 64-bit address/disp. */
 #endif
 #define DCC_ASMOPT_ASHIFT 14
@@ -234,7 +234,7 @@ struct DCCSymAddr;
 #define DCC_ASMOP_R_8    (1 << DCC_ASMOPT_R_8)    /*< 8-bit general-purpose register. */
 #define DCC_ASMOP_R_16   (1 << DCC_ASMOPT_R_16)   /*< 16-bit general-purpose register. */
 #define DCC_ASMOP_R_32   (1 << DCC_ASMOPT_R_32)   /*< 32-bit general-purpose register. */
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 #define DCC_ASMOP_R_64   (1 << DCC_ASMOPT_R_64)   /*< [x86_64] 64-bit general-purpose register. */
 #endif
 #define DCC_ASMOP_R_MMX  (1 << DCC_ASMOPT_R_MMX)  /*< MMX register. */
@@ -249,7 +249,7 @@ struct DCCSymAddr;
 #define DCC_ASMOP_IMM_8  (1 << DCC_ASMOPT_IMM_8)  /*< 8-bit, unsigned immediate value. */
 #define DCC_ASMOP_IMM_16 (1 << DCC_ASMOPT_IMM_16) /*< 16-bit, unsigned immediate value. */
 #define DCC_ASMOP_IMM_32 (1 << DCC_ASMOPT_IMM_32) /*< 32-bit, unsigned immediate value. */
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 #define DCC_ASMOP_IMM_64 (1 << DCC_ASMOPT_IMM_64) /*< [x86_64] 64-bit, unsigned immediate value. */
 #endif
 #define DCC_ASMOP_ADDR   (1 << DCC_ASMOPT_ADDR)   /*< An absolute memory location. */
@@ -266,7 +266,7 @@ struct DCCSymAddr;
 #define DCC_ASMOP_ONE    (DCC_ASMOPT_ONE  << 16)  /*< Any immediate value equal to 1 (NOTE: Will prevent the value from being emit). */
 #define DCC_ASMOP_IND    (DCC_ASMOPT_IND  << 16)  /*< The operand is an indirection (e.g.: '*%eax') */
 #define DCC_ASMOP_EA     (DCC_ASMOPT_EA   << 16)  /*< A memory location potentially offset from a register. */
-#if DCC_TARGET_CPU == DCC_TARGET_X86_64
+#if DCC_TARGET_CPU == DCC_CPU_X86_64
 #define DCC_ASMOP_REG    (DCC_ASMOP_R_8|DCC_ASMOP_R_16|DCC_ASMOP_R_32|DCC_ASMOP_R_64)
 #define DCC_ASMOP_IMM    (DCC_ASMOP_IMM_8S|DCC_ASMOP_IMM_8|DCC_ASMOP_IMM_16|DCC_ASMOP_IMM_32|DCC_ASMOP_IMM_64)
 #else

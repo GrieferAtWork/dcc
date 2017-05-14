@@ -187,5 +187,8 @@
     <None Include="..\src\dcc\unit-dynlib-def.c.inl">
       <Filter>src\dcc</Filter>
     </None>
+    <None Include="..\src\dcc\binary-elf.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
   </ItemGroup>
 </Project>
