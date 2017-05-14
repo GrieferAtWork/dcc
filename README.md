@@ -1,14 +1,16 @@
 # dcc - Direct C Compiler
 
-A C compiler with extensions implementing many extensions and features, as well as arbirary-length arithmetic. (Yes: you could declare & use an integer type 2048-bits long, or even more if you feel like it)
+A <b>C99 compliant</b> C compiler with extensions implementing many extensions and features, as well as arbirary-length integer arithmetic.
 
-Currently only able to target i386 and above, support for x86-64 is planned and already partially implemented.
+Currently only able to target <b>I386 and above</b>, support for x86-64 is planned and already partially implemented.
 
-Supported output formats are ELF, windows PE, as well as direct execution of generated code.
+Supported output formats are <b>ELF</b>, windows <b>PE</b>, as well as <b>direct execution</b> of generated code.
 
-DCC support AT&T inline assembly syntax, emulating gcc's <code>\_\_asm\_\_</code> statement as well as direct parsing of assembly sources (currently only with <code>\_\_asm\_\_(\_\_TPP\_LOAD\_FILE(...))</code>).
+DCC supports <b>AT&T</b> inline assembly syntax, emulating gcc's <code>\_\_asm\_\_</code> statement and the GNU assembler as well as direct parsing of assembly sources.
 
-Using TPP as preprocessor, DCC also implements many GCC extensions such as the above mentioned <code>\_\_asm\_\_</code>, <code>\_\_builtin\_constant\_p</code>, many <code>\_\_attribute\_\_</code>-s, <code>\_\_typeof\_\_</code>, <code>\_\_auto\_type</code>, and many more, including my own twist on awesome C extensions.
+Using TPP as preprocessor to implement a fully featured perprocessor, DCC implements many GCC extensions such as <code>\_\_asm\_\_</code>, <code>\_\_builtin\_constant\_p</code>, many <code>\_\_attribute\_\_</code>-s, <code>\_\_typeof\_\_</code>, <code>\_\_auto\_type</code>, and many more, including my own twist on awesome C extensions.
+
+Development on DCC started on <b>17.04.2017</b>, eversince then being the usual <b>one-person project</b>.
 
 ## Current state:
 Note that DCC is still fairly early in its development, meaning that anything can still change and that more features will be added eventually.

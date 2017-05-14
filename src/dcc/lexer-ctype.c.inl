@@ -696,6 +696,21 @@ begin: DCCParse_Attr(attr);
        decl_flag == DCC_DECLKIND_UNION) {
     DCCParse_Struct(decl);
    } else {
+    /* TODO: Unless unnamed, STD-C doesn't want enum
+     *       constants to be type-compatible with int!
+     *    >> enum color { red = 0, green = 1, blue = 2 };
+     *    >> enum color c;
+     *    >> c = 1;                        // WARNING
+     *    >> c = (enum color)1;            // OK
+     *    >> c = green;                    // OK
+     *    >> c = red+1;                    // WARNING (twice: enum->int, int->enum)
+     *    >> c = (enum color)((int)red+1); // OK
+     * TODO: Enum classes:
+     *    >> enum nesw: uint8_t { north, east, south, west };
+     *    >> printf("%z\n",sizeof(enum nesw));  // "1\n"
+     *    >> printf("%z\n",sizeof(north));      // "1\n"
+     *    >> printf("%z\n",sizeof((int)north)); // "4\n"
+     */
     DCCParse_Enum();
    }
    if (TOK != '}') WARN(W_EXPECTED_RBRACE); else YIELD();
