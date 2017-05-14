@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
  /* Dynamically export PE symbols. */
  compiler.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 
-#if 1
+#if 0
  /* Prepare generated code for output to file. */
  DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);
  { stream_t hout = s_openw("a.exe");
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
 end:
  if (!OK) { fprintf(stderr,"A fatal error caused dcc to abort!\n"); }
  result = OK ? 0 : 1;
- /*if (!OK) */dump_symbols();
+ if (!OK) dump_symbols();
 
  DCCCompiler_Quit(&compiler);
  DCCUnit_Quit(&unit);

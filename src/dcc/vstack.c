@@ -642,7 +642,6 @@ DCCStackValue_Store(struct DCCStackValue *__restrict self,
   target->sv_flags &= ~(DCC_SFLAG_BITFLD|
                         DCC_SFLAG_BITSIZ_MASK|
                         DCC_SFLAG_BITOFF_MASK);
-  /* TODO: Constant optimization. */
   val.sv_ctype.t_type = DCCTYPE_INT;
   val.sv_ctype.t_base = NULL;
   val.sv_flags        = DCC_SFLAG_NONE;
@@ -656,6 +655,37 @@ DCCStackValue_Store(struct DCCStackValue *__restrict self,
    int_t full_mask;
    /* Special case: the source var is constant. */
    if (self->sv_sym) goto gen_binary_self;
+   if (target->sv_reg == DCC_RC_CONST &&
+      (target->sv_flags&DCC_SFLAG_LVALUE)) {
+    /* Operate on compile-time memory (such as during static initialization) */
+    struct DCCMemLoc ml; uint8_t *cdata; size_t cbytes;
+    ml.ml_reg  = DCC_RC_CONST;
+    ml.ml_off  = target->sv_const.offset;
+    ml.ml_sym  = target->sv_sym;
+    ml.ml_off += off/DCC_TARGET_BITPERBYTE;
+    off       %= DCC_TARGET_BITPERBYTE;
+    cbytes     = (siz+(DCC_TARGET_BITPERBYTE-1))/DCC_TARGET_BITPERBYTE;
+    cdata      = (uint8_t *)DCCMemLoc_CompilerAddr(&ml,cbytes);
+    val.sv_const.it = self->sv_const.it;
+    if (cdata) {
+     while (cbytes) {
+      uint8_t byteval,bytemsk,bytesiz;
+      bytesiz = (uint8_t)siz;
+      if (bytesiz > DCC_TARGET_BITPERBYTE)
+          bytesiz = DCC_TARGET_BITPERBYTE;
+      bytemsk = (0xff & ((1 << bytesiz)-1)) << off;
+      byteval = (uint8_t)val.sv_const.it;
+      byteval = (byteval & ((1 << bytesiz)-1)) << off;
+      *cdata  = (*cdata & ~bytemsk) | byteval;
+      siz              -= DCC_TARGET_BITPERBYTE;
+      off               = 0;
+      val.sv_const.it >>= DCC_TARGET_BITPERBYTE;
+      --cbytes,++cdata;
+     }
+     return;
+    }
+   }
+
    /* Mask the source value with the bit-mask. */
    full_mask        = val.sv_const.it;
    val.sv_const.it &= self->sv_const.it;
@@ -1107,6 +1137,7 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
    self->sv_sym      = NULL;
    goto end_exclaim;
   }
+
   /* Generate a test. */
   if (self->sv_flags&DCC_SFLAG_LVALUE) DCCStackValue_Load(self);
   else if (self->sv_reg == DCC_RC_CONST) {
@@ -1179,6 +1210,15 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
  case '-':
   if (DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type)) {
    WARN(W_UNARY_NEG_ON_UNSIGNED_TYPE,&self->sv_ctype);
+  }
+  break;
+
+ case '~':
+  /* Optimization: '~(%REG - 1)' --> '-%REG' */
+  if (!(self->sv_flags&DCC_SFLAG_LVALUE) &&
+      !self->sv_sym && self->sv_const.it == -1) {
+   self->sv_const.it = 0;
+   op = '-';
   }
   break;
 
@@ -2637,13 +2677,13 @@ gen_unary:
  }
 }
 PUBLIC void DCC_VSTACK_CALL
-DCCVStack_Bitfld(uint8_t shift, uint8_t size) {
+DCCVStack_Bitfldf(sflag_t flags) {
  assert(vsize >= 1);
  DCCStackValue_FixTest(vbottom);
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE))
   DCCStackValue_FixRegOffset(vbottom);
  DCCStackValue_FixBitfield(vbottom);
- vbottom->sv_flags |= DCC_SFLAG_MKBITFLD(shift,size);
+ vbottom->sv_flags |= flags;
  assert(!(vbottom->sv_flags&DCC_SFLAG_TEST));
  /* Quickly fix constant bitfields. */
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&

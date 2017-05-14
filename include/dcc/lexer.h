@@ -241,49 +241,44 @@ DCCFUN size_t DCC_PARSE_CALL DCCParse_Exprn(void);     /* Parse comma-separated 
 DCCFUN void DCC_PARSE_CALL DCCParse_ExprDiscard(void); /* Parse a comma-separated list of expression, but immediately discard it (used for implementing optional, variadic arguments in builtin functions). */
 DCCFUN int DCC_PARSE_CALL DCCParse_IsExpr(void);       /* Only looking at the current token, try to guess if it may indicate the start of an expression (returns 0/1 indicative of that guess). */
 
-//////////////////////////////////////////////////////////////////////////
-// Similar to 'DCCParse_Expr', but require a constant expression
-// to be parsed, as well as not generating any code along the way.
-// Once done, this function returns the constant expression's value.
+/* Similar to 'DCCParse_Expr', but require a constant expression
+ * to be parsed, as well as not generating any code along the way.
+ * Once done, this function returns the constant expression's value. */
 DCCFUN DCC(int_t) DCC_PARSE_CALL DCCParse_CExpr(int one);
 DCCFUN void DCC_PARSE_CALL DCCParse_CExpr2(int one, struct DCCSymExpr *__restrict result);
 
 struct DCCMemLoc;
-//////////////////////////////////////////////////////////////////////////
-// Parse an initializer for the given type 'type'.
-// NOTE: The value parsed will be located in vbottom upon return.
-// @param: target: When non-NULL, specify a custom target for the initializer.
-//                 When NULL, the target is automatically determined,
-//                 usually as a value on the stack, a register, or a constant.
+
+/* Parse an initializer for the given type 'type'.
+ * NOTE: The value parsed will be located in vbottom upon return.
+ * @param: target: When non-NULL, specify a custom target for the initializer.
+ *                 When NULL, the target is automatically determined,
+ *                 usually as a value on the stack, a register, or a constant. */
 DCCFUN void DCC_PARSE_CALL
 DCCParse_Init(struct DCCType const *__restrict type,
               struct DCCAttrDecl const *attr,
               struct DCCMemLoc const *target,
               int initial_init);
 
-//////////////////////////////////////////////////////////////////////////
-// Parse a variable declaration. The declaration is then pushed on the v-stack.
-// @return: 0: Failed to parse a type.
-// @return: 1: Successfully parsed a declaration.
-// @return: 2: Successfully parsed a declaration that doesn't require a terminating ';'.
+/* Parse a variable declaration. The declaration is then pushed on the v-stack.
+ * @return: 0: Failed to parse a type.
+ * @return: 1: Successfully parsed a declaration.
+ * @return: 2: Successfully parsed a declaration that doesn't require a terminating ';'. */
 DCCFUN int DCC_PARSE_CALL DCCParse_Decl(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Parse a declaration of expression.
-// @return: 0: Parsed an expression.
-// @return: 1: Parsed a declaration.
-// @return: 2: Parsed a declaration that doesn't require a terminating ';'.
+/* Parse a declaration of expression.
+ * @return: 0: Parsed an expression.
+ * @return: 1: Parsed a declaration.
+ * @return: 2: Parsed a declaration that doesn't require a terminating ';'. */
 DCCFUN int DCC_PARSE_CALL DCCParse_DeclOrExpr(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Parse a global statement (basically the same as parsing
-// a declaration, but substitutes missing types for it)
-// NOTE: Also parses empty statements and requires declarations to end with a ';'
-// WARNING: The caller must still vpop(1) the parsed value.
+/* Parse a global statement (basically the same as parsing
+ * a declaration, but substitutes missing types for it)
+ * NOTE: Also parses empty statements and requires declarations to end with a ';'
+ * WARNING: The caller must still vpop(1) the parsed value. */
 DCCFUN void DCC_PARSE_CALL DCCParse_Global(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Similar to 'DCCParse_Global', but safely parses _everything_
+/* Similar to 'DCCParse_Global', but safely parses _everything_ */
 DCCFUN void DCC_PARSE_CALL DCCParse_AllGlobal(void);
 
 
@@ -294,11 +289,10 @@ DCCFUN void DCC_PARSE_CALL DCCParse_AllGlobal(void);
 
 typedef int DCC(pflag_t); /*< A set of 'DCC_PFLAG_*' */
 
-//////////////////////////////////////////////////////////////////////////
-// Parse a statement, pushing one value on the vstack.
-// @return: 0: A statement or expression was parsed.
-// @return: 1: A declaration was parsed (as well as its ';').
-// @return: 2: A declaration that didn't require a ';' was parsed.
+/* Parse a statement, pushing one value on the vstack.
+ * @return: 0: A statement or expression was parsed.
+ * @return: 1: A declaration was parsed (as well as its ';').
+ * @return: 2: A declaration that didn't require a ';' was parsed. */
 DCCFUN int DCC_PARSE_CALL DCCParse_Stmt(DCC(pflag_t) f);
 
 

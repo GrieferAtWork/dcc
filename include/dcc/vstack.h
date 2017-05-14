@@ -387,7 +387,8 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Store(int initial_store);                 
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Call(size_t n_args);                                 /* -n_args, -1, +1 (NOTE: Args are popped first, and in reverse, meaning that the last argument should be in 'vbottom') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Jcc(int invert);                                     /* -2 (Jump to 'vbottom[0]' if 'vbottom[1]^invert' is true) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Jmp(void);                                           /* -1 (Jump to 'vbottom[0]') */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_Bitfld(uint8_t shift, uint8_t size);                 /* -1, +1 */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_Bitfldf(DCC(sflag_t) flags);                         /* -1, +1 */
+#define                     DCCVStack_Bitfld(shift,size) DCCVStack_Bitfldf(DCC_SFLAG_MKBITFLD(shift,size)) /* -1, +1 */
 DCCFUN int  DCC_VSTACK_CALL DCCVStack_IsSame(int same_declaration);                        /* -2, +2 (Return non-ZERO if 'vbottom[0]' and 'vbottom[1]' contain the same value) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Subscript(struct TPPKeyword const *__restrict name); /* -1, +1 (Access the a member 'name' in the current structure) */
 
@@ -511,6 +512,8 @@ extern struct DCCStackValue *vbottom;
 #define vcall      DCCVStack_Call
 #define vjcc       DCCVStack_Jcc
 #define vjmp       DCCVStack_Jmp
+#define vbitfld    DCCVStack_Bitfld
+#define vbitfldf   DCCVStack_Bitfldf
 
 #define vprom()    DCCStackValue_Promote(vbottom)
 

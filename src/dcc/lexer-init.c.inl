@@ -62,8 +62,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
   int kind;
   struct DCCStructField *field_curr,*field_end;
   struct DCCMemLoc base_target,elem_target;
-  /* - Current index within an array initializer.
-   * - When non-zero, a union has been initialized. */
+  /* - Current index within an array initializer. */
   target_ptr_t target_maxindex = 0,target_index = 0;
   target_ptr_t elem_size = 0;
   field_curr = field_end = NULL;
@@ -166,8 +165,6 @@ stack_target:
    { /* structure/union. */
     int cxx_field_name;
    case KIND_UNION:
-    if (target_index) WARN(W_UNION_ALREADY_INITIALIZED,type);
-    target_index = 1;
    case KIND_STRUCT:
     if (TOK == '.') {
      struct DCCStructField *next_field;
@@ -214,13 +211,23 @@ parse_field:
      compiler.c_hwstack.hws_curoffset = old_offset;
      vpop(1);
     } else {
+     struct DCCType *field_type;
      assert(field_curr);
      assert(field_curr->sf_decl);
      assert(field_curr->sf_decl->d_kind&DCC_DECLKIND_TYPE);
-     elem_target = base_target;
+     elem_target         = base_target;
      elem_target.ml_off += field_curr->sf_off;
-     DCCParse_Init(&field_curr->sf_decl->d_type,attr,
-                   &elem_target,initial_init);
+     field_type          = &field_curr->sf_decl->d_type;
+     if (field_curr->sf_bitfld) {
+      push_target(field_type,&elem_target);
+      vbitfldf(field_curr->sf_bitfld);
+      DCCParse_Init(field_type,attr,
+                    NULL,initial_init);
+      vstore(initial_init);
+     } else {
+      DCCParse_Init(field_type,attr,
+                    &elem_target,initial_init);
+     }
      vpop(0);
      ++field_curr;
     }
