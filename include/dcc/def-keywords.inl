@@ -302,6 +302,19 @@ DEF_K(_stdcall)  DEF_K(__stdcall)
 DEF_K(_fastcall) DEF_K(__fastcall)
 DEF_K(__thiscall)
 
+/* STD-C conforming compiler/preprocessor! */
+PREDEFINED_MACRO(__STDC__,"1")
+
+/* DCC actually implements _everything_ (except for _Complex, which
+ * STD-C allows you to skip is you predefine '__STDC_NO_COMPLEX__') */
+PREDEFINED_MACRO(__STDC_VERSION__,"199901L")
+
+/* Still fairly far away (Thus far, DCC only has _Generic,
+ * but none of the threading stuff C11 is known for) */
+//PREDEFINED_MACRO(__STDC_VERSION__,"201112L")
+
+PREDEFINED_MACRO(__STDC_NO_COMPLEX__,"1")
+
 /* Predefined macro: '__ASSEMBLER__' (Only defined while parsing assembler code) */
 PREDEFINED_MACRO_IF(__ASSEMBLER__,compiler.c_flags&DCC_COMPILER_FLAG_INASM,"1")
 

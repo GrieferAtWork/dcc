@@ -16,6 +16,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Output windows PE binary (<b>\*.exe</b>).
   - Process and merge multiple source files.
   - Compiling DCC is only tested and working in Visual Studio.
+  - Full STD-C compliance up to C99
  
 ## Planned features:
   - Full ELF target binary support.
@@ -33,6 +34,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Using TPP as preprocessor, <b>every existing</b> preprocessor extension is supported, as well as all that are exclusive to mine.
   - Live-compilation-mode directly generates assembly.
   - C-conforming symbol forward/backward declaration.
+  - Full STD-C compliance up to C99
   - Supports all C standard types.
   - Supports 64-bit <code>long long</code> integrals (using double-register storage).
   - Supports all C control statements.
@@ -54,8 +56,8 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Support for MSVC fixed-length integer types: <code>\_\_int(8|16|32|64)</code>.
   - Support for GCC <code>\_\_auto\_type</code> (as well as special interpretation of <code>auto</code> when not used as storage class. - <code>auto int x = 42</code> auto is storage class; <code>auto y = 10;</code> auto declares automatic type deduction).
   - Support for C99 variable-length arrays: <code>int x = 10; int y[x*2]; assert(sizeof(x) == 80);</code>.
-  - Support for old (pre-STDC) function declarations/implementations.
-  - Support for new (post-STDC) function declarations/implementations.
+  - Support for old (pre-STDC: K&R-C) function declarations/implementations.
+  - Support for new (post-STDC: C90+) function declarations/implementations.
   - Support for floating-point types (Assembly generator is not implemented yet).
   - Inherited from assembly: Named register identifiers.
     - <code>int x = %eax;</code> (CPU-specific, on i386 compiles to <code>mov %eax, x</code>).
