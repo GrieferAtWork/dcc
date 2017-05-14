@@ -109,17 +109,21 @@ DCCDisp_TargetJmp(struct jmpop const *__restrict op,
  assert(addr);
  op_val = addr->sa_off;
  if ((target_sym = addr->sa_sym) != NULL) {
-  while ((DCCSym_ASSERT(target_sym),target_sym->sy_alias)) target_sym = target_sym->sy_alias;
-  if (DCCSym_SECTION(target_sym) == unit.u_curr) {
-   op_val += target_sym->sy_addr-(t_addr+
-                                          /* Worst cast for immediate value */
-                                          DCC_TARGET_SIZEOF_POINTER+
-                                          /* Leaway for opcode bytes. */
-                                          4);
-   goto def_minbytes;
-  } else {
-   minbytes = DCC_TARGET_SIZEOF_POINTER;
+  struct DCCSymAddr symaddr;
+  if (DCCSym_LoadAddr(target_sym,&symaddr,0)) {
+   op_val    += symaddr.sa_off;
+   target_sym = symaddr.sa_sym;
+   if (DCCSym_SECTION(target_sym) == unit.u_curr) {
+    op_val += target_sym->sy_addr-(t_addr+
+                                   /* Worst cast for immediate value */
+                                   DCC_TARGET_SIZEOF_POINTER+
+                                   /* Leaway for opcode bytes. */
+                                   4);
+    goto def_minbytes;
+   }
   }
+  /* Must assume worst-case for symbols with unknown relation. */
+  minbytes = DCC_TARGET_SIZEOF_POINTER;
  } else {
 def_minbytes:
   minbytes = 0;

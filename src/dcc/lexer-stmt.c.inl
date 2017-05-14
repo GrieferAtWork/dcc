@@ -577,7 +577,7 @@ dead_pushv_semi:
   compiler.c_sexpr = old_switch;
   /* The last case jump leads to the default case. */
   assert(DCCSym_ISFORWARD(casejmp));
-  DCCSym_Alias(casejmp,default_case);
+  DCCSym_Alias(casejmp,default_case,0);
  } break;
 
  { /* Label statements. */
@@ -746,10 +746,10 @@ again_after_label:
       * NOTE: Remember to also mark the control flow as dead!
       */
      if (TOK == KWD_break) {
-      DCCSym_Alias(label_sym,compiler.c_bsym);
+      DCCSym_Alias(label_sym,compiler.c_bsym,0);
       found_alias = 1;
      } else if (TOK == KWD_continue) {
-      DCCSym_Alias(label_sym,compiler.c_csym);
+      DCCSym_Alias(label_sym,compiler.c_csym,0);
       found_alias = 1;
      } else if (TOK == KWD_goto) {
       /* This one's a bit more complicated... */
@@ -762,7 +762,7 @@ again_after_label:
        if (alias_decl && alias_decl->d_kind == DCC_DECLKIND_MLOC &&
            alias_decl->d_mdecl.md_loc.ml_reg == DCC_RC_CONST &&
            alias_decl->d_mdecl.md_loc.ml_sym) {
-        DCCSym_Alias(label_sym,alias_decl->d_mdecl.md_loc.ml_sym);
+        DCCSym_Alias(label_sym,alias_decl->d_mdecl.md_loc.ml_sym,0);
         found_alias = 1;
        }
       }

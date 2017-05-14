@@ -35,16 +35,19 @@ PUBLIC void *
 DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
  if ((compiler.c_flags&DCC_COMPILER_FLAG_SINIT) &&
       DCCMEMLOC_ISMEMOFF_S(l)) {
-  struct DCCSection *target_sec;
-  struct DCCSym *target_sym = l->ml_sym;
-  while ((DCCSym_ASSERT(target_sym),target_sym->sy_alias)) target_sym = target_sym->sy_alias;
-  if ((target_sec = DCCSym_SECTION(target_sym)) != NULL) {
+  struct DCCSymAddr symaddr;
+  if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0)) {
    uint8_t *target_data;
+   struct DCCSection *target_sec;
+   assert(symaddr.sa_sym->sy_sec);
+   assert(!symaddr.sa_sym->sy_alias);
+   target_sec = symaddr.sa_sym->sy_sec;
    /* Directly write to target memory (at compile-time).
     * >> This is used for static initializer of global data. */
-   assert(!target_sym->sy_alias);
    DCCSection_TBEGIN(target_sec);
-   target_data = (uint8_t *)DCCSection_GetText(target_sec,target_sym->sy_addr+l->ml_off,n_bytes);
+   target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off+
+                                               symaddr.sa_sym->sy_addr+
+                                               l->ml_off,n_bytes);
    DCCSection_TEND(target_sec);
    return target_data;
   }
@@ -55,18 +58,21 @@ DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
 PUBLIC void const *
 DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
  if (DCCMEMLOC_ISMEMOFF_S(l)) {
-  struct DCCSection *target_sec;
-  struct DCCSym *target_sym = l->ml_sym;
-  while ((DCCSym_ASSERT(target_sym),target_sym->sy_alias)) target_sym = target_sym->sy_alias;
-  if ((target_sec = DCCSym_SECTION(target_sym)) != NULL) {
+  struct DCCSymAddr symaddr;
+  if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0)) {
    uint8_t *target_data;
+   struct DCCSection *target_sec;
+   assert(symaddr.sa_sym->sy_sec);
+   assert(!symaddr.sa_sym->sy_alias);
+   target_sec = symaddr.sa_sym->sy_sec;
    if (!(compiler.c_flags&DCC_COMPILER_FLAG_SINIT) &&
        !(target_sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_W)) return NULL;
    /* Directly write to target memory (at compile-time).
     * >> This is used for static initializer of global data. */
-   assert(!target_sym->sy_alias);
    DCCSection_TBEGIN(target_sec);
-   target_data = (uint8_t *)DCCSection_GetText(target_sec,target_sym->sy_addr+l->ml_off,n_bytes);
+   target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off+
+                                               symaddr.sa_sym->sy_addr+
+                                               l->ml_off,n_bytes);
    DCCSection_TEND(target_sec);
    return target_data;
   }
@@ -91,20 +97,19 @@ DCCDisp_PutAddrRel(struct DCCSymAddr const *__restrict addr, rel_t rel) {
  assert(addr);
  xval = addr->sa_off;
  if ((xsym = addr->sa_sym) != NULL) {
-  while ((DCCSym_ASSERT(xsym),xsym->sy_alias)) xsym = xsym->sy_alias;
-#if 1
-  if (DCCSym_SECTION(xsym) &&
-      DCCSection_HASBASE(DCCSym_SECTION(xsym)) &&
-    !(xsym->sy_flags&DCC_SYMFLAG_WEAK)) {
-   /* The associated section has a fixed base associated with it.
-    * >> We don't need to emit a relocation, because
-    *    we can simply add the base value here!
-    */
-   xval += (target_off_t)xsym->sy_addr;
-   xval += (target_off_t)(target_ptr_t)DCCSym_SECTION(xsym)->sc_base;
-   rel = DCC_R_NONE;
+  struct DCCSymAddr xsymaddr;
+  if (DCCSym_LoadAddr(xsym,&xsymaddr,0)) {
+   xval += (target_off_t)xsymaddr.sa_off;
+   xsym  = xsymaddr.sa_sym;
+   if (DCCSection_HASBASE(DCCSym_SECTION(xsym))) {
+    /* The associated section has a fixed base associated with it.
+     * >> We don't need to emit a relocation, because
+     *    we can simply add the base value here! */
+    xval += (target_off_t)xsym->sy_addr;
+    xval += (target_off_t)(target_ptr_t)DCCSym_SECTION(xsym)->sc_base;
+    rel   = DCC_R_NONE; /* Place an empty relocation for dependency mapping. */
+   }
   }
-#endif
   /* Generate a relocation at the current address.
    * >> This relocation must later add its base to the symbol. */
   t_putrel(rel,xsym);
@@ -117,25 +122,28 @@ DCCDisp_PutDispRel(struct DCCSymAddr const *__restrict addr, rel_t rel) {
  assert(addr);
  xval = addr->sa_off;
  if ((xsym = addr->sa_sym) != NULL) {
-  while ((DCCSym_ASSERT(xsym),xsym->sy_alias)) xsym = xsym->sy_alias;
-  if (DCCSym_SECTION(xsym) == unit.u_curr &&
-    !(xsym->sy_flags&DCC_SYMFLAG_WEAK)) {
-   /* Emit to current section (no relocation required).
-    * NOTE: Weak symbols still produce a relocation,
-    *       because the call may be overwritten later! */
-   xval += xsym->sy_addr;
-   rel   = DCC_R_NONE;
+  struct DCCSymAddr xsymaddr;
+  if (DCCSym_LoadAddr(xsym,&xsymaddr,0)) {
+   xval += (target_off_t)xsymaddr.sa_off;
+   xsym  = xsymaddr.sa_sym;
+   if (DCCSym_SECTION(xsym) == unit.u_curr) {
+    /* Emit to current section (no relocation required). */
+    xval += xsym->sy_addr;
+    rel   = DCC_R_NONE; /* Place an empty relocation for dependency mapping. */
+   }
   }
   t_putrel(rel,xsym);
   xval -= t_addr;
  } else {
+#if 0 /* This never happens, but if it did, this would make sense! */
   if (unit.u_curr == &DCCSection_Abs) {
    /* Emit to current section (no relocation required). */
    xval += xsym->sy_addr;
    /* NOTE: No need to create an empty relocation for symbols in the ABS section! */
-  } else {
-   /* Because this is a DISP, we must create a
-    * fake symbol apart of the global section. */
+  } else
+#endif
+  {
+   /* Because this is a DISP, we must link against the global section. */
    t_putrel(rel,&DCCSection_Abs.sc_start);
   }
   xval -= t_addr;

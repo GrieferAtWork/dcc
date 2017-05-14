@@ -166,7 +166,7 @@ struct DCCPEInfo {
                                        *   NOTE: Empty sections are excluded from this list. */
  size_t                 pe_exportc;   /*< Amount of symbols that will be exported. */
  /*ref*/struct DCCSym **pe_exportv;   /*< [1..1][0..pe_exportc][owned] Vector of exported symbols. */
- /*ref*/struct DCCSym  *pe_entry;     /*< [1..1] Entry point. */
+ /*ref*/struct DCCSym  *pe_entry;     /*< [1..1] PE Entry point. */
  struct DCCSection     *pe_reloc;     /*< [0..1] Section used for relocations. */
  struct DCCSection     *pe_thunk;     /*< [0..1] Section used for thunk data. */
  DWORD                  pe_imp_addr;  /*< In 'pe_thunk': Section address of the import table. */
@@ -762,7 +762,7 @@ PRIVATE void pe_build_sections(void) {
 
 PRIVATE void
 pe_relocate_rva(struct secinfo *__restrict info) {
- struct DCCRel *iter,*end;
+ struct DCCRel *iter,*end; struct DCCSym *relsym;
  struct DCCSection *sec;
  uint8_t *data,*data_end,*ptr; size_t size;
  assert(info);
@@ -775,17 +775,23 @@ pe_relocate_rva(struct secinfo *__restrict info) {
  end = (iter = sec->sc_relv)+sec->sc_relc;
  data_end = data+size;
  for (; iter != end; ++iter) {
-  if (iter->r_type == DCC_R_RELATIVE &&
-      iter->r_sym->sy_sec) {
-   ptr = data+iter->r_addr;
-   if (ptr >= data && ptr <= data_end) {
-    target_ptr_t sym_base_offset;
-    sym_base_offset = (iter->r_sym->sy_addr+
-                       iter->r_sym->sy_sec->sc_base)-
-                       pe.pe_imgbase;
-    *(target_ptr_t *)ptr += sym_base_offset;
-   } else {
-    /* Shouldn't happen... */
+  if (iter->r_type == DCC_R_RELATIVE) {
+   target_ptr_t reladdr = 0;
+   relsym = iter->r_sym;
+   while ((DCCSym_ASSERT(relsym),relsym->sy_alias))
+           reladdr += relsym->sy_addr,
+           relsym = relsym->sy_alias;
+   if (relsym->sy_sec) {
+    ptr = data+iter->r_addr;
+    if (ptr >= data && ptr <= data_end) {
+     target_ptr_t sym_base_offset;
+     sym_base_offset = (relsym->sy_addr+reladdr+
+                        relsym->sy_sec->sc_base)-
+                        pe.pe_imgbase;
+     *(target_ptr_t *)ptr += sym_base_offset;
+    } else {
+     /* Shouldn't happen... */
+    }
    }
   }
  }
@@ -842,7 +848,6 @@ pe_writefile(stream_t target) {
  struct secinfo *iter,*end;
  hdr = pe_template;
  assert(pe.pe_entry);
- assert(pe.pe_entry->sy_sec);
  file_offset = pe_alignfile(sizeof(PE_HEADER)+pe.pe_secc*
                             sizeof(IMAGE_SECTION_HEADER));
  hdr.ohdr.SizeOfHeaders    = file_offset;
@@ -947,9 +952,18 @@ pe_writefile(stream_t target) {
   }
  }
  /* Figure out the address of the entry point. */
- hdr.ohdr.AddressOfEntryPoint = pe.pe_entry->sy_addr+
-                                pe.pe_entry->sy_sec->sc_base-
-                                pe.pe_imgbase;
+ {
+  struct DCCSymAddr entryaddr;
+  if (!DCCSym_LoadAddr(pe.pe_entry,&entryaddr,1)) {
+   WARN(W_MISSING_ENTRY_POINT,pe.pe_entry->sy_name->k_name);
+   /* TODO: What if the text section is empty? */
+   entryaddr.sa_sym = &unit.u_text->sc_start;
+   entryaddr.sa_off = 0;
+  }
+  hdr.ohdr.AddressOfEntryPoint = (entryaddr.sa_sym->sy_addr+entryaddr.sa_off+
+                                  entryaddr.sa_sym->sy_sec->sc_base)-
+                                  pe.pe_imgbase;
+ }
  hdr.fhdr.NumberOfSections = (WORD)pe.pe_secc;
  hdr.ohdr.ImageBase        = pe.pe_imgbase;
  hdr.ohdr.Subsystem        = pe.pe_subsystem;
@@ -1005,9 +1019,9 @@ PRIVATE void pe_genrt(void) {
                pe.pe_type == PETYPE_GUI ?            "__winstart"
                                         :            "__start";
  if (compiler.l_flags&DCC_LINKER_FLAG_NOUNDERSCORE) ++entry_point;
+ assert(!pe.pe_entry);
  pe.pe_entry = DCCUnit_GetSyms(entry_point);
- if (pe.pe_entry) while (pe.pe_entry->sy_alias) pe.pe_entry = pe.pe_entry->sy_alias;
- if (!pe.pe_entry || !pe.pe_entry->sy_sec) {
+ if (!pe.pe_entry) {
   WARN(W_MISSING_ENTRY_POINT,entry_point);
   pe.pe_entry = &unit.u_text->sc_start;
  }

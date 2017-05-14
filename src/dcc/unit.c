@@ -55,6 +55,7 @@ LOCAL void DCCSection_RehashSymbols(struct DCCSection *__restrict self, size_t n
 extern void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym);
 LOCAL void DCCUnit_CheckRehash(void);
 LOCAL void DCCUnit_RehashSymbols(size_t newsize);
+LOCAL void DCCUnit_RehashSymbols2(struct DCCUnit *__restrict self, size_t newsize);
 LOCAL void DCCSym_ClearDef(struct DCCSym *__restrict self, int warn);
 
 #if DCC_DEBUG
@@ -330,11 +331,12 @@ DCCMemLoc_Equal(struct DCCMemLoc const *__restrict a,
   target_off_t off_a,off_b;
   if (!b->ml_sym) return 0;
   sa = a->ml_sym,sb = b->ml_sym;
-  while ((DCCSym_ASSERT(sa),sa->sy_alias)) sa = sa->sy_alias;
-  while ((DCCSym_ASSERT(sb),sb->sy_alias)) sb = sb->sy_alias;
+  off_a = a->ml_off,off_b = b->ml_off;
+  while ((DCCSym_ASSERT(sa),sa->sy_alias)) { if (sa->sy_flags&DCC_SYMFLAG_WEAK) return 0; off_a += sa->sy_addr; sa = sa->sy_alias; }
+  while ((DCCSym_ASSERT(sb),sb->sy_alias)) { if (sa->sy_flags&DCC_SYMFLAG_WEAK) return 0; off_b += sb->sy_addr; sb = sb->sy_alias; }
   if (!DCCSym_SECTION(sa) || DCCSym_SECTION(sa) != DCCSym_SECTION(sb)) return 0;
-  off_a = a->ml_off+a->ml_sym->sy_addr;
-  off_b = b->ml_off+b->ml_sym->sy_addr;
+  off_a += a->ml_sym->sy_addr;
+  off_b += b->ml_sym->sy_addr;
   if (off_a != off_b) return 0;
  }
  else if (b->ml_sym) return 0;
@@ -587,6 +589,27 @@ seterr: TPPLexer_SetErr();
  return NULL;
 }
 
+PUBLIC int
+DCCSym_LoadAddr(struct DCCSym *__restrict self,
+                struct DCCSymAddr *__restrict result,
+                int load_weak) {
+ assert(self);
+ assert(result);
+ result->sa_off = 0;
+ for (;;) {
+  if (!load_weak && (self->sy_flags&DCC_SYMFLAG_WEAK)) return 0;
+  if (self->sy_sec) break;
+  /* Add alias offset. */
+  result->sa_off += self->sy_addr;
+  self = self->sy_alias;
+  if (!self) return 0;
+ }
+ assert(self);
+ assert(self->sy_sec);
+ result->sa_sym = self;
+ return 1;
+}
+
 LOCAL void
 DCCSym_ClearDef(struct DCCSym *__restrict self, int warn) {
  if (self->sy_sec || self->sy_alias) {
@@ -632,22 +655,29 @@ DCCSym_Define(struct DCCSym *__restrict self,
 }
 PUBLIC void
 DCCSym_Alias(struct DCCSym *__restrict self,
-             struct DCCSym *__restrict alias_sym) {
+             struct DCCSym *__restrict alias_sym,
+             target_ptr_t offset) {
  DCCSym_ASSERT(self);
  DCCSym_ASSERT(alias_sym);
  DCCSym_ClearDef(self,1);
  DCCSym_Incref(alias_sym);
  self->sy_alias = alias_sym; /* Inherit reference. */
+ self->sy_addr  = offset;
+ /* NOTE: 'self->sy_size' is unused by alias symbols. */
 }
 PUBLIC int
 DCCSym_Equal(struct DCCSym const *a,
              struct DCCSym const *b) {
+ target_ptr_t pa,pb;
  if (!a || !b) return 0;
- while ((DCCSym_ASSERT(a),a->sy_alias)) a = a->sy_alias;
- while ((DCCSym_ASSERT(b),b->sy_alias)) b = b->sy_alias;
+ pa = pb = 0;
+ while ((DCCSym_ASSERT(a),a->sy_alias)) { if (a->sy_flags&DCC_SYMFLAG_WEAK) return 0; pa += a->sy_addr; a = a->sy_alias; }
+ while ((DCCSym_ASSERT(b),b->sy_alias)) { if (a->sy_flags&DCC_SYMFLAG_WEAK) return 0; pb += b->sy_addr; b = b->sy_alias; }
  if (a == b) return 1;
- if (!a->sy_sec || b->sy_sec != a->sy_sec) return 0;
- return a->sy_addr == b->sy_addr;
+ if (!DCCSym_SECTION(a) ||
+      DCCSym_SECTION(b) !=
+      DCCSym_SECTION(a)) return 0;
+ return (pa+a->sy_addr) == (pb+b->sy_addr);
 }
 
 PUBLIC int
@@ -872,13 +902,12 @@ DCCSection_ResolveDisp(struct DCCSection *__restrict self) {
 next: ++iter;
 begin: while (iter != end) {
   uint8_t *rel_addr; target_ptr_t rel_value;
-  struct DCCSym *effective_sym = iter->r_sym;
-  while ((DCCSym_ASSERT(effective_sym),effective_sym->sy_alias))
-          effective_sym = effective_sym->sy_alias;
+  struct DCCSymAddr symaddr;
   /* We're only resolving relocations pointing back into our section. */
-  if (effective_sym->sy_sec != self) goto next;
+  if (!DCCSym_LoadAddr(iter->r_sym,&symaddr,1) ||
+       symaddr.sa_sym->sy_sec != self) goto next;
   rel_addr  = base_address+iter->r_addr;
-  rel_value = effective_sym->sy_addr;
+  rel_value = symaddr.sa_off+symaddr.sa_sym->sy_addr;
   switch (iter->r_type) {
 #if DCC_TARGET_IA32(386)
   case R_386_PC8:  *(int8_t  *)rel_addr += (int8_t )rel_value; break;
@@ -951,26 +980,26 @@ DCCSection_Reloc(struct DCCSection *__restrict self) {
  end = (iter = self->sc_relv)+self->sc_relc;
  for (; iter != end; ++iter) {
   target_ptr_t rel_value;
-  struct DCCSym *effective_sym = iter->r_sym;
-  while ((DCCSym_ASSERT(effective_sym),effective_sym->sy_alias))
-          effective_sym = effective_sym->sy_alias;
+  struct DCCSymAddr symaddr;
+  reldata = relbase+iter->r_addr;
+  assert(iter->r_sym);
   /* We're only resolving relocations pointing back into our section. */
-  reldata   = relbase+iter->r_addr;
-  rel_value = effective_sym->sy_addr;
-  if (!effective_sym->sy_sec ||
-      DCCSection_ISIMPORT(effective_sym->sy_sec)) {
+  if (!DCCSym_LoadAddr(iter->r_sym,&symaddr,1) ||
+       DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
    /* Unresolved weak symbols are always located at NULL. */
-   if (!(effective_sym->sy_flags&DCC_SYMFLAG_WEAK)) {
+   if (!(iter->r_sym->sy_flags&DCC_SYMFLAG_WEAK)) {
     WARN(W_UNRESOLVED_REFERENCE,
-         effective_sym->sy_name,
+         iter->r_sym->sy_name,
          self->sc_start.sy_name,
          iter->r_addr);
    }
+   rel_value = 0;
   } else {
-   assertf(DCCSection_HASBASE(effective_sym->sy_sec),
+   assertf(DCCSection_HASBASE(symaddr.sa_sym->sy_sec),
            "Section '%s' is missing its base",
-           effective_sym->sy_sec->sc_start.sy_name->k_name);
-   rel_value += (target_ptr_t)effective_sym->sy_sec->sc_base;
+           symaddr.sa_sym->sy_sec->sc_start.sy_name->k_name);
+   rel_value  = symaddr.sa_off+symaddr.sa_sym->sy_addr;
+   rel_value += (target_ptr_t)symaddr.sa_sym->sy_sec->sc_base;
   }
   assert(reldata >= relbase);
   assert(reldata <  relbase+(self->sc_text.tb_end-
@@ -1567,8 +1596,43 @@ PUBLIC void DCCSection_TPutb(struct DCCSection *__restrict self,
 PUBLIC struct DCCUnit DCCUnit_Current = {0};
 PUBLIC void
 DCCUnit_Flush(struct DCCUnit *__restrict self, uint32_t flags) {
+ struct DCCSection *section;
+ int rehash_aggressive = (flags&DCCUNIT_FLUSHFLAG_TABMIN);
  assert(self);
- (void)flags; /* TODO */
+ if (flags&(DCCUNIT_FLUSHFLAG_SECMEM|DCCUNIT_FLUSHFLAG_SYMTAB)) {
+  section = self->u_secs;
+  while (section) {
+   assert(section->sc_text.tb_max >=
+          section->sc_text.tb_pos);
+   if ((flags&DCCUNIT_FLUSHFLAG_SECMEM) &&
+       (section->sc_text.tb_max < section->sc_text.tb_end) &&
+       (section != self->u_curr)) {
+    uint8_t *newtext; size_t new_size;
+    new_size = (size_t)(section->sc_text.tb_max-
+                        section->sc_text.tb_begin);
+    newtext  = (uint8_t *)realloc(section->sc_text.tb_begin,new_size);
+    if (newtext) {
+     section->sc_text.tb_pos   = newtext+(section->sc_text.tb_pos-section->sc_text.tb_begin);
+     section->sc_text.tb_max   = newtext+new_size;
+     section->sc_text.tb_end   = newtext+new_size;
+     section->sc_text.tb_begin = newtext;
+    }
+   }
+   if (flags&DCCUNIT_FLUSHFLAG_SYMTAB) {
+    size_t new_size;
+    new_size = rehash_aggressive ? 1 : (section->sc_symc*3)/2;
+    if (new_size < section->sc_syma)
+        DCCSection_RehashSymbols(section,new_size);
+   }
+   section = section->sc_next;
+  }
+ }
+ if (flags&DCCUNIT_FLUSHFLAG_SYMTAB) {
+  size_t new_size;
+  new_size = rehash_aggressive ? 1 : (self->u_symc*3)/2;
+  if (new_size < self->u_syma)
+      DCCUnit_RehashSymbols2(self,new_size);
+ }
 }
 
 PUBLIC size_t DCCUnit_ClearUnused(void) {
@@ -1757,12 +1821,12 @@ void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym) {
  return;
 seterr: TPPLexer_SetErr();
 }
-LOCAL void DCCUnit_RehashSymbols(size_t newsize) {
+LOCAL void DCCUnit_RehashSymbols2(struct DCCUnit *__restrict self, size_t newsize) {
  struct DCCSym **new_map,**biter,**bend,*iter,*next,**dst;
  assert(newsize);
  new_map = (struct DCCSym **)calloc(newsize,sizeof(struct DCCSym *));
  if unlikely(!new_map) return;
- bend = (biter = unit.u_symv)+unit.u_syma;
+ bend = (biter = self->u_symv)+self->u_syma;
  for (; biter != bend; ++biter) {
   iter = *biter;
   while (iter) {
@@ -1774,9 +1838,12 @@ LOCAL void DCCUnit_RehashSymbols(size_t newsize) {
    iter = next;
   }
  }
- free(unit.u_symv);
- unit.u_symv = new_map;
- unit.u_syma = newsize;
+ free(self->u_symv);
+ self->u_symv = new_map;
+ self->u_syma = newsize;
+}
+LOCAL void DCCUnit_RehashSymbols(size_t newsize) {
+ DCCUnit_RehashSymbols2(&unit,newsize);
 }
 
 LOCAL void

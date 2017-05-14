@@ -263,14 +263,22 @@ DCC_DECL_BEGIN
  * These call the associated functions from <stdlib.h>, but
  * upon failure will start clearing unit/global caches
  * in an attempt to free up available memory before trying again.
- * If all attempts fail, 'DCC_AllocFailed' is called. */
+ * If all attempts fail, 'DCC_AllocFailed' is called.
+ * @param: flush_exclude: A set of 'DCCUNIT_FLUSHFLAG_*' or'd together with
+ *                        a set of 'DCCCOMPILER_FLUSHFLAG_*'.
+ *                     >> The flags provided describe flush operations
+ *                        that shall not be performed, thus allowing save
+ *                        memory management even for data blocks that would
+ *                        normally be affected by flush operations.
+ */
 DCCFUN void *DCC_Malloc(size_t s, uint32_t flush_exclude);
 DCCFUN void *DCC_Calloc(size_t s, uint32_t flush_exclude);
 DCCFUN void *DCC_Realloc(void *p, size_t s, uint32_t flush_exclude);
 DCCFUN void  DCC_Free(void *p);
 
-/* Emit warnings about failed allocations. */
-DCCFUN void  DCC_AllocFailed(size_t s);
+/* Emit warnings about failed allocations
+ * Depending on the warning state, a lexer error may be set. */
+DCCFUN void DCC_AllocFailed(size_t s);
 
 #if DCC_DEBUG && defined(_CRTDBG_MAP_ALLOC) && \
    !defined(__INTELLISENSE__)

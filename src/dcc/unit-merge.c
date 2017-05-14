@@ -155,7 +155,7 @@ inherit_named_sym(/*ref*/struct DCCSym *__restrict srcsym) {
    DCCSym_ASSERT(alias);
    if (DCCSym_ISFORWARD(dstsym) ||
      !(srcsym->sy_flags&DCC_SYMFLAG_WEAK)) {
-    DCCSym_Alias(dstsym,alias);
+    DCCSym_Alias(dstsym,alias,srcsym->sy_addr);
    }
   } else if (srcsym->sy_sec && !DCCSym_ISSECTION(srcsym)) {
    struct DCCSection *dstsec;

@@ -148,23 +148,22 @@ struct DCCSym {
                                             *         to this symbol, this symbol is actually a section and behaves as pointing to the
                                             *         start of that same section.
                                             *   WARNING: This field _must_ be NULL when 'sy_alias' isn't NULL, and the same holds true the other way around. */
- /* TODO: 'sy_addr' should act as an offset in aliased symbols!
-  *       The ability to do this is required for proper symbol declaration in assembly:
-  *       >> # 'foobar' must be an alias for 'foo', with an offset of '8'.
-  *       >> # If it isn't, the symbol will be linked improperly if the linker descides to move foo
-  *       >> foobar = foo+8
-  *       >> 
-  *       >> _start:
-  *       >>    call foobar
-  *       >>    ret
-  *       >> 
-  *       >> foo:
-  *       >>    .skip 8
-  *       >>    push $text
-  *       >>    call printf
-  *       >>    add $4, %esp
-  *       >>    ret
-  */
+ /* 'sy_addr' acts as an offset in aliased symbols!
+  * The ability to do this is required for proper symbol declaration in assembly:
+  * >> # 'foobar' must be an alias for 'foo', with an offset of '8'.
+  * >> # If it isn't, the symbol will be linked improperly if the linker descides to move foo
+  * >> foobar = foo+8
+  * >> 
+  * >> _start:
+  * >>    call foobar
+  * >>    ret
+  * >> 
+  * >> foo:
+  * >>    .skip 8
+  * >>    push $text
+  * >>    call printf
+  * >>    add $4, %esp
+  * >>    ret */
 #ifdef DCC_PRIVATE_API
  target_ptr_t              sy_addr;        /*< [const_if(sy_sec != NULL)] Symbol address (offset from associated section; undefined if 'sy_sec == NULL')
                                             *   NOTE: When this symbol depends on a library, this field may be used as a linker hint. */
@@ -224,6 +223,19 @@ struct DCCSym {
 #define DCCSym_XDecref(self)   ((self) ? DCCSym_Decref(self) : (void)0)
 DCCFUN void _DCCSym_Delete(struct DCCSym *__restrict self);
 
+/* Load the effective address of a given symbol, resolving symbol aliasing.
+ * WARNING: This function should only be called during linkage, once all symbols are known.
+ * WARNING: 'result->sa_sym' is _NOT_ filled with a reference, but simply a dangling pointer.
+ * @param: self: The symbol to load.
+ * @param: load_weak: When non-ZERO, allow loading of weak symbols (which may be re-defined)
+ * @return: 0: Failed to resolve the symbol as it, or a symbol it is aliasing is not defined.
+ *             The contents of 'result' are undefined in this case.
+ * @return: 1: Successfully loaded the symbol, filling 'result->sa_sym' with one conforming to 'DCCSym_ISDEFINED()'.
+ *             In this case, 'result->sa_off' is filled with the sum of alias offsets of all symbols. */
+DCCFUN int DCCSym_LoadAddr(struct DCCSym *__restrict self,
+                           struct DCCSymAddr *__restrict result,
+                           int load_weak);
+
 /* Convert a given string 'text' into the correct ELF-style symbol visibility class:
  * NOTE: This function is used by:
  *   - '#pragma GCC visibility push(...)'
@@ -252,7 +264,8 @@ DCCFUN void DCCSym_Define(struct DCCSym *__restrict self,
                           struct DCCSection *__restrict section,
                           DCC(target_ptr_t) addr, DCC(target_siz_t) size);
 DCCFUN void DCCSym_Alias(struct DCCSym *__restrict self,
-                         struct DCCSym *__restrict alias_sym);
+                         struct DCCSym *__restrict alias_sym,
+                         DCC(target_ptr_t) offset);
 
 /* Clear the current definition of 'self' */
 DCCFUN void DCCSym_ClrDef(struct DCCSym *__restrict self);
@@ -695,14 +708,12 @@ DCCFUN void DCCUnit_Extract(struct DCCUnit *__restrict other);
 /* Clear any preallocated memory reachable from 'self'
  * NOTE: Some flush operations are always performed:
  *        - Clear unused relocation.
- * @param: flags: A set of 'DCCUNIT_FLUSHFLAG_*'
- */
+ * @param: flags: A set of 'DCCUNIT_FLUSHFLAG_*' */
 DCCFUN void DCCUnit_Flush(struct DCCUnit *__restrict self, uint32_t flags);
-#define DCCUNIT_FLUSHFLAG_NONE     0x00000000
-#define DCCUNIT_FLUSHFLAG_SECMEM   0x00000001 /*< Clear pre-allocated section text memory (when 'tb_max < tb_end', lower 'tb_end' to 'tb_max') */
-#define DCCUNIT_FLUSHFLAG_SECTRAIL 0x00000002 /*< Free trailing ZERO-memory in section texts (Sections will continue to behave as before) */
-#define DCCUNIT_FLUSHFLAG_SYMTAB   0x00000004 /*< Shrink the allocated size of symbol hash tables to the minimum assumed by automatic rehashing. */
-#define DCCUNIT_FLUSHFLAG_TABMIN   0x00000010 /*< More aggressive behavior for 'DCCUNIT_FLUSHFLAG_SYMTAB': Reduce the hash size to ONE(1) (Only use this as last way out) */
+#define DCCUNIT_FLUSHFLAG_NONE   0x00000000
+#define DCCUNIT_FLUSHFLAG_SECMEM 0x00000001 /*< Clear pre-allocated section text memory (when 'tb_max < tb_end', lower 'tb_end' to 'tb_max') */
+#define DCCUNIT_FLUSHFLAG_SYMTAB 0x00000002 /*< Shrink the allocated size of symbol hash tables to the minimum assumed by automatic rehashing. */
+#define DCCUNIT_FLUSHFLAG_TABMIN 0x00000010 /*< More aggressive behavior for 'DCCUNIT_FLUSHFLAG_SYMTAB': Reduce the hash size to ONE(1) (Only use this as last way out) */
 
 
 #define DCCUnit_ENUMSYM(sym) \

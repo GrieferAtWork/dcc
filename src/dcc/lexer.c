@@ -114,7 +114,7 @@ PUBLIC int DCCParse_Pragma(void) {
    alias = DCCUnit_NewSym(TOKEN.t_kwd,DCC_SYMFLAG_NONE);
    if unlikely(!alias) break;
    /* Define 'weaksym' to be an alias for 'alias' */
-   DCCSym_Alias(weaksym,alias);
+   DCCSym_Alias(weaksym,alias,0);
    YIELD();
   }
  } break;

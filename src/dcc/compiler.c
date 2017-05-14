@@ -269,7 +269,9 @@ DCCDecl_AllocStorage(struct DCCDecl *__restrict self, int has_init,
   if unlikely(!self->d_mdecl.md_loc.ml_sym) return;
   /* Create reference for assignment above. */
   DCCSym_Incref(self->d_mdecl.md_loc.ml_sym);
-  DCCSym_Alias(self->d_mdecl.md_loc.ml_sym,attr->a_alias);
+  /* xxx: __attribute__((alias("foo",42))) (second argument for alias offset?) */
+  DCCSym_Alias(self->d_mdecl.md_loc.ml_sym,
+               attr->a_alias,0);
   return;
  }
  if (storage == DCCTYPE_EXTERN) {
@@ -548,10 +550,22 @@ DCCDecltab_NewDecl(struct DCCDecltab *__restrict self,
 /* COMPILER */
 /* ******** */
 PUBLIC struct DCCCompiler DCCCompiler_Current = {0};
+PRIVATE void
+DCCDecltab_RehashSmall(struct DCCDecltab *__restrict self,
+                       int rehash_aggressive) {
+ size_t new_size;
+ assert(self);
+ new_size = rehash_aggressive ? 1 : (self->dt_declc*3)/2;
+ if (new_size < self->dt_decla)
+     DCCDecltab_RehashSymbols(self,new_size);
+}
+
 PUBLIC void
 DCCCompiler_Flush(struct DCCCompiler *__restrict self, uint32_t flags) {
  size_t unused_mem,required_mem;
  assert(self);
+ assert(self->c_pack.ps_stacka >= self->c_pack.ps_stackc);
+ assert(self->c_visibility.vs_stacka >= self->c_visibility.vs_stackc);
  if (flags&DCCCOMPILER_FLUSHFLAG_VSTACK) {
   assert(self->c_vstack.v_begin >= self->c_vstack.v_bottom);
   unused_mem = (size_t)(self->c_vstack.v_begin-self->c_vstack.v_bottom);
@@ -570,7 +584,44 @@ DCCCompiler_Flush(struct DCCCompiler *__restrict self, uint32_t flags) {
    self->c_vstack.v_end = (struct DCCStackValue *)((uintptr_t)self->c_vstack.v_begin+required_mem);
   }
  }
- /* TODO: All the other things? */
+ if ((flags&DCCCOMPILER_FLUSHFLAG_PACKSTACK) &&
+     (self->c_pack.ps_stacka != self->c_pack.ps_stackc)) {
+  target_siz_t *new_stack;
+  if (self->c_pack.ps_stackc) {
+   new_stack = (target_siz_t *)realloc(self->c_pack.ps_stackv,
+                                       self->c_pack.ps_stackc*
+                                       sizeof(target_siz_t));
+   if unlikely(!new_stack) new_stack = self->c_pack.ps_stackv;
+  } else {
+   free(self->c_pack.ps_stackv);
+   new_stack = NULL;
+  }
+  self->c_pack.ps_stackv = new_stack;
+  self->c_pack.ps_stacka = self->c_pack.ps_stackc;
+ }
+ if ((flags&DCCCOMPILER_FLUSHFLAG_VISISTACK) &&
+     (self->c_visibility.vs_stacka != self->c_visibility.vs_stackc)) {
+  sflag_t *new_stack;
+  if (self->c_visibility.vs_stackc) {
+   new_stack = (sflag_t *)realloc(self->c_visibility.vs_stackv,
+                                  self->c_visibility.vs_stackc*
+                                  sizeof(sflag_t));
+   if unlikely(!new_stack) new_stack = self->c_visibility.vs_stackv;
+  } else {
+   free(self->c_visibility.vs_stackv);
+   new_stack = NULL;
+  }
+  self->c_visibility.vs_stackv = new_stack;
+  self->c_visibility.vs_stacka = self->c_visibility.vs_stackc;
+ }
+ if (flags&DCCCOMPILER_FLUSHFLAG_DECLTAB) {
+  int rehash_aggressive = (flags&DCCCOMPILER_FLUSHFLAG_TABMIN);
+  struct DCCScope *iter = &self->c_scope;
+  do DCCDecltab_RehashSmall(&iter->s_tabs[0],rehash_aggressive),
+     DCCDecltab_RehashSmall(&iter->s_tabs[1],rehash_aggressive),
+     DCCDecltab_RehashSmall(&iter->s_tabs[2],rehash_aggressive);
+  while ((iter = iter->s_prev) != NULL);
+ }
 }
 
 PUBLIC void

@@ -67,9 +67,10 @@ void dump_symbols(void) {
            sym->sy_name->k_name,flags);
    }
   } else if (sym->sy_alias) {
-   printf("%s: ALIAS('%s')\n",
+   printf("%s: ALIAS('%s'+%lu)\n",
           sym->sy_name->k_name,
-          sym->sy_alias->sy_name->k_name);
+          sym->sy_alias->sy_name->k_name,
+         (unsigned long)sym->sy_addr);
   } else if (sym->sy_sec) {
    if (sym->sy_sec == &DCCSection_Abs) {
     printf("%s: ABS(%#lx)\n",sym->sy_name->k_name,
@@ -187,13 +188,11 @@ int main(int argc, char *argv[]) {
 
   /* Search for an entry point. */
   entry_sym = DCCUnit_GetSyms("__start");
-  if (entry_sym) while (entry_sym->sy_alias) entry_sym = entry_sym->sy_alias;
-  if (!entry_sym || !DCCSym_ISDEFINED(entry_sym)) {
+  if (!entry_sym) {
    fprintf(stderr,"Entry point not found (Defaulting to start of .text)\n");
    entry_sym = &unit.u_text->sc_start;
    dump_symbols();
   }
-  if (!OK) goto end;
 
   DCCSym_Incref(entry_sym);
   DCCUnit_ClearUnused();
@@ -205,10 +204,23 @@ int main(int argc, char *argv[]) {
   DCCUnit_ENUMSEC(sec) DCCSection_Reloc(sec);
   if (!OK) goto end;
 
-  /* Execute the generated code. */
-  assert(DCCSym_SECTION(entry_sym));
-  *(void **)&entry = (void *)(entry_sym->sy_addr+DCCSym_SECTION(entry_sym)->sc_base);
+  {
+   struct DCCSymAddr entryaddr;
+   if (!DCCSym_LoadAddr(entry_sym,&entryaddr,1)) {
+    fprintf(stderr,"Entry point not found (Defaulting to start of .text)\n");
+    entryaddr.sa_sym = &unit.u_text->sc_start;
+    entryaddr.sa_off = 0;
+    dump_symbols();
+   }
+   if (!OK) goto end;
 
+   assert(DCCSym_SECTION(entryaddr.sa_sym));
+   *(void **)&entry = (void *)(entryaddr.sa_off+
+                               entryaddr.sa_sym->sy_addr+
+                               DCCSym_SECTION(entryaddr.sa_sym)->sc_base);
+  }
+
+  /* Execute the generated code. */
   (*entry)();
  }
 #endif

@@ -225,9 +225,10 @@ done_flags:
   int_t op_val = op->ao_val.sa_off;
   /* Make sure that this overload is of sufficient size for this address. */
   if ((op_sym = op->ao_val.sa_sym) != NULL) {
-   while ((DCCSym_ASSERT(op_sym),op_sym->sy_alias)) op_sym = op_sym->sy_alias;
-   if (op_flags&DCC_ASMOPC_DISP &&
-       DCCSym_SECTION(op_sym) == unit.u_curr) {
+   struct DCCSymAddr symaddr;
+   if ((op_flags&DCC_ASMOPC_DISP) &&
+        DCCSym_LoadAddr(op_sym,&symaddr,0) &&
+       (DCCSym_SECTION(symaddr.sa_sym) == unit.u_curr)) {
     size_t op_length = maxbytes; /* Size used by the immediate address. */
     /* Predict a worst-case situation for the
      * amount of bytes required by the opcode.
@@ -236,7 +237,7 @@ done_flags:
     op_length += 16;
     /* Reverse displacement within the same section
      * >> We can predict the exact value here! */
-    op_val += op_sym->sy_addr-(t_addr+op_length);
+    op_val += (symaddr.sa_sym->sy_addr+symaddr.sa_off)-(t_addr+op_length);
     goto def_minbytes;
    } else {
     /* An unknown symbol is contained
@@ -397,19 +398,29 @@ asm_parse_expr_sum(struct DCCSymAddr *v) {
     v->sa_off -= rhs.sa_off;
     /* Special case: Difference between two symbols. */
     if (v->sa_sym && rhs.sa_sym) {
-     if (v->sa_sym == rhs.sa_sym) {
+     struct DCCSymAddr lhs_addr;
+     struct DCCSymAddr rhs_addr;
+     if (!DCCSym_LoadAddr(v->sa_sym,&lhs_addr,0) ||
+         !DCCSym_LoadAddr(rhs.sa_sym,&rhs_addr,0)) {
+no_reloc_diff:
+      if (v->sa_sym == rhs.sa_sym) v->sa_sym = NULL;
+      else {
+       /* Special case: undefined symbols, or symbols from different sections.
+        * TODO: Store two symbols in an expression to work around this! */
+       WARN(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM);
+      }
+     } else if (lhs_addr.sa_sym == rhs_addr.sa_sym) {
       /* Always succeeds: Difference between the same symbol. */
-     } else if (DCCSym_SECTION(v->sa_sym) &&
-                DCCSym_SECTION(v->sa_sym) ==
-                DCCSym_SECTION(rhs.sa_sym)) {
+      v->sa_sym = NULL;
+     } else if (DCCSym_SECTION(lhs_addr.sa_sym) &&
+                DCCSym_SECTION(lhs_addr.sa_sym) ==
+                DCCSym_SECTION(rhs_addr.sa_sym)) {
       /* Special case: Difference between two defined symbols from the same section. */
-      v->sa_off += v ->sa_sym->sy_addr-
-                  rhs.sa_sym->sy_addr;
+      v->sa_off += (lhs_addr.sa_off+lhs_addr.sa_sym->sy_addr)-
+                   (rhs_addr.sa_off+rhs_addr.sa_sym->sy_addr);
       v->sa_sym  = NULL;
      } else {
-      /* Special case: undefined symbols, or symbols from different sections.
-       * TODO: Store two symbols in an expression to work around this! */
-      WARN(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM);
+      goto no_reloc_diff;
      }
     }
    }
@@ -919,20 +930,12 @@ again:
    if unlikely(!sym) return;
    if (TOK == '=') {
     struct DCCSymAddr v;
-    struct DCCSection *sym_section = &DCCSection_Abs;
     YIELD();
     /* Define an absolute symbol. */
     DCCParse_AsmExpr(&v);
-    if (v.sa_sym) {
-     if (DCCSym_SECTION(v.sa_sym)) {
-      /* Offset from a known symbol. */
-      v.sa_off   += v.sa_sym->sy_addr;
-      sym_section = DCCSym_SECTION(v.sa_sym);
-     } else {
-      WARN(W_ASM_UNKNOWN_SYMBOL_IN_ABSOLUTE_LABEL,v.sa_sym->sy_name);
-     }
-    }
-    DCCSym_Define(sym,sym_section,(target_ptr_t)v.sa_off,0);
+    if (v.sa_sym)
+         DCCSym_Alias(sym,v.sa_sym,(target_ptr_t)v.sa_off);
+    else DCCSym_Define(sym,&DCCSection_Abs,(target_ptr_t)v.sa_off,0);
     goto again;
    } else {
     t_defsym(sym);
@@ -1233,7 +1236,6 @@ fill_data:
   struct TPPKeyword *sym_kwd;
   struct DCCSymAddr v;
   struct DCCSym *sym;
-  struct DCCSection *sym_sec;
  case KWD_set:
   YIELD();
   /* Define an absolute symbol. */
@@ -1250,17 +1252,9 @@ fill_data:
   if unlikely(!sym_kwd) break;
   sym = DCCUnit_NewSym(sym_kwd,DCC_SYMFLAG_NONE);
   if unlikely(!sym) break;
-  sym_sec = &DCCSection_Abs;
-  if (v.sa_sym) {
-   if (DCCSym_SECTION(v.sa_sym)) {
-    /* Offset from a known symbol. */
-    v.sa_off += v.sa_sym->sy_addr;
-    sym_sec   = DCCSym_SECTION(v.sa_sym);
-   } else {
-    WARN(W_ASM_UNKNOWN_SYMBOL_IN_ABSOLUTE_LABEL,v.sa_sym->sy_name);
-   }
-  }
-  DCCSym_Define(sym,sym_sec,(target_ptr_t)v.sa_off,0);
+  if (v.sa_sym)
+       DCCSym_Alias(sym,v.sa_sym,(target_ptr_t)v.sa_off);
+  else DCCSym_Define(sym,&DCCSection_Abs,(target_ptr_t)v.sa_off,0);
  } break;
 
  {

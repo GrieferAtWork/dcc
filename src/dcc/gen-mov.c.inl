@@ -836,22 +836,22 @@ def_reloc(struct DCCSymAddr const *__restrict expr,
  assert(expr);
  xval = expr->sa_off;
  if ((xsym = expr->sa_sym) != NULL) {
-  while ((DCCSym_ASSERT(xsym),xsym->sy_alias)) xsym = xsym->sy_alias;
-#if 1
-  if (DCCSym_SECTION(xsym) && DCCSection_HASBASE(DCCSym_SECTION(xsym))) {
-   /* The associated section has a fixed base associated with it.
-    * >> We don't need to emit a relocation, because
-    *    we can simply add the base value here!
-    */
-   xval += (target_off_t)xsym->sy_addr;
-   xval += (target_off_t)(target_ptr_t)DCCSym_SECTION(xsym)->sc_base;
-  } else
-#endif
-  {
-   /* Generate a relocation at the current address.
-    * >> This relocation must later add its base to the symbol. */
-   DCCSection_Putrel(target_section,target_offset,rel,xsym);
+  struct DCCSymAddr xsymaddr;
+  if (DCCSym_LoadAddr(xsym,&xsymaddr,0)) {
+   xval += xsymaddr.sa_off;
+   xsym  = xsymaddr.sa_sym;
+   if (DCCSection_HASBASE(DCCSym_SECTION(xsym))) {
+    /* The associated section has a fixed base associated with it.
+     * >> We don't need to emit a relocation, because
+     *    we can simply add the base value here! */
+    xval += (target_off_t)xsym->sy_addr;
+    xval += (target_off_t)(target_ptr_t)DCCSym_SECTION(xsym)->sc_base;
+    rel   = DCC_R_NONE; /* Place an empty relocation for dependency mapping. */
+   }
   }
+  /* Generate a relocation at the current address.
+   * >> This relocation must later add its base to the symbol. */
+  DCCSection_Putrel(target_section,target_offset,rel,xsym);
  }
  return xval;
 }
@@ -866,20 +866,19 @@ DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict val,
  assert(val),assert(dst);
  assert(CHECK_WIDTH(width));
  if ((compiler.c_flags&DCC_COMPILER_FLAG_SINIT) && dst->ml_sym) {
-  struct DCCSym *target_sym = dst->ml_sym;
-  while ((DCCSym_ASSERT(target_sym),target_sym->sy_alias)) target_sym = target_sym->sy_alias;
-  if (DCCSym_SECTION(target_sym)) {
+  struct DCCSymAddr target_addr;
+  if (DCCSym_LoadAddr(dst->ml_sym,&target_addr,0)) {
    struct DCCSection *target_sec;
    uint8_t *target_data;
-   target_ptr_t target_offset;
    /* Directly write to target memory (at compile-time).
     * >> This is used for static initializer of global data. */
-   assert(!target_sym->sy_alias);
-   target_sec = DCCSym_SECTION(target_sym);
-   target_offset  = target_sym->sy_addr;
-   target_offset += (target_ptr_t)dst->ml_off;
+   assert(!target_addr.sa_sym->sy_alias);
+   assert(DCCSym_SECTION(target_addr.sa_sym));
+   target_sec = DCCSym_SECTION(target_addr.sa_sym);
+   target_addr.sa_off += target_addr.sa_sym->sy_addr;
+   target_addr.sa_off += (target_ptr_t)dst->ml_off;
    DCCSection_TBEGIN(target_sec);
-   target_data = (uint8_t *)DCCSection_GetText(target_sec,target_offset,width);
+   target_data = (uint8_t *)DCCSection_GetText(target_sec,target_addr.sa_off,width);
    DCCSection_TEND(target_sec);
    if unlikely(!target_data) return;
    {
@@ -891,7 +890,7 @@ DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict val,
                 width == 4 ? DCC_R_DATA_32 :
                 width == 2 ? DCC_R_DATA_16 :
                              DCC_R_DATA_8;
-    target_off_t v = def_reloc(val,target_sec,target_offset,rel);
+    target_off_t v = def_reloc(val,target_sec,target_addr.sa_off,rel);
     /* Store the initial value inside the target data. */
 #if DCC_TARGET_SIZEOF_POINTER >= 8
          if (width == 8) *(int64_t *)target_data = (int64_t)v;
