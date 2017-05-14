@@ -42,13 +42,17 @@ DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
  assert(rhs);
  assert(self != rhs);
  /* If no alignment was set, inherit that from the right. */
- if (!(self->a_flags&DCC_ATTRFLAG_FIXEDALIGN)) self->a_align = rhs->a_align;
+ if (!(self->a_flags&DCC_ATTRFLAG_FIXEDALIGN) &&
+     !(self->a_alias)) self->a_align = rhs->a_align;
  self->a_flags |= (rhs->a_flags&(0xffff|DCC_ATTRFLAG_MASK_WARNING));
  if (rhs->a_flags&DCC_ATTRFLAG_CONSTRUCTOR) self->a_c_prio = rhs->a_c_prio;
  if (rhs->a_flags&DCC_ATTRFLAG_DESTRUCTOR)  self->a_d_prio = rhs->a_d_prio;
  /* If the right has a lower alignment that 'self', inherit it. */
- if (rhs->a_flags&DCC_ATTRFLAG_FIXEDALIGN &&
-     rhs->a_align < self->a_align) self->a_align = rhs->a_align;
+ if (rhs->a_flags&DCC_ATTRFLAG_FIXEDALIGN) {
+  if (self->a_alias) self->a_flags &= ~(DCC_ATTRFLAG_FIXEDALIGN);
+  else if (self->a_align > rhs->a_align)
+           self->a_align = rhs->a_align;
+ }
 }
 PUBLIC void
 DCCAttrDecl_InitCopy(struct DCCAttrDecl *__restrict self,
@@ -141,10 +145,14 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   YIELD();
   DCCParse_ParPairBegin();
   if (function->k_id == KWD_aligned) {
-   self->a_align  = (target_siz_t)DCCParse_CExpr(0);
-   self->a_flags |= DCC_ATTRFLAG_FIXEDALIGN;
-   if (self->a_align&(self->a_align-1)) {
-    WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
+   if (self->a_alias) {
+    WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
+    DCCParse_CExpr(0);
+   } else {
+    self->a_align  = (target_siz_t)DCCParse_CExpr(0);
+    self->a_flags |= DCC_ATTRFLAG_FIXEDALIGN;
+    if (self->a_align&(self->a_align-1))
+        WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
    }
   } else {
    self->a_regparm = (uint8_t)DCCParse_CExpr(0);
@@ -170,6 +178,7 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
 
  {
   struct TPPString *text;
+  int has_paren;
  case KWD_deprecated:
  case KWD_warning:
  case KWD_error:
@@ -177,6 +186,7 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   if (TOK == '(' || TOK == KWD___pack) goto parse_alias;
   /* Empty string. */
   text = TPPString_NewSized(0);
+  has_paren = 0;
   goto set_text;
 
  case KWD_visibility:
@@ -185,13 +195,18 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
  case KWD_dll:
   YIELD();
 parse_alias:
-  DCCParse_ParPairBegin();
+  has_paren = TOK == '(';
+  if (has_paren) YIELD();
+  else if (TOK == KWD___pack)  {
+   YIELD();
+   has_paren = (TOK == '(');
+   if (has_paren) YIELD();
+  } else has_paren = 1,WARN(W_EXPECTED_LPAREN);
   if (TOK == ')') text = NULL;
   else if (!TPP_ISSTRING(TOK)) {
    WARN(W_ATTRIBUTE_EXPECTED_STRING,function);
    text = NULL;
   } else text = DCCParse_String();
-  DCCParse_ParPairEnd();
 set_text:
   switch (function->k_id) {
 
@@ -244,12 +259,23 @@ set_text:
          self->a_alias->sy_name);
     DCCSym_Decref(self->a_alias);
    }
-   if (!text) self->a_alias = NULL;
-   else if likely((function = TPPLexer_LookupKeyword(text->s_text,text->s_size,1)) != NULL) {
-    struct DCCSym *alias = DCCUnit_NewSym(function,DCC_SYMFLAG_NONE);
-    if (!alias) WARN(W_ATTRIBUTE_ALIAS_UNKNOWN_SYMBOL,function);
-    else DCCSym_Incref(alias);
-    self->a_alias = alias; /* Inherit reference. */
+   if (self->a_flags&DCC_ATTRFLAG_FIXEDALIGN)
+       WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
+   else {
+    if (!text) self->a_alias = NULL;
+    else if likely((function = TPPLexer_LookupKeyword(text->s_text,text->s_size,1)) != NULL) {
+     struct DCCSym *alias = DCCUnit_NewSym(function,DCC_SYMFLAG_NONE);
+     if (!alias) WARN(W_ATTRIBUTE_ALIAS_UNKNOWN_SYMBOL,function);
+     else DCCSym_Incref(alias);
+     self->a_alias = alias; /* Inherit reference. */
+    }
+    self->a_offset = 0;
+    if (TOK == ',') {
+     /* Extension: Alias offset. */
+     WARN(W_ATTRIBUTE_ALIAS_OFFSET_EXTENSION);
+     YIELD();
+     self->a_offset = (target_off_t)DCCParse_CExpr(1);
+    }
    }
   } break;
 
@@ -281,6 +307,10 @@ set_visibility :
   }
 cleanup_text:
   if (text) TPPString_Decref(text);
+  if (has_paren) {
+   if (TOK == ')') YIELD();
+   else WARN(W_EXPECTED_RPAREN);
+  }
  } break;
 
  {

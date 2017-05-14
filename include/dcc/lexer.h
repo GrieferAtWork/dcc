@@ -144,11 +144,14 @@ struct DCCAttrDecl {
  struct DCCSection       *a_section;  /*< [0..1] Used for __attribute__((section(...))) */
  /*ref*/struct DCCSym    *a_alias;    /*< [0..1] Used for __attribute__((alias(...))) */
  /*ref*/struct TPPString *a_reach;    /*< [0..1] Used for __attribute__((deprecated(...))) */
+union{
  DCC(target_siz_t)        a_align;    /*< Used by 'DCC_ATTRFLAG_FIXEDALIGN' */
+ DCC(target_off_t)        a_offset;   /*< Used with 'a_alias' for alias-offsets. */
+};
  int                      a_c_prio;   /*< Constructor priority, or '0' when using default. */
  int                      a_d_prio;   /*< Destructor priority, or '0' when using default. */
 };
-#define DCCATTRDECL_INIT  {0,0,0,0,NULL,NULL,NULL,0,0,0}
+#define DCCATTRDECL_INIT  {0,0,0,0,NULL,NULL,NULL,{0},0,0}
 
 DCCFUN void DCCAttrDecl_Quit(struct DCCAttrDecl *__restrict self);
 DCCFUN void DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
