@@ -119,7 +119,8 @@ DCCFunctionFrame_Leave(struct DCCFunctionFrame *__restrict self) {
     !(compiler.c_flags&DCC_COMPILER_FLAG_DEAD) &&
      (assert(compiler.c_fun->d_type.t_base),
       compiler.c_fun->d_type.t_base->d_kind == DCC_DECLKIND_FUNCTION ||
-      compiler.c_fun->d_type.t_base->d_kind == DCC_DECLKIND_OLDFUNCTION)) {
+      compiler.c_fun->d_type.t_base->d_kind == DCC_DECLKIND_OLDFUNCTION) &&
+    !(self->ff_flags&DCC_FUNCTIONFRAME_FLAG_NAKED)) {
    struct DCCType *funtype = &compiler.c_fun->d_type.t_base->d_type;
    if (!DCCTYPE_ISBASIC(funtype->t_type,DCCTYPE_VOID)) {
     /* Warn if a function not returning void reaches the end of its control flow. */
