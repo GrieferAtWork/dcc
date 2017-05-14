@@ -130,7 +130,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
       (compiler.c_flags&DCC_COMPILER_FLAG_SINIT)) {
     struct DCCSection *target_section;
     /* Global storage duration. */
-    target_section = attr ? attr->a_section : NULL;
+    target_section = DCCATTRDECL_GETSECTION_OR_IMPORT(attr);
     if (!target_section || DCCSection_ISIMPORT(target_section)) {
      target_section = type->t_type&DCCTYPE_CONST
       ? unit.u_data : unit.u_bss;

@@ -29,8 +29,8 @@ DEF_M(__INTMAX_C)
 DEF_M(__UINTMAX_C)
 
 /* Additional pragmas. */
-DEF_K(comment) DEF_K(lib) /* #pragma comment(lib,"xxx") */
-DEF_K(pack)               /* #pragma pack(...) */
+DEF_K(comment) /* #pragma comment(lib,"xxx") */
+DEF_K(pack)    /* #pragma pack(...) */
 
 #define DEF_BUILTIN(name) \
  KWD(KWD_##name,#name) \
@@ -256,7 +256,7 @@ DEFINE_ATTRIBUTE(stdcall)
 DEFINE_ATTRIBUTE(thiscall)
 DEFINE_ATTRIBUTE(fastcall)
 DEFINE_ATTRIBUTE(section)
-DEFINE_ATTRIBUTE(dll)
+DEFINE_ATTRIBUTE(lib)
 DEFINE_ATTRIBUTE(returns_twice)
 DEFINE_ATTRIBUTE(force_align_arg_pointer)
 DEFINE_ATTRIBUTE(regparm)
@@ -910,12 +910,16 @@ DEF_WARNING(W_ATTRIBUTE_NOT_DEFINED,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("A
 DEF_WARNING(W_ATTRIBUTE_EXPECTED_STRING,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Expected string for __attribute__((%s(...))), but got " TOK_S,KWDNAME(),TOK_A))
 DEF_WARNING(W_ATTRIBUTE_ALIAS_ALREADY_DEFINED,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Another __attribute__((alias(...))) was already defined for '%s'",KWDNAME()))
 DEF_WARNING(W_ATTRIBUTE_ALIAS_OFFSET_EXTENSION,(WG_EXTENSIONS,WG_ATTRIBUTE),WSTATE_WARN,WARNF("Offset-alias attributes are a DCC extension"))
+DEF_WARNING(W_ATTRIBUTE_ALIAS_WITH_SECTION,(WG_ATTRIBUTE,WG_USAGE),WSTATE_WARN,WARNF("Using __attribute__((alias(...))) with __attribute__((section(...))) doesn't make sense and isn't allowed."))
+DEF_WARNING(W_ATTRIBUTE_ALIAS_WITH_DLL,(WG_ATTRIBUTE,WG_USAGE),WSTATE_WARN,WARNF("Using __attribute__((alias(...))) with __attribute__((dll(...))) doesn't make sense and isn't allowed."))
 DEF_WARNING(W_ATTRIBUTE_VISIBILITY_UNKNOWN_VISIBILITY,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Unknown visibility '%s' for __attribute__((visibility(...)))",ARG(char *)))
+DEF_WARNING(W_ATTRIBUTE_SECTION_ALREADY_SET,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Unknown __attribute__((section(...))) was already set to '%s'",KWDNAME()))
 DEF_WARNING(W_ATTRIBUTE_SECTION_UNKNOWN_SECTION,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Unknown section '%s' for __attribute__((section(...)))",ARG(char *)))
 DEF_WARNING(W_ATTRIBUTE_DLL_IS_A_SECTION,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Section '%s' specified for __attribute__((dll(...)))",ARG(char *)))
+DEF_WARNING(W_ATTRIBUTE_DLL_ALREADY_SET,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("__attribute__((dll(...))) was already set"))
 DEF_WARNING(W_ATTRIBUTE_DEPRECATED_ALREADY_DEFINED,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("__attribute__((deprecated())) was already set"))
 DEF_WARNING(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Expected power-of-2 for __attribute__((aligned(...))), but got '%lu'",(unsigned long)ARG(DCC(target_ptr_t))))
-DEF_WARNING(W_ATTRIBUTE_ALIGNED_WITH_ALIAS,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Using __attribute__((aligned(...))) with __attribute__((alias(...))) doesn't make sense and isn't allowed."))
+DEF_WARNING(W_ATTRIBUTE_ALIGNED_WITH_ALIAS,(WG_ATTRIBUTE,WG_USAGE),WSTATE_WARN,WARNF("Using __attribute__((aligned(...))) with __attribute__((alias(...))) doesn't make sense and isn't allowed."))
 DEF_WARNING(W_ATTRIBUTE_ALIAS_UNKNOWN_SYMBOL,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Unknown symbol '%s' for __attribute__((alias))",KWDNAME()))
 DEF_WARNING(W_ATTRIBUTE_MODE_EXPECTED_KEYWORD,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Expected keyword in __attribute__((mode(...))), but got " TOK_S,TOK_A))
 DEF_WARNING(W_ATTRIBUTE_MODE_UNKNOWN_MODE,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Unknown name " TOK_S " for __attribute__((mode(...)))",TOK_A))
@@ -923,6 +927,7 @@ DEF_WARNING(W_ATTRIBUTE_MODE_ALREADY_DEFINED,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN
 DEF_WARNING(W_ATTRIBUTE_MODE_EXPECTS_BASIC_TYPE,(WG_ATTRIBUTE,WG_USER),WSTATE_WARN,WARNF("__attribute__((mode(...))) expects a basic type"))
 DEF_WARNING(W_ATTRIBUTE_UNKNOWN,(WG_ATTRIBUTE,WG_SYNTAX),WSTATE_WARN,WARNF("Unknown attribute " TOK_S,TOK_A))
 DEF_WARNING(W_ATTRIBUTE_UNSUPPORTED,(WG_ATTRIBUTE),WSTATE_DISABLE,WARNF("Unsupported attribute " TOK_S,TOK_A))
+DEF_WARNING(W_ATTRIBUTE_MERGE_REACHMSG,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,{ char *newmsg = ARG(char *); WARNF("Attribute message '%s' is incompatible with old declaration '%s'",newmsg,ARG(char *)); })
 #ifdef DECLARE_WARNING_MESSAGES
 {
  char const *format,*reason;

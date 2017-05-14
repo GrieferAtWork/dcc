@@ -357,7 +357,6 @@ DCCVStack_PushStr(char const *__restrict p, size_t s) {
  slot.sv_sym      = str_sym;
  vpush(&slot);
  assert(slot.sv_ctype.t_base);
- DCCSym_Decref(str_sym);
  DCCDecl_Decref(slot.sv_ctype.t_base);
 }
 

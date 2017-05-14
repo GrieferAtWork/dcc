@@ -201,7 +201,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - <code>\_\_attribute\_\_((gnu\_inline...))</code>
     - <code>\_\_attribute\_\_((artificial...))</code>
   - New attributes added by DCC:
-    - <code>\_\_attribute\_\_((dll("foo")))</code>
+    - <code>\_\_attribute\_\_((lib("foo")))</code>
       - Most effective for PE targets: 'foo' is the name of the DLL file that the associated declaration should be linked against.
       - Using this attribute, one can link against DLL files that don't exist at compile-time, or create artificial dependencies on ELF targets.
     - <code>\_\_attribute\_\_((arithmetic*))</code>

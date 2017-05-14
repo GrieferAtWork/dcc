@@ -113,7 +113,7 @@ struct DCCDecl {
 };
 
 #define DCCDecl_Incref(self)  (void)(++(self)->d_refcnt)
-#define DCCDecl_Decref(self)  (void)(--(self)->d_refcnt || (_DCCDecl_Delete(self),0))
+#define DCCDecl_Decref(self)  (void)(DCC_ASSERT((self)->d_refcnt),--(self)->d_refcnt || (_DCCDecl_Delete(self),0))
 #define DCCDecl_XIncref(self) ((self) ? DCCDecl_Incref(self) : (void)0)
 #define DCCDecl_XDecref(self) ((self) ? DCCDecl_Decref(self) : (void)0)
 DCCFUN void _DCCDecl_Delete(struct DCCDecl *__restrict self);

@@ -44,12 +44,30 @@ DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
  /* If no alignment was set, inherit that from the right. */
  if (!(self->a_flags&DCC_ATTRFLAG_FIXEDALIGN) &&
      !(self->a_alias)) self->a_align = rhs->a_align;
- self->a_flags |= (rhs->a_flags&(0xffff|DCC_ATTRFLAG_MASK_WARNING));
+ /* TODO: Do more strict checking when comparing old against new attributes. */
+ self->a_flags |= rhs->a_flags&(DCC_ATTRFLAG_MASK_FLAGS|
+                                DCC_ATTRFLAG_MASK_MODE|
+                                DCC_ATTRFLAG_MASK_REACHABLE|
+                                DCC_ATTRFLAG_MASK_WARNING);
+ /* TODO: DCC_ATTRFLAG_MASK_CALLCONV */
+ /* TODO: DCC_ATTRFLAG_MASK_VISIBILITY */
+ if (rhs->a_reach) {
+  if (!self->a_reach) {
+   self->a_reach = rhs->a_reach;
+   TPPString_Decref(self->a_reach);
+  } else if (self->a_reach->s_size != rhs->a_reach->s_size ||
+            !memcmp(self->a_reach->s_text,rhs->a_reach->s_text,
+                    self->a_reach->s_size*sizeof(char))) {
+   WARN(W_ATTRIBUTE_MERGE_REACHMSG,
+        self->a_reach->s_text,
+        rhs->a_reach->s_text);
+  }
+ }
  if (rhs->a_flags&DCC_ATTRFLAG_CONSTRUCTOR) self->a_c_prio = rhs->a_c_prio;
  if (rhs->a_flags&DCC_ATTRFLAG_DESTRUCTOR)  self->a_d_prio = rhs->a_d_prio;
  /* If the right has a lower alignment that 'self', inherit it. */
  if (rhs->a_flags&DCC_ATTRFLAG_FIXEDALIGN) {
-  if (self->a_alias) self->a_flags &= ~(DCC_ATTRFLAG_FIXEDALIGN);
+  if (DCCATTRDECL_HASALIAS(self)) self->a_flags &= ~(DCC_ATTRFLAG_FIXEDALIGN);
   else if (self->a_align > rhs->a_align)
            self->a_align = rhs->a_align;
  }
@@ -60,7 +78,7 @@ DCCAttrDecl_InitCopy(struct DCCAttrDecl *__restrict self,
  assert(self);
  assert(rhs);
  assert(self != rhs);
- memcpy(self,rhs,sizeof(struct DCCAttrDecl));
+ *self = *rhs;
  if (self->a_alias) DCCSym_Incref(self->a_alias);
  if (self->a_reach) TPPString_Incref(self->a_reach);
 }
@@ -145,15 +163,17 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   YIELD();
   DCCParse_ParPairBegin();
   if (function->k_id == KWD_aligned) {
-   if (self->a_alias) {
+   if (DCCATTRDECL_HASALIAS(self)) {
     WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
     DCCParse_CExpr(0);
-   } else {
-    self->a_align  = (target_siz_t)DCCParse_CExpr(0);
-    self->a_flags |= DCC_ATTRFLAG_FIXEDALIGN;
-    if (self->a_align&(self->a_align-1))
-        WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
+    assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
+    DCCSym_Decref(self->a_alias);
+    self->a_alias = NULL;
    }
+   self->a_align  = (target_siz_t)DCCParse_CExpr(0);
+   self->a_flags |= DCC_ATTRFLAG_FIXEDALIGN;
+   if (self->a_align&(self->a_align-1))
+       WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
   } else {
    self->a_regparm = (uint8_t)DCCParse_CExpr(0);
   }
@@ -192,7 +212,7 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
  case KWD_visibility:
  case KWD_alias:
  case KWD_section:
- case KWD_dll:
+ case KWD_lib:
   YIELD();
 parse_alias:
   has_paren = TOK == '(';
@@ -229,24 +249,48 @@ set_text:
    if (!text) self->a_section = NULL;
    else {
     struct TPPKeyword *sec_name = TPPLexer_LookupKeyword(text->s_text,text->s_size,0);
+    if (self->a_section) {
+     if (self->a_flags&DCC_ATTRFLAG_SECTION) {
+      WARN(W_ATTRIBUTE_SECTION_ALREADY_SET,
+           self->a_section->sc_start.sy_name);
+      self->a_flags &= ~(DCC_ATTRFLAG_SECTION);
+     } else WARN(W_ATTRIBUTE_ALIAS_WITH_SECTION);
+     DCCSym_Decref(self->a_alias);
+    }
+    assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
     self->a_section = sec_name ? DCCUnit_GetSec(sec_name) : NULL;
     if (!self->a_section || DCCSection_ISIMPORT(self->a_section)) {
      WARN(W_ATTRIBUTE_SECTION_UNKNOWN_SECTION,text->s_text);
      self->a_section = NULL;
+    } else {
+incref_section:
+     self->a_flags |= DCC_ATTRFLAG_SECTION;
+     DCCSection_Incref(self->a_section);
     }
-   
    }
   } break;
 
-  {
-  case KWD_dll:
-   if (!text) self->a_section = NULL;
-   else {
-    struct TPPKeyword *sec_name = TPPLexer_LookupKeyword(text->s_text,text->s_size,1);
+  { /* Explicitly define the origin of a library dependency. */
+  case KWD_lib:
+   if (text) {
+    struct TPPKeyword *sec_name;
+    if (self->a_section) {
+     if (self->a_flags&DCC_ATTRFLAG_SECTION) {
+      WARN(W_ATTRIBUTE_DLL_ALREADY_SET,
+           self->a_section->sc_start.sy_name);
+      self->a_flags &= ~(DCC_ATTRFLAG_SECTION);
+     } else WARN(W_ATTRIBUTE_ALIAS_WITH_DLL);
+     DCCSym_Decref(self->a_alias);
+    }
+    assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
+    sec_name = TPPLexer_LookupKeyword(text->s_text,text->s_size,1);
     self->a_section = sec_name ? DCCUnit_NewSec(sec_name,DCC_SYMFLAG_SEC_ISIMPORT) : NULL;
-    if (self->a_section && !DCCSection_ISIMPORT(self->a_section)) {
+    if (!self->a_section);
+    else if (!DCCSection_ISIMPORT(self->a_section)) {
      WARN(W_ATTRIBUTE_DLL_IS_A_SECTION,text->s_text);
      self->a_section = NULL;
+    } else {
+     goto incref_section;
     }
    }
   } break;
@@ -254,28 +298,37 @@ set_text:
   { /* Define a symbol aliasing another. */
   case KWD_alias:
   case KWD_weakref:
-   if (self->a_alias && text) {
+   if (self->a_flags&DCC_ATTRFLAG_FIXEDALIGN) {
+    WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
+    self->a_flags &= ~(DCC_ATTRFLAG_FIXEDALIGN);
+   }
+   if (self->a_flags&DCC_ATTRFLAG_SECTION) {
+    assert(self->a_section);
+    if (DCCSection_ISIMPORT(self->a_section))
+         WARN(W_ATTRIBUTE_ALIAS_WITH_DLL);
+    else WARN(W_ATTRIBUTE_ALIAS_WITH_SECTION);
+    DCCSection_Decref(self->a_section);
+    self->a_flags &= ~(DCC_ATTRFLAG_SECTION);
+   } else if (self->a_alias) {
     WARN(W_ATTRIBUTE_ALIAS_ALREADY_DEFINED,
          self->a_alias->sy_name);
     DCCSym_Decref(self->a_alias);
    }
-   if (self->a_flags&DCC_ATTRFLAG_FIXEDALIGN)
-       WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
+   if (!text || (function = TPPLexer_LookupKeyword(text->s_text,text->s_size,1)) == NULL)
+    self->a_alias = NULL;
    else {
-    if (!text) self->a_alias = NULL;
-    else if likely((function = TPPLexer_LookupKeyword(text->s_text,text->s_size,1)) != NULL) {
-     struct DCCSym *alias = DCCUnit_NewSym(function,DCC_SYMFLAG_NONE);
-     if (!alias) WARN(W_ATTRIBUTE_ALIAS_UNKNOWN_SYMBOL,function);
-     else DCCSym_Incref(alias);
-     self->a_alias = alias; /* Inherit reference. */
-    }
-    self->a_offset = 0;
-    if (TOK == ',') {
-     /* Extension: Alias offset. */
-     WARN(W_ATTRIBUTE_ALIAS_OFFSET_EXTENSION);
-     YIELD();
-     self->a_offset = (target_off_t)DCCParse_CExpr(1);
-    }
+    struct DCCSym *alias = DCCUnit_NewSym(function,DCC_SYMFLAG_NONE);
+    if (!alias) WARN(W_ATTRIBUTE_ALIAS_UNKNOWN_SYMBOL,function);
+    else        DCCSym_Incref(alias);
+    self->a_alias = alias; /* Inherit reference. */
+   }
+   assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
+   self->a_offset = 0;
+   if (TOK == ',') {
+    /* Extension: Alias offset. */
+    WARN(W_ATTRIBUTE_ALIAS_OFFSET_EXTENSION);
+    YIELD();
+    self->a_offset = (target_off_t)DCCParse_CExpr(1);
    }
   } break;
 

@@ -646,6 +646,11 @@ DCCSym_Define(struct DCCSym *__restrict self,
               target_ptr_t addr, target_siz_t size) {
  DCCSym_ASSERT(self);
  assert(section);
+ /*  Don't warn when re-declared at the same location
+  * (Can happen for multiple lib-import declarations). */
+ if (self->sy_sec == section &&
+     self->sy_addr == addr &&
+     self->sy_size == size) return;
  DCCSym_ClearDef(self,1);
  self->sy_addr = addr;
  self->sy_size = size;
@@ -659,6 +664,9 @@ DCCSym_Alias(struct DCCSym *__restrict self,
              target_ptr_t offset) {
  DCCSym_ASSERT(self);
  DCCSym_ASSERT(alias_sym);
+ /* Don't warn when re-declared as the same alias. */
+ if (self->sy_alias == alias_sym &&
+     self->sy_addr == offset) return;
  DCCSym_ClearDef(self,1);
  DCCSym_Incref(alias_sym);
  self->sy_alias = alias_sym; /* Inherit reference. */
@@ -1393,7 +1401,7 @@ end:
 #endif
  return result;
 }
-PUBLIC /*ref*/struct DCCSym *
+PUBLIC struct DCCSym *
 DCCSection_DAllocSym(struct DCCSection *__restrict self,
                      void const *__restrict memory,
                      target_siz_t mem_size, target_siz_t size,
@@ -1403,7 +1411,8 @@ DCCSection_DAllocSym(struct DCCSection *__restrict self,
  if unlikely(!result) return NULL;
  addr = DCCSection_DAllocMem(self,memory,mem_size,size,align,offset);
  DCCSym_Define(result,self,addr,size);
- DCCSym_XASSERT(result);
+ DCCUnit_InsSym(result); /* Inherit reference. */
+ DCCSym_ASSERT(result);
  return result;
 }
 
@@ -1814,6 +1823,7 @@ void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym) {
   if unlikely(!unit.u_syma) goto seterr;
   assert(unit.u_symv);
   pbucket = &unit.u_symv[DCCSym_HASH(sym) % unit.u_syma];
+  assert(sym != *pbucket);
   sym->sy_unit_next = *pbucket;
   *pbucket          = sym; /* Inherit reference. */
   ++unit.u_symc;

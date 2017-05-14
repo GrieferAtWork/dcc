@@ -49,150 +49,6 @@ DCC_DECL_BEGIN
 
 extern void DCCSection_InsSym(struct DCCSection *__restrict self, struct DCCSym *__restrict sym);
 extern void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym);
-PRIVATE struct DCCSym *inherit_named_sym(/*ref*/struct DCCSym *__restrict srcsym);
-PRIVATE struct DCCSym *inherit_any_sym(/*ref*/struct DCCSym *__restrict srcsym);
-
-PRIVATE void
-inherit_sym(/*ref*/struct DCCSym *__restrict srcsym) {
- struct DCCSym *beforesym;
- struct DCCSection *dstsec;
- for (beforesym = srcsym->sy_unit_before;
-      beforesym; beforesym = beforesym->sy_unit_before) {
-  /* Make sure to inherit all old definitions as well! */
-  assert(beforesym->sy_name == srcsym->sy_name);
-  DCCSym_ASSERT(beforesym);
-  if (beforesym->sy_sec) {
-   if ((*beforesym->sy_sec_pself = beforesym->sy_sec_next) != NULL)
-         beforesym->sy_sec_next->sy_sec_pself = beforesym->sy_sec_pself;
-   assert(beforesym->sy_sec->sc_symc);
-   --beforesym->sy_sec->sc_symc;
-   dstsec = DCCUnit_GetSec(beforesym->sy_sec->sc_start.sy_name);
-   assert(dstsec);
-   DCCSection_Incref(dstsec);
-   DCCSection_Decref(beforesym->sy_sec);
-   beforesym->sy_sec = dstsec; /* Drop & Inherit reference. */
-   if (!DCCSection_ISIMPORT(dstsec))
-        beforesym->sy_addr += dstsec->sc_merge;
-   DCCSection_InsSym(beforesym->sy_sec,beforesym);
-  } else if (beforesym->sy_alias) {
-   beforesym->sy_alias = inherit_any_sym(beforesym->sy_alias);
-   DCCSym_ASSERT(beforesym->sy_alias);
-   DCCSym_Incref(beforesym->sy_alias);
-  }
- }
- if (srcsym->sy_sec) {
-  if (srcsym->sy_sec == &DCCSection_Abs) {
-   /* Special case: Symbol from the ABS section. */
-   if (srcsym == &DCCSection_Abs.sc_start) {
-    /* Special case: This is the ABS section. */
-    goto already_inherited;
-   }
-   goto ins_ndef_sym;
-  }
-  assert(srcsym->sy_sec_pself);
-  dstsec = DCCUnit_GetSec(srcsym->sy_sec->sc_start.sy_name);
-  assert(dstsec);
-  if (dstsec == srcsym->sy_sec) {
-   assert(srcsym->sy_refcnt >= 2);
-   --srcsym->sy_refcnt;
-   return;
-  }
-  if ((*srcsym->sy_sec_pself = srcsym->sy_sec_next) != NULL)
-        srcsym->sy_sec_next->sy_sec_pself = srcsym->sy_sec_pself;
-  assert(srcsym->sy_sec->sc_symc >= 1);
-  --srcsym->sy_sec->sc_symc;
-  DCCSection_Incref(dstsec);
-  DCCSection_Decref(srcsym->sy_sec);
-  srcsym->sy_sec   = dstsec; /* Override. */
-  if (!DCCSection_ISIMPORT(dstsec))
-       srcsym->sy_addr += dstsec->sc_merge; /* Adjust symbol address. */
-  DCCSection_InsSym(dstsec,srcsym);
- } else {
-  /* Inherit a symbol. */
-  assert(!srcsym->sy_sec);
-  assert(!srcsym->sy_sec_pself);
-  assert(!srcsym->sy_sec_next);
-ins_ndef_sym:
-  if (srcsym->sy_unit_next ||
-      unit.u_nsym == srcsym) {
-already_inherited:
-   DCCSym_Decref(srcsym);
-   return;
-  }
-  if (srcsym->sy_name != &TPPKeyword_Empty && unit.u_syma) {
-   struct DCCSym *inherited_sym = unit.u_symv[srcsym->sy_name->k_id % unit.u_syma];
-   while (inherited_sym) {
-    if (inherited_sym == srcsym) goto already_inherited;
-    inherited_sym = inherited_sym->sy_unit_next;
-   }
-  }
-
-  assert(!srcsym->sy_unit_next);
-  if (srcsym->sy_alias) {
-   srcsym->sy_alias = inherit_any_sym(srcsym->sy_alias);
-   DCCSym_ASSERT(srcsym->sy_alias);
-   DCCSym_Incref(srcsym->sy_alias);
-  }
- }
- DCCUnit_InsSym(srcsym); /* Inherit reference. */
-}
-
-PRIVATE struct DCCSym *
-inherit_named_sym(/*ref*/struct DCCSym *__restrict srcsym) {
- struct DCCSym *dstsym;
- assert(srcsym);
- dstsym = DCCUnit_GetSym(srcsym->sy_name);
- if (srcsym == dstsym) goto drop_srcsym;
- if (dstsym &&
-     /* If either symbol was declared as static, allow both declarations. */
-   !(dstsym->sy_flags&DCC_SYMFLAG_STATIC) &&
-   !(srcsym->sy_flags&DCC_SYMFLAG_STATIC)) {
-  /* The same named symbol exists in both units.
-   * >> Redeclare the existing symbol as the new one! */
-  if (srcsym->sy_alias) {
-   struct DCCSym *alias = inherit_any_sym(srcsym->sy_alias);
-   srcsym->sy_alias = NULL; /* Inherited above. */
-   DCCSym_ASSERT(alias);
-   if (DCCSym_ISFORWARD(dstsym) ||
-     !(srcsym->sy_flags&DCC_SYMFLAG_WEAK)) {
-    DCCSym_Alias(dstsym,alias,srcsym->sy_addr);
-   }
-  } else if (srcsym->sy_sec && !DCCSym_ISSECTION(srcsym)) {
-   struct DCCSection *dstsec;
-   assert(srcsym->sy_sec->sc_start.sy_name);
-   assert(srcsym->sy_sec->sc_start.sy_name != &TPPKeyword_Empty);
-   if (DCCSym_ISFORWARD(dstsym) ||
-     !(srcsym->sy_flags&DCC_SYMFLAG_WEAK)) {
-    target_ptr_t merge_addr;
-    dstsec = DCCUnit_GetSec(srcsym->sy_sec->sc_start.sy_name);
-    assert(dstsec);
-    /* Define after the merge location. */
-    merge_addr = srcsym->sy_addr;
-    if (!DCCSection_ISIMPORT(dstsec))
-         merge_addr += dstsec->sc_merge;
-    DCCSym_Define(dstsym,dstsec,merge_addr,srcsym->sy_size);
-    dstsym->sy_flags |= srcsym->sy_flags;
-    srcsym->sy_size = 0; /* Inherit all section data. */
-   }
-  }
-drop_srcsym:
-  DCCSym_Decref(srcsym); /* Drop reference (all are inherited below). */
- } else {
-  inherit_sym(srcsym);
-  dstsym = srcsym;
- }
- return dstsym;
-}
-PRIVATE struct DCCSym *
-inherit_any_sym(/*ref*/struct DCCSym *__restrict srcsym) {
- assert(srcsym);
- if (srcsym->sy_name != &TPPKeyword_Empty) {
-  srcsym = inherit_named_sym(srcsym);
- } else {
-  inherit_sym(srcsym);
- }
- return srcsym;
-}
 
 #if DCC_DEBUG
 PRIVATE void
@@ -230,20 +86,20 @@ found_sec:
 #endif
 
 
+
 PUBLIC void
 DCCUnit_Merge(struct DCCUnit *__restrict other) {
- struct DCCSection *srcsec,*dstsec;
- struct DCCSym *srcsym,*nextsym;
- struct DCCSym **sym_iter,**sym_end,**psym;
- struct DCCRel *rel_iter,*rel_end,*reldst;
+ struct DCCSection *srcsec;
  assert(other);
  assert(other != &unit);
  /* Merge all sections & section data. */
  for (srcsec = other->u_secs; srcsec; srcsec = srcsec->sc_next) {
+  struct DCCSection *dstsec;
   target_ptr_t other_sec_base;
   target_siz_t other_sec_size;
   uint8_t *dst_buffer;
   assert(!(srcsec->sc_start.sy_flags&DCC_SYMFLAG_SEC_ISIMPORT));
+  assert(DCCSym_ISSECTION(&srcsec->sc_start));
   dstsec = DCCUnit_NewSec(srcsec->sc_start.sy_name,
                           srcsec->sc_start.sy_flags);
   if unlikely(!dstsec) return;
@@ -271,6 +127,7 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
 
  /* Merge imports. */
  for (srcsec = other->u_imps; srcsec; srcsec = srcsec->sc_next) {
+  struct DCCSection *dstsec;
   assert(srcsec->sc_start.sy_flags&DCC_SYMFLAG_SEC_ISIMPORT);
   dstsec = DCCUnit_NewSec(srcsec->sc_start.sy_name,
                           srcsec->sc_start.sy_flags);
@@ -282,6 +139,203 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
   }
  }
 
+#if 1
+ {
+  struct DCCSym **symv,*iter,*follow,*next;
+  struct DCCSym **next_free,**sym_iter,**sym_end,**old_end;
+  size_t symc = other->u_symc;
+  iter = other->u_nsym;
+  while (iter) ++symc,iter = iter->sy_unit_next;
+  symv = other->u_symv;
+  /* Flatten the hash-map into a vector. */
+  if (other->u_syma < symc) {
+   symv = (struct DCCSym **)DCC_Realloc(symv,symc*sizeof(struct DCCSym *),0);
+   if unlikely(!symv) return;
+   memset(symv+other->u_syma,0,
+         (size_t)(symc-other->u_syma)*
+          sizeof(struct DCCSym *));
+  }
+  next_free = symv;
+  old_end = (sym_iter = symv)+other->u_syma;
+  sym_end = symv+symc;
+  for (; sym_iter != old_end; ++sym_iter) {
+   if ((iter = *sym_iter) != NULL) {
+    follow = iter->sy_unit_next;
+    iter->sy_unit_next = NULL;
+    assert(iter->sy_name != &TPPKeyword_Empty);
+    while (follow) {
+     assert(follow->sy_name != &TPPKeyword_Empty);
+     /* Search for the next free slot. */
+     while (*next_free) assert(next_free != sym_end),++next_free;
+     next = follow->sy_unit_next;
+     follow->sy_unit_next = NULL;
+     *next_free = follow;
+     follow = next;
+    }
+   }
+  }
+  other->u_symc = 0;
+  other->u_syma = 0;
+  other->u_symv = NULL;
+
+  /* Merge unnamed symbols. */
+  follow = other->u_nsym;
+  other->u_nsym = NULL;
+  while (follow) {
+   while (*next_free) assert(next_free != sym_end),++next_free;
+   assert(follow->sy_name == &TPPKeyword_Empty);
+   next = follow->sy_unit_next;
+   follow->sy_unit_next = NULL;
+   *next_free = follow;
+   follow = next;
+  }
+
+  /* Some named symbols may still exist between 'symv+symc' and 'old_end'.
+   * >> Shift them downwards! */
+  for (sym_iter = symv+symc; sym_iter < old_end; ++sym_iter) {
+   if ((follow = *sym_iter) != NULL) {
+    while (*next_free) assert(next_free != sym_end),++next_free;
+    *next_free = follow;
+   }
+  }
+
+  /* Update to the new symbol vector end. */
+  sym_end = symv+symc;
+
+  /* At this point, _ALL_ (named + unnamed) symbols from the old unit are collected. */
+  /* Step #1: Fix all section symbols to point into the new section. */
+  for (sym_iter = symv; sym_iter != sym_end; ++sym_iter) {
+   struct DCCSym *src_sym = *sym_iter;
+   /* Inherit all named symbols (And search for new symbol bindings). */
+   assert(src_sym);
+   assert(!src_sym->sy_unit_next);
+   do if (src_sym->sy_sec && !DCCSym_ISSECTION(src_sym)) {
+    struct DCCSection *new_section;
+    /* Fix section linkage. */
+    new_section = DCCUnit_GetSec(src_sym->sy_sec->sc_start.sy_name);
+    assertf(new_section,"Section '%s' not properly imported",
+            src_sym->sy_sec->sc_start.sy_name->k_name);
+    DCCSection_Incref(new_section);
+    /* Unlike the symbol from its old section. */
+    if ((*src_sym->sy_sec_pself = src_sym->sy_sec_next) != NULL)
+          src_sym->sy_sec_next->sy_sec_pself = src_sym->sy_sec_pself;
+    assert(src_sym->sy_sec->sc_symc);
+    --src_sym->sy_sec->sc_symc;
+    DCCSection_Decref(src_sym->sy_sec);
+#if DCC_DEBUG
+    src_sym->sy_sec_pself = NULL;
+    src_sym->sy_sec_next  = NULL;
+#endif
+    if (!DCCSection_ISIMPORT(new_section)) {
+     /* Adjust the symbol address accordingly. */
+     src_sym->sy_addr += new_section->sc_merge;
+    }
+    src_sym->sy_sec = new_section; /* Inherit reference. */
+    /* Insert the symbol into its new section. */
+    DCCSection_InsSym(new_section,src_sym);
+   } while ((src_sym = src_sym->sy_unit_before) != NULL);
+  }
+
+  /* Step #2: Inherit all symbols into the new unit. */
+  for (sym_iter = symv; sym_iter != sym_end; ++sym_iter) {
+   struct DCCSym *dst_sym,*src_sym = *sym_iter;
+   /* Inherit all named symbols (And search for new symbol bindings). */
+   assert(src_sym);
+   assert(!src_sym->sy_unit_next);
+   if (DCCSym_ISSECTION(src_sym)) {
+    /* Get rid of section symbols. */
+    /* This reference is dropped later after relocations are parsed. */
+    //DCCSym_Decref(src_sym);
+    *sym_iter = NULL; /* This reference is dropped later. */
+   } else if ((src_sym->sy_flags&DCC_SYMFLAG_STATIC) ||
+              (dst_sym = DCCUnit_GetSym(src_sym->sy_name)) == NULL) {
+//inherit_sym:
+    /* Load static symbols as though they were unnamed. */
+    DCCUnit_InsSym(src_sym); /* Inherit reference. */
+    DCCSym_Incref(src_sym);
+   } else if (DCCSym_ISFORWARD(src_sym)) {
+    /* Get rid of undefined symbols. (Since these are named,
+     * relocations to the symbol will be fixed later) */
+drop_srcsym:
+    DCCSym_Decref(src_sym);
+    *sym_iter = NULL;
+   } else {
+    /* NOTE: Technically, we could exchange 'dst_sym' here if its reference counter was ONE(1). */
+    assert(src_sym->sy_name != &TPPKeyword_Empty);
+    /* At thing point, we know that the symbol is used in
+     * the current unit, meaning we can't just replace an
+     * existing declaration, but must define a new one.
+     * >> Yet at this point, we can already filter symbol re-declaration cases. */
+    if (!DCCSym_ISFORWARD(dst_sym)) {
+     /* Don't override symbol declaration with a weak symbol.
+      * >> Instead, drop the source symbol and let relocations below
+      *    link every use of 'src_sym' against the existing symbol. */
+     if (src_sym->sy_flags&DCC_SYMFLAG_WEAK) goto drop_srcsym;
+    }
+   }
+  }
+  /* Step #3: All unique symbols have been imported.
+   *          With that in mind, we must now go through again and
+   *          Re-define/alias all remaining symbol declarations. */
+  for (sym_iter = symv; sym_iter != sym_end; ++sym_iter) {
+   struct DCCSym *src_sym = *sym_iter;
+   if (src_sym) {
+    struct DCCSym *dst_sym,*before_iter,*old_alias,*alias_target;
+    dst_sym = DCCUnit_GetSym(src_sym->sy_name);
+    if ((before_iter = src_sym->sy_unit_before) != NULL) {
+     /* Must update alias before-declaration and prefix all to 'dst_sym' */
+     if (dst_sym) {
+      while (dst_sym->sy_unit_before) dst_sym = dst_sym->sy_unit_before;
+      src_sym->sy_unit_before = NULL;        /* Inherit reference. */
+      dst_sym->sy_unit_before = before_iter; /* Inherit reference. */
+     }
+fix_alias:
+     do if ((old_alias = before_iter->sy_alias) != NULL &&
+           !(old_alias->sy_flags&DCC_SYMFLAG_STATIC)) {
+      assert(old_alias->sy_name != &TPPKeyword_Empty);
+      /* Replace the alias symbol. */
+      alias_target = DCCUnit_GetSym(old_alias->sy_name);
+      assertf(alias_target,"Missing alias symbol '%s'",alias_target->sy_name->k_name);
+      DCCSym_Incref(alias_target);
+      DCCSym_Decref(old_alias);
+      before_iter->sy_alias = alias_target; /* Inherit reference (both ways). */
+     } while ((before_iter = before_iter->sy_unit_before) != NULL);
+    } else {
+     /* Fix an alias declaration for this symbol. */
+     before_iter = src_sym;
+     assert(!before_iter->sy_unit_before);
+     goto fix_alias;
+    }
+    if (dst_sym && !(src_sym->sy_flags&DCC_SYMFLAG_STATIC)) {
+     /* Override an existing symbol, or define it. */
+     if (src_sym->sy_sec) {
+      /* Section merge adjustments were already made above! */
+      DCCSym_Define(dst_sym,src_sym->sy_sec,
+                    src_sym->sy_addr,src_sym->sy_size);
+      src_sym->sy_size = 0; /* Inherit all data. */
+      goto merge_symflags;
+     } else if (src_sym->sy_alias) {
+      /* 'sy_alias' is known to belong to the merged unit. */
+      DCCSym_Alias(dst_sym,src_sym->sy_alias,src_sym->sy_addr);
+merge_symflags:
+      dst_sym->sy_flags |= src_sym->sy_flags;
+     }
+    }
+    /* Drop the vector reference to this symbol.
+     * NOTE: If this doesn't kill it, it is likely that relocations below will! */
+    DCCSym_Decref(src_sym);
+#if DCC_DEBUG
+    *sym_iter = NULL; /* Symbolically inherit the reference. */
+#endif
+   }
+  }
+  /* And we're done! All symbols are inherited, or have been merged.
+   * >> None should be remaining and once relocations have been fixed, everything should be OK! */
+  free(symv);
+  /* Don't continue if something went wrong! */
+  if unlikely(!OK) return;
+ }
+#else
  /* Now it's time to move all the symbols. */
  sym_end = (sym_iter = other->u_symv)+other->u_syma;
  for (; sym_iter != sym_end; ++sym_iter) {
@@ -309,10 +363,12 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
   srcsym = nextsym;
  }
  other->u_nsym = NULL;
+#endif
 
-
- /* Finally, copy all the relocations. */
+ /* Now copy all the relocations. */
  for (srcsec = other->u_secs; srcsec; srcsec = srcsec->sc_next) {
+  struct DCCRel *rel_iter,*rel_end,*reldst,*rel_vec;
+  struct DCCSection *dstsec;
   uint8_t *relbase;
   target_ptr_t merge_base;
   if (!srcsec->sc_relc) continue;
@@ -325,16 +381,33 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
    WARN(W_LINKER_CANT_RELOC_LIB_SECTION,dstsec->sc_start.sy_name);
    continue;
   }
-  rel_end = (rel_iter = srcsec->sc_relv)+srcsec->sc_relc;
+  rel_end = (rel_iter = rel_vec = srcsec->sc_relv)+srcsec->sc_relc;
   reldst = DCCSection_Allocrel(dstsec,srcsec->sc_relc);
+  srcsec->sc_rela = 0;  /* Ensure consistent state. */
+  srcsec->sc_relc = 0;
+  srcsec->sc_relv = NULL;
+
   merge_base = dstsec->sc_merge;
   relbase = dstsec->sc_text.tb_begin;
   for (; rel_iter != rel_end; ++rel_iter,++reldst) {
-   uint8_t *reldata;
-   assert(rel_iter->r_sym);
-   *reldst = *rel_iter; /* Inherit reference: 'rel_iter->r_sym'. */
-   reldst->r_sym = inherit_any_sym(reldst->r_sym);
-   DCCSym_Incref(reldst->r_sym);
+   uint8_t *reldata; struct DCCSym *relsym;
+   relsym = rel_iter->r_sym;
+   DCCSym_ASSERT(relsym);
+   *reldst = *rel_iter; /* Inherit reference: 'relsym'. */
+   if (!(relsym->sy_flags&DCC_SYMFLAG_STATIC)) {
+    assertf(relsym->sy_name != &TPPKeyword_Empty,
+            "Non-static symbols _must_ have be named");
+    /* Search for the new instance of a named symbol.
+     * NOTE: We know that the symbol _must_ exist, because it was inherited above! */
+    reldst->r_sym = DCCUnit_GetSym(relsym->sy_name);
+    assertf(reldst->r_sym,"Symbol '%s' was not imported properly",
+            relsym->sy_name->k_name);
+    DCCSym_Incref(reldst->r_sym); /* Create reference to the new target. */
+    DCCSym_Decref(relsym);        /* Drop reference from the old target. */
+   } else {
+    /* NOTE: All unnamed/static symbols were inherited above, meaning
+     *       that 'reldst->r_sym' is part of the merged unit. */
+   }
    reldst->r_addr += merge_base; /* Adjust for merge offset. */
    reldata = relbase+reldst->r_addr;
    assert(reldata >= relbase);
@@ -354,11 +427,14 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
     default: break;
    }
   }
-  free(srcsec->sc_relv); /* Inherit _all_ symbols. */
-  /* Ensure consistent state. */
-  srcsec->sc_rela = 0;
-  srcsec->sc_relc = 0;
-  srcsec->sc_relv = NULL;
+  free(rel_vec); /* Inherit _all_ symbols. */
+ }
+ /* Finally, we must drop the section references we've
+  * inherited during symbol inheritance Step #2. */
+ for (srcsec = other->u_secs; srcsec;) {
+  struct DCCSection *secnext = srcsec->sc_next;
+  DCCSection_Decref(srcsec);
+  srcsec = secnext;
  }
 #if DCC_DEBUG
  { /* Validate all symbol ranges & associations. */

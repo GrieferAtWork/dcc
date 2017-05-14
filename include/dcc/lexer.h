@@ -87,6 +87,8 @@ struct DCCSymAddr {
 #define DCC_ATTRFLAG_NONE          0x00000000
 #define DCC_ATTRFLAG_NOINLINE      0x00000001 /*< Used for functions: Mark as no-inline. */
 #define DCC_ATTRFLAG_NORETURN      0x00000002 /*< Used for functions: Mark as no-return. */
+#define DCC_ATTRFLAG_SECTION       0x00000004 /*< An explicit section was defined (When not set, the symbol is used as alias).
+                                               *  WARNING: This flag may only be set when 'a_section' is non-NULL. */
 #define DCC_ATTRFLAG_WEAK          0x00000008 /*< Used for symbols: Define as weak. */
 #define DCC_ATTRFLAG_NAKED         0x00000010 /*< Used for functions: Don't generate a prologue/epilogue. */
 #define DCC_ATTRFLAG_CONSTRUCTOR   0x00000020 /*< Used for functions: Run before main(). */
@@ -124,7 +126,7 @@ struct DCCSymAddr {
 #define DCC_ATTRFLAG_VIS_PROTECTED 0x30000000 /*< Protected visibility. */
 #define DCC_ATTRFLAG_VIS_INTERNAL  0x40000000 /*< Protected visibility. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE || defined(GUARD_DCC_LEXER_ATTRIBUTES_C_INL)
-#define DCC_ATTRFLAG_DLLIMPORT     0x01000000 /*< On PE targets: dllimport. */
+#define DCC_ATTRFLAG_DLLIMPORT     0x08000000 /*< On PE targets: dllimport. */
 #define DCC_ATTRFLAG_DLLEXPORT     0x80000000 /*< On PE targets: dllexport. */
 #endif
 
@@ -137,21 +139,29 @@ struct DCCSymAddr {
 #define DCC_ATTRFLAG_MASK_VISIBILITY    0xf8000000 /*< Mask for visibility flags. */
 
 struct DCCAttrDecl {
- uint32_t                 a_flags;    /*< Attribute flags (Set of 'DCC_ATTRFLAG_*') */
- uint8_t                  a_regparm;  /*< Used for __attribute__((regparm(...))) */
- uint8_t                  a_padding1; /*< Padding... */
- uint16_t                 a_padding2; /*< Padding... */
- struct DCCSection       *a_section;  /*< [0..1] Used for __attribute__((section(...))) */
- /*ref*/struct DCCSym    *a_alias;    /*< [0..1] Used for __attribute__((alias(...))) */
- /*ref*/struct TPPString *a_reach;    /*< [0..1] Used for __attribute__((deprecated(...))) */
+ uint32_t                  a_flags;    /*< Attribute flags (Set of 'DCC_ATTRFLAG_*') */
+ uint8_t                   a_regparm;  /*< Used for __attribute__((regparm(...))) */
+ uint8_t                   a_padding1; /*< Padding/unused... */
+ uint16_t                  a_padding2; /*< Padding/unused... */
 union{
- DCC(target_siz_t)        a_align;    /*< Used by 'DCC_ATTRFLAG_FIXEDALIGN' */
- DCC(target_off_t)        a_offset;   /*< Used with 'a_alias' for alias-offsets. */
+ /*ref*/struct DCCSection *a_section;  /*< [0..1][DCC_ATTRFLAG_SECTION] Used for __attribute__((section(...))) */
+ /*ref*/struct DCCSym     *a_alias;    /*< [0..1][!DCC_ATTRFLAG_SECTION] Used for __attribute__((alias(...))) */
 };
- int                      a_c_prio;   /*< Constructor priority, or '0' when using default. */
- int                      a_d_prio;   /*< Destructor priority, or '0' when using default. */
+ /*ref*/struct TPPString  *a_reach;    /*< [0..1] Used for __attribute__((deprecated(...))) (User-defined warning text when declaration is reached) */
+union{
+ DCC(target_siz_t)         a_align;    /*< Used by 'DCC_ATTRFLAG_FIXEDALIGN' */
+ DCC(target_off_t)         a_offset;   /*< Used with 'a_alias' for alias-offsets. */
 };
-#define DCCATTRDECL_INIT  {0,0,0,0,NULL,NULL,NULL,{0},0,0}
+ int                       a_c_prio;   /*< Constructor priority, or '0' when using default. */
+ int                       a_d_prio;   /*< Destructor priority, or '0' when using default. */
+};
+#define DCCATTRDECL_INIT  {0,0,0,0,{NULL},NULL,{0},0,0}
+
+#define DCCATTRDECL_HASSECTION_OR_IMPORT(self) ((self)->a_section && ((self)->a_flags&DCC_ATTRFLAG_SECTION))
+#define DCCATTRDECL_HASALIAS(self)             ((self)->a_alias && !((self)->a_flags&DCC_ATTRFLAG_SECTION))
+#define DCCATTRDECL_HASSECTION(self)           (DCCATTRDECL_HASSECTION_OR_IMPORT(self) && !DCCSection_ISIMPORT((self)->a_section))
+#define DCCATTRDECL_HASIMPORT(self)            (DCCATTRDECL_HASSECTION_OR_IMPORT(self) && DCCSection_ISIMPORT((self)->a_section))
+#define DCCATTRDECL_GETSECTION_OR_IMPORT(self) (((self)->a_flags&DCC_ATTRFLAG_SECTION) ? (self)->a_section : NULL)
 
 DCCFUN void DCCAttrDecl_Quit(struct DCCAttrDecl *__restrict self);
 DCCFUN void DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,

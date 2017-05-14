@@ -256,7 +256,8 @@ DCCDecl_AllocStorage(struct DCCDecl *__restrict self, int has_init,
   symflags |= DCC_SYMFLAG_STATIC;
  }
 
- if ((attr = self->d_attr) != NULL && attr->a_alias) {
+ if ((attr = self->d_attr) != NULL &&
+      DCCATTRDECL_HASALIAS(attr)) {
   /* This symbol is aliasing another. */
   if (storage != DCCTYPE_AUTOMATIC && storage != DCCTYPE_EXTERN)
       WARN(W_ALIAS_WITHOUT_AUTOMATIC_STORAGE,self->d_name);
@@ -269,9 +270,11 @@ DCCDecl_AllocStorage(struct DCCDecl *__restrict self, int has_init,
   if unlikely(!self->d_mdecl.md_loc.ml_sym) return;
   /* Create reference for assignment above. */
   DCCSym_Incref(self->d_mdecl.md_loc.ml_sym);
-  /* xxx: __attribute__((alias("foo",42))) (second argument for alias offset?) */
+  /* EXTENSION: __attribute__((alias("foo",42)))
+   *         >> second is alias offset, where the example describes a
+   *            memory location offset from symbol 'foo' by '42' bytes. */
   DCCSym_Alias(self->d_mdecl.md_loc.ml_sym,
-               attr->a_alias,0);
+               attr->a_alias,attr->a_offset);
   return;
  }
  if (storage == DCCTYPE_EXTERN) {
@@ -293,10 +296,8 @@ forward_decl:
    forward_sym->sy_flags |= symflags;
    self->d_mdecl.md_loc.ml_sym = forward_sym;
    DCCSym_Incref(forward_sym); /* Create reference. */
-   if (attr && attr->a_section &&
-     /*DCCSym_ISFORWARD(forward_sym) &&*/
-       DCCSection_ISIMPORT(attr->a_section)) {
-    /* Special case: Define an explicit dll-import symbol. */
+   if (attr && DCCATTRDECL_HASIMPORT(attr)) {
+    /* Special case: Define an explicit lib-import symbol. */
     DCCSym_Define(forward_sym,attr->a_section,0,0);
 #if DCC_TARGET_BIN == DCC_BINARY_PE
     forward_sym->sy_flags |= DCC_SYMFLAG_PE_ITA_IND;
@@ -362,8 +363,9 @@ reload_size:
   decl_sym->sy_flags |= symflags;
   self->d_mdecl.md_loc.ml_sym = decl_sym;
   DCCSym_Incref(decl_sym); /* Create reference. */
-  if (attr && attr->a_section) {
+  if (attr && DCCATTRDECL_HASSECTION_OR_IMPORT(attr)) {
    storage_section = attr->a_section;
+   assert(storage_section);
    if (DCCSection_ISIMPORT(storage_section)) {
     /* Special case: Define an explicit dll-import symbol. */
     DCCSym_Define(decl_sym,storage_section,0,0);

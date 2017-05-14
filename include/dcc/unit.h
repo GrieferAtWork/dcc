@@ -218,7 +218,7 @@ struct DCCSym {
 #define DCCSym_ISFORWARD(self) ((self)->sy_sec == NULL && (self)->sy_alias == NULL)
 
 #define DCCSym_Incref(self)    (void)(++(self)->sy_refcnt)
-#define DCCSym_Decref(self)    (void)(--(self)->sy_refcnt || (_DCCSym_Delete(self),0))
+#define DCCSym_Decref(self)    (void)(DCC_ASSERT((self)->sy_refcnt),--(self)->sy_refcnt || (_DCCSym_Delete(self),0))
 #define DCCSym_XIncref(self)   ((self) ? DCCSym_Incref(self) : (void)0)
 #define DCCSym_XDecref(self)   ((self) ? DCCSym_Decref(self) : (void)0)
 DCCFUN void _DCCSym_Delete(struct DCCSym *__restrict self);
@@ -626,8 +626,9 @@ DCCSection_DAllocMem(struct DCCSection *__restrict self,
 
 /* A further simplification for 'DCCSection_DAllocMem', that returns
  * a reference to a symbol describing the newly allocated data.
+ * NOTE: The symbol is added to the current unit as an unnamed, static definition.
  * @requires: !DCCSection_ISIMPORT(self) */
-DCCFUN /*ref*/struct DCCSym *
+DCCFUN struct DCCSym *
 DCCSection_DAllocSym(struct DCCSection *__restrict self,
                      void const *__restrict memory,
                      DCC(target_siz_t) mem_size, DCC(target_siz_t) size,

@@ -45,8 +45,10 @@ DCCFunctionFrame_Enter(struct DCCFunctionFrame *__restrict self,
  self->ff_old_vstack  = compiler.c_vstack;
  self->ff_old_section = unit.u_curr;
  self->ff_new_section = fun_attr->a_section;
- if (self->ff_new_section && DCCSection_ISIMPORT(self->ff_new_section))
-     self->ff_new_section = NULL; /* Make sure this isn't an import section. */
+ if (self->ff_new_section &&
+    (!(fun_attr->a_flags&DCC_ATTRFLAG_SECTION) ||
+       DCCSection_ISIMPORT(self->ff_new_section))
+     ) self->ff_new_section = NULL; /* Make sure this isn't an import section. */
  self->ff_jmpsym      = NULL;
  self->ff_funsym      = fun_sym;
  self->ff_flags       = DCC_FUNCTIONFRAME_FLAG_NONE;
