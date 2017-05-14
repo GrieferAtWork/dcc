@@ -37,7 +37,7 @@ typedef struct DCCSection *(*PLibLoader)(char *__restrict filename,
                                          char *__restrict name,
                                          stream_t s);
 
-#define LIBLOADER_MAXMAGIC  4
+#define LIBLOADER_MAXMAGIC  8
 struct PLibLoaderDecl {
  PLibLoader  ld_loader;                    /*< [1..1] Loader entry point (NULL used for list terminator). */
  size_t      ld_msize;                     /*< Size of the magic header 'ld_magic' (Or ZERO(0) if loading should always be attempted). */
@@ -52,6 +52,8 @@ INTERN struct DCCSection *DCCUnit_DynLoadPE(char *__restrict filename,
 #if DCC_LIBFORMAT_DEF
 INTERN struct DCCSection *DCCUnit_DynLoadDEF(char *__restrict filename,
                                              char *__restrict name, stream_t fd);
+INTERN struct DCCSection *DCCUnit_DynLoadDEF2(char *__restrict filename,
+                                              char *__restrict name, stream_t fd);
 #endif /* DCC_LIBFORMAT_DEF */
 
 static struct PLibLoaderDecl const lib_loaders[] = {
@@ -59,7 +61,8 @@ static struct PLibLoaderDecl const lib_loaders[] = {
  {&DCCUnit_DynLoadPE,2,{'M','Z'}}, /* '*.exe/*.dll' PE binaries. */
 #endif /* DCC_LIBFORMAT_PE */
 #if DCC_LIBFORMAT_DEF
- {&DCCUnit_DynLoadDEF,0,{0}},      /* '*.def' library files. */
+ {&DCCUnit_DynLoadDEF2,7,{'L','I','B','R','A','R','Y'}}, /* '*.def' library files. */
+ {&DCCUnit_DynLoadDEF,0,{0}},                            /* '*.def' library files. */
 #endif /* DCC_LIBFORMAT_DEF */
  {NULL,0,{0}},
 };

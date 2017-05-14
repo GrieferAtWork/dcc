@@ -53,7 +53,11 @@ DCCDAT struct TPPKeyword_Empty_struct TPPKeyword_Empty_data;
 #define DCC_LX_YIELD     TPPLexer_Yield
 #define DCC_LX_HAS       TPPLexer_HasExtension
 #define DCC_LX_WARN      TPPLexer_Warn
+#if 1
+#define DCC_LX_OK       (DCC_LX_TOK >= 0)
+#else
 #define DCC_LX_OK     (!(TPPLexer_Current->l_flags&TPPLEXER_FLAG_ERROR))
+#endif
 
 #ifdef DCC_PRIVATE_API
 #define CURRENT  DCC_LX_CURRENT

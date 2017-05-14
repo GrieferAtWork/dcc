@@ -64,14 +64,11 @@ PRIVATE char *getline(struct TPPFile *__restrict f) {
 
 
 INTERN struct DCCSection *
-DCCUnit_DynLoadDEF(char *__restrict filename,
-                   char *__restrict name,
-                   stream_t fd) {
+DCCUnit_DynLoadDEF2(char *__restrict filename,
+                    char *__restrict name,
+                    stream_t fd) {
  struct DCCSection *result = NULL;
- { /* Check for the '.def' file extension. */
-   size_t len = strlen(filename);
-   if (len < 4 || memcmp(filename+len-4,".def",4*sizeof(char))) goto end;
- }
+ (void)filename;
  (void)name;
  { /* Open the file and begin parsing it. */
    char *line; int state = 0;
@@ -141,6 +138,16 @@ done:
  }
 end:
  return result;
+}
+
+INTERN struct DCCSection *
+DCCUnit_DynLoadDEF(char *__restrict filename,
+                   char *__restrict name,
+                   stream_t fd) {
+ /* Check for the '.def' file extension. */
+ size_t len = strlen(filename);
+ if (len < 4 || memcmp(filename+len-4,".def",4*sizeof(char))) return NULL;
+ return DCCUnit_DynLoadDEF2(filename,name,fd);
 }
 
 DCC_DECL_END

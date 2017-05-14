@@ -163,6 +163,7 @@ skip_yield_after_pack:
    }
    TPPString_Decref(comment_string);
   }
+  if (!OK) break;
   if (TOK != ')') WARN(W_EXPECTED_RPAREN); else YIELD();
  } break;
 
