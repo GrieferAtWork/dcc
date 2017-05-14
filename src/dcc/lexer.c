@@ -64,22 +64,33 @@ LEXPRIV struct TPPKeyword *DCC_PARSE_CALL tok_without_underscores(void) {
 
 extern char *skip_whitespace_and_comments(char *iter, char *end);
 
-LEXPRIV char *DCC_PARSE_CALL peek_next_token(void) {
- char *result,*end,*file_begin;
+LEXPRIV char *DCC_PARSE_CALL
+peek_next_token(struct TPPFile **tok_file) {
+ char *result = TOKEN.t_end,*end,*file_begin;
+ struct TPPFile *curfile = TOKEN.t_file;
 again:
- end = TOKEN.t_file->f_end;
- result = skip_whitespace_and_comments(TOKEN.t_end,end);
+ end = curfile->f_end;
+ result = skip_whitespace_and_comments(result,end);
  if (result == end) {
   int extend_error;
-  file_begin = TOKEN.t_file->f_begin;
+  file_begin = curfile->f_begin;
   /* Special case: Must extend the file. */
-  extend_error = TPPFile_NextChunk(TOKEN.t_file,TPPFILE_NEXTCHUNK_FLAG_EXTEND);
-  TOKEN.t_begin = TOKEN.t_file->f_begin+(TOKEN.t_begin-file_begin);
-  TOKEN.t_end   = TOKEN.t_file->f_begin+(TOKEN.t_end-file_begin);
-  result        = TOKEN.t_file->f_begin+(result-file_begin);
+  extend_error = TPPFile_NextChunk(curfile,TPPFILE_NEXTCHUNK_FLAG_EXTEND);
+  if (curfile == TOKEN.t_file) {
+   TOKEN.t_begin = curfile->f_begin+(TOKEN.t_begin-file_begin);
+   TOKEN.t_end   = curfile->f_begin+(TOKEN.t_end-file_begin);
+  }
+  result = curfile->f_begin+(result-file_begin);
   /* If the file was extended, search for the next token again. */
   if likely(extend_error) goto again;
+  /* Continue searching through the include-stack. */
+  if (curfile->f_prev) {
+   curfile = curfile->f_prev;
+   result = curfile->f_pos;
+   goto again;
+  }
  }
+ if (tok_file) *tok_file = curfile;
  return result;
 }
 

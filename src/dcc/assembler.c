@@ -248,7 +248,8 @@ done_flags:
   } else {
 def_minbytes:
    minbytes = 0;
-   while (op_val&1) ++minbytes,op_val >>= 1;
+   if (op_val < 0) op_val = -op_val,++minbytes;
+   while (op_val) ++minbytes,op_val >>= 1;
    minbytes = (minbytes+7)/8;
   }
   /* The address/disp is too large. */

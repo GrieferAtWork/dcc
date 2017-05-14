@@ -471,16 +471,17 @@ again:
 
  {
   char *second_bracket;
+  struct TPPFile *second_bracket_file;
  case '[':
   if (!HAS(EXT_CXX11_ATTRIBUTE)) break;
   /* Kind-of hacky, and not macro-compatible,
    * but check if the next token is a '['. */
-  second_bracket = peek_next_token();
+  second_bracket = peek_next_token(&second_bracket_file);
   if (*second_bracket != '[') break;
   /* Parse the next token after this second bracket. */
-  TOKEN.t_file->f_pos = second_bracket+1;
-  assert(TOKEN.t_file->f_pos >= TOKEN.t_file->f_begin);
-  assert(TOKEN.t_file->f_pos <= TOKEN.t_file->f_end);
+  second_bracket_file->f_pos = second_bracket+1;
+  assert(second_bracket_file->f_pos >= second_bracket_file->f_begin);
+  assert(second_bracket_file->f_pos <= second_bracket_file->f_end);
   YIELD();
   if (TOK != ']') for (;;) {
    DCCParse_AttrContent(self,ATTRKIND_BRACKETS);

@@ -711,135 +711,135 @@ local ops = list {
 for (local name,oa,ob,comment: ops) {
     local prefix = "              "+(" "*#name);
     print "DEF_OPCODE("+name+",{ /" "* "+name+" rel8  *" "/OVERLOAD_1("+("0x%.2x" % oa)+",  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)";
-    print prefix+"/"       "* "+name+" rel16 *" "/OVERLOAD_1("+("0x%.4x" % ob)+  ",16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)";
+    print prefix[:#prefix-1]+"//"       "* "+name+" rel16 *" "/OVERLOAD_1("+("0x%.4x" % ob)+  ",16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)";
     print prefix+"/"       "* "+name+" rel32 *" "/OVERLOAD_1("+("0x%.4x" % ob)+  ",32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)";
     print prefix+"OVERLOAD_SENTINAL }) /" "* "+comment+" *" "/";
 }
 ]]]*/
 DEF_OPCODE(ja,{ /* ja rel8  */OVERLOAD_1(0x77,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                /* ja rel16 */OVERLOAD_1(0x0f87,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+               //* ja rel16 */OVERLOAD_1(0x0f87,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                 /* ja rel32 */OVERLOAD_1(0x0f87,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                 OVERLOAD_SENTINAL }) /* Jump if above (CF=0 and ZF=0). */
 DEF_OPCODE(jae,{ /* jae rel8  */OVERLOAD_1(0x73,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jae rel16 */OVERLOAD_1(0x0f83,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jae rel16 */OVERLOAD_1(0x0f83,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jae rel32 */OVERLOAD_1(0x0f83,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if above or equal (CF=0). */
 DEF_OPCODE(jb,{ /* jb rel8  */OVERLOAD_1(0x72,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                /* jb rel16 */OVERLOAD_1(0x0f82,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+               //* jb rel16 */OVERLOAD_1(0x0f82,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                 /* jb rel32 */OVERLOAD_1(0x0f82,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                 OVERLOAD_SENTINAL }) /* Jump if below (CF=1). */
 DEF_OPCODE(jbe,{ /* jbe rel8  */OVERLOAD_1(0x76,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jbe rel16 */OVERLOAD_1(0x0f86,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jbe rel16 */OVERLOAD_1(0x0f86,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jbe rel32 */OVERLOAD_1(0x0f86,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if below or equal (CF=1 or ZF=1). */
 DEF_OPCODE(jc,{ /* jc rel8  */OVERLOAD_1(0x72,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                /* jc rel16 */OVERLOAD_1(0x0f82,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+               //* jc rel16 */OVERLOAD_1(0x0f82,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                 /* jc rel32 */OVERLOAD_1(0x0f82,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                 OVERLOAD_SENTINAL }) /* Jump if carry (CF=1). */
 DEF_OPCODE(je,{ /* je rel8  */OVERLOAD_1(0x74,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                /* je rel16 */OVERLOAD_1(0x0f84,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+               //* je rel16 */OVERLOAD_1(0x0f84,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                 /* je rel32 */OVERLOAD_1(0x0f84,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                 OVERLOAD_SENTINAL }) /* Jump if equal (ZF=1). */
 DEF_OPCODE(jg,{ /* jg rel8  */OVERLOAD_1(0x7f,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                /* jg rel16 */OVERLOAD_1(0x0f8f,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+               //* jg rel16 */OVERLOAD_1(0x0f8f,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                 /* jg rel32 */OVERLOAD_1(0x0f8f,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                 OVERLOAD_SENTINAL }) /* Jump if greater (ZF=0 and SF=OF). */
 DEF_OPCODE(jge,{ /* jge rel8  */OVERLOAD_1(0x7d,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jge rel16 */OVERLOAD_1(0x0f8d,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jge rel16 */OVERLOAD_1(0x0f8d,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jge rel32 */OVERLOAD_1(0x0f8d,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if greater or equal (SF=OF). */
 DEF_OPCODE(jl,{ /* jl rel8  */OVERLOAD_1(0x7c,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                /* jl rel16 */OVERLOAD_1(0x0f8c,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+               //* jl rel16 */OVERLOAD_1(0x0f8c,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                 /* jl rel32 */OVERLOAD_1(0x0f8c,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                 OVERLOAD_SENTINAL }) /* Jump if less (SF<>OF). */
 DEF_OPCODE(jle,{ /* jle rel8  */OVERLOAD_1(0x7e,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jle rel16 */OVERLOAD_1(0x0f8e,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jle rel16 */OVERLOAD_1(0x0f8e,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jle rel32 */OVERLOAD_1(0x0f8e,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if less or equal (ZF=1 or SF<>OF). */
 DEF_OPCODE(jna,{ /* jna rel8  */OVERLOAD_1(0x76,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jna rel16 */OVERLOAD_1(0x0f86,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jna rel16 */OVERLOAD_1(0x0f86,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jna rel32 */OVERLOAD_1(0x0f86,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if not above (CF=1 or ZF=1). */
 DEF_OPCODE(jnae,{ /* jnae rel8  */OVERLOAD_1(0x72,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                  /* jnae rel16 */OVERLOAD_1(0x0f82,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                 //* jnae rel16 */OVERLOAD_1(0x0f82,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                   /* jnae rel32 */OVERLOAD_1(0x0f82,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                   OVERLOAD_SENTINAL }) /* Jump if not above or equal (CF=1). */
 DEF_OPCODE(jnb,{ /* jnb rel8  */OVERLOAD_1(0x73,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jnb rel16 */OVERLOAD_1(0x0f83,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jnb rel16 */OVERLOAD_1(0x0f83,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jnb rel32 */OVERLOAD_1(0x0f83,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if not below (CF=0). */
 DEF_OPCODE(jnbe,{ /* jnbe rel8  */OVERLOAD_1(0x77,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                  /* jnbe rel16 */OVERLOAD_1(0x0f87,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                 //* jnbe rel16 */OVERLOAD_1(0x0f87,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                   /* jnbe rel32 */OVERLOAD_1(0x0f87,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                   OVERLOAD_SENTINAL }) /* Jump if not below or equal (CF=0 and ZF=0). */
 DEF_OPCODE(jnc,{ /* jnc rel8  */OVERLOAD_1(0x73,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jnc rel16 */OVERLOAD_1(0x0f83,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jnc rel16 */OVERLOAD_1(0x0f83,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jnc rel32 */OVERLOAD_1(0x0f83,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if not carry (CF=0). */
 DEF_OPCODE(jne,{ /* jne rel8  */OVERLOAD_1(0x75,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jne rel16 */OVERLOAD_1(0x0f85,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jne rel16 */OVERLOAD_1(0x0f85,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jne rel32 */OVERLOAD_1(0x0f85,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if not equal (ZF=0). */
 DEF_OPCODE(jng,{ /* jng rel8  */OVERLOAD_1(0x7e,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jng rel16 */OVERLOAD_1(0x0f8e,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jng rel16 */OVERLOAD_1(0x0f8e,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jng rel32 */OVERLOAD_1(0x0f8e,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if not greater (ZF=1 or SF<>OF). */
 DEF_OPCODE(jnge,{ /* jnge rel8  */OVERLOAD_1(0x7c,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                  /* jnge rel16 */OVERLOAD_1(0x0f8c,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                 //* jnge rel16 */OVERLOAD_1(0x0f8c,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                   /* jnge rel32 */OVERLOAD_1(0x0f8c,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                   OVERLOAD_SENTINAL }) /* Jump if not greater or equal (SF<>OF). */
 DEF_OPCODE(jnl,{ /* jnl rel8  */OVERLOAD_1(0x7d,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jnl rel16 */OVERLOAD_1(0x0f8d,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jnl rel16 */OVERLOAD_1(0x0f8d,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jnl rel32 */OVERLOAD_1(0x0f8d,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if not less (SF=OF). */
 DEF_OPCODE(jnle,{ /* jnle rel8  */OVERLOAD_1(0x7f,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                  /* jnle rel16 */OVERLOAD_1(0x0f8f,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                 //* jnle rel16 */OVERLOAD_1(0x0f8f,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                   /* jnle rel32 */OVERLOAD_1(0x0f8f,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                   OVERLOAD_SENTINAL }) /* Jump if not less or equal (ZF=0 and SF=OF). */
 DEF_OPCODE(jno,{ /* jno rel8  */OVERLOAD_1(0x71,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jno rel16 */OVERLOAD_1(0x0f81,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jno rel16 */OVERLOAD_1(0x0f81,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jno rel32 */OVERLOAD_1(0x0f81,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if not overflow (OF=0). */
 DEF_OPCODE(jnp,{ /* jnp rel8  */OVERLOAD_1(0x7b,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jnp rel16 */OVERLOAD_1(0x0f8b,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jnp rel16 */OVERLOAD_1(0x0f8b,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jnp rel32 */OVERLOAD_1(0x0f8b,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if not parity (PF=0). */
 DEF_OPCODE(jns,{ /* jns rel8  */OVERLOAD_1(0x79,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jns rel16 */OVERLOAD_1(0x0f89,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jns rel16 */OVERLOAD_1(0x0f89,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jns rel32 */OVERLOAD_1(0x0f89,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if not sign (SF=0). */
 DEF_OPCODE(jnz,{ /* jnz rel8  */OVERLOAD_1(0x75,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jnz rel16 */OVERLOAD_1(0x0f85,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jnz rel16 */OVERLOAD_1(0x0f85,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jnz rel32 */OVERLOAD_1(0x0f85,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if not zero (ZF=0). */
 DEF_OPCODE(jo,{ /* jo rel8  */OVERLOAD_1(0x70,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                /* jo rel16 */OVERLOAD_1(0x0f80,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+               //* jo rel16 */OVERLOAD_1(0x0f80,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                 /* jo rel32 */OVERLOAD_1(0x0f80,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                 OVERLOAD_SENTINAL }) /* Jump if overflow (OF=1). */
 DEF_OPCODE(jp,{ /* jp rel8  */OVERLOAD_1(0x7a,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                /* jp rel16 */OVERLOAD_1(0x0f8a,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+               //* jp rel16 */OVERLOAD_1(0x0f8a,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                 /* jp rel32 */OVERLOAD_1(0x0f8a,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                 OVERLOAD_SENTINAL }) /* Jump if parity (PF=1). */
 DEF_OPCODE(jpe,{ /* jpe rel8  */OVERLOAD_1(0x7a,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jpe rel16 */OVERLOAD_1(0x0f8a,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jpe rel16 */OVERLOAD_1(0x0f8a,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jpe rel32 */OVERLOAD_1(0x0f8a,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if parity even (PF=1). */
 DEF_OPCODE(jpo,{ /* jpo rel8  */OVERLOAD_1(0x7b,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                 /* jpo rel16 */OVERLOAD_1(0x0f8b,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+                //* jpo rel16 */OVERLOAD_1(0x0f8b,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                  /* jpo rel32 */OVERLOAD_1(0x0f8b,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                  OVERLOAD_SENTINAL }) /* Jump if parity odd (PF=0). */
 DEF_OPCODE(js,{ /* js rel8  */OVERLOAD_1(0x78,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                /* js rel16 */OVERLOAD_1(0x0f88,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+               //* js rel16 */OVERLOAD_1(0x0f88,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                 /* js rel32 */OVERLOAD_1(0x0f88,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                 OVERLOAD_SENTINAL }) /* Jump if sign (SF=1). */
 DEF_OPCODE(jz,{ /* jz rel8  */OVERLOAD_1(0x74,  8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-                /* jz rel16 */OVERLOAD_1(0x0f84,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+               //* jz rel16 */OVERLOAD_1(0x0f84,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
                 /* jz rel32 */OVERLOAD_1(0x0f84,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
                 OVERLOAD_SENTINAL }) /* Jump if 0 (ZF=1). */
 //[[[end]]]
 DEF_OPCODE(jmp,{
     /* jmp rel8   */OVERLOAD_1(0xeb,8, 0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A8)
-    /* jmp rel16  */OVERLOAD_1(0xe9,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
+   //* jmp rel16  */OVERLOAD_1(0xe9,16,0,DCC_ASMOPC_DISP|DCC_ASMOPC_D16,DCC_ASMOPT_ADDR|DCC_ASMOPT_A16)
     /* jmp rel32  */OVERLOAD_1(0xe9,32,0,DCC_ASMOPC_DISP,               DCC_ASMOPT_ADDR|DCC_ASMOPT_A32)
     /* jmp *r/m16 */OVERLOAD_1(0xff,16,4,DCC_ASMOPC_MODRM|DCC_ASMOPC_D16,DCC_ASMOPT_R_16|DCC_ASMOPT_EA|DCC_ASMOPT_IND)
     /* jmp *r/m32 */OVERLOAD_1(0xff,32,4,DCC_ASMOPC_MODRM,               DCC_ASMOPT_R_32|DCC_ASMOPT_EA|DCC_ASMOPT_IND)

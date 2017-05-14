@@ -571,7 +571,7 @@ parse_string:
   sval.sv_sym          = NULL;
   sval.sv_ctype.t_base = NULL;
   sval.sv_ctype.t_type = DCC_RC_GETTYPE(sval.sv_reg);
-  if (TOK == ':' && *peek_next_token() == '%') {
+  if (TOK == ':' && *peek_next_token(NULL) == '%') {
    /* Parse a register pair.
     * NOTE: Here, both the first & second register must be 32-bit wide. */
    YIELD();

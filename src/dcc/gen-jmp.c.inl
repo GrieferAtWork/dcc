@@ -101,51 +101,49 @@ DCCDisp_LocJmp(struct DCCMemLoc const *__restrict addr) {
 LOCAL void
 DCCDisp_TargetJmp(struct jmpop const *__restrict op,
                   struct DCCSymAddr const *__restrict addr) {
- struct DCCSym *target_sym;
- size_t minbytes;
- int_t op_val;
- uint8_t temp;
+ struct DCCSymAddr used_addr;
+ size_t minbytes; uint8_t temp;
+ target_off_t off_iter;
  assert(op);
  assert(addr);
- op_val = addr->sa_off;
- if ((target_sym = addr->sa_sym) != NULL) {
+ used_addr = *addr;
+ if (used_addr.sa_sym) {
   struct DCCSymAddr symaddr;
-  if (DCCSym_LoadAddr(target_sym,&symaddr,0)) {
-   op_val    += symaddr.sa_off;
-   target_sym = symaddr.sa_sym;
-   if (DCCSym_SECTION(target_sym) == unit.u_curr) {
-    op_val += target_sym->sy_addr-(t_addr+
-                                   /* Worst cast for immediate value */
-                                   DCC_TARGET_SIZEOF_POINTER+
-                                   /* Leaway for opcode bytes. */
-                                   4);
+  if (DCCSym_LoadAddr(used_addr.sa_sym,&symaddr,0)) {
+   if (DCCSym_SECTION(symaddr.sa_sym) == unit.u_curr) {
+    off_iter = symaddr.sa_off;
+    off_iter += symaddr.sa_sym->sy_addr-
+     (t_addr+/* Worst cast for immediate value */DCC_TARGET_SIZEOF_POINTER+
+             /* Leaway for opcode bytes. */      4);
     goto def_minbytes;
    }
   }
   /* Must assume worst-case for symbols with unknown relation. */
   minbytes = DCC_TARGET_SIZEOF_POINTER;
  } else {
+  off_iter = used_addr.sa_off;
 def_minbytes:
   minbytes = 0;
-  while (op_val&1) ++minbytes,op_val >>= 1;
+  if (off_iter < 0) off_iter = -off_iter,++minbytes;
+  while (off_iter) ++minbytes,off_iter >>= 1;
   minbytes = (minbytes+7)/8;
  }
  assert(minbytes <= DCC_TARGET_SIZEOF_POINTER);
  if (minbytes >= 2) {
   /* 16-bit disposition. */
-  if (minbytes < 4) t_putb(0x66);
+  //if (minbytes < 4) t_putb(0x66);
   /* 16/32-bit disposition. */
   temp = (uint8_t)(op->r1632 >> 8);
   if (temp) t_putb(temp);
   t_putb((uint8_t)op->r1632);
-  if (minbytes < 4) DCCDisp_SymDisp16(addr);
-  else              DCCDisp_SymDisp32(addr);
+  /*if (minbytes < 4) DCCDisp_SymDisp16(&used_addr);
+  else              */DCCDisp_SymDisp32(&used_addr);
  } else {
   /* 8-bit disposition. */
   temp = (uint8_t)(op->r8 >> 8);
   if (temp) t_putb(temp);
   t_putb((uint8_t)op->r8);
-  DCCDisp_SymDisp8(addr);
+  DCCDisp_SymDisp8(&used_addr);
  }
 }
 

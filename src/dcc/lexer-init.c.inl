@@ -195,9 +195,10 @@ parse_field_name:
       * >>    y: 64,
       * >> };
       */
-     char *peek_token = peek_next_token();
+     struct TPPFile *peek_file;
+     char *peek_token = peek_next_token(&peek_file);
      if (*peek_token == ':') {
-      TOKEN.t_file->f_pos = peek_token+1;
+      peek_file->f_pos = peek_token+1;
       cxx_field_name = 1;
       goto parse_field_name;
      }

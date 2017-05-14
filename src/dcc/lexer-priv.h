@@ -35,7 +35,8 @@ struct DCCDecl;
 LEXDECL void DCCSym_CalculateStructureOffsets(struct DCCDecl *__restrict self);
 
 LEXDECL struct TPPKeyword *DCC_PARSE_CALL tok_without_underscores(void);
-LEXDECL char *DCC_PARSE_CALL peek_next_token(void); /* Peek the first character of what will likely be the next token. */
+/* Peek the first character of what will likely be the next token. */
+LEXDECL char *DCC_PARSE_CALL peek_next_token(struct TPPFile **tok_file);
 
 /* Do type promotions on a function argument type (e.g.: 'array/V-array --> pointer') */
 LEXDECL void DCC_PARSE_CALL DCCType_PromoteFunArg(struct DCCType *__restrict self);

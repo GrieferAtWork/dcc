@@ -715,15 +715,16 @@ pushv_semi:
     * >> I know this isn't fully STD-C compliant, but it's the best one
     *    can do without implementing some sort of token-return system.
     */
-   char *label_colon = peek_next_token();
+   struct TPPFile *label_colon_file;
+   char *label_colon = peek_next_token(&label_colon_file);
    if (*label_colon == ':') {
     struct DCCDecl *label_decl;
     int parse_goto_next,found_alias;
     /* Declare a c function-local label. */
     label_decl = DCCCompiler_NewLabel(TOKEN.t_kwd);
-    assert(label_colon >= TOKEN.t_file->f_begin);
-    assert(label_colon <= TOKEN.t_file->f_end);
-    TOKEN.t_file->f_pos = label_colon+1;
+    label_colon_file->f_pos = label_colon+1;
+    assert(label_colon_file->f_pos >= label_colon_file->f_begin);
+    assert(label_colon_file->f_pos <= label_colon_file->f_end);
     /* Read the next token after the ':' */
     YIELD();
     { /* Parse label attributes. */
