@@ -1245,6 +1245,16 @@ DEF_WARNING(W_LINKER_DELETE_UNUSED_SYMBOL,(WG_LINKER,WG_QUALITY),WSTATE_WARN,
             WARNF("Removing unused symbol '%s'",KWDNAME()))
 DEF_WARNING(W_LINKER_DELETE_UNUSED_STATIC_SYMBOL,(WG_LINKER,WG_QUALITY),WSTATE_WARN,
             WARNF("Removing unused static symbol '%s'",KWDNAME()))
+DEF_WARNING(W_LINKER_RECURSIVE_ALIAS,(WG_LINKER),WSTATE_WARN,{
+ struct DCCSym *path_start;
+ struct DCCSym *path = path_start = ARG(struct DCCSym *);
+ struct DCCSym *target = ARG(struct DCCSym *);
+ WARNF("Illegal alias recursion: ");
+ do WARNF("'%s' -> ",path->sy_name->k_name);
+ while ((path = path->sy_alias) != target);
+ WARNF("'%s' -> '%s'",target->sy_name->k_name,
+       path_start->sy_name->k_name);
+})
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 DEF_WARNING(W_LINKER_PE_DLLEXPORT_NEVER_DEFINED,(WG_LINKER),WSTATE_WARN,
             WARNF("Symbol '%s' marked for dllexport was never defined and is not exported",KWDNAME()))

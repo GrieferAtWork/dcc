@@ -667,6 +667,20 @@ DCCSym_Alias(struct DCCSym *__restrict self,
  /* Don't warn when re-declared as the same alias. */
  if (self->sy_alias == alias_sym &&
      self->sy_addr == offset) return;
+ /* Make sure this alias doesn't produce an infinite recursion,
+  * which could happen when 'self' can be reached through 'alias_sym' */
+ {
+  struct DCCSym *alias_iter = alias_sym;
+  while (alias_iter) {
+   if (alias_iter == self) {
+    /* NOPE! Can't do this. - Would crash the linker later! */
+    WARN(W_LINKER_RECURSIVE_ALIAS,alias_sym,self);
+    return;
+   }
+   alias_iter = alias_iter->sy_alias;
+  }
+ }
+
  DCCSym_ClearDef(self,1);
  DCCSym_Incref(alias_sym);
  self->sy_alias = alias_sym; /* Inherit reference. */
