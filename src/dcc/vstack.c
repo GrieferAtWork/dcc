@@ -663,11 +663,10 @@ DCCStackValue_Store(struct DCCStackValue *__restrict self,
     ml.ml_off  = target->sv_const.offset;
     ml.ml_sym  = target->sv_sym;
     ml.ml_off += off/DCC_TARGET_BITPERBYTE;
-    off       %= DCC_TARGET_BITPERBYTE;
     cbytes     = (siz+(DCC_TARGET_BITPERBYTE-1))/DCC_TARGET_BITPERBYTE;
-    cdata      = (uint8_t *)DCCMemLoc_CompilerAddr(&ml,cbytes);
-    val.sv_const.it = self->sv_const.it;
-    if (cdata) {
+    if ((cdata = (uint8_t *)DCCMemLoc_CompilerAddr(&ml,cbytes)) != NULL) {
+     off %= DCC_TARGET_BITPERBYTE;
+     val.sv_const.it = self->sv_const.it;
      while (cbytes) {
       uint8_t byteval,bytemsk,bytesiz;
       bytesiz = (uint8_t)siz;
@@ -688,12 +687,12 @@ DCCStackValue_Store(struct DCCStackValue *__restrict self,
 
    /* Mask the source value with the bit-mask. */
    full_mask        = val.sv_const.it;
-   val.sv_const.it &= self->sv_const.it;
+   val.sv_const.it &= (self->sv_const.it << off);
    /* Apply a constant to the target. */
    if (val.sv_const.it != full_mask) {
     val.sv_const.it  = ~full_mask;
     DCCStackValue_Binary(&val,target,'&');
-    val.sv_const.it &= self->sv_const.it;
+    val.sv_const.it &= (self->sv_const.it << off);
    }
    if (val.sv_const.it != 0) {
     DCCStackValue_Binary(&val,target,'|');
@@ -2855,10 +2854,10 @@ donepop:
 
 
 static target_ptr_t const basic_type_weights[] = {
- 8*DCC_TARGET_SIZEOF_INT,       /* DCCTYPE_INT */
- 8*DCC_TARGET_SIZEOF_CHAR,      /* DCCTYPE_BYTE */
- 8*DCC_TARGET_SIZEOF_SHORT,     /* DCCTYPE_SHORT */
- 8*DCC_TARGET_SIZEOF_LONG_LONG, /* DCCTYPE_LLONG */
+ DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_INT,       /* DCCTYPE_INT */
+ DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_CHAR,      /* DCCTYPE_BYTE */
+ DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_SHORT,     /* DCCTYPE_SHORT */
+ DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_LONG_LONG, /* DCCTYPE_LLONG */
 };
 
 PRIVATE int DCC_VSTACK_CALL

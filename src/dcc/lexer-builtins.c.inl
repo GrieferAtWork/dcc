@@ -396,7 +396,7 @@ DCCParse_BuiltinBitField(void) {
  bit_index = DCCParse_CExpr(1),bit_size = 1;
  if (TOK == ',') { YIELD(); bit_size = DCCParse_CExpr(1); }
  DCCParse_ParPairEnd();
- DCCVStack_Bitfld((uint8_t)bit_index,(uint8_t)bit_size);
+ vbitfld((uint8_t)bit_index,(uint8_t)bit_size);
 }
 
 

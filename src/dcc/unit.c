@@ -175,8 +175,8 @@ DCCFreeData_Acquire(struct DCCFreeData *__restrict self,
    result  = iter->fr_addr+upper_overflow;
    result &= ~(align-1);
    result += offset;
-   if (result >= iter->fr_addr) {
-    assert(iter->fr_addr+iter->fr_size >= result+size);
+   if (result      >= iter->fr_addr &&
+       result+size <= iter->fr_addr+iter->fr_size) {
     upper_overflow = (iter->fr_addr+iter->fr_size)-(result+size);
     /* Re-use this free block of data. */
     iter->fr_size = result-iter->fr_addr;
