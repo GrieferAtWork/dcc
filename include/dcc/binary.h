@@ -29,9 +29,11 @@ DCC_DECL_BEGIN
 
 #ifdef DCC_PRIVATE_API
 #if DCC_TARGET_SIZEOF_POINTER == 4
+#define ELF_USE 32
 #define Elf(x) Elf32_##x
 #define ELF(x) ELF32_##x
 #elif DCC_TARGET_SIZEOF_POINTER == 8
+#define ELF_USE 64
 #define Elf(x) Elf64_##x
 #define ELF(x) ELF64_##x
 #endif

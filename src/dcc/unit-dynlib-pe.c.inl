@@ -236,8 +236,10 @@ found_section:
 #else /* PE_PROCESS_HINTS */
       DCCSym_Define(sym,result,0,0);
 #endif /* !PE_PROCESS_HINTS */
+#ifdef DCC_SYMFLAG_PE_ITA_IND
       /* Since this is a PE symbol, try to use ITA indirection. */
       sym->sy_flags |= DCC_SYMFLAG_PE_ITA_IND;
+#endif
      }
     }
    }

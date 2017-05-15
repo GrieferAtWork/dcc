@@ -129,7 +129,9 @@ struct DCCSymAddr {
 #define DCC_ATTRFLAG_VIS_HIDDEN    0x20000000 /*< Hidden visibility. */
 #define DCC_ATTRFLAG_VIS_PROTECTED 0x30000000 /*< Protected visibility. */
 #define DCC_ATTRFLAG_VIS_INTERNAL  0x40000000 /*< Protected visibility. */
-#if DCC_TARGET_BIN == DCC_BINARY_PE || defined(GUARD_DCC_LEXER_ATTRIBUTES_C_INL)
+#if DCC_TARGET_BIN == DCC_BINARY_PE || \
+    defined(GUARD_DCC_LEXER_C) || \
+    defined(GUARD_DCC_LEXER_ATTRIBUTES_C_INL)
 #define DCC_ATTRFLAG_DLLIMPORT     0x08000000 /*< On PE targets: dllimport. */
 #define DCC_ATTRFLAG_DLLEXPORT     0x80000000 /*< On PE targets: dllexport. */
 #endif

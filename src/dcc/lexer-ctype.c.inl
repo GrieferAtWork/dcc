@@ -253,6 +253,16 @@ compiletime_array:
 LEXPRIV int DCC_PARSE_CALL
 DCCParse_CTypeTryParenthesis(struct DCCType *__restrict self,
                              struct DCCAttrDecl *__restrict attr) {
+ /* TODO: Old-style functions listed the parameter names here!
+  *    >> The following declarations were only used to describe
+  *       their typing that, when omitted, defaults to 'int'! */
+ /* TODO: Ambiguity:
+  *                                                  v - HERE (Is it the declaration name, or an old-style argument)
+  * Named new-style function 'a': >> auto f = ({ int(a)(int x, int y) { return a+b; } });
+  * Unnamed old-style function:   >> auto f = ({ int(a,b) int a,b; { return a+b; } });
+  * (Possible) solution: Old-style function types with non-empty parameter list must be named.
+  *                   >> What did K&R say about unnamed symbols? Did they even exist?
+  */
  if (TOK == ')') {
   WARN(W_OLD_STYLE_FUNCTION_DECLARATION);
   YIELD();

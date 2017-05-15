@@ -366,10 +366,10 @@ DCCFreeData_Release(struct DCCFreeData *__restrict self,
 
 
 struct DCCTextBuf {
- uint8_t *tb_begin; /*< [0..1][<= s_end][owned] Start pointer for assembly code. */
- uint8_t *tb_end;   /*< [0..1][>= s_begin] Compile-time allocated code end. */
+ uint8_t *tb_begin; /*< [0..1][<= tb_end][owned] Start pointer for assembly code. */
+ uint8_t *tb_end;   /*< [0..1][>= tb_begin] Compile-time allocated code end. */
  uint8_t *tb_max;   /*< [0..1][>= tb_pos] Used code end (overflow above 'tb_end' symbolically describes zero-initialized memory). */
- uint8_t *tb_pos;   /*< [0..1][>= s_begin] Current code position (NOTE: May be placed above 'tb_end' for lazy alloc-on-write).
+ uint8_t *tb_pos;   /*< [0..1][>= tb_begin] Current code position (NOTE: May be placed above 'tb_end' for lazy alloc-on-write).
                      * >> Everything between this and 'tb_max' should be considered as ZERO-initialized, virtual memory. */
 };
 #define DCCTextBuf_ADDR(self)            ((DCC(target_ptr_t))((self)->tb_pos-(self)->tb_begin))

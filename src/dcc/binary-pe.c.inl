@@ -243,6 +243,7 @@ pe_build_relocs(struct DCCSection *__restrict section) {
  struct DCCRel *iter,*end;
  target_ptr_t addr,blockaddr = 0,offset = 0;
  size_t count = 0;
+ if unlikely(compiler.l_flags&DCC_LINKER_FLAG_NORELOC) return;
  send = (siter = pe.pe_secv)+pe.pe_secc;
  iter = end = NULL;
  /* Search all sections for relocations. */
@@ -1043,9 +1044,8 @@ PRIVATE void pe_genrt(void) {
  /* TODO: 'pe.pe_secalign' can be overwritten. */
  /* TODO: 'pe.pe_filalign' can be overwritten. */
 
- if (pe.pe_type == PETYPE_DLL ||
-     1 /* TODO: Option: generate relocations */) {
-  DCCUnit_NewSecs(".reloc",DCC_SYMFLAG_SEC_NOALLOC);
+ if (!(compiler.l_flags&DCC_LINKER_FLAG_NORELOC)) {
+       DCCUnit_NewSecs(".reloc",DCC_SYMFLAG_SEC_NOALLOC);
  }
 
  if (pe.pe_type == PETYPE_DLL) {

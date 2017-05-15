@@ -167,10 +167,12 @@ int main(int argc, char *argv[]) {
  DCCCompiler_ClearDecl();
  DCCUnit_ClearStatic();
 
+#ifdef DCC_LINKER_FLAG_PEDYNAMIC
  /* Dynamically export PE symbols. */
  compiler.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
+#endif
 
-#if 0
+#if 1
  /* Prepare generated code for output to file. */
  DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);
  { stream_t hout = s_openw("a.exe");

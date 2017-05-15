@@ -173,6 +173,8 @@ DCCParse_Function(struct DCCDecl *fun_decl, struct TPPKeyword const *asmname,
        fun_decl->d_kind =  DCC_DECLKIND_MLOC;
    if (fun_decl->d_kind == DCC_DECLKIND_MLOC) {
     fun_sym = fun_decl->d_mdecl.md_loc.ml_sym;
+    /* TODO: Shouldn't local function be static+unnamed to prevent symbol re-declaration?
+     *       What does GCC do here? (Go figure it out and mirror that behavior!) */
     if (!fun_sym) {
      /* Allocate missing function symbols. */
      if (!asmname) asmname = DCCDecl_GenAsmname(fun_decl);

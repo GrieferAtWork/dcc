@@ -113,6 +113,18 @@
 #   define DCC_COMPILER_GCC(a,b,c) 0
 #endif
 
+#if defined(_MSC_VER) || defined(__GNUC__) || \
+    defined(__DCC_VERSION__)
+#   define DCC_COMPILER_ALIGNOF  __alignof
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#   define DCC_COMPILER_ALIGNOF  _Alignof
+#elif __has_builtin(__builtin_alignof)
+#   define DCC_COMPILER_ALIGNOF  __builtin_alignof
+#else
+#   define DCC_COMPILER_ALIGNOF(T) ((size_t)&((struct { char x; T s; } *)0)->s)
+#endif
+
+
 #define DCCDAT       extern
 #define DCCFUN       extern
 #define DCC_PRIVATE  static
