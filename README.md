@@ -36,7 +36,10 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Using TPP as preprocessor, <b>every existing</b> preprocessor extension is supported, as well as all that are exclusive to mine.
   - Live-compilation-mode directly generates assembly.
   - C-conforming symbol forward/backward declaration.
-  - Full STD-C compliance up to C99
+  - K&R-C compatible
+  - Full STD-C89/90 compliance
+  - Full STD-C95 compliance
+  - Full STD-C99 compliance
   - Supports all C standard types.
   - Supports 64-bit <code>long long</code> integrals (using double-register storage).
   - Supports all C control statements.

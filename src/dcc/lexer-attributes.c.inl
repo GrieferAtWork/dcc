@@ -165,7 +165,6 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   if (function->k_id == KWD_aligned) {
    if (DCCATTRDECL_HASALIAS(self)) {
     WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
-    DCCParse_CExpr(0);
     assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
     DCCSym_Decref(self->a_alias);
     self->a_alias = NULL;
@@ -493,6 +492,27 @@ again:
   goto again;
  } break;
 
+ case KWD__Noreturn:
+  self->a_flags |= DCC_ATTRFLAG_NORETURN;
+  goto yield_again;
+
+ {
+ case KWD__Alignas:
+  YIELD();
+  DCCParse_ParPairBegin();
+  if (DCCATTRDECL_HASALIAS(self)) {
+   WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
+   assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
+   DCCSym_Decref(self->a_alias);
+   self->a_alias = NULL;
+  }
+  self->a_align  = (target_siz_t)DCCParse_CExpr(0);
+  self->a_flags |= DCC_ATTRFLAG_FIXEDALIGN;
+  if (self->a_align&(self->a_align-1))
+      WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
+  DCCParse_ParPairEnd();
+ } goto again;
+
  {
   uint32_t new_cc;
   if (DCC_MACRO_FALSE) { case KWD__cdecl: case KWD___cdecl: new_cc = DCC_ATTRFLAG_CDECL; }
@@ -500,9 +520,10 @@ again:
   if (DCC_MACRO_FALSE) { case KWD___thiscall: new_cc = DCC_ATTRFLAG_THISCALL; }
   if (DCC_MACRO_FALSE) { case KWD__fastcall: case KWD___fastcall: new_cc = DCC_ATTRFLAG_FASTCALL; }
   if (!HAS(EXT_CALLING_CONVENTION_ATTR)) break;
-  YIELD();
   self->a_flags &= ~(DCC_ATTRFLAG_MASK_CALLCONV);
   self->a_flags |= new_cc;
+yield_again:
+  YIELD();
   goto again;
  } break;
 

@@ -302,6 +302,9 @@ DEF_K(_stdcall)  DEF_K(__stdcall)
 DEF_K(_fastcall) DEF_K(__fastcall)
 DEF_K(__thiscall)
 
+DEF_K(_Noreturn)
+DEF_K(_Alignas)
+
 /* STD-C conforming compiler/preprocessor! */
 PREDEFINED_MACRO(__STDC__,"1")
 
