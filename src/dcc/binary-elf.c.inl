@@ -40,12 +40,15 @@ DCC_DECL_BEGIN
 
 /* Section group weight
  * - Used to sort sections into groups.
- * - Higher values mean place-after. */
+ * - Higher values mean place-after.
+ * WARNING: When changing the order in here, the
+ *         'group_info' vector must also be adjusted. */
 enum{
  SECGP_INTERP,      /* The '.interp' section. */
  SECGP_SHSTR,       /* The '.shstrtab' section. */
  SECGP_DYNAMIC,     /* The '.dynamic' section. */
  SECGP_NOALLOC,     /* All sections not allocated at run-time. */
+ SECGP_RELOC,       /* Relocation sections. */
  /* BEGIN: read-only */
  SECGP_R,           /* All sections that are read-only. */
  /* BEGIN: executable */
@@ -57,7 +60,6 @@ enum{
  SECGP_RW_FULL,     /* All sections that are read-write (And have no padding, uninitialized data). */
  SECGP_RW,          /* All sections that are read-write. */
  SECGP_OTHER,       /* All sections not falling into a different group. */
- SECGP_RELOC,       /* Relocation sections (MUST BE LAST!). */
  SECGP_COUNT,       /* Amount of groups (not actually a group itself). */
 //SECGP_UNUSED   = -1, /* All sections that should not be included in the final binary. */
 };
@@ -76,6 +78,7 @@ static struct gpinfo const group_info[SECGP_COUNT] = {
  /* [SECGP_SHSTR  ] = */{PT_LOAD,   PF_R},
  /* [SECGP_DYNAMIC] = */{PT_DYNAMIC,PF_R},
  /* [SECGP_NOALLOC] = */{PT_NOTE,   0},
+ /* [SECGP_RELOC  ] = */{PT_NULL,   0},
  /* [SECGP_R      ] = */{PT_LOAD,   PF_R},
  /* [SECGP_RX     ] = */{PT_LOAD,   PF_R|PF_X},
  /* [SECGP_RWX    ] = */{PT_LOAD,   PF_R|PF_W|PF_X},
@@ -83,7 +86,6 @@ static struct gpinfo const group_info[SECGP_COUNT] = {
  /* [SECGP_RW_FULL] = */{PT_LOAD,   PF_R|PF_W},
  /* [SECGP_RW     ] = */{PT_LOAD,   PF_R|PF_W},
  /* [SECGP_OTHER  ] = */{PT_LOAD,   0},
- /* [SECGP_RELOC  ] = */{PT_NULL,   0},
 };
 
 
@@ -160,14 +162,16 @@ PRIVATE void elf_mk_entry(void);
 PRIVATE void elf_mk_interp(void);
 PRIVATE void elf_mk_relsec(void);          /* Generate stub relocation sections. */
 PRIVATE void elf_mk_secvec(void);          /* Generate the vector of sections, calculation their groups and basic header data. */
+PRIVATE void elf_mk_secnam(void);          /* Allocate section names. */
 PRIVATE void elf_mk_secsort(void);         /* Sort sections according to their weight. */
-PRIVATE void elf_mk_delsecunused(int rel); /* Delete unused sections (Only delete relocation section when 'rel' is non-ZERO). */
+PRIVATE void elf_mk_delsecunused(int all); /* Delete unused sections (Don't delete relocation or internal sections unless 'all' is non-ZERO). */
 PRIVATE void elf_mk_dynsym(void);          /* Generate dynamic symbol information. */
 PRIVATE void elf_mk_secvaddr(void);        /* Generate section virtual addresses. */
 PRIVATE void elf_mk_execdisp(void);        /* Execute DISP relocations that can be resolved at compile-time. */
 PRIVATE void elf_mk_execrel(void);         /* Execute all relocations. */
 PRIVATE void elf_mk_delnoprel(void);       /* Delete all unused relocations, but set the 'sy_size' field of associated symbols to ZERO to prevent their data from being deallocated. */
 PRIVATE void elf_mk_reldat(void);          /* Generate ELF relocations against dynamic symbols. */
+PRIVATE void elf_mk_dyndat(void);          /* Fill the '.dynamic' section with information. */
 PRIVATE void elf_mk_phdvec(void);          /* Generate program headers and match associated section groups. */
 PRIVATE void elf_mk_relabj(void);          /* Adjust generated relocation offsets by section base addresses. */
 PRIVATE void elf_mk_secfaddr(void);        /* Generate section file addresses. */
@@ -248,7 +252,8 @@ PRIVATE Elf(Half) elf_get_secidx(struct DCCSection const *__restrict sec) {
  struct secinfo *iter,*end;
  end = (iter = elf.elf_secv)+elf.elf_secc;
  for (; iter != end; ++iter) if (iter->si_sec == sec) {
-  return (Elf(Half))((iter-elf.elf_secv)+1);
+  return (Elf(Half))(iter-elf.elf_secv);
+  //return (Elf(Half))((iter-elf.elf_secv)+1);
  }
  return SHN_UNDEF;
 }
@@ -312,6 +317,50 @@ PRIVATE void elf_mk_relsec(void) {
  }
 }
 
+PRIVATE void
+elf_mk_secinfo(struct secinfo *__restrict info,
+               struct DCCSection *__restrict section) {
+ symflag_t secflags;
+ info->si_grp         = secgp_of(section);
+ secflags             = section->sc_start.sy_flags;
+ info->si_rel         = compiler.l_flags&DCC_LINKER_FLAG_NORELOC ? NULL : get_relsec(section,0);
+ info->si_hdr.sh_type = secty_of(section);
+ info->si_sec         = section;
+ if (info->si_hdr.sh_type == SHT_REL ||
+     info->si_hdr.sh_type == SHT_RELA
+     ) info->si_grp = SECGP_RELOC; /* Not detected by 'secgp_of' */
+ {
+  uint8_t *effective_end = section->sc_text.tb_end;
+  if (effective_end > section->sc_text.tb_max)
+      effective_end = section->sc_text.tb_max;
+  info->si_msize = (size_t)(effective_end-
+                            section->sc_text.tb_begin);
+  info->si_vsize = (target_siz_t)(section->sc_text.tb_max-
+                                  section->sc_text.tb_begin);
+  info->si_hdr.sh_size = info->si_vsize;
+  /* Optimization: Remove any trailing ZERO-data,
+   * potentially reducing the generated binary size. */
+  while (info->si_msize && !effective_end[-1])
+       --info->si_msize,--effective_end;
+ }
+ info->si_hdr.sh_flags = 0;
+ if (secflags&DCC_SYMFLAG_SEC_W) info->si_hdr.sh_flags |= SHF_WRITE;
+ if (!(secflags&DCC_SYMFLAG_SEC_NOALLOC)) info->si_hdr.sh_flags |= SHF_ALLOC;
+ if (secflags&DCC_SYMFLAG_SEC_X) info->si_hdr.sh_flags |= SHF_EXECINSTR;
+ if (secflags&DCC_SYMFLAG_SEC_M) info->si_hdr.sh_flags |= SHF_MERGE;
+ if (info->si_grp == SECGP_INTERP || info->si_grp == SECGP_SHSTR ||
+     info->si_hdr.sh_type == SHT_STRTAB) info->si_hdr.sh_flags |= SHF_STRINGS;
+ /* Fill in entry size information for relocation sections. */
+      if (info->si_hdr.sh_type == SHT_REL)  info->si_hdr.sh_entsize = sizeof(Elf(Rel));
+ else if (info->si_hdr.sh_type == SHT_RELA) info->si_hdr.sh_entsize = sizeof(Elf(Rela));
+ //iter->si_hdr.sh_offset = ...; /* Filled later. */
+ //iter->si_hdr.sh_size = ...; /* Filled later. */
+#if SHN_UNDEF != 0
+ info->si_hdr.sh_link = SHN_UNDEF;
+#endif
+ info->si_hdr.sh_addralign = (Elf(Word))section->sc_align;
+}
+
 PRIVATE void elf_mk_secvec(void) {
  struct DCCSection *section;
  struct secinfo *info,*iter;
@@ -328,57 +377,28 @@ nosec:
  elf.elf_secv = iter = info;
  DCCUnit_ENUMSEC(section) {
   assert(iter < info+unit.u_secc);
-  iter->si_sec = section;
-  iter->si_grp = secgp_of(section);
-  /*if (iter->si_grp != SECGP_UNUSED)*/ {
-   symflag_t secflags = section->sc_start.sy_flags;
-   iter->si_rel         = compiler.l_flags&DCC_LINKER_FLAG_NORELOC ? NULL : get_relsec(section,0);
-   iter->si_hdr.sh_type = secty_of(section);
-   iter->si_sec         = section;
-   if (iter->si_hdr.sh_type == SHT_REL ||
-       iter->si_hdr.sh_type == SHT_RELA
-       ) iter->si_grp = SECGP_RELOC; /* Not detected by 'secgp_of' */
-   {
-    uint8_t *effective_end = section->sc_text.tb_end;
-    if (effective_end > section->sc_text.tb_max)
-        effective_end = section->sc_text.tb_max;
-    iter->si_msize = (size_t)(effective_end-
-                              section->sc_text.tb_begin);
-    iter->si_vsize = (target_siz_t)(section->sc_text.tb_max-
-                                    section->sc_text.tb_begin);
-    iter->si_hdr.sh_size = iter->si_vsize;
-    /* Optimization: Remove any trailing ZERO-data,
-     * potentially reducing the generated binary size. */
-    while (iter->si_msize && !effective_end[-1])
-         --iter->si_msize,--effective_end;
-   }
-   iter->si_hdr.sh_flags = 0;
-   if (secflags&DCC_SYMFLAG_SEC_W) iter->si_hdr.sh_flags |= SHF_WRITE;
-   if (!(secflags&DCC_SYMFLAG_SEC_NOALLOC)) iter->si_hdr.sh_flags |= SHF_ALLOC;
-   if (secflags&DCC_SYMFLAG_SEC_X) iter->si_hdr.sh_flags |= SHF_EXECINSTR;
-   if (secflags&DCC_SYMFLAG_SEC_M) iter->si_hdr.sh_flags |= SHF_MERGE;
-   if (iter->si_grp == SECGP_INTERP || iter->si_grp == SECGP_SHSTR ||
-       iter->si_hdr.sh_type == SHT_STRTAB) iter->si_hdr.sh_flags |= SHF_STRINGS;
-   /* Fill in entry size information for relocation sections. */
-        if (iter->si_hdr.sh_type == SHT_REL)  iter->si_hdr.sh_entsize = sizeof(Elf(Rel));
-   else if (iter->si_hdr.sh_type == SHT_RELA) iter->si_hdr.sh_entsize = sizeof(Elf(Rela));
-   /* Allocate the section name. */
-   iter->si_hdr.sh_name = (Elf(Word))DCCSection_DAllocMem(elf.elf_shstr,
-                                                          section->sc_start.sy_name->k_name,
-                                                         (section->sc_start.sy_name->k_size+0)*sizeof(char),
-                                                         (section->sc_start.sy_name->k_size+1)*sizeof(char),
-                                                          1,0);
- //iter->si_hdr.sh_offset = ...; /* Filled later. */
- //iter->si_hdr.sh_size = ...; /* Filled later. */
-#if SHN_UNDEF != 0
-   iter->si_hdr.sh_link = SHN_UNDEF;
-#endif
-   iter->si_hdr.sh_addralign = (Elf(Word))section->sc_align;
-   ++iter;
-  }
+  elf_mk_secinfo(iter,section);
+  ++iter;
  }
  elf.elf_secc = (size_t)(iter-info);
  if unlikely(!elf.elf_secc) { free(info); return; }
+}
+PRIVATE void elf_mk_secnam(void) {
+ struct secinfo *shstrtab = NULL;
+ struct secinfo *iter,*end;
+ /* Execute all relocations. */
+ end = (iter = elf.elf_secv)+elf.elf_secc;
+ for (; iter != end; ++iter) {
+  struct DCCSection *section = iter->si_sec;
+  assert(section); /* Allocate the section name. */
+  iter->si_hdr.sh_name = (Elf(Word))DCCSection_DAllocMem(elf.elf_shstr,
+                                                         section->sc_start.sy_name->k_name,
+                                                        (section->sc_start.sy_name->k_size+0)*sizeof(char),
+                                                        (section->sc_start.sy_name->k_size+1)*sizeof(char),
+                                                         1,0);
+  if (iter->si_sec == elf.elf_shstr) shstrtab = iter;
+ }
+ if (shstrtab) elf_mk_secinfo(shstrtab,elf.elf_shstr);
 }
 
 PRIVATE void elf_mk_execrel(void) {
@@ -453,6 +473,13 @@ PRIVATE void elf_mk_reldat(void) {
  }
 }
 
+PRIVATE void
+elf_mk_dyndat(void) {
+ if (elf.elf_dynamic) {
+  /* TODO: Put 'DT_*' information */
+  /* NOTE: Remember: The information vector for this is terminated by a 'DT_NULL' entry! */
+ }
+}
 
 PRIVATE int
 secinfo_mergesort(struct secinfo *__restrict v, size_t n,
@@ -537,7 +564,7 @@ sort_fallback:
 }
 
 
-PRIVATE void elf_mk_delsecunused(int rel) {
+PRIVATE void elf_mk_delsecunused(int all) {
  struct secinfo *iter,*end;
  end = (iter = elf.elf_secv)+elf.elf_secc;
  while (iter != end) {
@@ -545,8 +572,11 @@ PRIVATE void elf_mk_delsecunused(int rel) {
   /* Ignore empty section. */
   if (!(iter->si_vsize) &&
       !(iter->si_sec->sc_start.sy_flags&DCC_SYMFLAG_USED) &&
-       (rel || (iter->si_hdr.sh_type != SHT_REL &&
-                iter->si_hdr.sh_type != SHT_RELA))) {
+       (all || (iter->si_hdr.sh_type != SHT_REL &&
+                iter->si_hdr.sh_type != SHT_RELA &&
+                iter->si_sec != elf.elf_shstr &&
+                iter->si_sec != elf.elf_dynamic &&
+                iter->si_sec != elf.elf_dynsym))) {
    /* Delete this section. */
    assert(elf.elf_secc);
    --end;
@@ -859,20 +889,19 @@ DCCBin_Generate(stream_t target) {
  DCCUnit_ClearUnused();
  DCCUnit_ClearUnusedLibs();
 
- elf_mk_interp();        if unlikely(!OK) goto end;
+ elf_mk_interp();        if unlikely(!OK) goto end; /* Create and fill the '.interp' section. */
  if (!(compiler.c_flags&DCC_LINKER_FLAG_NORELOC)) {
- elf_mk_relsec();        if unlikely(!OK) goto end;
+ elf_mk_relsec();        if unlikely(!OK) goto end; /* Create stub relocation sections. Must be done now
+                                                     * because later we can no longer create new sections. */
  }
- elf_mk_secvec();        if unlikely(!OK) goto end;
- elf_mk_delsecunused(0); if unlikely(!OK) goto end;
- /* Sort section headers, thus greatly improving cache locality
-  * and restricting the amount of potential program headers.
-  * NOTE: This is also required to ensure that relocation sections are at the end! */
- elf_mk_secsort();       if unlikely(!OK) goto end;
-
-
+ elf_mk_secvec();        if unlikely(!OK) goto end; /* Create the ELF section vector. */
+ elf_mk_delsecunused(0); if unlikely(!OK) goto end; /* Remove any unused section (except for the stub relocation sections, and internal sections). */
+ elf_mk_secnam();        if unlikely(!OK) goto end; /* Allocate section names. */
+ elf_mk_secsort();       if unlikely(!OK) goto end; /* Sort section headers, thus greatly improving cache locality
+                                                     * and restricting the amount of potential program headers. */
  if (compiler.c_flags&DCC_LINKER_FLAG_NORELOC) {
-  elf_mk_secvaddr();     if unlikely(!OK) goto end;
+  elf_mk_dyndat();       if unlikely(!OK) goto end; /* Generate general-purpose dynamic information. */
+  elf_mk_secvaddr();     if unlikely(!OK) goto end; /* Generate virtual section addresses. */
   elf_mk_execrel();      if unlikely(!OK) goto end; /* Execute all relocations. */
   /* XXX: commandline switch for generating dynamic symbol information without relocations. */
 //elf_mk_dynsym();       if unlikely(!OK) goto end; /* Create dynamic symbol information. */
@@ -881,6 +910,7 @@ DCCBin_Generate(stream_t target) {
   elf_mk_dynsym();       if unlikely(!OK) goto end; /* Create dynamic symbol information. */
   elf_mk_delnoprel();    if unlikely(!OK) goto end; /* Delete obsolete relocations, but keep associated symbol data alive. */
   elf_mk_reldat();       if unlikely(!OK) goto end; /* Generate relocation data. */
+  elf_mk_dyndat();       if unlikely(!OK) goto end; /* Generate general-purpose dynamic information. */
   /* At this point, all sections are final and won't have to be changed again! */
   elf_mk_secvaddr();     if unlikely(!OK) goto end; /* Generate virtual section addresses. */
  }
