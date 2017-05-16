@@ -499,9 +499,34 @@ DCCSection_Allocrel(struct DCCSection *__restrict self, size_t n_relocs);
 /* Try to resolve disposition relocations.
  * >> This function handles any redundant relocation
  *    pointing back into the same section.
+ * NOTE: All relocations executed are replaced with 'DCC_R_NONE'
  * @requires: !DCCSection_ISIMPORT(self)
- * @return: * : The amount of deleted relocations. */
+ * @return: * : The amount of executed relocations. */
 DCCFUN size_t DCCSection_ResolveDisp(struct DCCSection *__restrict self);
+
+/* Execute relocations on the section.
+ * WARNING: The caller is responsible to set all section base addresses beforehand.
+ * WARNING: If any relocation depends on a section that had yet to
+ *          have its base set, this function may link incorrectly.
+ * NOTE: Unresolved reference warning will be emit for any undefined,
+ *       non-weak symbol that is not imported from a library.
+ * NOTE: All relocations executed are replaced with 'DCC_R_NONE'.
+ * @requires: !DCCSection_ISIMPORT(self) 
+ * @param: resolve_weak: When non-ZERO, resolve relocations to weak symbols.
+ *                    >> When a relocation is liked against a weak symbol,
+ *                       this function will attempt to resolve that symbol
+ *                       at compile-time.
+ *              WARNING: This also means that such weak symbols cannot
+ *                       be re-defined at a later point, meaning that this
+ *                       argument is only of meaning for binary targets
+ *                       that do not support weak linking (such as PE),
+ *                       or when code is to be executed in immediate mode.
+ *                 HINT: When this argument is non-ZERO, all existing
+ *                       relocations (recognized by the linker) will have
+ *                       been executed, meaning that no further address
+ *                       resolution will be required at any future point.
+ * @return: * : The amount of executed relocations. */
+DCCFUN size_t DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak);
 
 /* Set the base address of a given section.
  * @requires: !DCCSection_ISIMPORT(self) */
@@ -514,14 +539,6 @@ DCCFUN void DCCSection_SetBaseTo(struct DCCSection *__restrict self, target_ptr_
  * @requires: !DCCSection_ISIMPORT(self) */
 DCCFUN void DCCSection_SetBase(struct DCCSection *__restrict self);
 #endif /* DCC_HOST_CPU == DCC_TARGET_CPU */
-
-/* Execute relocations on the section.
- * WARNING: The caller is responsible to set a section base address beforehand.
- * WARNING: If any relocation depends on a section that had yet to
- *          have its base set, this function may link incorrectly.
- * WARNING: Once this function is called, symbol address information is lost forever.
- * @requires: !DCCSection_ISIMPORT(self) */
-DCCFUN void DCCSection_Reloc(struct DCCSection *__restrict self);
 
 /* Delete all relocations inside 'addr...+=size'
  * @return: * : The amount of deleted relocations.

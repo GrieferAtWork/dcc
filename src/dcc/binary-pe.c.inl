@@ -189,9 +189,33 @@ struct DCCPEInfo {
 PRIVATE struct DCCPEInfo pe;
 
 
+PRIVATE void pe_mk_genrt(void);                                  /* Generate PE runtime information. */
+PRIVATE void pe_mk_secvec(void);                                 /* Generate the vector of PE section. */
+PRIVATE void pe_mk_collect_exports(void);                        /* Collect all functions that should be exported. */
+PRIVATE void pe_mk_buildita(void);                               /* Built ITA function wrappers. */
+PRIVATE void pe_mk_relocate(void);                               /* Execute relocations. */
+PRIVATE void pe_mk_relrva(struct secinfo *__restrict info);      /* Convert RVA relocations within the section associated with the given record. */
+PRIVATE void pe_mk_imptab(struct DCCSection *__restrict thunk);  /* Write the import table to the given '.thunk' section. */
+PRIVATE void pe_mk_exptab(struct DCCSection *__restrict thunk);  /* Write the export table to the given '.thunk' section. */
+PRIVATE void pe_mk_reldat(struct DCCSection *__restrict relocs); /* Generate relocation informations and write them to 'relocs'. */
+PRIVATE void pe_mk_writefile(stream_t fd);                       /* Generate the final PE binary by writing it to 'fd'. */
+
+LOCAL   int     pe_symcmp(struct DCCSym const *__restrict a, struct DCCSym const *__restrict b);
+LOCAL   int     pe_should_export(struct DCCSym const *__restrict sym);
+PRIVATE int     pe_symsort_merge(struct DCCSym **__restrict v, size_t n, struct DCCSym **__restrict r);
+PRIVATE void    pe_symsort_bubble(struct DCCSym **__restrict v, size_t n);
+PRIVATE void    pe_toupper(char *p, size_t s);
+PRIVATE DWORD   pe_checksum(void const *data, size_t s, DWORD sum);
+PRIVATE void    pe_fd_paddata(stream_t fd, DWORD addr);
+LOCAL   DWORD   pe_alignfile(DWORD n);
+LOCAL   target_ptr_t pe_alignsec(target_ptr_t n);
+PRIVATE secty_t secty_of(struct DCCSection const *__restrict section);
 
 
-LOCAL DWORD        pe_alignfile(DWORD n) { return (n+(pe.pe_filalign-1)) & ~(pe.pe_filalign-1); }
+
+
+
+LOCAL DWORD pe_alignfile(DWORD n) { return (n+(pe.pe_filalign-1)) & ~(pe.pe_filalign-1); }
 LOCAL target_ptr_t pe_alignsec(target_ptr_t n) { return (n+(pe.pe_secalign-1)) & ~(pe.pe_secalign-1); }
 
 
@@ -232,13 +256,8 @@ secty_of(struct DCCSection const *__restrict section) {
 }
 
 
-typedef struct {
- DWORD offset;
- DWORD size;
-} RELOCATION_HEADER;
-
 PRIVATE void
-pe_build_relocs(struct DCCSection *__restrict section) {
+pe_mk_reldat(struct DCCSection *__restrict relocs) {
  struct secinfo *siter,*send;
  struct DCCRel *iter,*end;
  target_ptr_t addr,blockaddr = 0,offset = 0;
@@ -254,13 +273,13 @@ pe_build_relocs(struct DCCSection *__restrict section) {
    ++iter;
    if (t != DCC_R_DATA_PTR) continue;
    if (count == 0) { /* new block */
-    blockaddr = (target_ptr_t)(section->sc_text.tb_max-section->sc_text.tb_begin);
-    DCCSection_DAlloc(section,sizeof(RELOCATION_HEADER),1,0);
+    blockaddr = (target_ptr_t)(relocs->sc_text.tb_max-relocs->sc_text.tb_begin);
+    DCCSection_DAlloc(relocs,sizeof(IMAGE_BASE_RELOCATION),1,0);
     offset = addr & 0xFFFFFFFF<<12;
    }
    if ((addr -= offset) < (1<<12)) { /* one block spans 4k addresses */
-    WORD *wp = (WORD *)DCCSection_GetText(section,
-                                          DCCSection_DAlloc(section,sizeof(WORD),1,0),
+    WORD *wp = (WORD *)DCCSection_GetText(relocs,
+                                          DCCSection_DAlloc(relocs,sizeof(WORD),1,0),
                                           sizeof(WORD));
     if (wp) *wp = (WORD)addr|(IMAGE_REL_BASED_HIGHLOW << 12);
     ++count;
@@ -276,13 +295,14 @@ pe_build_relocs(struct DCCSection *__restrict section) {
    continue;
   }
   if (count) { /* Finish the block */
-   RELOCATION_HEADER *hdr;
-   if (count & 1) DCCSection_DAlloc(section,sizeof(WORD),1,0),++count;
-   hdr = (RELOCATION_HEADER *)DCCSection_GetText(section,blockaddr,sizeof(RELOCATION_HEADER));
+   PIMAGE_BASE_RELOCATION hdr;
+   if (count & 1) DCCSection_DAlloc(relocs,sizeof(WORD),1,0),++count;
+   hdr = (PIMAGE_BASE_RELOCATION)DCCSection_GetText(relocs,blockaddr,
+                                                    sizeof(IMAGE_BASE_RELOCATION));
    if (hdr) {
-    hdr->offset = offset-pe.pe_imgbase;
-    hdr->size   = count*sizeof(WORD)+sizeof(RELOCATION_HEADER);
-    count       = 0;
+    hdr->VirtualAddress = offset-pe.pe_imgbase;
+    hdr->SizeOfBlock    = count*sizeof(WORD)+sizeof(IMAGE_BASE_RELOCATION);
+    count               = 0;
    }
   }
   if (iter >= end) break;
@@ -290,7 +310,7 @@ pe_build_relocs(struct DCCSection *__restrict section) {
 }
 
 PRIVATE void
-force_uppercase(char *p, size_t s) {
+pe_toupper(char *p, size_t s) {
  char ch,*end = p+s;
  for (; p != end; ++p) {
   ch = *p;
@@ -301,13 +321,13 @@ force_uppercase(char *p, size_t s) {
 }
 
 PRIVATE void
-pe_build_imports(struct DCCSection *__restrict thunk) {
+pe_mk_imptab(struct DCCSection *__restrict thunk) {
  struct DCCSection *lib;
  size_t symbol_count = 0;
  target_ptr_t dll_name,dll_ptr;
  target_ptr_t thunk_ptr,entry_ptr;
  target_siz_t total_size;
- IMAGE_IMPORT_DESCRIPTOR *hdr;
+ PIMAGE_IMPORT_DESCRIPTOR hdr;
  DWORD thunk_base = thunk->sc_base-pe.pe_imgbase;
  assert(thunk);
  assert(!DCCSection_ISIMPORT(thunk));
@@ -341,9 +361,9 @@ pe_build_imports(struct DCCSection *__restrict thunk) {
   { /* Convert the DLL name to uppercase. */
     char *p = (char *)DCCSection_GetText(thunk,dll_name,lib->sc_start.
                                          sy_name->k_size*sizeof(char));
-    if (p) force_uppercase(p,lib->sc_start.sy_name->k_size);
+    if (p) pe_toupper(p,lib->sc_start.sy_name->k_size);
   }
-  hdr      = (IMAGE_IMPORT_DESCRIPTOR*)(thunk->sc_text.tb_begin+dll_ptr);
+  hdr      = (PIMAGE_IMPORT_DESCRIPTOR)(thunk->sc_text.tb_begin+dll_ptr);
   dll_ptr += sizeof(IMAGE_IMPORT_DESCRIPTOR);
   hdr->FirstThunk         = thunk_ptr+thunk_base;
   hdr->OriginalFirstThunk = entry_ptr+thunk_base;
@@ -376,7 +396,7 @@ pe_build_imports(struct DCCSection *__restrict thunk) {
 
       /* Patch the library symbols to point into the thunk. */
       if likely((iat_sym = sym->sy_peind) != NULL) {
-       /* 'sy_size' contains the address of the IAT wrapper (s.a.: 'pe_build_ita()') */
+       /* 'sy_size' contains the address of the IAT wrapper (s.a.: 'pe_mk_buildita()') */
        import_addr = iat_sym->sy_size;
        DCCSym_Define(iat_sym,thunk,thunk_ptr,0); /* Point the IAT symbol into the thunk table. */
        DCCSym_ClrDef(sym);
@@ -418,7 +438,7 @@ pe_build_imports(struct DCCSection *__restrict thunk) {
 }
 
 LOCAL int
-sym_cmp(struct DCCSym const *__restrict a,
+pe_symcmp(struct DCCSym const *__restrict a,
         struct DCCSym const *__restrict b) {
  assert(a);
  assert(b);
@@ -427,7 +447,7 @@ sym_cmp(struct DCCSym const *__restrict a,
 }
 
 PRIVATE int
-sym_mergesort(struct DCCSym **__restrict v, size_t n,
+pe_symsort_merge(struct DCCSym **__restrict v, size_t n,
               struct DCCSym **__restrict r) {
  struct DCCSym **lb,**rb,**pl,**pr;
  size_t ln,rn; int error = 0;
@@ -436,7 +456,7 @@ sym_mergesort(struct DCCSym **__restrict v, size_t n,
  case 0: return 1;
  case 1: r[0] = v[0]; return 1;
  case 2:
-  if (sym_cmp(v[1],v[0]) < 0) {
+  if (pe_symcmp(v[1],v[0]) < 0) {
    r[0] = v[1];
    r[1] = v[0];
   } else {
@@ -452,12 +472,12 @@ sym_mergesort(struct DCCSym **__restrict v, size_t n,
  if unlikely(!lb) goto end;
  rb = (struct DCCSym **)malloc(rn*sizeof(struct DCCSym *));
  if unlikely(!rb) goto end_lb;
- if (!sym_mergesort(v,ln,lb) ||
-     !sym_mergesort(v+ln,rn,rb)) goto end_rb;
+ if (!pe_symsort_merge(v,ln,lb) ||
+     !pe_symsort_merge(v+ln,rn,rb)) goto end_rb;
  /* Now merge the two vector together. */
  pl = lb,pr = rb,error = 1;
  while (ln && rn) {
-  if (sym_cmp(*pr,*pl) < 0)
+  if (pe_symcmp(*pr,*pl) < 0)
        *r++ = *pr++,--rn;
   else *r++ = *pl++,--ln;
  }
@@ -473,7 +493,7 @@ end: return error;
 }
 
 PRIVATE void
-sym_bubblesort(struct DCCSym **__restrict v, size_t n) {
+pe_symsort_bubble(struct DCCSym **__restrict v, size_t n) {
  struct DCCSym *temp,**v_end,**iter,**next;
  v_end = v+n;
  while (n--) {
@@ -481,7 +501,7 @@ sym_bubblesort(struct DCCSym **__restrict v, size_t n) {
   for (;;) {
    next = iter+1;
    if (next == v_end) break;
-   if (sym_cmp(*next,*iter) < 0) {
+   if (pe_symcmp(*next,*iter) < 0) {
     temp = *iter;
     *iter = *next;
     *next = temp;
@@ -529,7 +549,7 @@ do_export:
 }
 
 PRIVATE void
-pe_collect_exports(void) {
+pe_mk_collect_exports(void) {
  size_t exportc,exporta,new_exporta;
  struct DCCSym **exportv,**new_exportv,*sym;
  /* Step #1: Collect all symbols that should be exported. */
@@ -559,11 +579,11 @@ pe_collect_exports(void) {
  /* Step #2: Sort all the symbols lexicographically by their names. */
  new_exportv = (struct DCCSym **)malloc(exportc*sizeof(struct DCCSym *));
  if unlikely(!new_exportv) goto sort_fallback;
- if (!sym_mergesort(exportv,exportc,new_exportv)) {
+ if (!pe_symsort_merge(exportv,exportc,new_exportv)) {
   free(new_exportv);
 sort_fallback:
   /* fallback sorting algorithm */
-  sym_bubblesort(exportv,exportc);
+  pe_symsort_bubble(exportv,exportc);
  } else {
   free(exportv);
   exportv = new_exportv;
@@ -580,9 +600,9 @@ seterr:
 
 
 PRIVATE void
-pe_build_exports(struct DCCSection *__restrict thunk) {
+pe_mk_exptab(struct DCCSection *__restrict thunk) {
  DWORD thunk_base;
- IMAGE_EXPORT_DIRECTORY *expdir_data;
+ PIMAGE_EXPORT_DIRECTORY expdir_data;
  target_ptr_t            expdir_addr;
  target_ptr_t dll_name;  /* Address of the DLL name. */
  target_ptr_t func_addr; /* Vector of DWORD active as virtual-pointers to entry points. */
@@ -609,7 +629,8 @@ pe_build_exports(struct DCCSection *__restrict thunk) {
  if unlikely(!DCCSection_GetText(thunk,func_addr,pe.pe_exportc*sizeof(DWORD)) ||
              !DCCSection_GetText(thunk,name_addr,pe.pe_exportc*sizeof(DWORD)) ||
              !DCCSection_GetText(thunk,ord_addr,pe.pe_exportc*sizeof(WORD))) goto end;
- expdir_data = (IMAGE_EXPORT_DIRECTORY *)DCCSection_GetText(thunk,expdir_addr,sizeof(IMAGE_EXPORT_DIRECTORY));
+ expdir_data = (PIMAGE_EXPORT_DIRECTORY)DCCSection_GetText(thunk,expdir_addr,
+                                                           sizeof(IMAGE_EXPORT_DIRECTORY));
  if unlikely(!expdir_data) goto end;
  expdir_data->Characteristics        = 0;
  expdir_data->Name                   = dll_name+thunk_base;
@@ -664,7 +685,7 @@ end:;
 
 
 /* Assign section addresses. */
-PRIVATE void pe_build_sections(void) {
+PRIVATE void pe_mk_secvec(void) {
  struct DCCSection **sec_order,**iter,**end,*section;
  struct secinfo *info; secty_t section_type;
  target_ptr_t addr;
@@ -729,14 +750,14 @@ PRIVATE void pe_build_sections(void) {
    if (info->si_type == SECTY_DATA &&
       !pe.pe_thunk) pe.pe_thunk = section;
    if (pe.pe_thunk == section) {
-    pe_build_imports(section);
-    pe_build_exports(section);
+    pe_mk_imptab(section);
+    pe_mk_exptab(section);
    }
 
    /* Define the relocations section. */
    if (info->si_type == SECTY_RELOC &&
       !pe.pe_reloc) pe.pe_reloc = section;
-   if (pe.pe_reloc == section) pe_build_relocs(section);
+   if (pe.pe_reloc == section) pe_mk_reldat(section);
 
    /* Figure out the virtual and physical section size. */
    info->si_data = section->sc_text.tb_begin;
@@ -762,7 +783,7 @@ PRIVATE void pe_build_sections(void) {
 
 
 PRIVATE void
-pe_relocate_rva(struct secinfo *__restrict info) {
+pe_mk_relrva(struct secinfo *__restrict info) {
  struct DCCRel *iter,*end; struct DCCSym *relsym;
  struct DCCSection *sec;
  uint8_t *data,*data_end,*ptr; size_t size;
@@ -800,17 +821,16 @@ pe_relocate_rva(struct secinfo *__restrict info) {
 
 /* Relocate all PE sections to simplify all relocations, simply requiring the linker
  * to add a new image-base, offset from 'pe.pe_imgbase' to every absolute pointer! */
-PRIVATE void pe_relocate(void) {
+PRIVATE void pe_mk_relocate(void) {
  struct secinfo *iter,*end;
  end = (iter = pe.pe_secv)+pe.pe_secc;
  for (; iter != end; ++iter) {
-  DCCSection_Reloc(iter->si_sec);
-  pe_relocate_rva(iter);
+  DCCSection_Reloc(iter->si_sec,1);
+  pe_mk_relrva(iter);
  }
 }
 
-
-static DWORD
+PRIVATE DWORD
 pe_checksum(void const *data, size_t s, DWORD sum) {
  uint16_t *p = (uint16_t *)data;
  while (s) {
@@ -822,25 +842,26 @@ pe_checksum(void const *data, size_t s, DWORD sum) {
 }
 
 PRIVATE void
-pe_paddata(stream_t target, DWORD addr) {
+pe_fd_paddata(stream_t fd, DWORD addr) {
  void *buffer;
- DWORD ptr = s_seek(target,0,SEEK_CUR);
+ DWORD ptr = s_seek(fd,0,SEEK_CUR);
  if (ptr >= addr) return;
  buffer = calloc(1,addr-ptr);
  if (buffer) {
-  s_writea(target,buffer,addr-ptr);
+  s_writea(fd,buffer,addr-ptr);
   free(buffer);
  } else while (ptr++ <= addr) {
   static char const zero[1] = {0};
-  s_writea(target,zero,1);
+  s_writea(fd,zero,1);
  }
 }
 
 
 
 
+
 PRIVATE void
-pe_writefile(stream_t target) {
+pe_mk_writefile(stream_t fd) {
 #define DEFDIR(id,p,s) \
  (hdr.ohdr.DataDirectory[id].VirtualAddress = (p),\
   hdr.ohdr.DataDirectory[id].Size = (s))
@@ -953,17 +974,16 @@ pe_writefile(stream_t target) {
   }
  }
  /* Figure out the address of the entry point. */
- {
-  struct DCCSymAddr entryaddr;
-  if (!DCCSym_LoadAddr(pe.pe_entry,&entryaddr,1)) {
-   WARN(W_MISSING_ENTRY_POINT,pe.pe_entry->sy_name->k_name);
-   /* TODO: What if the text section is empty? */
-   entryaddr.sa_sym = &unit.u_text->sc_start;
-   entryaddr.sa_off = 0;
-  }
-  hdr.ohdr.AddressOfEntryPoint = (entryaddr.sa_sym->sy_addr+entryaddr.sa_off+
-                                  entryaddr.sa_sym->sy_sec->sc_base)-
-                                  pe.pe_imgbase;
+ { struct DCCSymAddr entryaddr;
+   if (!DCCSym_LoadAddr(pe.pe_entry,&entryaddr,1)) {
+    WARN(W_MISSING_ENTRY_POINT,pe.pe_entry->sy_name->k_name);
+    /* TODO: What if the text section is empty? */
+    entryaddr.sa_sym = &unit.u_text->sc_start;
+    entryaddr.sa_off = 0;
+   }
+   hdr.ohdr.AddressOfEntryPoint = (entryaddr.sa_sym->sy_addr+entryaddr.sa_off+
+                                   entryaddr.sa_sym->sy_sec->sc_base)-
+                                   pe.pe_imgbase;
  }
  hdr.fhdr.NumberOfSections = (WORD)pe.pe_secc;
  hdr.ohdr.ImageBase        = pe.pe_imgbase;
@@ -990,17 +1010,17 @@ pe_writefile(stream_t target) {
   }
  }
  hdr.ohdr.CheckSum += file_offset;
- s_writea(target,&hdr,sizeof(hdr));
+ s_writea(fd,&hdr,sizeof(hdr));
  for (iter = pe.pe_secv; iter != end; ++iter) {
-  s_writea(target,&iter->si_hdr,sizeof(IMAGE_SECTION_HEADER));
+  s_writea(fd,&iter->si_hdr,sizeof(IMAGE_SECTION_HEADER));
  }
- pe_paddata(target,hdr.ohdr.SizeOfHeaders);
+ pe_fd_paddata(fd,hdr.ohdr.SizeOfHeaders);
  for (iter = pe.pe_secv; iter != end; ++iter) {
   if (iter->si_msize) {
    /* Must create padding data before _AND_ after! */
-   pe_paddata(target,iter->si_hdr.PointerToRawData);
-   s_writea(target,iter->si_data,iter->si_msize);
-   pe_paddata(target,iter->si_hdr.PointerToRawData+
+   pe_fd_paddata(fd,iter->si_hdr.PointerToRawData);
+   s_writea(fd,iter->si_data,iter->si_msize);
+   pe_fd_paddata(fd,iter->si_hdr.PointerToRawData+
                      iter->si_hdr.SizeOfRawData);
   }
  }
@@ -1009,9 +1029,8 @@ pe_writefile(stream_t target) {
 
 
 
-
 /* Generate PE runtime information. */
-PRIVATE void pe_genrt(void) {
+PRIVATE void pe_mk_genrt(void) {
  char const *entry_point;
       if (compiler.l_flags&DCC_LINKER_FLAG_SHARED) pe.pe_type = PETYPE_DLL;
  else if (DCCUnit_GetSyms(PE_STDSYM("WinMain","@16"))) pe.pe_type = PETYPE_GUI;
@@ -1038,9 +1057,10 @@ PRIVATE void pe_genrt(void) {
   pe.pe_secalign = 0x20;
   pe.pe_filalign = 0x20;
  } else {
-  pe.pe_secalign = 0x1000;
+  pe.pe_secalign = DCC_TARGET_PAGESIZE;
   pe.pe_filalign = 0x200;
  }
+
  /* TODO: 'pe.pe_secalign' can be overwritten. */
  /* TODO: 'pe.pe_filalign' can be overwritten. */
 
@@ -1061,7 +1081,7 @@ PRIVATE void pe_genrt(void) {
 }
 
 
-PRIVATE void pe_build_ita(void) {
+PRIVATE void pe_mk_buildita(void) {
  struct DCCSection *lib;
  struct DCCSym *sym;
  DCCUnit_ENUMIMP(lib) {
@@ -1130,22 +1150,36 @@ PRIVATE void pe_build_ita(void) {
  }
 }
 
-
 PUBLIC void
-DCCBin_Generate(stream_t target) {
+DCCBin_Generate(stream_t fd) {
  memset(&pe,0,sizeof(pe));
- pe_genrt();
- pe_collect_exports();
 
+ /* Determine PE settings, as well as the entry point. */
+ pe_mk_genrt();
+
+ /* Collect all symbols that should be exported from the binary. */
+ pe_mk_collect_exports();
+ 
+ /* Everything that is externally visible has been collected,
+  * meaning that everything that's still unused can be removed. */
  DCCUnit_ClearUnused();
  DCCUnit_ClearUnusedLibs();
+ 
+ /* Build ITA wrapper functions for all symbols still in use. */
+ pe_mk_buildita();
+ if (!OK) goto end;
 
- pe_build_ita();
+ /* Build the vector of used sections.
+  * NOTE: During this process, relocations and
+  *       import/export tables are generated as well. */
+ pe_mk_secvec();
  if (!OK) goto end;
- pe_build_sections();
- if (!OK) goto end;
- pe_relocate();
- pe_writefile(target);
+
+ /* Execute relocations. */
+ pe_mk_relocate();
+
+ /* Write everything to file. */
+ pe_mk_writefile(fd);
 end:
  {
   struct DCCSym **iter,**end;

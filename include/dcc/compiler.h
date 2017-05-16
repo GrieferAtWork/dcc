@@ -119,7 +119,7 @@ struct DCCDecl {
 DCCFUN void _DCCDecl_Delete(struct DCCDecl *__restrict self);
 
 /* Returns TRUE(1) if the given declaration is empty (aka. may still be declared) */
-#define DCCDecl_ISEMPTY(self) ((self)->d_kind == DCC_DEFYPE_NONE)
+#define DCCDecl_ISEMPTY(self) ((self)->d_kind == DCC_DECLKIND_NONE)
 
 /* Allocate a new, empty C-declaration 'name' and return a reference to it.
  * NOTE: file and line will be initialized to the current effective TPP file/line positions. */
@@ -481,8 +481,10 @@ DCCDAT struct DCCCompiler compiler;
 #endif
 
 /* push/pop the current unit c-flags. */
-#define pushf   DCCCompiler_Pushf
-#define popf    DCCCompiler_Popf
+#define pushf      DCCCompiler_Pushf
+#define popf       DCCCompiler_Popf
+#define setf(f)   (void)(compiler.c_flags|= (f))
+#define unsetf(f) (void)(compiler.c_flags&=~(f))
 
 /* push/pop the break/continue symbols. */
 #define push_bc DCCCompiler_PushBCSyms

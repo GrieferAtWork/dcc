@@ -55,40 +55,43 @@ DCC_DECL_BEGIN
  *     >> 
  *   - The %esp and %ebp registers are never NULL
  */
-#define DCC_VSTACK_CALL  DCC_ATTRIBUTE_FASTCALL
 
 
 struct DCCSym;
 struct TPPString;
 
+#ifdef DCC_TARGET_X86
 /* Register classes (or'd together with 'DCC_ASMREG_*' constants from "assembler.h")
  * NOTE: The RC_F* classes are or'd together to express overlapp.
  * e.g.: the first 4 16-bit register have 2 associated 8-bit registers.
  *    >> %eax is expressed as: (DCC_ASMREG_AX|DCC_RC_I8|DCC_RC_I16|DCC_RC_I32)
  *    >> %esp is expressed as: (DCC_ASMREG_SP|DCC_RC_I16|DCC_RC_I32) // There is no 8-bit variant of SP
  * */
-#define DCC_RC_I8   0x0008 /*< 8-bit register: AL, CL, DL, BL, AH, CH, DH, BH. */
-#define DCC_RC_I16  0x0010 /*< 16-bit register: AX, CX, DX, BX, SI, DI. */
-#define DCC_RC_I32  0x0020 /*< 32-bit register: EAX, ECX, EDX, EBX, ESI, EDI. */
+#   define DCC_RC_I8     0x0008 /*< 8-bit register: AL, CL, DL, BL, AH, CH, DH, BH. */
+#   define DCC_RC_I16    0x0010 /*< 16-bit register: AX, CX, DX, BX, SI, DI. */
+#   define DCC_RC_I32    0x0020 /*< 32-bit register: EAX, ECX, EDX, EBX, ESI, EDI. */
 #if DCC_TARGET_CPU == DCC_CPU_X86_64
-#define DCC_RC_I64  0x0040 /*< 64-bit register: RAX, RCX, RDX, RBX, RSI, RDI. */
-#define DCC_RC_I3264 (DCC_RC_I32|DCC_RC_I64)
-#define DCC_RC_PTR    DCC_RC_I64
-#define DCC_RC_PTRX  (DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8)
+#   define DCC_RC_I64    0x0040 /*< 64-bit register: RAX, RCX, RDX, RBX, RSI, RDI. */
+#   define DCC_RC_I3264 (DCC_RC_I32|DCC_RC_I64)
+#   define DCC_RC_PTR    DCC_RC_I64
+#   define DCC_RC_PTRX  (DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8)
 #else
-#define DCC_RC_I3264  DCC_RC_I32
-#define DCC_RC_PTR    DCC_RC_I32
-#define DCC_RC_PTRX  (DCC_RC_I32|DCC_RC_I16|DCC_RC_I8)
+#   define DCC_RC_I3264  DCC_RC_I32
+#   define DCC_RC_PTR    DCC_RC_I32
+#   define DCC_RC_PTRX  (DCC_RC_I32|DCC_RC_I16|DCC_RC_I8)
 #endif
-#define DCC_RC_I   (DCC_RC_I8|DCC_RC_I16|DCC_RC_I3264)
-#define DCC_RC_MMX  0x0800 /*< MMX register: MM(0-7) */
-#define DCC_RC_SSE  0x0900 /*< SSE register: XMM(0-7) */
-#define DCC_RC_CR   0x0a00 /*< CR* register: CR(0-7) */
-#define DCC_RC_TR   0x0b00 /*< TR* register: TR(0-7) */
-#define DCC_RC_DB   0x0c00 /*< DB* register: DB(0-7) */
-#define DCC_RC_DR   0x0d00 /*< DR* register: DR(0-7)*/
-#define DCC_RC_SEG  0x0e00 /*< Segment registers. */
-#define DCC_RC_ST   0x0f00 /*< ST(i) registers. */
+#   define DCC_RC_I     (DCC_RC_I8|DCC_RC_I16|DCC_RC_I3264)
+#   define DCC_RC_MMX    0x0800 /*< MMX register: MM(0-7) */
+#   define DCC_RC_SSE    0x0900 /*< SSE register: XMM(0-7) */
+#   define DCC_RC_CR     0x0a00 /*< CR* register: CR(0-7) */
+#   define DCC_RC_TR     0x0b00 /*< TR* register: TR(0-7) */
+#   define DCC_RC_DB     0x0c00 /*< DB* register: DB(0-7) */
+#   define DCC_RC_DR     0x0d00 /*< DR* register: DR(0-7)*/
+#   define DCC_RC_SEG    0x0e00 /*< Segment registers. */
+#   define DCC_RC_ST     0x0f00 /*< ST(i) registers. */
+#else
+#   error FIXME
+#endif
 
 #define DCC_PRIVATE_RC_IN1 DCC_RC_I8
 #define DCC_PRIVATE_RC_IN2 DCC_RC_I16
@@ -114,59 +117,71 @@ struct TPPString;
  *    >> local_x.sv_ctype.t_base = NULL;
  *    >> local_x.sv_flags        = DCC_SFLAG_LVALUE;
  *    >> local_x.sv_reg          = DCC_RR_XBP;
- *    >> local_x.sv_reg2         = DCC_RC_CONST; // Would be used for a 32-bit target, if 'x' was a 64-bit integer.
- *    >> local_x.sv_const.offset = -find_or_alloc_local("x");
- *    >> local_x.sv_sym          = NULL;
- *    >> DCCVStack_Push(&local_x);
+ *    >> local_x.sv_reg2         = DCC_RC_CONST;
+ *    >> local_x.sv_const.it     = DCCCompiler_HWStackAlloc(DCC_TARGET_SIZEOF_INT,
+ *    >>                                                    DCC_TARGET_SIZEOF_INT,0);
+ *    >> local_x.sv_sym         = NULL;
  *    >> init_x.sv_ctype.t_type = DCCTYPE_INT;
  *    >> init_x.sv_ctype.t_base = NULL;
- *    >> init_x.sv_flags        = DCC_SFLAG_NONE;
+ *    >> init_x.sv_flags        = DCC_SFLAG_RVALUE;
  *    >> init_x.sv_reg          = DCC_RC_CONST;
  *    >> init_x.sv_reg2         = DCC_RC_CONST;
- *    >> init_x.sv_const.i      = 42;
+ *    >> init_x.sv_const.it     = 42;
  *    >> init_x.sv_sym          = NULL;
- *    >> DCCVStack_Push(&init_x);
- *    >> DCCVStack_Binary('=');
- *    >> 
- *    >> ...
- *    >> 
- *    >> local_x.sv_ctype.t_type = DCCTYPE_INT;
- *    >> local_x.sv_ctype.t_base = NULL;
- *    >> local_x.sv_flags        = DCC_SFLAG_LVALUE;
- *    >> local_x.sv_reg          = DCC_RR_XBP;
- *    >> local_x.sv_reg2         = DCC_RC_CONST; // Would be used for a 32-bit target, if 'x' was a 64-bit integer.
- *    >> local_x.sv_const.offset = -find_local("x");
- *    >> local_x.sv_sym          = NULL;
- *    >> DCCVStack_Push(&local_x);
+ *    >>
+ *    >> vpush(&local_x);
+ *    >> vpush(&init_x);
+ *    >> vstore(1);
  */
 
 /* NOTE: Global variables are implemented as follows:
  *    >> static int x = 42;
  *    >> printf("%d\n",x);
  *       Internal:
- *    >> struct DCCSym *sym = DCCSymtab_New(global,...); // 'x'
- *    >> if (sym->d_type != DCC_DECLKIND_NONE) return X_IS_ALREADY_DEFINED;
- *    >> sym->d_type = DCC_SYMTYPE_LABEL;
+ *    >> struct DCCStackValue static_x,init_x;
+ *    >> struct DCCSection *symsec;
+ *    >> target_ptr_t       x_addr;
+ *    >> struct DCCSym *sym = DCCUnit_NewSyms("x",DCC_SYMFLAG_STATIC);
+ *    >> if (DCCSym_ISDEFINED(sym)) return X_IS_ALREADY_DEFINED;
+ *    >> 
  *    >> // If 'x' was declared as const, this would be 'unit.u_data'
  *    >> // In both cases, the used section can be overwritten with __attribute__((section(...)))
- *    >> sym->sy_sec  = unit.u_bss;
- *    >> sym->sy_addr = DCCSection_TADDR(sym->sy_sec);
- *    >> // Allocate the initial storage within the section
- *    >> *(int *)DCCSection_Alloc(sym->sy_sec,sizeof(int)) = 42;
+ *    >> symsec = unit.u_bss;
  *    >>
- *    >> ...
+ *    >> x_addr = DCCSection_DAlloc(symsec,DCC_TARGET_SIZEOF_INT,
+ *    >>                                   DCC_TARGET_SIZEOF_INT,
+ *    >>                                   0); 
+ *    >> DCCSym_Define(sym,symsec,x_addr,DCC_TARGET_SIZEOF_INT);
+ *    >> init_x.sv_ctype.t_type = DCCTYPE_INT;
+ *    >> init_x.sv_ctype.t_base = NULL;
+ *    >> init_x.sv_flags        = DCC_SFLAG_LVALUE;
+ *    >> init_x.sv_reg          = DCC_RC_CONST;
+ *    >> init_x.sv_reg2         = DCC_RC_CONST;
+ *    >> // This could be used as a compile-time constant offset to 'sym'
+ *    >> // e.g.: When 'x' is a structure, this might be the offset to a member.
+ *    >> init_x.sv_const.it     = 0;
+ *    >> static_x.sv_sym        = sym;
  *    >>
- *    >> struct DCCStackValue static_x;
- *    >> static_x.sv_ctype.t_type = DCCTYPE_INT;
- *    >> static_x.sv_ctype.t_base = NULL;
- *    >> static_x.sv_flags        = DCC_SFLAG_LVALUE;
- *    >> static_x.sv_reg          = DCC_RC_CONST;
- *    >> static_x.sv_reg2         = DCC_RC_CONST;
- *    >> static_x.sv_const.offset = 0; // If 'x' was a struct, this would be the offset to an accessed member.
- *    >> static_x.sv_sym          = sym;
- *    >> DCCVStack_Push(&static_x);
+ *    >> init_x.sv_ctype.t_type = DCCTYPE_INT;
+ *    >> init_x.sv_ctype.t_base = NULL;
+ *    >> init_x.sv_flags        = DCC_SFLAG_RVALUE;
+ *    >> init_x.sv_reg          = DCC_RC_CONST;
+ *    >> init_x.sv_reg2         = DCC_RC_CONST;
+ *    >> init_x.sv_const.it     = 42;
+ *    >> init_x.sv_sym          = NULL;
+ *    >>
+ *    >> pushf();
+ *    >> // Allow static initializers to directly write to section memory.
+ *    >> // If this flag wasn't set, the calls below would
+ *    >> // generate code that assigns '42' to 'x' at runtime.
+ *    >> setf(DCC_COMPILER_FLAG_SINIT);
+ *    >> vpush(&local_x);
+ *    >> vpush(&init_x);
+ *    >> vstore(1);
+ *    >> popf();
  */
 
+#ifdef DCC_TARGET_X86
 /* Register descriptor + class for base address of local variables. */
 #if DCC_TARGET_CPU == DCC_CPU_X86_64
 #define DCC_RR_XAX  (DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_RAX)
@@ -187,6 +202,9 @@ struct TPPString;
 #define DCC_RR_XSI  (DCC_RC_I32|DCC_RC_I16|DCC_ASMREG_ESI)
 #define DCC_RR_XDI  (DCC_RC_I32|DCC_RC_I16|DCC_ASMREG_EDI)
 #endif
+#endif
+
+#define DCC_VSTACK_CALL  DCC_ATTRIBUTE_FASTCALL
 
 DCCFUN DCC(tyid_t) DCC_VSTACK_CALL DCC_RC_GETTYPE(DCC(rc_t) rc);
 DCCFUN DCC(target_siz_t) DCC_VSTACK_CALL DCC_RC_SIZE(DCC(rc_t) rc);
@@ -240,12 +258,16 @@ union DCCConstValue {
                                              *  in-place operations while the 'DCC_SFLAG_COPY' flag isn't set. */
 #define DCC_SFLAG_XOFFSET        0x00000002 /*< Used for register+offset pairs: The specified offset (when non-ZERO) must be added to the register before the value is popped. */
 #define DCC_SFLAG_XREGISTER      0x00000004 /*< Set for explicit register references stated by the user. - The stack value should not be kill if at all possible! */
-#define DCC_SFLAG_COPY           0x00000008 /*< The associated value must be copied before write. */
+#define DCC_SFLAG_COPY           0x00000008 /*< The associated value must be copied before being written to (aka. COW-semantics).
+                                             *  Since all stack-value operations are in-place, this flag is very important for implementing
+                                             *  the difference between 'x+y' and 'x += y' (Simply set this flag for 'x' in 'x+y') */
+
 #define DCC_SFLAG_TEST           0x00000010 /*< The stack value is the result of a test. */
 #define DCC_SFLAG_TEST_MASK      0xf0000000 /*< Mask for test ids (One of 'DCC_TEST_*'). */
 #define DCC_SFLAG_TEST_SHIFT     28         /*< Shift for test ids. */
 #define DCC_SFLAG_MKTEST(t)     (DCC_SFLAG_TEST|(((t) << DCC_SFLAG_TEST_SHIFT)&DCC_SFLAG_TEST_MASK))
 #define DCC_SFLAG_GTTEST(f)     (((f)&DCC_SFLAG_TEST_MASK) >> DCC_SFLAG_TEST_SHIFT)
+
 #define DCC_SFLAG_BITFLD         0x00000020 /*< The stack value describes a bit-field. (both off and siz are 0..63) */
 #define DCC_SFLAG_BITOFF_SHIFT   26         /*< Shift for accessing the bitfield offset (aka. bit-shift). */
 #define DCC_SFLAG_BITOFF_MASK    0xfc000000 /*< Mask for accessing the bitfield offset (aka. bit-shift). */
@@ -282,30 +304,28 @@ struct DCCStackValue {
  ((self)->sv_reg == DCC_RC_CONST && !((self)->sv_flags&DCC_SFLAG_LVALUE))
 #define DCCStackValue_MUSTCOPY(self) \
   (((self)->sv_flags&DCC_SFLAG_COPY) || /* Must copy protected registers ESP/EBP. */\
- (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_XREGISTER)) && \
-     DCCStackValue_ISPROTECTED(self)))
+ (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_XREGISTER)) \
+  && DCCStackValue_ISPROTECTED(self)))
 #define DCCStackValue_ISPROTECTED(self) \
  ((((self)->sv_reg &(DCC_RC_I3264|DCC_RC_I16)) && DCC_ASMREG_ISSPTR((self)->sv_reg &DCC_RI_MASK)) ||\
   (((self)->sv_reg2&(DCC_RC_I3264|DCC_RC_I16)) && DCC_ASMREG_ISSPTR((self)->sv_reg2&DCC_RI_MASK)))
 
 
-//////////////////////////////////////////////////////////////////////////
-// Kill a given stack value by saving it on the stack,
-// then redirecting it to point to that saved value.
-// >> // Before
-// >> int x = 10+20;
-// >> int y = x+30;
-// >> // After application to '10' and 'x'
-// >> int const a = 10;
-// >> int x = a+20;
-// >> int &const _x = x; // May not be proper c/c++, but mirrors the internal representation
-// >> int y = _x+30;
+/* Kill a given stack value by saving it on the stack,
+ * then redirecting it to point to that saved value.
+ * >> // Before
+ * >> int x = 10+20;
+ * >> int y = x+30;
+ * >> // After application to '10' and 'x'
+ * >> int const a = 10;
+ * >> int x = a+20;
+ * >> int &const _x = x; // May not be proper c/c++, but mirrors the internal representation
+ * >> int y = _x+30; */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_Kill(struct DCCStackValue *__restrict self);
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_Cow(struct DCCStackValue *__restrict self);
 
-//////////////////////////////////////////////////////////////////////////
-// The opposite of 'DCCStackValue_Kill': Load the value into a register.
-// After a call to this function, 'self' is never an lvalue!
+/* The opposite of 'DCCStackValue_Kill': Load the value into a register.
+ * After a call to this function, 'self' is never an lvalue! */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_Load(struct DCCStackValue *__restrict self);
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_LoadClass(struct DCCStackValue *__restrict self, DCC(rc_t) rc, int allow_ptr_regs);
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_LoadExplicit(struct DCCStackValue *__restrict self, DCC(rc_t) rcr);
@@ -324,10 +344,9 @@ DCCFUN void DCC_VSTACK_CALL DCCStackValue_PromoteFunction(struct DCCStackValue *
 /* Resolve all 'self->sv_ctype' lvalue-style references. */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_LoadLValue(struct DCCStackValue *__restrict self);
 
-//////////////////////////////////////////////////////////////////////////
-// Check if the given stack value 'value' can implicitly be cast to the given type 'type'.
-// @return: 0 : The cast is allowed.
-// @return: * : One of 'W_CAST_*'
+/* Check if the given stack value 'value' can implicitly be cast to the given type 'type'.
+ * @return: 0 : The cast is allowed.
+ * @return: * : One of 'W_CAST_*' */
 DCCFUN int DCC_VSTACK_CALL
 DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
                         struct DCCType const *__restrict type,

@@ -909,55 +909,6 @@ done:
  return result;
 }
 
-PUBLIC size_t
-DCCSection_ResolveDisp(struct DCCSection *__restrict self) {
- struct DCCRel *iter,*end;
- uint8_t *base_address;
- size_t result = 0;
- assert(self);
- DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- end = (iter = self->sc_relv)+self->sc_relc;
- base_address = (uint8_t *)self->sc_base;
- if (!base_address) base_address = self->sc_text.tb_begin;
- goto begin;
-next: ++iter;
-begin: while (iter != end) {
-  uint8_t *rel_addr; target_ptr_t rel_value;
-  struct DCCSymAddr symaddr;
-  /* We're only resolving relocations pointing back into our section. */
-  if (!DCCSym_LoadAddr(iter->r_sym,&symaddr,1) ||
-       symaddr.sa_sym->sy_sec != self) goto next;
-  rel_addr  = base_address+iter->r_addr;
-  rel_value = symaddr.sa_off+symaddr.sa_sym->sy_addr;
-  switch (iter->r_type) {
-#if DCC_TARGET_IA32(386)
-  case R_386_PC8:  *(int8_t  *)rel_addr += (int8_t )rel_value; break;
-  case R_386_PC16: *(int16_t *)rel_addr += (int16_t)rel_value; break;
-  case R_386_PC32: *(int32_t *)rel_addr += (int32_t)rel_value; break;
-#elif DCC_TARGET_CPU == DCC_CPU_X86_64
-  case R_X86_64_PC8:  *(int8_t  *)rel_addr += (int8_t )rel_value; break;
-  case R_X86_64_PC16: *(int16_t *)rel_addr += (int16_t)rel_value; break;
-  case R_X86_64_PC32: *(int32_t *)rel_addr += (int32_t)rel_value; break;
-#else
-#   error FIXME
-#endif
-  default: goto next;
-  }
-#if 1
-  /* Turn this relocation into an empty one (Need to be
-   * done this way to keep the dependency graph alive). */
-  iter->r_type = DCC_R_NONE;
-  ++result;
-#else
-  /* Delete this relocation. */
-  DCCSym_Decref(iter->r_sym);
-  --end,--self->sc_relc,++result;
-  memmove(iter,iter+1,(end-iter)*sizeof(struct DCCRel));
-#endif
- }
- return result;
-}
-
 PUBLIC void
 DCCSection_SetBaseTo(struct DCCSection *__restrict self,
                      target_ptr_t address) {
@@ -981,15 +932,61 @@ DCCSection_SetBaseTo(struct DCCSection *__restrict self,
  self->sc_base = address;
 }
 
-PUBLIC void
-DCCSection_Reloc(struct DCCSection *__restrict self) {
+PUBLIC size_t
+DCCSection_ResolveDisp(struct DCCSection *__restrict self) {
+ struct DCCRel *iter,*end;
+ uint8_t *base_address;
+ size_t result = 0;
+ assert(self);
+ DCCSECTION_ASSERT_TEXT_FLUSHED(self);
+ end = (iter = self->sc_relv)+self->sc_relc;
+ base_address = self->sc_text.tb_begin;
+#ifdef DCC_SYMFLAG_SEC_OWNSBASE
+ if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE)
+     base_address = (uint8_t *)self->sc_base;
+#endif
+ goto begin;
+next: ++iter;
+begin: while (iter != end) {
+  uint8_t *rel_addr; target_ptr_t rel_value;
+  struct DCCSymAddr symaddr;
+  /* We're only resolving relocations pointing back into our section. */
+  if (!DCCSym_LoadAddr(iter->r_sym,&symaddr,1) ||
+       symaddr.sa_sym->sy_sec != self) goto next;
+  rel_addr  = base_address+iter->r_addr;
+  rel_value = symaddr.sa_off+symaddr.sa_sym->sy_addr;
+  switch (iter->r_type) {
+#if DCC_TARGET_IA32(386)
+  case R_386_PC8:     *(int8_t  *)rel_addr += (int8_t )rel_value; break;
+  case R_386_PC16:    *(int16_t *)rel_addr += (int16_t)rel_value; break;
+  case R_386_PC32:    *(int32_t *)rel_addr += (int32_t)rel_value; break;
+#elif DCC_TARGET_CPU == DCC_CPU_X86_64
+  case R_X86_64_PC8:  *(int8_t  *)rel_addr += (int8_t )rel_value; break;
+  case R_X86_64_PC16: *(int16_t *)rel_addr += (int16_t)rel_value; break;
+  case R_X86_64_PC32: *(int32_t *)rel_addr += (int32_t)rel_value; break;
+#else
+#   error FIXME
+#endif
+  default: goto next;
+  }
+  /* Turn this relocation into an empty one (Need to be
+   * done this way to keep the dependency graph alive). */
+  iter->r_type = DCC_R_NONE;
+  ++result;
+ }
+ return result;
+}
+
+PUBLIC size_t
+DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
  struct DCCRel *iter,*end;
  uint8_t *relbase,*reldata;
  target_ptr_t base_address;
+ size_t result = 0;
  assert(self),DCCSECTION_ASSERT_TEXT_FLUSHED(self);
  assert(self->sc_text.tb_max >= self->sc_text.tb_pos);
  /* Special case: Don't need to do anything if there are no relocations! */
- if unlikely(!self->sc_relc) return;
+ if unlikely(!self->sc_relc) return 0;
  base_address = self->sc_base;
  assert(base_address);
  relbase = self->sc_text.tb_begin;
@@ -1005,7 +1002,7 @@ DCCSection_Reloc(struct DCCSection *__restrict self) {
   reldata = relbase+iter->r_addr;
   assert(iter->r_sym);
   /* We're only resolving relocations pointing back into our section. */
-  if (!DCCSym_LoadAddr(iter->r_sym,&symaddr,1) ||
+  if (!DCCSym_LoadAddr(iter->r_sym,&symaddr,resolve_weak) ||
        DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
    /* Unresolved weak symbols are always located at NULL. */
    if (!(iter->r_sym->sy_flags&DCC_SYMFLAG_WEAK)) {
@@ -1015,6 +1012,8 @@ DCCSection_Reloc(struct DCCSection *__restrict self) {
          iter->r_addr);
    }
    rel_value = 0;
+  } else if (resolve_weak) {
+   continue;
   } else {
    assertf(DCCSection_HASBASE(symaddr.sa_sym->sy_sec),
            "Section '%s' is missing its base",
@@ -1046,7 +1045,12 @@ DCCSection_Reloc(struct DCCSection *__restrict self) {
 #endif
   default: break;
   }
+  /* Turn this relocation into an empty one (Need to be
+   * done this way to keep the dependency graph alive). */
+  iter->r_type = DCC_R_NONE;
+  ++result;
  }
+ return result;
 }
 
 #if DCC_HOST_CPU == DCC_TARGET_CPU

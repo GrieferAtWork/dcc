@@ -52,8 +52,8 @@ DCC_DECL_BEGIN
 
 #ifndef DCC_TARGET_BIN
 /* DCC Master Binary target format switch. */
-//#define DCC_TARGET_BIN     DCC_HOST_BIN
-#define DCC_TARGET_BIN     DCC_BINARY_ELF
+#define DCC_TARGET_BIN     DCC_HOST_BIN
+//#define DCC_TARGET_BIN     DCC_BINARY_ELF
 #endif
 
 #ifndef DCC_TARGET_OS
@@ -72,7 +72,7 @@ DCC_DECL_BEGIN
 
 
 
-/* Figure out the host CPU. */
+/* Figure out the host configuration. */
 #ifndef DCC_HOST_CPU
 #if defined(__amd64__) || defined(__amd64) || \
     defined(__x86_64__) || defined(__x86_64) || \
@@ -214,38 +214,44 @@ DCC_DECL_BEGIN
 #   define DCC_TARGET_SIZEOF_POINTER   4
 #endif
 
-#define DCC_TARGET_SIZEOF_BOOL          1
-#define DCC_TARGET_SIZEOF_CHAR          1
-#define DCC_TARGET_SIZEOF_SHORT         2
-#define DCC_TARGET_SIZEOF_INT           4
-#define DCC_TARGET_SIZEOF_LONG          DCC_TARGET_SIZEOF_POINTER
-#define DCC_TARGET_SIZEOF_LONG_LONG     8
-#define DCC_TARGET_SIZEOF_FLOAT         4
-#define DCC_TARGET_SIZEOF_DOUBLE        8
-#define DCC_TARGET_SIZEOF_LONG_DOUBLE   12
-#define DCC_TARGET_SIZEOF_SIZE_T        DCC_TARGET_SIZEOF_POINTER
-#define DCC_TARGET_SIZEOF_WCHAR_T       4
-#define DCC_TARGET_SIZEOF_WINT_T        DCC_TARGET_SIZEOF_INT
-#define DCC_TARGET_SIZEOF_PTRDIFF_T     DCC_TARGET_SIZEOF_POINTER
-#define DCC_TARGET_SIZEOF_SIG_ATOMIC_T  DCC_TARGET_SIZEOF_INT
-#define DCC_TARGET_SIZEOF_INT_LEAST8_T  1
-#define DCC_TARGET_SIZEOF_INT_LEAST16_T 2
-#define DCC_TARGET_SIZEOF_INT_LEAST32_T 4
-#define DCC_TARGET_SIZEOF_INT_LEAST64_T 8
-#define DCC_TARGET_SIZEOF_INT_FAST8_T   1
-#ifdef DCC_TARGET_X86
-/* Real 16-bit usually requires the D16 prefix, so 32-bit is fast most of the time. */
-#define DCC_TARGET_SIZEOF_INT_FAST16_T  4
+#   define DCC_TARGET_SIZEOF_BOOL          1
+#   define DCC_TARGET_SIZEOF_CHAR          1
+#   define DCC_TARGET_SIZEOF_SHORT         2
+#   define DCC_TARGET_SIZEOF_INT           4
+#   define DCC_TARGET_SIZEOF_LONG          DCC_TARGET_SIZEOF_POINTER
+#   define DCC_TARGET_SIZEOF_LONG_LONG     8
+#   define DCC_TARGET_SIZEOF_FLOAT         4
+#   define DCC_TARGET_SIZEOF_DOUBLE        8
+#   define DCC_TARGET_SIZEOF_LONG_DOUBLE   12
+#   define DCC_TARGET_SIZEOF_SIZE_T        DCC_TARGET_SIZEOF_POINTER
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+#   define DCC_TARGET_SIZEOF_WCHAR_T       2
 #else
-#define DCC_TARGET_SIZEOF_INT_FAST16_T  2
+#   define DCC_TARGET_SIZEOF_WCHAR_T       4
 #endif
-#define DCC_TARGET_SIZEOF_INT_FAST32_T  4
-#define DCC_TARGET_SIZEOF_INT_FAST64_T  8
-#define DCC_TARGET_SIZEOF_INTMAX_T      8
-#define DCC_TARGET_BITPERBYTE           8
+#   define DCC_TARGET_SIZEOF_WINT_T        DCC_TARGET_SIZEOF_INT
+#   define DCC_TARGET_SIZEOF_PTRDIFF_T     DCC_TARGET_SIZEOF_POINTER
+#   define DCC_TARGET_SIZEOF_SIG_ATOMIC_T  DCC_TARGET_SIZEOF_INT
+#   define DCC_TARGET_SIZEOF_INT_LEAST8_T  1
+#   define DCC_TARGET_SIZEOF_INT_LEAST16_T 2
+#   define DCC_TARGET_SIZEOF_INT_LEAST32_T 4
+#   define DCC_TARGET_SIZEOF_INT_LEAST64_T 8
+#   define DCC_TARGET_SIZEOF_INT_FAST8_T   1
+#ifdef DCC_TARGET_X86
+/* Real 16-bit usually requires the D16 prefix,
+ * so 32-bit is actually faster most of the time. */
+#   define DCC_TARGET_SIZEOF_INT_FAST16_T  4
+#else
+#   define DCC_TARGET_SIZEOF_INT_FAST16_T  2
+#endif
+#   define DCC_TARGET_SIZEOF_INT_FAST32_T  4
+#   define DCC_TARGET_SIZEOF_INT_FAST64_T  8
+#   define DCC_TARGET_SIZEOF_INTMAX_T      8
+#   define DCC_TARGET_BITPERBYTE           8
+#   define DCC_TARGET_PAGESIZE          4096
 
 /* Stack-alignment of variadic arguments. */
-#define DCC_TARGET_VA_ALIGN             DCC_TARGET_SIZEOF_POINTER
+#   define DCC_TARGET_VA_ALIGN             DCC_TARGET_SIZEOF_POINTER
 
 
 /* 6: %EBX, %EDI, %ESI, %ESP, %EBP, %EIP */

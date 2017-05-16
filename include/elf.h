@@ -376,7 +376,7 @@ typedef struct
 {
   Elf32_Word	st_name;		/* Symbol name (string tbl index) */
   Elf32_Addr	st_value;		/* Symbol value */
-  Elf32_Word	td_size;		/* Symbol size */
+  Elf32_Word	st_size;		/* Symbol size */
   unsigned char	st_info;		/* Symbol type and binding */
   unsigned char	st_other;		/* Symbol visibility */
   Elf32_Section	st_shndx;		/* Section index */
@@ -389,7 +389,7 @@ typedef struct
   unsigned char st_other;		/* Symbol visibility */
   Elf64_Section	st_shndx;		/* Section index */
   Elf64_Addr	st_value;		/* Symbol value */
-  Elf64_Xword	td_size;		/* Symbol size */
+  Elf64_Xword	st_size;		/* Symbol size */
 } Elf64_Sym;
 
 /* The syminfo section if available contains additional information about
