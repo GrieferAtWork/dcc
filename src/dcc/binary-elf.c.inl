@@ -68,6 +68,10 @@ enum{
 //SECGP_UNUSED   = -1, /* All sections that should not be included in the final binary. */
 };
 
+#define SECGP_ISX(g) (group_info[g].fp_flags&PF_X)
+#define SECGP_ISW(g) (group_info[g].fp_flags&PF_W)
+#define SECGP_ISR(g) (group_info[g].fp_flags&PF_R)
+
 typedef int       secgp_t; /* Section group (One of 'SECGP_*') */
 typedef Elf(Word) secty_t; /* Section type (One of 'SHT_*') */
 
@@ -84,10 +88,16 @@ static struct gpinfo const group_info[SECGP_COUNT] = {
 #else
  /* [SECGP_SHSTR  ] = */{PT_LOAD,   PF_R},
 #endif
- /* [SECGP_DYNAMIC] = */{PT_DYNAMIC,PF_R},
- /* [SECGP_DYNSYM]  = */{PT_NULL,   0},
- /* [SECGP_DYNSTR]  = */{PT_NULL,   0},
- /* [SECGP_HASH  ]  = */{PT_NULL,   0},
+ /* [SECGP_DYNAMIC] = */{PT_DYNAMIC,PF_R/*|PF_W*/},
+#if 1
+ /* [SECGP_DYNSYM ] = */{PT_LOAD,   PF_R},
+ /* [SECGP_DYNSTR ] = */{PT_LOAD,   PF_R},
+ /* [SECGP_HASH   ] = */{PT_LOAD,   PF_R},
+#else
+ /* [SECGP_DYNSYM ] = */{PT_NULL,   0},
+ /* [SECGP_DYNSTR ] = */{PT_NULL,   0},
+ /* [SECGP_HASH   ] = */{PT_NULL,   0},
+#endif
  /* [SECGP_RELOC  ] = */{PT_LOAD,   PF_R},
  /* [SECGP_RELOCA ] = */{PT_LOAD,   PF_R},
  /* [SECGP_NOALLOC] = */{PT_NOTE,   0},
@@ -145,6 +155,7 @@ struct secinfo {
  struct DCCSection    *si_sec;  /*< [1..1] Section associated with this information. */
  struct DCCSection    *si_rel;  /*< [0..1] Section used for relocations. */
  target_ptr_t          si_rdat; /*< Base address for relocation data in si_rel. */
+ target_ptr_t          si_rcnt; /*< Base address for relocation data in si_rel. */
  secgp_t               si_grp;  /*< Section group. */
  Elf(Shdr)             si_hdr;  /*< ELF header, as later written to file. */
 };
@@ -190,6 +201,7 @@ PRIVATE void elf_mk_interp(void);
 PRIVATE void elf_mk_relsec(void);           /* Generate stub relocation sections. */
 PRIVATE void elf_mk_secvec(void);           /* Generate the vector of sections, calculation their groups and basic header data. */
 PRIVATE void elf_mk_secnam(void);           /* Allocate section names. */
+PRIVATE void elf_mk_seclnk(void);           /* Fix section links. */
 PRIVATE void elf_mk_secsort(void);          /* Sort sections according to their weight. */
 PRIVATE void elf_mk_delsecunused(secgp_t min_gp); /* Delete unused sections with a group >= 'min_gp'. */
 PRIVATE void elf_mk_dynsym(void);           /* Generate dynamic symbol information. */
@@ -332,29 +344,114 @@ static uint8_t vismap[4] = {
  /* [DCC_SYMFLAG_PRIVATE  ] = */STV_HIDDEN,
  /* [DCC_SYMFLAG_INTERNAL ] = */STV_INTERNAL,
 };
+
+PRIVATE uint32_t elf_hashof(char const *name) {
+ uint32_t h = 0,g;
+ while (*name) {
+  h = (h << 4) + (unsigned char)*name++;
+  g = h & 0xf0000000;
+  if (g) h ^= g >> 24;
+  h &= ~g;
+ }
+ return h;
+}
+
+PRIVATE void
+elf_mk_hash(struct DCCSection *__restrict hashsec,
+            struct DCCSection *__restrict symtab,
+            struct DCCSection *__restrict strtab,
+            size_t bucketcnt) {
+ char *strdat; size_t symcnt;
+ uint32_t *linkptr,*mapptr,hash;
+ Elf(Sym) *sym_iter,*sym_end,*sym_begin;
+ assert(hashsec);
+ assert(symtab);
+ assert(strtab);
+ assert(hashsec != symtab);
+ assert(hashsec != strtab);
+ assert(symtab != strtab);
+ symcnt  = (size_t)(symtab->sc_text.tb_max-
+                    symtab->sc_text.tb_begin);
+ symcnt /= sizeof(Elf(Sym));
+ if unlikely(!symcnt) return;
+ sym_end = (sym_iter = sym_begin = (Elf(Sym) *)symtab->sc_text.tb_begin)+symcnt;
+ strdat = (char *)strtab->sc_text.tb_begin;
+ assert(symtab->sc_text.tb_max <=
+        symtab->sc_text.tb_end);
+ hashsec->sc_text.tb_pos = hashsec->sc_text.tb_begin;
+ linkptr = (uint32_t *)DCCSection_TAlloc(hashsec,
+                                        (2+bucketcnt+symcnt)*
+                                         sizeof(uint32_t));
+ if unlikely(!linkptr) return;
+ *linkptr++ = bucketcnt;
+ *linkptr++ = symcnt;
+ mapptr     = linkptr;
+ memset(mapptr,0,(bucketcnt+1)*sizeof(uint32_t));
+ linkptr   += bucketcnt+1;
+ for (; sym_iter != sym_end; ++sym_iter) {
+  if (ELF(ST_BIND)(sym_iter->st_info) != STB_LOCAL) {
+   hash = elf_hashof(strdat+sym_iter->st_name) % bucketcnt;
+   *linkptr = mapptr[hash];
+   mapptr[hash] = (uint32_t)(sym_iter-sym_begin);
+  } else {
+   *linkptr = 0;
+  }
+  ++linkptr;
+ }
+}
+
 PRIVATE void elf_mk_dynsym(void) {
  struct DCCSym *sym; Elf(Sym) esym;
+ uint32_t dynid = 0;
  if unlikely(!elf.elf_dynsym ||
              !elf.elf_dynstr) return;
- /* TODO: Generate dynamic symbol information. */
+ /* Generate dynamic symbol information. */
  DCCUnit_ENUMSYM(sym) {
+  target_ptr_t entry_addr;
   unsigned char st_bind,st_type;
+  if (DCCSym_ISSECTION(sym) &&
+     (/*(sym->sy_flags&DCC_SYMFLAG_SEC_NOALLOC) ||*/
+       DCCSection_ISIMPORT(DCCSym_TOSECTION(sym)))) continue;
+#if 1 /* Don't export static symbols. */
   if (sym->sy_flags&DCC_SYMFLAG_STATIC) continue;
+#endif
+#if 0 /* Don't export section start symbols. */
+  if (DCCSym_ISSECTION(sym)) continue;
+#endif
+#if 0 /* Only export symbols with default visibility? */
+  if ((sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE) != DCC_SYMFLAG_NONE) continue;
+#endif
+  esym.st_shndx = sym->sy_sec ? elf_get_secidx(sym->sy_sec) : STN_UNDEF;
+  /* Skip symbols form removed sections (including removed sections themself). */
+  if (sym->sy_sec && esym.st_shndx == STN_UNDEF &&
+     !DCCSection_ISIMPORT(sym->sy_sec)) continue;
   esym.st_name = DCCSection_DAllocMem(elf.elf_dynstr,
                                       sym->sy_name->k_name,
                                      (sym->sy_name->k_size+0)*sizeof(char),
                                      (sym->sy_name->k_size+1)*sizeof(char),
                                       1,0);
-  st_bind = (sym->sy_flags&DCC_SYMFLAG_WEAK) ? STB_WEAK : STB_GLOBAL; /* STB_LOCAL? */
+  st_bind = (sym->sy_flags&DCC_SYMFLAG_WEAK) ? STB_WEAK :
+            (sym->sy_flags&DCC_SYMFLAG_STATIC) ? STB_LOCAL : STB_GLOBAL;
   if (DCCSym_ISSECTION(sym)) st_type = STT_SECTION;
   else st_type = STT_NOTYPE; /* All the other types? */
   esym.st_value = sym->sy_addr;
   esym.st_size  = sym->sy_size;
   esym.st_info  = ELF(ST_INFO)(st_bind,st_type);
   esym.st_other = vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE];
-  esym.st_shndx = sym->sy_sec ? elf_get_secidx(sym->sy_sec) : STN_UNDEF;
-  /* TODO: Save symbol index. */
+  sym->sy_elfid = dynid++; /* Save symbol index. */
+  entry_addr = DCCSection_TADDR(elf.elf_dynsym);
   DCCSection_TWrite(elf.elf_dynsym,&esym,sizeof(esym));
+  if (sym->sy_sec) {
+   DCCSection_Putrel(elf.elf_dynsym,entry_addr+offsetof(Elf(Sym),st_value),
+                     DCC_R_DATA_PTR,&sym->sy_sec->sc_start);
+  }
+ }
+ if (elf.elf_hash) {
+  /* Generate the symbol hash table. */
+  elf_mk_hash(elf.elf_hash,
+              elf.elf_dynsym,
+              elf.elf_dynstr,
+             (dynid*2)/3);
  }
 }
 
@@ -372,7 +469,7 @@ get_relsec(struct DCCSection *__restrict base,
  memcpy(buf+4,kwd->k_name,kwd->k_size*sizeof(char));
  kwd = TPPLexer_LookupKeyword(buf,kwd->k_size+4,alloc_missing);
  return !kwd ? NULL : !alloc_missing ? DCCUnit_GetSec(kwd)
-  : DCCUnit_NewSec(kwd,DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_NOALLOC);
+  : DCCUnit_NewSec(kwd,DCC_SYMFLAG_SEC_R/*|DCC_SYMFLAG_SEC_NOALLOC*/);
 }
 
 
@@ -390,7 +487,7 @@ elf_mk_secinfo(struct secinfo *__restrict info,
  symflag_t secflags;
  info->si_grp         = secgp_of(section);
  secflags             = section->sc_start.sy_flags;
- info->si_rel         = compiler.l_flags&DCC_LINKER_FLAG_NORELOC ? NULL : get_relsec(section,0);
+ info->si_rel         = get_relsec(section,0);
  info->si_hdr.sh_type = secty_of(section);
  info->si_sec         = section;
  /* Not detected by 'secgp_of': */
@@ -404,10 +501,23 @@ elf_mk_secinfo(struct secinfo *__restrict info,
  if (info->si_grp == SECGP_INTERP || info->si_grp == SECGP_SHSTR ||
      info->si_hdr.sh_type == SHT_STRTAB) info->si_hdr.sh_flags |= SHF_STRINGS;
  /* Fill in entry size information for relocation sections. */
-      if (info->si_hdr.sh_type == SHT_REL)  info->si_hdr.sh_entsize = sizeof(Elf(Rel));
- else if (info->si_hdr.sh_type == SHT_RELA) info->si_hdr.sh_entsize = sizeof(Elf(Rela));
+ switch (info->si_hdr.sh_type) {
+ case SHT_REL:     info->si_hdr.sh_entsize = sizeof(Elf(Rel)); break;
+ case SHT_RELA:    info->si_hdr.sh_entsize = sizeof(Elf(Rela)); break;
+ case SHT_HASH:    info->si_hdr.sh_entsize = sizeof(uint32_t); break;
+ case SHT_DYNAMIC: info->si_hdr.sh_entsize = sizeof(Elf(Dyn)); break;
+ case SHT_DYNSYM:
+ case SHT_SYMTAB:  info->si_hdr.sh_entsize = sizeof(Elf(Sym)); break;
+ case SHT_INIT_ARRAY:
+ case SHT_FINI_ARRAY:
+ case SHT_PREINIT_ARRAY:
+  info->si_hdr.sh_entsize = sizeof(Elf(Addr));
+  break;
+ default: break;
+ }
  //iter->si_hdr.sh_offset = ...; /* Filled later. */
  //iter->si_hdr.sh_size = ...; /* Filled later. */
+ if (elf.elf_dynsym) elf.elf_dynsym->sc_elflnk = elf.elf_dynstr;
 #if SHN_UNDEF != 0
  info->si_hdr.sh_link = SHN_UNDEF;
 #endif
@@ -458,6 +568,16 @@ alloc_name:
  }
  if (shstrtab) elf_mk_secinfo(shstrtab,elf.elf_shstr);
 }
+PRIVATE void elf_mk_seclnk(void) {
+ struct secinfo *iter,*end;
+ /* Execute all relocations. */
+ end = (iter = elf.elf_secv)+elf.elf_secc;
+ for (; iter != end; ++iter) {
+  if (iter->si_sec->sc_elflnk) {
+   iter->si_hdr.sh_link = elf_get_secidx(iter->si_sec->sc_elflnk);
+  }
+ }
+}
 
 PRIVATE void elf_mk_execrel(int resolve_weak) {
  struct secinfo *iter,*end;
@@ -503,6 +623,14 @@ PRIVATE void elf_mk_delnoprel(void) {
   }
  }
 }
+
+/* When compiling with the 'DCC_LINKER_FLAG_NORELOC'
+ * flag set, check if 'rel' can be determined at compile-time. */
+PRIVATE int elf_wantrel(struct DCCRel const *__restrict rel) {
+ assert(rel),assert(rel->r_sym);
+ return !rel->r_sym->sy_sec || DCCSection_ISIMPORT(rel->r_sym->sy_sec);
+}
+
 PRIVATE void elf_mk_reldat(void) {
  struct secinfo *iter,*end;
  end = (iter = elf.elf_secv)+elf.elf_secc;
@@ -511,21 +639,43 @@ PRIVATE void elf_mk_reldat(void) {
   struct DCCRel *rel_iter,*rel_end;
   target_ptr_t reladdr;
   Elf(Rel)    *reldata;
-  size_t rel_count;
+  size_t relcnt;
   assert(iter_sec);
-  rel_count = iter_sec->sc_relc;
-  if unlikely(!rel_count) continue;
-  rel_end = (rel_iter = iter_sec->sc_relv)+rel_count;
-  reladdr = DCCSection_DAlloc(iter->si_rel,rel_count*sizeof(Elf(Rel)),
+  relcnt = iter_sec->sc_relc;
+  if unlikely(!relcnt) continue;
+  rel_end = (rel_iter = iter_sec->sc_relv)+relcnt;
+  if (compiler.l_flags&DCC_LINKER_FLAG_NORELOC) {
+   for (; rel_iter != rel_end; ++rel_iter) {
+    if (!elf_wantrel(rel_iter)) --relcnt;
+   }
+   rel_iter = iter_sec->sc_relv;
+  }
+  reladdr = DCCSection_DAlloc(iter->si_rel,relcnt*sizeof(Elf(Rel)),
                               DCC_COMPILER_ALIGNOF(Elf(Rel)),0);
   reldata = (Elf(Rel) *)DCCSection_GetText(iter->si_rel,reladdr,
-                                           rel_count*sizeof(Elf(Rel)));
+                                           relcnt*sizeof(Elf(Rel)));
   if unlikely(!reldata) break;
+  /* Link the relocations against the dynamic symbol table. */
+  iter->si_rel->sc_elflnk = elf.elf_dynsym;
   iter->si_rdat = reladdr;
-  for (; rel_iter != rel_end; ++rel_iter,++reldata) {
-   /* TODO: Use the '.dynsym' symbol index! */
-   reldata->r_info    = ELF(R_INFO)(STN_UNDEF,rel_iter->r_type);
-   reldata->r_offset  = rel_iter->r_addr;
+  iter->si_rcnt = relcnt;
+  if (compiler.l_flags&DCC_LINKER_FLAG_NORELOC) {
+   for (; rel_iter != rel_end; ++rel_iter) {
+    if (!elf_wantrel(rel_iter)) continue;
+    /* Use the '.dynsym' symbol index! */
+    reldata->r_info    = ELF(R_INFO)(rel_iter->r_sym->sy_elfid,
+                                     rel_iter->r_type);
+    reldata->r_offset  = rel_iter->r_addr;
+    ++reldata;
+   }
+  } else {
+   for (; rel_iter != rel_end; ++rel_iter) {
+    /* Use the '.dynsym' symbol index! */
+    reldata->r_info    = ELF(R_INFO)(rel_iter->r_sym->sy_elfid,
+                                     rel_iter->r_type);
+    reldata->r_offset  = rel_iter->r_addr;
+    ++reldata;
+   }
   }
  }
 }
@@ -534,31 +684,23 @@ PRIVATE void elf_mk_reladj(void) {
  end = (iter = elf.elf_secv)+elf.elf_secc;
  for (; iter != end; ++iter) if (iter->si_rel) {
   struct DCCSection *iter_sec = iter->si_sec;
-  struct DCCRel *rel_iter;
   uint8_t *text_data; target_ptr_t secbase;
   Elf(Rel)    *reldata,*relend;
   assert(iter_sec);
-  if unlikely(!iter_sec->sc_relc) continue;
+  if unlikely(!iter->si_rcnt) continue;
   reldata = (Elf(Rel) *)DCCSection_GetText(iter->si_rel,iter->si_rdat,
-                                           iter_sec->sc_relc*sizeof(Elf(Rel)));
+                                           iter->si_rcnt*sizeof(Elf(Rel)));
   if unlikely(!reldata) break;
   secbase   = iter_sec->sc_base;
-  relend    = reldata+iter_sec->sc_relc;
-  rel_iter  = iter->si_sec->sc_relv;
+  relend    = reldata+iter->si_rcnt;
   text_data = iter->si_sec->sc_text.tb_begin;
-  for (; reldata != relend; ++reldata,++rel_iter) {
-   assert(rel_iter->r_addr == reldata->r_offset);
+  for (; reldata != relend; ++reldata) {
    /* Adjust the relocation address from section-relative to image-relative.
     * WARNING: This can only be done after virtual addresses have been generated. */
    if (ELF(R_SYM)(reldata->r_info)  == STN_UNDEF &&
        ELF(R_TYPE)(reldata->r_info) == DCC_R_DATA_PTR) {
     /* Must convert this relocation. */
-    target_ptr_t *p = (target_ptr_t *)(text_data+rel_iter->r_addr);
-    assert((uint8_t *)p >= iter->si_sec->sc_text.tb_begin);
-    assert((uint8_t *)p <= iter->si_sec->sc_text.tb_end-sizeof(target_ptr_t));
-    *p += (rel_iter->r_sym->sy_addr+
-           rel_iter->r_sym->sy_sec->sc_base);
-    reldata->r_info = ELF(R_INFO)(STN_UNDEF,R_386_RELATIVE);
+    reldata->r_info = ELF(R_INFO)(STN_UNDEF,DCC_R_RELATIVE);
    }
    reldata->r_offset += secbase;
   }
@@ -570,19 +712,37 @@ PRIVATE void elf_mk_dt(Elf(Sword) dt) {
  dyn.d_tag = dt;
  DCCSection_TWrite(elf.elf_dynamic,&dyn,sizeof(Elf(Dyn)));
 }
+PRIVATE void elf_mk_dtd(Elf(Sword) dt, Elf(Addr) v) {
+ Elf(Dyn) dyn;
+ dyn.d_tag      = dt;
+ dyn.d_un.d_ptr = v;
+ DCCSection_TWrite(elf.elf_dynamic,&dyn,sizeof(Elf(Dyn)));
+}
 
 
 PRIVATE void
 elf_mk_dyndat(void) {
  struct secinfo *iter,*end;
  if (elf.elf_dynamic) {
+  Elf(Addr) dynflags = 0;
   int has_relsec;
   elf_clr_unused(&elf.elf_dynsym);
-  elf_clr_unused(&elf.elf_dynstr);
   elf_clr_unused(&elf.elf_hash);
-
   elf.elf_dynoff = DCCSection_TADDR(elf.elf_dynamic);
   /* Put 'DT_*' information */
+  if (elf.elf_dynstr) {
+   struct DCCSection *dependency;
+   DCCUnit_ENUMIMP(dependency) {
+    /* Allocate library dependency strings. */
+    target_ptr_t depnam = DCCSection_DAllocMem(elf.elf_dynstr,
+                                               dependency->sc_start.sy_name->k_name,
+                                              (dependency->sc_start.sy_name->k_size+0)*sizeof(char),
+                                              (dependency->sc_start.sy_name->k_size+1)*sizeof(char),
+                                               1,0);
+    elf_mk_dtd(DT_NEEDED,depnam);
+   }
+  }
+  elf_clr_unused(&elf.elf_dynstr);
   if (elf.elf_hash)   elf_mk_dt(DT_HASH);
   if (elf.elf_dynsym) elf_mk_dt(DT_SYMTAB),
                       elf_mk_dt(DT_SYMENT);
@@ -593,6 +753,8 @@ elf_mk_dyndat(void) {
   for (; iter != end; ++iter) {
    if (iter->si_grp == SECGP_RELOC)  has_relsec |= 1;
    if (iter->si_grp == SECGP_RELOCA) has_relsec |= 2;
+   /* Check if there are relocations in non-writable sections. */
+   if (iter->si_rel && !SECGP_ISW(iter->si_grp)) has_relsec |= 4;
   }
   if (has_relsec&1) elf_mk_dt(DT_REL),
                     elf_mk_dt(DT_RELSZ),
@@ -600,12 +762,16 @@ elf_mk_dyndat(void) {
   if (has_relsec&2) elf_mk_dt(DT_RELA),
                     elf_mk_dt(DT_RELASZ),
                     elf_mk_dt(DT_RELAENT);
+  if (has_relsec&4) elf_mk_dtd(DT_TEXTREL,0),
+                    dynflags |= DF_TEXTREL;
+  if (dynflags)     elf_mk_dtd(DT_FLAGS,dynflags);
   if (DCCSection_TADDR(elf.elf_dynamic) != elf.elf_dynoff) elf_mk_dt(DT_NULL);
   elf.elf_dync   = (size_t)(DCCSection_TADDR(elf.elf_dynamic)-
                             elf.elf_dynoff)/
                             sizeof(Elf(Dyn));
  }
 }
+
 PRIVATE void
 elf_mk_dynfll(void) {
  Elf(Dyn) *iter,*end;
@@ -646,6 +812,12 @@ elf_mk_dynfll(void) {
 
   case DT_RELENT:
    iter->d_un.d_ptr = sizeof(Elf(Rel));
+   break;
+
+  case DT_FLAGS:
+  case DT_TEXTREL:
+  case DT_NEEDED:
+   /* Already filled. */
    break;
 
   default:
@@ -746,17 +918,7 @@ PRIVATE void elf_mk_delsecunused(secgp_t min_gp) {
   /* Ignore empty section. */
   if (!secinfo_vsize(iter) &&
       !(iter->si_sec->sc_start.sy_flags&DCC_SYMFLAG_USED) &&
-       (iter->si_grp >= min_gp/* ELF_MK_DELSECUNUSED_MODE_INTERN_D ||
-               (iter->si_sec != elf.elf_dynamic &&
-                iter->si_sec != elf.elf_shstr)) &&
-       (mode >= ELF_MK_DELSECUNUSED_MODE_INTERN ||
-               (iter->si_hdr.sh_type != SHT_REL &&
-                iter->si_hdr.sh_type != SHT_RELA &&
-                iter->si_sec != elf.elf_dynamic &&
-                iter->si_sec != elf.elf_shstr &&
-                iter->si_sec != elf.elf_dynsym &&
-                iter->si_sec != elf.elf_hash &&
-                iter->si_sec != elf.elf_dynstr)*/)) {
+       (iter->si_grp >= min_gp)) {
    /* Delete this section. */
    assert(elf.elf_secc);
    printf("Deleting: '%s'\n",iter->si_sec->sc_start.sy_name->k_name);
@@ -810,14 +972,10 @@ again:
  end = (iter = elf.elf_secv)+elf.elf_secc;
  sec_vaddr  = elf.elf_base;
  sec_faddr  = sizeof(Elf(Ehdr));
- sec_faddr += (elf.elf_secc+1)*sizeof(Elf(Shdr));
  endhdr = (curhdr = elf.elf_phdv)+elf.elf_phdc;
  if (elf.elf_dynamic) {
   if unlikely(elf.elf_phdc < 2) goto alloc_more;
   /* The first program header describes the program header table. */
-  curhdr->ph_siv        = NULL;
-  curhdr->ph_sic        = 0;
-  curhdr->ph_hdr.p_type = PT_PHDR;
   faddr_align = sec_faddr % DCC_TARGET_PAGESIZE;
   vaddr_align = sec_vaddr % DCC_TARGET_PAGESIZE;
   if (faddr_align < vaddr_align) faddr_align += DCC_TARGET_PAGESIZE;
@@ -825,33 +983,47 @@ again:
   sec_vaddr += (faddr_align-vaddr_align);
   assert((sec_faddr % DCC_TARGET_PAGESIZE) ==
          (sec_vaddr % DCC_TARGET_PAGESIZE));
-#if 1
+  /* Fill the first header with the PHDR entry. */
+  curhdr->ph_siv          = NULL;
+  curhdr->ph_sic          = 0;
+  curhdr->ph_hdr.p_type   = PT_PHDR;
+  curhdr->ph_hdr.p_offset = sec_faddr;
+  curhdr->ph_hdr.p_vaddr  =
+  curhdr->ph_hdr.p_paddr  = sec_vaddr;
+  curhdr->ph_hdr.p_filesz =
+  curhdr->ph_hdr.p_memsz  = elf.elf_phdc*sizeof(Elf(Phdr));
+  curhdr->ph_hdr.p_flags  = PF_R|PF_X; /* GCC makes this executable, too. - But why? */
+  curhdr->ph_hdr.p_align  = DCC_COMPILER_ALIGNOF(Elf(Phdr));
+  ++curhdr;
+
+  sec_faddr += (elf.elf_phdc  )*sizeof(Elf(Phdr))+
+               (elf.elf_secc+1)*sizeof(Elf(Shdr));
+  sec_vaddr += (elf.elf_phdc  )*sizeof(Elf(Phdr))+
+               (elf.elf_secc+1)*sizeof(Elf(Shdr));
+  faddr_align = sec_faddr % DCC_TARGET_PAGESIZE;
+  vaddr_align = sec_vaddr % DCC_TARGET_PAGESIZE;
+  if (faddr_align < vaddr_align) faddr_align += DCC_TARGET_PAGESIZE;
+  /* Fix the virtual address. */
+  sec_vaddr += (faddr_align-vaddr_align);
+  assert((sec_faddr % DCC_TARGET_PAGESIZE) ==
+         (sec_vaddr % DCC_TARGET_PAGESIZE));
+
+  /* Fill the second header with a LOAD command loading the E/P/S-HDRs. */
+  curhdr->ph_hdr.p_type    = PT_LOAD;
   curhdr->ph_hdr.p_offset  = 0;
-  curhdr->ph_hdr.p_filesz  =
-  curhdr->ph_hdr.p_memsz   = sec_faddr+elf.elf_phdc*sizeof(Elf(Phdr));
-  curhdr->ph_hdr.p_vaddr   = sec_vaddr-sec_faddr;
+  curhdr->ph_hdr.p_vaddr   =
   curhdr->ph_hdr.p_paddr   = sec_vaddr-sec_faddr;
-  sec_vaddr += elf.elf_phdc*sizeof(Elf(Phdr));
-  sec_faddr += elf.elf_phdc*sizeof(Elf(Phdr));
-#else
-  curhdr->ph_hdr.p_offset  = sec_faddr;
   curhdr->ph_hdr.p_filesz  =
-  curhdr->ph_hdr.p_memsz   = elf.elf_phdc*sizeof(Elf(Phdr));
-  curhdr->ph_hdr.p_vaddr   = sec_vaddr;
-  curhdr->ph_hdr.p_paddr   = sec_vaddr;
-  sec_vaddr += curhdr->ph_hdr.p_memsz;
-  sec_faddr += curhdr->ph_hdr.p_filesz;
-#endif
-  curhdr->ph_hdr.p_flags   = PF_R|PF_X; /* GCC does this, but why? */
-  curhdr->ph_hdr.p_align   = DCC_COMPILER_ALIGNOF(Elf(Phdr));
-  /* Skip file memory to continue writing after the section headers. */
-  curhdr[1] = curhdr[0];
-  curhdr[1].ph_hdr.p_type = PT_LOAD;
-  curhdr[1].ph_hdr.p_align +=  (DCC_TARGET_PAGESIZE-1);
-  curhdr[1].ph_hdr.p_align &= ~(DCC_TARGET_PAGESIZE-1);
-  curhdr += 2;
+  curhdr->ph_hdr.p_memsz   = sec_faddr;
+  curhdr->ph_hdr.p_flags   = PF_R|PF_X; /* GCC makes this executable, too. - But why? */
+  curhdr->ph_hdr.p_align   = (DCC_COMPILER_ALIGNOF(Elf(Phdr))+
+                              (DCC_TARGET_PAGESIZE-1)) &
+                             ~(DCC_TARGET_PAGESIZE-1);
+  ++curhdr;
+
  } else {
-  sec_faddr += (elf.elf_phdc+1)*sizeof(Elf(Phdr));
+  sec_faddr += (elf.elf_phdc  )*sizeof(Elf(Phdr));
+  sec_faddr += (elf.elf_secc+1)*sizeof(Elf(Shdr));
  }
  do {
   secgp_t      hdr_group;
@@ -903,7 +1075,14 @@ again:
    last_overalloc = secinfo_vsize(iter)-secinfo_msize(iter);
    ++iter;
    /* Make sure to only include sections from the same groups! */
-  } while (iter != end && iter->si_grp == hdr_group);
+  } while (iter != end &&
+#if 1
+           group_info[iter->si_grp].fp_type  == group_info[hdr_group].fp_type &&
+           group_info[iter->si_grp].fp_flags == group_info[hdr_group].fp_flags
+#else
+           iter->si_grp == hdr_group
+#endif
+           );
   curhdr->ph_sic = (size_t)(iter-curhdr->ph_siv);
   assert(curhdr->ph_sic);
   /* Fix explicit user-alignments. */
@@ -1116,7 +1295,6 @@ elf_mk_outfile(stream_t fd) {
 PUBLIC void
 DCCBin_Generate(stream_t target) {
  memset(&elf,0,sizeof(elf));
- //compiler.c_flags |= DCC_LINKER_FLAG_NORELOC;
 
  /* TODO: Output object files? */
  if (compiler.l_flags&DCC_LINKER_FLAG_SHARED) {
@@ -1124,6 +1302,10 @@ DCCBin_Generate(stream_t target) {
                      * ZERO(0), relying on relocations. */
   elf.elf_type = ET_DYN;
  } else {
+  /* TODO: Commandline switch: '-fPIC'
+   * NOTE: This flag is actually fully implemented & working. */
+  //compiler.l_flags |= DCC_LINKER_FLAG_NORELOC;
+
 #ifdef DCC_TARGET_X86
   elf.elf_base = 0x08048000;
 #else
@@ -1131,13 +1313,15 @@ DCCBin_Generate(stream_t target) {
 #endif
   elf.elf_type = ET_EXEC;
  }
+
  /* Allocate internal ELF sections. */
  elf.elf_interp  = DCCUnit_NewSecs(".interp",  DCC_SYMFLAG_SEC_NOALLOC|DCC_SYMFLAG_SEC(1,0,0,0,0,0));
  elf.elf_shstr   = DCCUnit_NewSecs(".shstrtab",DCC_SYMFLAG_SEC_NOALLOC|DCC_SYMFLAG_SEC(1,0,0,0,1,0));
- elf.elf_dynamic = DCCUnit_NewSecs(".dynamic", DCC_SYMFLAG_SEC_NOALLOC|DCC_SYMFLAG_SEC(1,0,0,0,0,0));
- elf.elf_dynsym  = DCCUnit_NewSecs(".dynsym",  DCC_SYMFLAG_SEC_NOALLOC|DCC_SYMFLAG_SEC(1,0,0,0,0,0));
- elf.elf_dynstr  = DCCUnit_NewSecs(".dynstr",  DCC_SYMFLAG_SEC_NOALLOC|DCC_SYMFLAG_SEC(1,0,0,0,1,0));
- elf.elf_hash    = DCCUnit_NewSecs(".hash",    DCC_SYMFLAG_SEC_NOALLOC|DCC_SYMFLAG_SEC(1,0,0,0,0,0));
+ elf.elf_dynamic = DCCUnit_NewSecs(".dynamic",                         DCC_SYMFLAG_SEC(1,1,0,0,0,0));
+ elf.elf_dynsym  = DCCUnit_NewSecs(".dynsym",                          DCC_SYMFLAG_SEC(1,0,0,0,0,0));
+ elf.elf_dynstr  = DCCUnit_NewSecs(".dynstr",                          DCC_SYMFLAG_SEC(1,0,0,0,1,0));
+ elf.elf_hash    = DCCUnit_NewSecs(".hash",                            DCC_SYMFLAG_SEC(1,0,0,0,0,0));
+ if (elf.elf_dynsym) elf.elf_dynsym->sc_elflnk = elf.elf_dynstr;
 #define CC(x) { x; if unlikely(!OK) goto end; }
  if unlikely(!OK) goto end;
  CC(elf_mk_entry());
@@ -1146,26 +1330,21 @@ DCCBin_Generate(stream_t target) {
  DCCUnit_ClearUnused();
  DCCUnit_ClearUnusedLibs();
 
- if (!(compiler.c_flags&DCC_LINKER_FLAG_NORELOC)) {
-  CC(elf_mk_relsec());       /* Create stub relocation sections. Must be done now
+ CC(elf_mk_relsec());        /* Create stub relocation sections. Must be done now
                               * because later we can no longer create new sections. */
- }
  CC(elf_mk_secvec());        /* Create the ELF section vector. */
  CC(elf_mk_delsecunused(SECGP_NOALLOC)); /* Remove any unused section. */
  CC(elf_mk_secsort());       /* Sort section headers, thus greatly improving cache locality
                               * and restricting the amount of potential program headers. */
- if (!(compiler.c_flags&DCC_LINKER_FLAG_NORELOC)) {
-  CC(elf_mk_execdisp());     /* Execute and delete compile-time DISP-relocations. */
-  CC(elf_mk_delnoprel());    /* Delete obsolete relocations, but keep associated symbol data alive. */
-  CC(elf_mk_reldat());       /* Generate relocation data. */
- }
+ CC(elf_mk_execdisp());      /* Execute and delete compile-time DISP-relocations. */
+ CC(elf_mk_delnoprel());     /* Delete obsolete relocations, but keep associated symbol data alive. */
  CC(elf_mk_dynsym());        /* Create dynamic symbol information. */
+ CC(elf_mk_reldat());        /* Generate relocation data. */
  CC(elf_mk_delsecunused(SECGP_RELOC)); /* Delete any sections still unused (including any associated relocation section) */
  CC(elf_mk_dyndat());        /* Generate general-purpose dynamic information. */
  CC(elf_mk_delsecunused(SECGP_DYNAMIC)); /* Delete all unused dynamic sections. */
  elf_clr_unused(&elf.elf_dynamic);
- if (elf.elf_dynamic &&
-   !(compiler.c_flags&DCC_LINKER_FLAG_NORELOC)) {
+ if (elf.elf_dynamic) {
  /* WARNING: ___NEVER___ generate a '.interp' section for static objects!
   *       >> It took me forever to figure it out, but the linux linker
   *          will just SEGFAULT when you feed it an ELF binary without
@@ -1173,6 +1352,7 @@ DCCBin_Generate(stream_t target) {
   CC(elf_mk_interp());       /* Create and fill the '.interp' section. */
  }
  CC(elf_mk_secnam());        /* Allocate section names. */
+ CC(elf_mk_seclnk());        /* Fix section links. */
  CC(elf_mk_delsecunused(SECGP_INTERP)); /* Delete _ALL_ sections still unused. */
 
  CC(elf_mk_phdvec());        /* Generate program headers suitable for the generated (and sorted) list of sections.
@@ -1182,12 +1362,8 @@ DCCBin_Generate(stream_t target) {
   * sections may be created. Only existing data is allowed to be modified! */
  CC(elf_mk_dynfll());        /* Now that everything is known, fill out dynamic header information. */
 
- if (compiler.c_flags&DCC_LINKER_FLAG_NORELOC) {
-  CC(elf_mk_execrel(1));     /* Execute all relocations. */
- } else {
-  CC(elf_mk_execrel(0));     /* Execute all relocations. */
-  CC(elf_mk_reladj());       /* Adjust relocation addresses to image-relative. */
- }
+ CC(elf_mk_execrel(0));      /* Execute all relocations. */
+ CC(elf_mk_reladj());        /* Adjust relocation addresses to image-relative. */
  elf_mk_outfile(target);
 #undef CC
 end:

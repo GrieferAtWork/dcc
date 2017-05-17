@@ -1002,8 +1002,7 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
   reldata = relbase+iter->r_addr;
   assert(iter->r_sym);
   /* We're only resolving relocations pointing back into our section. */
-  if (!DCCSym_LoadAddr(iter->r_sym,&symaddr,resolve_weak) ||
-       DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
+  if (!DCCSym_LoadAddr(iter->r_sym,&symaddr,resolve_weak)) {
    /* Unresolved weak symbols are always located at NULL. */
    if (!(iter->r_sym->sy_flags&DCC_SYMFLAG_WEAK)) {
     WARN(W_UNRESOLVED_REFERENCE,
@@ -1011,9 +1010,9 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
          self->sc_start.sy_name,
          iter->r_addr);
    }
-   rel_value = 0;
-  } else if (resolve_weak) {
-   continue;
+   rel_value = base_address+iter->r_addr;
+  } else if (DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
+   rel_value = base_address+symaddr.sa_off+symaddr.sa_sym->sy_addr+iter->r_addr;
   } else {
    assertf(DCCSection_HASBASE(symaddr.sa_sym->sy_sec),
            "Section '%s' is missing its base",
@@ -1551,6 +1550,9 @@ PUBLIC struct DCCSection DCCSection_Abs = {
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
  /* sc_start.sy_alias       */NULL,
  /* sc_start.sy_sec         */&DCCSection_Abs,
+#if DCC_TARGET_BIN == DCC_BINARY_ELF
+ /* sc_start.sy_elfid       */0,
+#endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
  /* sc_start.sy_addr        */0,
  /* sc_start.sy_size        */(target_ptr_t)-1},
  /* sc_symc                 */0,

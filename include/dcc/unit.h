@@ -148,6 +148,9 @@ struct DCCSym {
                                             *         to this symbol, this symbol is actually a section and behaves as pointing to the
                                             *         start of that same section.
                                             *   WARNING: This field _must_ be NULL when 'sy_alias' isn't NULL, and the same holds true the other way around. */
+#if DCC_TARGET_BIN == DCC_BINARY_ELF
+ uint32_t                  sy_elfid;       /*< Used during binary generation: Elf Symbol ID. */
+#endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
  /* 'sy_addr' acts as an offset in aliased symbols!
   * The ability to do this is required for proper symbol declaration in assembly:
   * >> # 'foobar' must be an alias for 'foo', with an offset of '8'.
@@ -402,6 +405,9 @@ struct DCCSection {
 #endif
  target_ptr_t        sc_base;  /*< Base address of this section (or NULL if &DCCSection_Abs, or not runtime-relocated) */
  target_ptr_t        sc_merge; /*< Used during merging: Base address of merge destination. */
+#if DCC_TARGET_BIN == DCC_BINARY_ELF
+ struct DCCSection  *sc_elflnk; /*< [0..1] Used by ELF: Link section. */
+#endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
  size_t              sc_relc;  /*< Amount of relocations currently in use. */
  size_t              sc_rela;  /*< Amount of allocated relocations. */
  struct DCCRel      *sc_relv;  /*< [0..sc_relc|alloc(sc_rela)|sort(->r_addr,<)][owned]

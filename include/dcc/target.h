@@ -52,8 +52,8 @@ DCC_DECL_BEGIN
 
 #ifndef DCC_TARGET_BIN
 /* DCC Master Binary target format switch. */
-#define DCC_TARGET_BIN     DCC_HOST_BIN
-//#define DCC_TARGET_BIN     DCC_BINARY_ELF
+//#define DCC_TARGET_BIN     DCC_HOST_BIN
+#define DCC_TARGET_BIN     DCC_BINARY_ELF
 #endif
 
 #ifndef DCC_TARGET_OS

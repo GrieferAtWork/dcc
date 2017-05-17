@@ -16,6 +16,7 @@ Development on DCC started on <b>17.04.2017</b>, eversince then being the usual 
 Note that DCC is still fairly early in its development, meaning that anything can still change and that more features will be added eventually.
   - Link against windows PE libraries (<b>\*.dll</b>).
   - Output windows PE binary (<b>\*.exe</b>).
+  - Output linux ELF binary/library.
   - Process and merge multiple source files.
   - Compiling DCC is only tested and working in Visual Studio.
   - Full STD-C compliance up to C99
