@@ -186,6 +186,11 @@ struct DCCSym {
 #define DCCSym_ISUNUSED(self) \
   ((self)->sy_refcnt == 1 && !DCCSym_ISSECTION(self) && \
  !((self)->sy_flags&(DCC_SYMFLAG_DLLEXPORT|DCC_SYMFLAG_USED)) && !(self)->sy_peind)
+#elif DCC_TARGET_BIN == DCC_BINARY_ELF
+#define DCCSym_ISUNUSED(self) \
+  ((self)->sy_refcnt == 1 && !DCCSym_ISSECTION(self) && \
+ !((self)->sy_flags&DCC_SYMFLAG_USED) && \
+  ((self)->sy_flags&DCC_SYMFLAG_VISIBILITYBASE) != DCC_SYMFLAG_NONE)
 #else /* DCC_TARGET_BIN == DCC_BINARY_PE */
 #define DCCSym_ISUNUSED(self) \
   ((self)->sy_refcnt == 1 && !DCCSym_ISSECTION(self) && \

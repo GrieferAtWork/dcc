@@ -247,11 +247,12 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
     //DCCSym_Decref(src_sym);
     *sym_iter = NULL; /* This reference is dropped later. */
    } else if ((src_sym->sy_flags&DCC_SYMFLAG_STATIC) ||
-              (dst_sym = DCCUnit_GetSym(src_sym->sy_name)) == NULL) {
+              (assert(src_sym->sy_name != &TPPKeyword_Empty),
+               dst_sym = DCCUnit_GetSym(src_sym->sy_name)) == NULL) {
 //inherit_sym:
     /* Load static symbols as though they were unnamed. */
-    DCCUnit_InsSym(src_sym); /* Inherit reference. */
     DCCSym_Incref(src_sym);
+    DCCUnit_InsSym(src_sym); /* Inherit reference. */
    } else if (DCCSym_ISFORWARD(src_sym)) {
     /* Get rid of undefined symbols. (Since these are named,
      * relocations to the symbol will be fixed later) */
@@ -305,7 +306,8 @@ fix_alias:
      assert(!before_iter->sy_unit_before);
      goto fix_alias;
     }
-    if (dst_sym && !(src_sym->sy_flags&DCC_SYMFLAG_STATIC)) {
+    if (dst_sym && dst_sym != src_sym &&
+      !(src_sym->sy_flags&DCC_SYMFLAG_STATIC)) {
      /* Override an existing symbol, or define it. */
      if (src_sym->sy_sec) {
       /* Section merge adjustments were already made above! */

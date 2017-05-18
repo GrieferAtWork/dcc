@@ -316,9 +316,11 @@ PRIVATE Elf(Half) elf_get_secidx(struct DCCSection const *__restrict sec) {
 
 
 PRIVATE void elf_mk_entry(void) {
+ if (elf.elf_type != ET_EXEC) goto use_text;
  elf.elf_entry = DCCUnit_GetSyms("_start");
  if unlikely(!elf.elf_entry) {
   WARN(W_MISSING_ENTRY_POINT,"_start");
+use_text:
   elf.elf_entry = &unit.u_text->sc_start;
  }
  DCCSym_Incref(elf.elf_entry);
@@ -409,6 +411,7 @@ PRIVATE void elf_mk_dynsym(void) {
  DCCUnit_ENUMSYM(sym) {
   target_ptr_t entry_addr;
   unsigned char st_bind,st_type;
+  struct DCCSymAddr symaddr;
   if (DCCSym_ISSECTION(sym) &&
      (/*(sym->sy_flags&DCC_SYMFLAG_SEC_NOALLOC) ||*/
        DCCSection_ISIMPORT(DCCSym_TOSECTION(sym)))) continue;
@@ -421,10 +424,23 @@ PRIVATE void elf_mk_dynsym(void) {
 #if 0 /* Only export symbols with default visibility? */
   if ((sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE) != DCC_SYMFLAG_NONE) continue;
 #endif
-  esym.st_shndx = sym->sy_sec ? elf_get_secidx(sym->sy_sec) : STN_UNDEF;
-  /* Skip symbols form removed sections (including removed sections themself). */
-  if (sym->sy_sec && esym.st_shndx == STN_UNDEF &&
-     !DCCSection_ISIMPORT(sym->sy_sec)) continue;
+  if (DCCSym_LoadAddr(sym,&symaddr,0)) {
+   /* Handle special sections. */
+   if (symaddr.sa_sym->sy_sec == &DCCSection_Abs)        esym.st_shndx = SHN_ABS;
+   else if (DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) esym.st_shndx = SHN_UNDEF;
+   else {
+    esym.st_shndx = elf_get_secidx(symaddr.sa_sym->sy_sec);
+    /* Skip symbols from removed sections (including removed sections themself). */
+    if (symaddr.sa_sym->sy_sec && esym.st_shndx == SHN_UNDEF &&
+        !DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) continue;
+   }
+  } else {
+   esym.st_shndx  = SHN_UNDEF;
+   symaddr.sa_off = 0;
+   symaddr.sa_sym = sym;
+   /* Skip symbols form removed sections. */
+   if (sym->sy_sec && !DCCSection_ISIMPORT(sym->sy_sec)) continue;
+  }
   esym.st_name = DCCSection_DAllocMem(elf.elf_dynstr,
                                       sym->sy_name->k_name,
                                      (sym->sy_name->k_size+0)*sizeof(char),
@@ -432,19 +448,36 @@ PRIVATE void elf_mk_dynsym(void) {
                                       1,0);
   st_bind = (sym->sy_flags&DCC_SYMFLAG_WEAK) ? STB_WEAK :
             (sym->sy_flags&DCC_SYMFLAG_STATIC) ? STB_LOCAL : STB_GLOBAL;
-  if (DCCSym_ISSECTION(sym)) st_type = STT_SECTION;
+  if (DCCSym_ISSECTION(symaddr.sa_sym)) st_type = STT_SECTION;
   else st_type = STT_NOTYPE; /* All the other types? */
-  esym.st_value = sym->sy_addr;
-  esym.st_size  = sym->sy_size;
+  esym.st_value = symaddr.sa_off+symaddr.sa_sym->sy_addr;
+  /*if (symaddr.sa_sym == sym && DCCSym_ISSECTION(sym))
+         esym.st_size = DCCSection_VSIZE(DCCSym_TOSECTION(sym));
+  else*/ esym.st_size = sym->sy_size;
   esym.st_info  = ELF(ST_INFO)(st_bind,st_type);
   esym.st_other = vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE];
   sym->sy_elfid = dynid++; /* Save symbol index. */
   entry_addr = DCCSection_TADDR(elf.elf_dynsym);
   DCCSection_TWrite(elf.elf_dynsym,&esym,sizeof(esym));
-  if (sym->sy_sec) {
+  if (symaddr.sa_sym->sy_sec && !DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
    DCCSection_Putrel(elf.elf_dynsym,entry_addr+offsetof(Elf(Sym),st_value),
-                     DCC_R_DATA_PTR,&sym->sy_sec->sc_start);
+                     DCC_R_DATA_PTR,&symaddr.sa_sym->sy_sec->sc_start);
   }
+  /* TODO: Shouldn't we add a relocations for undefined symbol aliases?
+   *    >> extern int printf(char const *format, ...)
+   *    >>     __attribute__((lib("libc.so.6")));
+   *    >>
+   *    >> // Re-export 'printf' under a different name
+   *    >> extern int my_printf(char const *format, ...)
+   *    >>     __attribute__((visibility("default"),alias("printf")));
+   *    >> 
+   * ELF: .dynsym:
+   *         #0: 0x00000000 SHN_UNDEF <NULL>
+   *         #1: 0x00000000 SHN_UNDEF printf
+   *         #2: 0x00000000 SHN_ABS   my_printf
+   *      .rel.dynsym:
+   *         ADDROF(.dynsym[2]) R_386_32 -> .dynsym[1] (printf)
+   */
  }
  if (elf.elf_hash) {
   /* Generate the symbol hash table. */
@@ -459,15 +492,21 @@ PRIVATE struct DCCSection *
 get_relsec(struct DCCSection *__restrict base,
            int alloc_missing) {
  struct TPPKeyword const *kwd;
- char *buf;
+ char *mbuf = NULL,*buf;
  kwd = base->sc_start.sy_name;
- buf = (char *)alloca((kwd->k_size+4)*sizeof(char));
+ if (kwd->k_size < 64) {
+  buf = (char *)alloca((kwd->k_size+4)*sizeof(char));
+ } else {
+  mbuf = buf = (char *)malloc((kwd->k_size+4)*sizeof(char));
+  if unlikely(!mbuf) { TPPLexer_SetErr(); return NULL; }
+ }
  buf[0] = '.';
  buf[1] = 'r';
  buf[2] = 'e';
  buf[3] = 'l';
  memcpy(buf+4,kwd->k_name,kwd->k_size*sizeof(char));
  kwd = TPPLexer_LookupKeyword(buf,kwd->k_size+4,alloc_missing);
+ free(mbuf);
  return !kwd ? NULL : !alloc_missing ? DCCUnit_GetSec(kwd)
   : DCCUnit_NewSec(kwd,DCC_SYMFLAG_SEC_R/*|DCC_SYMFLAG_SEC_NOALLOC*/);
 }
