@@ -95,8 +95,6 @@ void dump_symbols(void) {
 static int first = 1;
 static void add_staticlib(char const *filename) {
  struct DCCUnit old_unit;
- char *fname = strdup(filename);
- if (!fname) return;
  if (!first) {
   DCCUnit_Extract(&old_unit);
   DCCCompiler_Quit(&compiler);
@@ -105,12 +103,21 @@ static void add_staticlib(char const *filename) {
   DCCUnit_Init(&unit);
  }
  DCCCompiler_Init(&compiler);
- /* Load the static library. */
- DCCUnit_StaLoad(fname,1);
+ { /* Load a static library. */
+   struct DCCLibDef def;
+   def.ld_flags    = DCC_LIBDEF_FLAG_STATIC;
+   def.ld_name     = filename;
+   def.ld_size     = strlen(filename);
+   def.ld_expsymfa = (symflag_t)-1;
+   def.ld_expsymfo = (symflag_t) 0;
+   def.ld_impsymfa = (symflag_t)-1;
+   def.ld_impsymfo = (symflag_t) 0;
+   DCCUnit_Import(&def);
+ }
+
  if (first) first = 0;
  else DCCUnit_Merge(&old_unit),
       DCCUnit_Quit(&old_unit);
- free(fname);
 }
 static void add_c_source(char *filename) {
  struct TPPFile *infile;
@@ -139,7 +146,7 @@ static void add_c_source(char *filename) {
                                  TPPLEXER_TOKEN_TILDETILDE);
  if (!first) {
   DCCUnit_Extract(&old_unit);
-  /* TODO: Reset TPP warnings & macros (But _not_ keyword!) */
+  /* TODO: Reset TPP warnings & macros (But _not_ keywords!) */
   DCCCompiler_Quit(&compiler);
  } else {
   /* Initialize DCC and create+set the current text target. */

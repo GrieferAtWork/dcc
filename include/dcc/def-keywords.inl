@@ -1288,7 +1288,7 @@ DEF_WARNING(W_LINKER_PE_CANT_EXPORT_EMPTY_SECTION,(WG_LINKER),WSTATE_WARN,
 WARNING_NAMESPACE(WN_LIBLOADER,3000)
 
 /* Library loader warnings. */
-DEF_WARNING(W_LIB_NOT_FOUND,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Library not found: '%s'",ARG(char *)))
+DEF_WARNING(W_LIB_NOT_FOUND,(WG_LIBLOAD),WSTATE_ERROR,{ char *n = ARG(char *); WARNF("Library not found: '%.*s'",(unsigned int)ARG(size_t),n); })
 #if DCC_LIBFORMAT_PE
 DEF_WARNING(W_LIB_PE_INVMAGIC,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Invalid header magic in PE library '%s'",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_DLL,(WG_QUALITY,WG_LIBLOAD),WSTATE_WARN,WARNF("Library '%s' is not a dll.",ARG(char *)))

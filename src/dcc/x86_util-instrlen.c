@@ -44,7 +44,6 @@ uint8_t const *x86_instrlen(uint8_t const *p) {
 #endif
  uint8_t opcode;
  unsigned int flags = 0;
- /* TODO: Everything starting at 'fcomi' is _NOT_ implemented! */
  size_t suffix = 0;
 #define F(x) (!!(flags&(x)))
 #define F_16B 0x01

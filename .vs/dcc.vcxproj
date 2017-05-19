@@ -20,9 +20,8 @@
     <ClCompile Include="..\src\dcc\lexer.c" />
     <ClCompile Include="..\src\dcc\tpp-wrapper.c" />
     <ClCompile Include="..\src\dcc\type.c" />
-    <ClCompile Include="..\src\dcc\unit-dynlib.c" />
+    <ClCompile Include="..\src\dcc\unit-import.c" />
     <ClCompile Include="..\src\dcc\unit-merge.c" />
-    <ClCompile Include="..\src\dcc\unit-stalib.c" />
     <ClCompile Include="..\src\dcc\unit.c" />
     <ClCompile Include="..\src\dcc\vstack.c" />
     <ClCompile Include="..\src\dcc\x86_util-instrlen.c" />
@@ -49,6 +48,7 @@
     <ClInclude Include="..\include\elf.h" />
     <ClInclude Include="..\src\dcc\binary-pe.h" />
     <ClInclude Include="..\src\dcc\lexer-priv.h" />
+    <ClInclude Include="..\src\dcc\unit-import.h" />
     <ClInclude Include="..\src\dcc\x86_util.h" />
     <ClInclude Include="..\src\tpp\tpp-backwards-compatibility.h" />
     <ClInclude Include="..\src\tpp\tpp.h" />
@@ -72,9 +72,9 @@
     <None Include="..\src\dcc\lexer-expr.c.inl" />
     <None Include="..\src\dcc\lexer-init.c.inl" />
     <None Include="..\src\dcc\lexer-stmt.c.inl" />
-    <None Include="..\src\dcc\unit-dynlib-def.c.inl" />
-    <None Include="..\src\dcc\unit-dynlib-pe.c.inl" />
-    <None Include="..\src\dcc\unit-stalib-pe.c.inl" />
+    <None Include="..\src\dcc\unit-import-dyndef.c.inl" />
+    <None Include="..\src\dcc\unit-import-dynpe.c.inl" />
+    <None Include="..\src\dcc\unit-import-stape.c.inl" />
     <None Include="..\src\tpp\tpp-defs.inl" />
     <None Include="..\src\tpp\tpp-gcc-defs.inl" />
   </ItemGroup>

@@ -807,28 +807,83 @@ DCCFUN struct DCCSection *DCCUnit_NewSec(struct TPPKeyword const *__restrict nam
 DCCFUN struct DCCSection *DCCUnit_GetSecs(char const *__restrict name);
 DCCFUN struct DCCSection *DCCUnit_NewSecs(char const *__restrict name, DCC(symflag_t) flags);
 
-/* Dynamically load a binary from a given stream 's',
- * hooking it as a shared library under the given name 'name'.
- *  - All public symbols exported from the binary will become available as assembly names.
- * @return: NULL: Data form the given stream 's' does not describe a binary. (No lexer error was set)
- *                A critical error occurred while parsing the given stream 's'. (A lexer error was set)
- * @return: * :   Pointer to the library-section that was dynamically linked.
- */
-DCCFUN struct DCCSection *DCCUnit_DynLoad(char *__restrict name, int warn_unknown);
-DCCFUN struct DCCSection *DCCUnit_DynLoadStream(char *__restrict filename, char *__restrict name,
-                                                DCC(stream_t) s, int warn_unknown);
 
-/* Statically load a binary from a given stream 's'.
+#define DCC_LIBDEF_FLAG_NONE   0x00000000
+
+/* Try to perform static linkage.
+ *  - When this flag is set, libraries will be linked statically when possible.
+ *  - Note though, that if a static library uses dynamic import itself,
+ *    those imports will be added to the the current compilation unit.
+ *  - If the library can only be imported dynamically, it will be
+ *    imported as that, unless the 'DCC_LIBDEF_FLAG_NODYN' flag is set.
  * WARNING: The caller is responsible to ensure that the current compilation unit is empty.
  *          If the intend is to load a static binary into an existing one,
  *          unit merging must be performed using 'DCCUnit_Merge()'.
- * @return: 0: Data form the given stream 's' does not describe a binary. (No lexer error was set)
- *             A critical error occurred while parsing the given stream 's'. (A lexer error was set)
- * @return: 1: Successfully loaded a binary into the current unit (statically) */
-DCCFUN int DCCUnit_StaLoad(char *__restrict name, int warn_unknown);
-DCCFUN int DCCUnit_StaLoadStream(char *__restrict filename, char *__restrict name,
-                                 DCC(stream_t) s, int warn_unknown);
+ */
+#define DCC_LIBDEF_FLAG_STATIC 0x00000001
 
+/* Don't allow dynamic libraries to be loaded (Should be used with 'DCC_LIBDEF_FLAG_STATIC')
+ * NOTE: When this flag isn't set and a library can both be imported statically & dynamically,
+ *       it will always be imported statically when the 'DCC_LIBDEF_FLAG_STATIC' flag is set,
+ *       meaning that this flag isn't required when intending to import something statically if possible! */
+#define DCC_LIBDEF_FLAG_NODYN  0x00000002
+
+/* Don't emit a warning when no library matching the given description was found.
+ * Setting this flag might be useful during internal library load calls
+ * where the intend is to try additional approaches should the standard way fail. */
+#define DCC_LIBDEF_FLAG_NOWARNMISSING 0x00000004
+
+/* Don't search  */
+#define DCC_LIBDEF_FLAG_NOSEARCHSTD 0x00000008
+
+struct DCCLibDef {
+ uint32_t           ld_flags; /*< Loader flags (A set of 'DCC_LIBDEF_FLAG_*'). */
+ char const        *ld_name;  /*< [0..ld_size] Library fallback (Used when the library doesn't specify an explicit name) */
+ size_t             ld_size;  /*< Length of the library name (in characters; excluding the terminating \0 character) */
+ /* The following two describe symbol flag modifiers.
+  * When a library defines a symbol, a default set of flags is calculated and modified as follows:
+  * >> symflag_t final_flags = get_default_flags(sym);
+  * >> final_flags &= ld->ld_symfa;
+  * >> final_flags |= ld->ld_symfo;
+  * >> define_symbol(sym,final_flags);
+  * Using this when loading a library, you can explicitly re-export symbols:
+  * >> ld->ld_expsymfa = ~(DCC_SYMFLAG_NONE);
+  * >> ld->ld_expsymfo =  (DCC_SYMFLAG_DLLEXPORT); // PE-only (Elf does this by default)
+  * Or when statically linking, you could ensure that no symbols are re-exported:
+  * >> #ifdef DCC_SYMFLAG_DLLEXPORT
+  * >> ld->ld_expsymfa = ~(DCC_SYMFLAG_VISIBILITYBASE|DCC_SYMFLAG_DLLEXPORT);
+  * >> #else
+  * >> ld->ld_expsymfa = ~(DCC_SYMFLAG_VISIBILITYBASE);
+  * >> #endif
+  * >> ld->ld_expsymfo =  (DCC_SYMFLAG_PRIVATE);
+  * WARNING: Make sure to set 'ld_expsymfa' to '-1' and 'ld_expsymfo' to '0' if 1-to-1 linkage is intended. */
+ DCC(symflag_t)     ld_expsymfa; /*< And-operand when determining flags of exported symbols. */
+ DCC(symflag_t)     ld_expsymfo; /*< Or-operand when determining flags of exported symbols. */
+ /* The following two behave the same as 'ld_expsymf(a|o)', but for imported symbols.
+  * WARNING: Make sure to set 'ld_impsymfa' to '-1' and 'ld_impsymfo' to '0' if 1-to-1 linkage is intended.
+  * NOTE: These members are ignored for dynamic imports (aka. the 'DCC_LIBDEF_FLAG_STATIC' flag isn't set) */
+ DCC(symflag_t)     ld_impsymfa; /*< And-operand when determining flags of imported symbols. */
+ DCC(symflag_t)     ld_impsymfo; /*< Or-operand when determining flags of imported symbols. */
+ struct DCCSection *ld_dynlib;   /* [?..1] Filled by a call to 'DCCUnit_Load()' upon successful loading of a dynamic library.
+                                  *        When a library was successfully loaded statically, this field is set to NULL.
+                                  * >> When set, this field points to the import section
+                                  *    associated with the newly loaded dynamic library. */
+};
+#define DCCLibDef_EXPFLAGS(self,f) (((f)&(self)->ld_expsymfa)|(self)->ld_expsymfo)
+#define DCCLibDef_IMPFLAGS(self,f) (((f)&(self)->ld_impsymfa)|(self)->ld_impsymfo)
+
+#define DCCUNIT_IMPORTCALL  DCC_ATTRIBUTE_FASTCALL
+
+
+/* Load a given library definition into the current compilation unit.
+ * @param: def: The library definition (s.a.: documentation of 'DCCLibDef')
+ * @return: 0: Data form the given stream 'fd' does not describe a binary. (No lexer error was set)
+ *             A critical error occurred while parsing the given stream 'fd'. (A lexer error was set)
+ * @return: 1: Successfully loaded a binary into the current unit (either statically, or dynamically) */
+DCCFUN int DCCUNIT_IMPORTCALL DCCUnit_Import(struct DCCLibDef *__restrict def);
+DCCFUN int DCCUNIT_IMPORTCALL DCCUnit_ImportStream(struct DCCLibDef *__restrict def,
+                                                   char const *__restrict filename,
+                                                   DCC(stream_t) fd);
 
 /* Extended version of 'DCCUnit_NewSym' that allows the name to be a printf-style string. */
 DCCFUN struct DCCSym *DCCUnit_NewSymf(DCC(symflag_t) flags, char const *__restrict fmt, ...);

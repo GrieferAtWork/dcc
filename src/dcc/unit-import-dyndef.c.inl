@@ -16,8 +16,8 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#ifndef GUARD_DCC_UNIT_DYNLIB_DEF_C_INL
-#define GUARD_DCC_UNIT_DYNLIB_DEF_C_INL 1
+#ifndef GUARD_DCC_UNIT_IMPORT_DYNDEF_C_INL
+#define GUARD_DCC_UNIT_IMPORT_DYNDEF_C_INL 1
 
 #define DCC(x) x
 
@@ -63,16 +63,15 @@ PRIVATE char *getline(struct TPPFile *__restrict f) {
 }
 
 
-INTERN struct DCCSection *
-DCCUnit_DynLoadDEF2(char *__restrict filename,
-                    char *__restrict name,
-                    stream_t fd) {
- struct DCCSection *result = NULL;
- (void)filename;
- (void)name;
+INTERN int DCCUNIT_IMPORTCALL
+DCCUnit_DynImportDEF2(struct DCCLibDef *__restrict def,
+                      char const *__restrict file, stream_t fd) {
+ struct DCCSection *ressec = NULL;
+ assert(def);
+ assert(file);
  { /* Open the file and begin parsing it. */
    char *line; int state = 0;
-   struct TPPFile *f = TPPFile_OpenStream(fd,filename);
+   struct TPPFile *f = TPPFile_OpenStream(fd,file);
    if unlikely(!f) goto end;
    f->f_textfile.f_padding[0] = '\0';
    /* Link the file into TPP, so that when we
@@ -98,8 +97,8 @@ DCCUnit_DynLoadDEF2(char *__restrict filename,
      while (lib_end != line && tpp_isspace(lib_end[-1])) --lib_end;
      lib_name = TPPLexer_LookupKeyword(line,(size_t)(lib_end-line),1);
      if unlikely(!lib_name) goto done;
-     result = DCCUnit_NewSec(lib_name,DCC_SYMFLAG_SEC_ISIMPORT);
-     if unlikely(!result) goto done;
+     def->ld_dynlib = ressec = DCCUnit_NewSec(lib_name,DCC_SYMFLAG_SEC_ISIMPORT);
+     if unlikely(!ressec) goto done;
      state = 1;
     } break;
 
@@ -121,13 +120,18 @@ expect_exports:
      struct TPPKeyword *export_kwd;
      struct DCCSym *export_sym;
     default:
-     assert(result);
+     assert(ressec);
      export_end = line+strlen(line);
      while (export_end != line && tpp_isspace(export_end[-1])) --export_end;
      export_kwd = TPPLexer_LookupKeyword(line,(size_t)(export_end-line),1);
      if (export_kwd) {
-      export_sym = DCCUnit_NewSym(export_kwd,DCC_SYMFLAG_NONE);
-      DCCSym_Define(export_sym,result,0,0);
+#ifdef DCC_SYMFLAG_DLLIMPORT
+      export_sym = DCCUnit_NewSym(export_kwd,DCCLibDef_EXPFLAGS(def,DCC_SYMFLAG_DLLIMPORT));
+#else
+      export_sym = DCCUnit_NewSym(export_kwd,DCCLibDef_EXPFLAGS(def,DCC_SYMFLAG_NONE));
+#endif
+      if unlikely(!export_sym) break;
+      DCCSym_Define(export_sym,ressec,0,0);
      }
     } break;
     }
@@ -137,20 +141,23 @@ done:
    TPPFile_Decref(f);
  }
 end:
- return result;
+ return ressec != NULL;
 }
 
-INTERN struct DCCSection *
-DCCUnit_DynLoadDEF(char *__restrict filename,
-                   char *__restrict name,
-                   stream_t fd) {
+INTERN int DCCUNIT_IMPORTCALL
+DCCUnit_DynImportDEF(struct DCCLibDef *__restrict def,
+                     char const *__restrict file, stream_t fd) {
+ size_t len;
+ assert(def);
+ assert(file);
  /* Check for the '.def' file extension. */
- size_t len = strlen(filename);
- if (len < 4 || memcmp(filename+len-4,".def",4*sizeof(char))) return NULL;
- return DCCUnit_DynLoadDEF2(filename,name,fd);
+ if ((len = strlen(file)) < 4 ||
+     memcmp(file+len-4,".def",4*
+     sizeof(char)) != 0) return NULL;
+ return DCCUnit_DynImportDEF2(def,file,fd);
 }
 
 DCC_DECL_END
 #endif /* DCC_LIBFORMAT_DEF */
 
-#endif /* !GUARD_DCC_UNIT_DYNLIB_DEF_C_INL */
+#endif /* !GUARD_DCC_UNIT_IMPORT_DYNDEF_C_INL */

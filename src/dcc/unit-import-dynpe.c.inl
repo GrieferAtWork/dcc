@@ -102,21 +102,20 @@ ret_null:
 }
 
 #if DCC_LIBFORMAT_PE
-INTERN struct DCCSection *
-DCCUnit_DynLoadPE(char *__restrict filename,
-                  char *__restrict name,
-                  stream_t fd) {
+INTERN int DCCUNIT_IMPORTCALL
+DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def,
+                  char const *__restrict file, stream_t fd) {
  NT_HEADER hdr;
  size_t hdr_size;
  size_t section_header_offset;
  size_t section_header_count;
  ptrdiff_t read_error;
  uintptr_t export_file_base;
- struct DCCSection *result = NULL;
+ struct DCCSection *ressec = NULL;
  PIMAGE_SECTION_HEADER sections = NULL;
  PIMAGE_SECTION_HEADER sec,sec_end;
- assert(filename);
- assert(name);
+ assert(def);
+ assert(file);
  section_header_offset = (size_t)pe_readhdr(fd);
  if (!section_header_offset) goto end;
 #define HAS_FIELD(f) ((size_t)((&((NT_HEADER *)0)->f)+1) <= hdr_size)
@@ -141,19 +140,19 @@ DCCUnit_DynLoadPE(char *__restrict filename,
   * But besides that, we know that the library is OK to use at this point! */
  /* Make sure that the binary has relocations, because
   * otherwise it would be impossible to safely link against it. */
- if (hdr.fhdr.Characteristics&IMAGE_FILE_RELOCS_STRIPPED) { WARN(W_LIB_PE_NO_RELOCATIONS,name); if (!OK) goto end; }
- if (!(hdr.fhdr.Characteristics&IMAGE_FILE_DLL)) { WARN(W_LIB_PE_NO_DLL,name); if (!OK) goto end; }
+ if (hdr.fhdr.Characteristics&IMAGE_FILE_RELOCS_STRIPPED) { WARN(W_LIB_PE_NO_RELOCATIONS,file); if (!OK) goto end; }
+ if (!(hdr.fhdr.Characteristics&IMAGE_FILE_DLL)) { WARN(W_LIB_PE_NO_DLL,file); if (!OK) goto end; }
  if (HAS_FIELD(ohdr.Magic) && hdr.ohdr.Magic !=
-     DCC_PE_TARGET_IMAGE_OPTIONAL_HEADER_MAGIC) { WARN(W_LIB_PE_INVMAGIC,name); if (!OK) goto end; }
+     DCC_PE_TARGET_IMAGE_OPTIONAL_HEADER_MAGIC) { WARN(W_LIB_PE_INVMAGIC,file); if (!OK) goto end; }
  if (!HAS_DIR(IMAGE_DIRECTORY_ENTRY_EXPORT)) {
 no_export_table:
-  WARN(W_LIB_PE_NO_EXPORT_TABLE,name);
+  WARN(W_LIB_PE_NO_EXPORT_TABLE,file);
   goto end;
  }
  section_header_count = HAS_FIELD(fhdr.NumberOfSections)
                       ? hdr.fhdr.NumberOfSections : 0;
  if (!section_header_count) {
-  WARN(W_LIB_PE_NO_SECTIONS,name);
+  WARN(W_LIB_PE_NO_SECTIONS,file);
   goto end;
  }
 #define exptab_addr  GET_DIR(IMAGE_DIRECTORY_ENTRY_EXPORT).VirtualAddress
@@ -169,14 +168,14 @@ no_export_table:
                      sizeof(IMAGE_SECTION_HEADER));
  if (read_error < 0) goto end;
  section_header_count = read_error/sizeof(IMAGE_SECTION_HEADER);
- if (!section_header_count) { WARN(W_LIB_PE_NO_SECTIONS,name); goto end; }
+ if (!section_header_count) { WARN(W_LIB_PE_NO_SECTIONS,file); goto end; }
  sec_end = (sec = sections)+section_header_count;
  for (; sec != sec_end; ++sec) {
   if (exptab_addr >= sec->VirtualAddress &&
       exptab_addr < sec->VirtualAddress+sec->SizeOfRawData
       ) goto found_section;
  }
- WARN(W_LIB_PE_NO_SECTION_MAPPING,name,exptab_addr);
+ WARN(W_LIB_PE_NO_SECTION_MAPPING,file,exptab_addr);
  goto end;
 found_section:
 #define exptab_max section_header_count
@@ -197,10 +196,11 @@ found_section:
   read_error = s_read(fd,&export_dir,sizeof(IMAGE_EXPORT_DIRECTORY));
   if (read_error < 0) goto end;
   exptab_size = (DWORD)read_error;
-  if (!export_dir.NumberOfNames) { WARN(W_LIB_PE_EMPTY_EXPORT_TABLE,name); goto end; }
+  if (!export_dir.NumberOfNames) { WARN(W_LIB_PE_EMPTY_EXPORT_TABLE,file); goto end; }
   /* Here we go! */
-  result = DCCUnit_NewSecs(name,DCC_SYMFLAG_SEC_ISIMPORT);
-  if unlikely(!result) goto end;
+  ressec = DCCUnit_NewSecs(file,DCC_SYMFLAG_SEC_ISIMPORT);
+  if unlikely(!ressec) goto end;
+  def->ld_dynlib = ressec;
 
   namepptr = export_dir.AddressOfNames-export_file_base;
 #if PE_PROCESS_HINTS
@@ -222,17 +222,22 @@ found_section:
     struct TPPKeyword *symname_kwd;
     symname_kwd = TPPLexer_LookupKeyword(symname,symsize,1);
     if (symname_kwd) {
-     //printf("DEFINE: '%s' -> '%s' (%d)\n",name,symname,hint);
-     sym = DCCUnit_NewSym(symname_kwd,DCC_SYMFLAG_NONE);
-     if (sym && sym->sy_sec != result) { /* Ignore double exports? */
+     //printf("DEFINE: '%s' -> '%s' (%d)\n",file,symname,hint);
+#ifdef DCC_SYMFLAG_DLLIMPORT
+     sym = DCCUnit_NewSym(symname_kwd,DCCLibDef_IMPFLAGS(def,DCC_SYMFLAG_DLLIMPORT));
+#else
+     sym = DCCUnit_NewSym(symname_kwd,DCCLibDef_IMPFLAGS(def,DCC_SYMFLAG_NONE));
+#endif
+     if (sym && sym->sy_sec != ressec) { /* Ignore double exports? */
 #if PE_PROCESS_HINTS
-      DCCSym_Define(sym,result,(target_ptr_t)hint,0);
+      DCCSym_Define(sym,ressec,(target_ptr_t)hint,0);
 #else /* PE_PROCESS_HINTS */
-      DCCSym_Define(sym,result,0,0);
+      DCCSym_Define(sym,ressec,0,0);
 #endif /* !PE_PROCESS_HINTS */
 #ifdef DCC_SYMFLAG_PE_ITA_IND
       /* Since this is a PE symbol, try to use ITA indirection. */
-      sym->sy_flags |= DCC_SYMFLAG_PE_ITA_IND;
+      if (def->ld_impsymfa&DCC_SYMFLAG_PE_ITA_IND)
+          sym->sy_flags |= DCC_SYMFLAG_PE_ITA_IND;
 #endif
      }
     }
@@ -247,7 +252,7 @@ found_section:
 #undef HAS_FIELD
 end:
  DCC_Free(sections);
- return result;
+ return ressec != NULL;
 }
 
 DCC_DECL_END

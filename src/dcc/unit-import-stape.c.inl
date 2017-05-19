@@ -16,8 +16,8 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#ifndef GUARD_DCC_UNIT_STALIB_PE_C_INL
-#define GUARD_DCC_UNIT_STALIB_PE_C_INL 1
+#ifndef GUARD_DCC_UNIT_IMPORT_STAPE_C_INL
+#define GUARD_DCC_UNIT_IMPORT_STAPE_C_INL 1
 
 #define DCC(x) x
 
@@ -266,16 +266,17 @@ adv:
 
 
 
-INTERN int
-DCCUnit_StaLoadPE(char *__restrict filename,
-                  char *__restrict name, stream_t fd) {
+INTERN int DCCUNIT_IMPORTCALL
+DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def,
+                  char const *__restrict file, stream_t fd) {
  LONG header_offset;
  size_t section_count,hdr_size;
  ptrdiff_t read_error;
  NT_HEADER hdr;
  int result = 0;
- (void)filename;
- (void)name;
+ assert(def);
+ assert(def->ld_flags&DCC_LIBDEF_FLAG_STATIC);
+ assert(file);
  assert(!unit.u_symc);
  assert(!unit.u_nsymc);
  assert(!unit.u_secc);
@@ -317,9 +318,13 @@ DCCUnit_StaLoadPE(char *__restrict filename,
   result = section_count && load_pe_sections(sections,section_count,fd);
   free(sections);
   if (!result) goto end;
+  def->ld_dynlib = NULL; /* This is a static loader. */
  }
 
  /* All the sections have been loaded. - Time to collect all the symbols we can find! */
+ if (HAS_DIR(IMAGE_DIRECTORY_ENTRY_IMPORT)) {
+  /* TODO */
+ }
  if (HAS_DIR(IMAGE_DIRECTORY_ENTRY_EXPORT)) {
   PIMAGE_EXPORT_DIRECTORY export_dir;
   size_t export_dir_size,numsym;
@@ -363,11 +368,11 @@ DCCUnit_StaLoadPE(char *__restrict filename,
     WARN(W_STA_PE_UNMAPPED_ADDR,symaddr,symkwd);
     symsec = &DCCSection_Abs;
    }
-   newsym = DCCUnit_NewSym(symkwd,DCC_SYMFLAG_NONE|DCC_SYMFLAG_USED
 #ifdef DCC_SYMFLAG_DLLEXPORT
-                           |DCC_SYMFLAG_DLLEXPORT
+   newsym = DCCUnit_NewSym(symkwd,DCCLibDef_EXPFLAGS(def,DCC_SYMFLAG_DLLEXPORT));
+#else
+   newsym = DCCUnit_NewSym(symkwd,DCCLibDef_EXPFLAGS(def,DCC_SYMFLAG_NONE));
 #endif
-                           );
    if unlikely(!newsym) break;
    /* Adjust the symbol address. */
    if (!DCCSection_ISIMPORT(symsec))
@@ -377,8 +382,8 @@ DCCUnit_StaLoadPE(char *__restrict filename,
   /* TODO: After loading relocations, check back and
    *       remove the export directory if is is unused. */
  }
-
 noexpdir:
+
  /* Load all relocations.
   * NOTE: The ELF representation is accomplished by
   *       creation section-base-relative relocations
@@ -516,4 +521,4 @@ end:
 DCC_DECL_END
 #endif /* DCC_STAFORMAT_PE */
 
-#endif /* !GUARD_DCC_UNIT_STALIB_PE_C_INL */
+#endif /* !GUARD_DCC_UNIT_IMPORT_STAPE_C_INL */

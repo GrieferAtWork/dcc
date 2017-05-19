@@ -178,7 +178,15 @@ skip_yield_after_pack:
   else comment_string = TPPLexer_ParseString();
   if (comment_string) {
    if (comment_group == KWD_lib) {
-    DCCUnit_DynLoad(comment_string->s_text,1); /* Load a new library. */
+    struct DCCLibDef def;
+    def.ld_flags    = DCC_LIBDEF_FLAG_NONE;
+    def.ld_name     = comment_string->s_text;
+    def.ld_size     = comment_string->s_size;
+    def.ld_expsymfa = (symflag_t)-1;
+    def.ld_expsymfo = (symflag_t) 0;
+    def.ld_impsymfa = (symflag_t)-1;
+    def.ld_impsymfo = (symflag_t) 0;
+    DCCUnit_Import(&def); /* Load a new library. */
    }
    TPPString_Decref(comment_string);
   }
