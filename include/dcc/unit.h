@@ -832,7 +832,8 @@ DCCFUN struct DCCSection *DCCUnit_NewSecs(char const *__restrict name, DCC(symfl
  * where the intend is to try additional approaches should the standard way fail. */
 #define DCC_LIBDEF_FLAG_NOWARNMISSING 0x00000004
 
-/* Don't search  */
+/* Don't check the standard library search path,
+ * but instead use the given filename as only option. */
 #define DCC_LIBDEF_FLAG_NOSEARCHSTD 0x00000008
 
 struct DCCLibDef {

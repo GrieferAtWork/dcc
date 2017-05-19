@@ -70,6 +70,7 @@ DCC_DECL_BEGIN
 #define DCC_LIBFORMAT_DYN_PE  1 /* Recognize PE binaries as dynamic libraries. */
 #define DCC_LIBFORMAT_DYN_DEF 1 /* Recognize *.def files as dynamic libraries. */
 #define DCC_LIBFORMAT_STA_PE  1 /* Recognize PE binaries as static libraries. */
+#define DCC_LIBFORMAT_ELF     1 /* Recognize ELF binaries as dynamic/static libraries. */
 
 
 

@@ -47,6 +47,7 @@
     <ClInclude Include="..\include\dcc\vstack.h" />
     <ClInclude Include="..\include\elf.h" />
     <ClInclude Include="..\src\dcc\lexer-priv.h" />
+    <ClInclude Include="..\src\dcc\linker-elf.h" />
     <ClInclude Include="..\src\dcc\linker-pe.h" />
     <ClInclude Include="..\src\dcc\unit-import.h" />
     <ClInclude Include="..\src\dcc\x86_util.h" />
@@ -74,6 +75,7 @@
     <None Include="..\src\dcc\linker-pe.c.inl" />
     <None Include="..\src\dcc\unit-import-dyndef.c.inl" />
     <None Include="..\src\dcc\unit-import-dynpe.c.inl" />
+    <None Include="..\src\dcc\unit-import-elf.c.inl" />
     <None Include="..\src\dcc\unit-import-stape.c.inl" />
     <None Include="..\src\tpp\tpp-defs.inl" />
     <None Include="..\src\tpp\tpp-gcc-defs.inl" />

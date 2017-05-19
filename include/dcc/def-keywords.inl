@@ -1386,6 +1386,21 @@ DEF_WARNING(W_STA_PE_UNMAPPED_DISP_TARGET,(WG_LIBLOAD),WSTATE_RELOCWARN,{
 #if DCC_LIBFORMAT_DYN_DEF
 DEF_WARNING(W_LIB_DEF_EXPECTED_EXPORTS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Expected 'EXPORTS', but got '%s'",ARG(char *)))
 #endif /* DCC_LIBFORMAT_DYN_DEF */
+#if DCC_LIBFORMAT_ELF
+DEF_WARNING(W_LIB_ELF_INVALID_CLASS,   (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'EI_CLASS' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
+DEF_WARNING(W_LIB_ELF_INVALID_DATA,    (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'EI_DATA' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
+DEF_WARNING(W_LIB_ELF_INVALID_VERSION, (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'EI_VERSION' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
+DEF_WARNING(W_LIB_ELF_INVALID_VERSION2,(WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'e_version' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
+DEF_WARNING(W_LIB_ELF_INVALID_OSABI,   (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'EI_OSABI' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
+DEF_WARNING(W_LIB_ELF_INVALID_MACHINE, (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'e_machine' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
+DEF_WARNING(W_LIB_ELF_STATIC_SHARED,   (WG_LIBLOAD),WSTATE_WARN,WARNF("Statically linking against shared library '%s'",ARG(char *)))
+DEF_WARNING(W_LIB_ELF_DYNAMIC_EXEC,    (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against executable '%s'",ARG(char *)))
+DEF_WARNING(W_LIB_ELF_DYNAMIC_RELO,    (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against relocatable object file '%s'",ARG(char *)))
+DEF_WARNING(W_LIB_ELF_DYNAMIC_EMPTY,   (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against ELF binary '%s' with no program headers",ARG(char *)))
+DEF_WARNING(W_LIB_ELF_DYNAMIC_NOSIZE,  (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against ELF binary '%s' with size-less program headers",ARG(char *)))
+DEF_WARNING(W_LIB_ELF_STATIC_EMPTY,    (WG_LIBLOAD),WSTATE_WARN,WARNF("Statically linking against ELF binary '%s' with no section headers",ARG(char *)))
+DEF_WARNING(W_LIB_ELF_STATIC_NOSIZE,   (WG_LIBLOAD),WSTATE_WARN,WARNF("Statically linking against ELF binary '%s' with size-less section headers",ARG(char *)))
+#endif /* DCC_LIBFORMAT_ELF */
 
 #undef DECL_PRINTTY_LOAD
 #undef DECL_PRINTTY

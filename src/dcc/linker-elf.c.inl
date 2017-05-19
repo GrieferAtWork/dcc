@@ -26,13 +26,15 @@
 #include <dcc/stream.h>
 
 #include <stdio.h>
-#include <elf.h>
+
+#include "linker-elf.h"
 
 #ifdef _MSC_VER
 #include <malloc.h>
 #else
 #include <alloca.h>
 #endif
+
 
 DCC_DECL_BEGIN
 
@@ -1224,41 +1226,18 @@ elf_mk_outfile(stream_t fd) {
  ehdr.e_phentsize = sizeof(Elf(Phdr));
  ehdr.e_shentsize = sizeof(Elf(Shdr));
 
- ehdr.e_ident[EI_MAG0] = ELFMAG0;
- ehdr.e_ident[EI_MAG1] = ELFMAG1;
- ehdr.e_ident[EI_MAG2] = ELFMAG2;
- ehdr.e_ident[EI_MAG3] = ELFMAG3;
-#if ELF_USE == 32
- ehdr.e_ident[EI_CLASS] = ELFCLASS32;
-#else
- ehdr.e_ident[EI_CLASS] = ELFCLASS64;
-#endif
-#if DCC_TARGET_BYTEORDER == 1234
- ehdr.e_ident[EI_DATA] = ELFDATA2LSB;
-#elif DCC_TARGET_BYTEORDER == 4321
- ehdr.e_ident[EI_DATA] = ELFDATA2MSB;
-#else
- ehdr.e_ident[EI_DATA] = ELFDATANONE;
-#endif
- ehdr.e_ident[EI_VERSION] = EV_CURRENT;
-#if DCC_TARGET_OS == DCC_OS_FREEBSD || \
-    DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
- ehdr.e_ident[EI_OSABI] = ELFOSABI_FREEBSD;
-#elif DCC_TARGET_OS == DCC_OS_UNIX
- ehdr.e_ident[EI_OSABI] = ELFOSABI_LINUX;
-#else
- ehdr.e_ident[EI_OSABI] = ELFOSABI_SYSV;
-#endif
-#if DCC_TARGET_IA32(386)
- ehdr.e_machine = EM_386;
-#elif DCC_TARGET_CPU == DCC_CPU_X86_64
- ehdr.e_machine = EM_X86_64;
-#else
-#   error FIXME
-#endif
- ehdr.e_type    = elf.elf_type;
- ehdr.e_version = EV_CURRENT;
- ehdr.e_ehsize  = sizeof(Elf(Ehdr));
+ ehdr.e_ident[EI_MAG0]    = ELFMAG0;
+ ehdr.e_ident[EI_MAG1]    = ELFMAG1;
+ ehdr.e_ident[EI_MAG2]    = ELFMAG2;
+ ehdr.e_ident[EI_MAG3]    = ELFMAG3;
+ ehdr.e_ident[EI_CLASS]   = DCC_TARGET_ELFCLASS;
+ ehdr.e_ident[EI_DATA]    = DCC_TARGET_ELFDATA;
+ ehdr.e_ident[EI_VERSION] = DCC_TARGET_ELFVERSION;
+ ehdr.e_ident[EI_OSABI]   = DCC_TARGET_ELFOSABI;
+ ehdr.e_machine           = DCC_TARGET_ELF_MACHINE;
+ ehdr.e_type              = elf.elf_type;
+ ehdr.e_version           = DCC_TARGET_ELFVERSION;
+ ehdr.e_ehsize            = sizeof(Elf(Ehdr));
 
  {
   struct DCCSymAddr entryaddr;

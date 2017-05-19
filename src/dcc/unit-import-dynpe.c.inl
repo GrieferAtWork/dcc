@@ -16,8 +16,8 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#ifndef GUARD_DCC_UNIT_DYNLIB_PE_C_INL
-#define GUARD_DCC_UNIT_DYNLIB_PE_C_INL 1
+#ifndef GUARD_DCC_UNIT_IMPORT_DYNPE_C_INL
+#define GUARD_DCC_UNIT_IMPORT_DYNPE_C_INL 1
 
 #define DCC(x) x
 
@@ -259,4 +259,4 @@ DCC_DECL_END
 #endif /* DCC_LIBFORMAT_DYN_PE */
 #endif /* DCC_LIBFORMAT_DYN_PE || DCC_LIBFORMAT_STA_PE */
 
-#endif /* !GUARD_DCC_UNIT_DYNLIB_PE_C_INL */
+#endif /* !GUARD_DCC_UNIT_IMPORT_DYNPE_C_INL */

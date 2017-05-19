@@ -128,6 +128,9 @@
     <ClInclude Include="..\src\dcc\linker-pe.h">
       <Filter>src\dcc</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\dcc\linker-elf.h">
+      <Filter>src\dcc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\dcc\lexer-attributes.c.inl">
@@ -197,6 +200,9 @@
       <Filter>src\dcc</Filter>
     </None>
     <None Include="..\src\dcc\linker-elf.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\unit-import-elf.c.inl">
       <Filter>src\dcc</Filter>
     </None>
   </ItemGroup>

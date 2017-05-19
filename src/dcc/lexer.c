@@ -158,7 +158,7 @@ PUBLIC int DCCParse_Pragma(void) {
       struct TPPConst path_string;
      case '+': YIELD();
      default:  mode = 1;
-      if (FALSE) { case '-': mode = 0; YIELD(); }
+      if (DCC_MACRO_FALSE) { case '-': mode = 0; YIELD(); }
       if unlikely(!TPPLexer_Eval(&path_string)) return 0;
       if (path_string.c_kind != TPP_CONST_STRING) {
        TPPLexer_Warn(W_PRAGMA_LIBRARY_PATH_EXPECTED_STRING,&path_string);
