@@ -317,7 +317,7 @@ DCCParse_String(void) {
 
 #if DCC_TARGET_OS == DCC_OS_WINDOWS
 #define INVALID_PATH_CHARACTERS "/\\:?*;"
-#elif !!(DCC_TARGET_OS&DCC_OS_LINUX)
+#elif !!(DCC_TARGET_OS&DCC_OS_UNIX)
 #define INVALID_PATH_CHARACTERS "/\\:?*"
 #endif
 
@@ -356,7 +356,7 @@ DCCParse_GetLibname(char const *__restrict name, size_t size) {
 #endif
 #if DCC_TARGET_OS == DCC_OS_WINDOWS
   if (*iter == '/') *iter = '\\';
-#elif !!(DCC_TARGET_OS&DCC_OS_LINUX)
+#elif !!(DCC_TARGET_OS&DCC_OS_UNIX)
   if (*iter == '\\') *iter = '/';
 #endif
  }

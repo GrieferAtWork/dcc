@@ -43,16 +43,16 @@ DCC_DECL_BEGIN
  {f,LIBLOADER_FLAGS(d,s,msiz),__VA_ARGS__}
 
 INTERN struct PLibLoaderDef const dcc_libloaders[] = {
-#if DCC_STAFORMAT_PE
+#if DCC_LIBFORMAT_STA_PE
  LOADDEF(0,1,&DCCUnit_StaLoadPE,2,{'M','Z'}), /* '*.exe/*.dll' PE binaries. */
-#endif /* DCC_STAFORMAT_PE */
-#if DCC_LIBFORMAT_PE
+#endif /* DCC_LIBFORMAT_STA_PE */
+#if DCC_LIBFORMAT_DYN_PE
  LOADDEF(1,0,&DCCUnit_DynLoadPE,2,{'M','Z'}), /* '*.exe/*.dll' PE binaries. */
-#endif /* DCC_LIBFORMAT_PE */
-#if DCC_LIBFORMAT_DEF
+#endif /* DCC_LIBFORMAT_DYN_PE */
+#if DCC_LIBFORMAT_DYN_DEF
  LOADDEF(1,0,&DCCUnit_DynImportDEF2,7,{'L','I','B','R','A','R','Y'}), /* '*.def' library files. */
  LOADDEF(1,0,&DCCUnit_DynImportDEF,0,{0}), /* '*.def' library files. */
-#endif /* DCC_LIBFORMAT_DEF */
+#endif /* DCC_LIBFORMAT_DYN_DEF */
  {NULL,0,{0}},
 };
 

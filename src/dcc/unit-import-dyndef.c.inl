@@ -24,7 +24,7 @@
 #include <dcc/common.h>
 #include <dcc/target.h>
 
-#if DCC_LIBFORMAT_DEF
+#if DCC_LIBFORMAT_DYN_DEF
 #include <dcc/unit.h>
 #include <dcc/lexer.h>
 
@@ -158,6 +158,6 @@ DCCUnit_DynImportDEF(struct DCCLibDef *__restrict def,
 }
 
 DCC_DECL_END
-#endif /* DCC_LIBFORMAT_DEF */
+#endif /* DCC_LIBFORMAT_DYN_DEF */
 
 #endif /* !GUARD_DCC_UNIT_IMPORT_DYNDEF_C_INL */

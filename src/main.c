@@ -18,11 +18,11 @@
  */
 
 #include <dcc/assembler.h>
-#include <dcc/unit.h>
 #include <dcc/compiler.h>
 #include <dcc/lexer.h>
-#include <dcc/binary.h>
+#include <dcc/linker.h>
 #include <dcc/stream.h>
+#include <dcc/unit.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -177,6 +177,7 @@ int main(int argc, char *argv[]) {
  struct DCCSection *sec;
  int result = 0;
  if (!TPP_INITIALIZE()) return 1;
+ DCCLinker_Init(&linker);
  TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_TERMINATE_STRING_LF
                               |TPPLEXER_FLAG_COMMENT_NOOWN_LF
 #ifdef _WIN32
@@ -187,6 +188,7 @@ int main(int argc, char *argv[]) {
  if unlikely(!argc) { result = 1; goto end_tpp; }
 
  //_CrtSetBreakAlloc(122);
+ DCCLinker_AddSysPaths("a.exe");
 
  add_staticlib("ntdll.dll"); /* TEST */
  //dump_symbols();
@@ -205,14 +207,14 @@ int main(int argc, char *argv[]) {
 
 #ifdef DCC_LINKER_FLAG_PEDYNAMIC
  /* Dynamically export PE symbols. */
- compiler.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
+ linker.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 #endif
 
 #if 1
  /* Prepare generated code for output to file. */
  DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);
  { stream_t hout = s_openw("a.exe");
-   DCCBin_Generate(hout); /* Generate the binary. */
+   DCCLinker_Make(hout); /* Generate the binary. */
    s_close(hout);
  }
 #else
@@ -272,6 +274,7 @@ end:
  DCCUnit_Quit(&unit);
  DCCUnit_ClearCache();
 end_tpp:
+ DCCLinker_Quit(&linker);
  TPP_FINALIZE();
 #ifdef _CRTDBG_MAP_ALLOC
  _CrtDumpMemoryLeaks();

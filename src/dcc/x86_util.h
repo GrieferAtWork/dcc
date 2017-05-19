@@ -171,7 +171,7 @@ PRIVATE void DCCDisp_LargeCstBinRegs(tok_t op, struct DCCSymExpr const *__restri
 #define asm_op_stosl()  t_putb(0xab)
 
 
-#define DCC_CONFIG_NEED_X86_INSTRLEN  (DCC_STAFORMAT_PE)
+#define DCC_CONFIG_NEED_X86_INSTRLEN  (DCC_LIBFORMAT_STA_PE)
 
 #if DCC_CONFIG_NEED_X86_INSTRLEN
 #define INSTRLEN_DEBUG 0

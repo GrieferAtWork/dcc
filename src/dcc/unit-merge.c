@@ -22,12 +22,11 @@
 #define DCC(x) x
 
 #include <dcc/common.h>
-#include <dcc/unit.h>
 #include <dcc/compiler.h>
-#include <dcc/target.h>
-#include <dcc/vstack.h>
-#include <dcc/binary.h>
 #include <dcc/stream.h>
+#include <dcc/target.h>
+#include <dcc/unit.h>
+#include <dcc/vstack.h>
 
 #include <string.h>
 #include <stdlib.h>

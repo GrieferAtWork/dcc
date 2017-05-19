@@ -12,12 +12,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\dcc\assembler.c" />
-    <ClCompile Include="..\src\dcc\binary.c" />
     <ClCompile Include="..\src\dcc\common.c" />
     <ClCompile Include="..\src\dcc\compiler.c" />
     <ClCompile Include="..\src\dcc\fundecl.c" />
     <ClCompile Include="..\src\dcc\gen.c" />
     <ClCompile Include="..\src\dcc\lexer.c" />
+    <ClCompile Include="..\src\dcc\linker.c" />
     <ClCompile Include="..\src\dcc\tpp-wrapper.c" />
     <ClCompile Include="..\src\dcc\type.c" />
     <ClCompile Include="..\src\dcc\unit-import.c" />
@@ -33,21 +33,21 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcc\assembler.h" />
-    <ClInclude Include="..\include\dcc\binary.h" />
     <ClInclude Include="..\include\dcc\byteorder.h" />
     <ClInclude Include="..\include\dcc\common.h" />
     <ClInclude Include="..\include\dcc\compiler.h" />
     <ClInclude Include="..\include\dcc\fundecl.h" />
     <ClInclude Include="..\include\dcc\gen.h" />
     <ClInclude Include="..\include\dcc\lexer.h" />
+    <ClInclude Include="..\include\dcc\linker.h" />
     <ClInclude Include="..\include\dcc\stream.h" />
     <ClInclude Include="..\include\dcc\target.h" />
     <ClInclude Include="..\include\dcc\type.h" />
     <ClInclude Include="..\include\dcc\unit.h" />
     <ClInclude Include="..\include\dcc\vstack.h" />
     <ClInclude Include="..\include\elf.h" />
-    <ClInclude Include="..\src\dcc\binary-pe.h" />
     <ClInclude Include="..\src\dcc\lexer-priv.h" />
+    <ClInclude Include="..\src\dcc\linker-pe.h" />
     <ClInclude Include="..\src\dcc\unit-import.h" />
     <ClInclude Include="..\src\dcc\x86_util.h" />
     <ClInclude Include="..\src\tpp\tpp-backwards-compatibility.h" />
@@ -56,8 +56,6 @@
   <ItemGroup>
     <None Include="..\include\dcc\def-asm.inl" />
     <None Include="..\include\dcc\def-keywords.inl" />
-    <None Include="..\src\dcc\binary-elf.c.inl" />
-    <None Include="..\src\dcc\binary-pe.c.inl" />
     <None Include="..\src\dcc\gen-bin.c.inl" />
     <None Include="..\src\dcc\gen-jmp.c.inl" />
     <None Include="..\src\dcc\gen-large.c.inl" />
@@ -72,6 +70,8 @@
     <None Include="..\src\dcc\lexer-expr.c.inl" />
     <None Include="..\src\dcc\lexer-init.c.inl" />
     <None Include="..\src\dcc\lexer-stmt.c.inl" />
+    <None Include="..\src\dcc\linker-elf.c.inl" />
+    <None Include="..\src\dcc\linker-pe.c.inl" />
     <None Include="..\src\dcc\unit-import-dyndef.c.inl" />
     <None Include="..\src\dcc\unit-import-dynpe.c.inl" />
     <None Include="..\src\dcc\unit-import-stape.c.inl" />

@@ -24,12 +24,12 @@
 #include <dcc/common.h>
 #include <dcc/target.h>
 
-#if DCC_STAFORMAT_PE
+#if DCC_LIBFORMAT_STA_PE
 #include <dcc/unit.h>
 #include <dcc/stream.h>
 
 #include "x86_util.h"
-#include "binary-pe.h"
+#include "linker-pe.h"
 
 #include <stdio.h>
 
@@ -519,6 +519,6 @@ end:
 }
 
 DCC_DECL_END
-#endif /* DCC_STAFORMAT_PE */
+#endif /* DCC_LIBFORMAT_STA_PE */
 
 #endif /* !GUARD_DCC_UNIT_IMPORT_STAPE_C_INL */

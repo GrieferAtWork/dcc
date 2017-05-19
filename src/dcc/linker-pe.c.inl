@@ -16,20 +16,19 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#ifndef GUARD_DCC_BINARY_PE_C_INL
-#define GUARD_DCC_BINARY_PE_C_INL 1
+#ifndef GUARD_DCC_LINKER_PE_C_INL
+#define GUARD_DCC_LINKER_PE_C_INL 1
 
 #include <dcc/common.h>
-#include <dcc/binary.h>
 #include <dcc/target.h>
 #include <dcc/unit.h>
-#include <dcc/compiler.h>
+#include <dcc/linker.h>
 #include <dcc/stream.h>
 #include <dcc/vstack.h>
 
 #include <stdio.h>
 
-#include "binary-pe.h"
+#include "linker-pe.h"
 
 DCC_DECL_BEGIN
 
@@ -148,7 +147,7 @@ struct secinfo {
                                  *         absolute, run-time address of the section.
                                  *         Note though, that the linker is allowed to move the section
                                  *         elsewhere, unless relocation information was stripped. */
- uint8_t             *si_data;  /*< [0..si_msize] Pointer to compiler-time pre-initialized data. */
+ uint8_t             *si_data;  /*< [0..si_msize] Pointer to compile-time pre-initialized data. */
  size_t               si_msize; /*< [<= si_vsize] Size of the compile-time pre-initialized data. */
  target_siz_t         si_vsize; /*< [>= si_msize][!0] Actual (virtual) size of the section (A different between this and 'si_msize' is filled with ZEROes by the runtime-linker). */
  IMAGE_SECTION_HEADER si_hdr;   /*< In-file header for this section. */
@@ -262,7 +261,7 @@ pe_mk_reldat(struct DCCSection *__restrict relocs) {
  struct DCCRel *iter,*end;
  target_ptr_t addr,blockaddr = 0,offset = 0;
  size_t count = 0;
- if unlikely(compiler.l_flags&DCC_LINKER_FLAG_NORELOC) return;
+ if unlikely(linker.l_flags&DCC_LINKER_FLAG_NORELOC) return;
  send = (siter = pe.pe_secv)+pe.pe_secc;
  iter = end = NULL;
  /* Search all sections for relocations. */
@@ -532,7 +531,7 @@ do_export:
   return 1;
  }
  /* Extension: Consider ELF visibility. */
- if (!(compiler.l_flags&DCC_LINKER_FLAG_PEDYNAMIC) ||
+ if (!(linker.l_flags&DCC_LINKER_FLAG_PEDYNAMIC) ||
        DCCSym_ISFORWARD(sym)) return 0;
  /* NOTE: Never export symbols of static duration. */
  if ((sym->sy_flags&(DCC_SYMFLAG_VISIBILITYBASE|DCC_SYMFLAG_STATIC)) !=
@@ -540,7 +539,7 @@ do_export:
  /* Don't implicitly export section start symbols. */
  if (DCCSym_ISSECTION(sym)) return 0;
  /* Don't dynamically export symbols import from other libraries. */
- if (!(compiler.l_flags&DCC_LINKER_FLAG_PEDYNAMIC_FWD) &&
+ if (!(linker.l_flags&DCC_LINKER_FLAG_PEDYNAMIC_FWD) &&
        sym->sy_sec && DCCSection_ISIMPORT(sym->sy_sec)) return 0;
  goto do_export;
 }
@@ -1029,13 +1028,13 @@ pe_mk_writefile(stream_t fd) {
 /* Generate PE runtime information. */
 PRIVATE void pe_mk_genrt(void) {
  char const *entry_point;
-      if (compiler.l_flags&DCC_LINKER_FLAG_SHARED) pe.pe_type = PETYPE_DLL;
+      if (linker.l_flags&DCC_LINKER_FLAG_SHARED) pe.pe_type = PETYPE_DLL;
  else if (DCCUnit_GetSyms(PE_STDSYM("WinMain","@16"))) pe.pe_type = PETYPE_GUI;
  else pe.pe_type = PETYPE_EXE;
  entry_point = pe.pe_type == PETYPE_DLL ? PE_STDSYM2("__dllstart","@12") :
                pe.pe_type == PETYPE_GUI ?            "__winstart"
                                         :            "__start";
- if (compiler.l_flags&DCC_LINKER_FLAG_NOUNDERSCORE) ++entry_point;
+ if (linker.l_flags&DCC_LINKER_FLAG_NOUNDERSCORE) ++entry_point;
  assert(!pe.pe_entry);
  pe.pe_entry = DCCUnit_GetSyms(entry_point);
  if (!pe.pe_entry) {
@@ -1061,7 +1060,7 @@ PRIVATE void pe_mk_genrt(void) {
  /* TODO: 'pe.pe_secalign' can be overwritten. */
  /* TODO: 'pe.pe_filalign' can be overwritten. */
 
- if (!(compiler.l_flags&DCC_LINKER_FLAG_NORELOC)) {
+ if (!(linker.l_flags&DCC_LINKER_FLAG_NORELOC)) {
        DCCUnit_NewSecs(".reloc",DCC_SYMFLAG_SEC_NOALLOC);
  }
 
@@ -1148,7 +1147,7 @@ PRIVATE void pe_mk_buildita(void) {
 }
 
 PUBLIC void
-DCCBin_Generate(stream_t fd) {
+DCCLinker_Make(stream_t fd) {
  memset(&pe,0,sizeof(pe));
 
  /* Determine PE settings, as well as the entry point. */
@@ -1190,4 +1189,4 @@ end:
 
 DCC_DECL_END
 
-#endif /* !GUARD_DCC_BINARY_PE_C_INL */
+#endif /* !GUARD_DCC_LINKER_PE_C_INL */

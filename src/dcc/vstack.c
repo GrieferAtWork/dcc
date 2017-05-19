@@ -19,16 +19,17 @@
 #ifndef GUARD_DCC_VSTACK_C
 #define GUARD_DCC_VSTACK_C 1
 
-#include <dcc/common.h>
-#include <dcc/binary.h>
-#include <dcc/vstack.h>
-#include <dcc/unit.h>
-#include <dcc/compiler.h>
-#include <dcc/lexer.h>
-#include <dcc/gen.h>
 #include <dcc/byteorder.h>
-#include <string.h>
+#include <dcc/common.h>
+#include <dcc/compiler.h>
+#include <dcc/gen.h>
+#include <dcc/lexer.h>
+#include <dcc/linker.h>
+#include <dcc/unit.h>
+#include <dcc/vstack.h>
+
 #include <stdlib.h>
+#include <string.h>
 
 #include "lexer-priv.h"
 #include "x86_util.h"
@@ -903,7 +904,7 @@ load_reg: /* Make sure we're operating on a register. */
 
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 PUBLIC void
-DCCBin_PEIndImport(struct DCCStackValue *__restrict self) {
+DCCLinker_PEIndImport(struct DCCStackValue *__restrict self) {
  struct DCCSym *pesym,*iat_sym;
  struct DCCSection *symsec;
  assert(self);
@@ -934,7 +935,7 @@ PUBLIC void DCC_VSTACK_CALL
 DCCStackValue_LoadLValue(struct DCCStackValue *__restrict self) {
  assert(self);
 #if DCC_TARGET_BIN == DCC_BINARY_PE
- DCCBin_PEIndImport(self);
+ DCCLinker_PEIndImport(self);
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
  while (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_LVALUE) {
   DCCStackValue_FixBitfield(self);

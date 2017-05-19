@@ -328,27 +328,6 @@ struct DCCCompiler {
 #define DCC_COMPILER_FLAG_NOSHARED  0x40000000 /*< Don't share stack memory between variables not visible to each other. */
 #define DCC_COMPILER_FLAG_NOUNREACH 0x80000000 /*< Unless set, generate traps for __builtin_unreachable(), as well as other unreachable code locations. */
  uint32_t                  c_flags;   /*< Current c-related code flags (Set of 'DCC_COMPILER_FLAG_*'). */
-#define DCC_LINKER_FLAG_SHARED       0x00000001 /*< Create shared libraries. */
-#define DCC_LINKER_FLAG_NOSTDLIB     0x00000002 /*< Don't include standard libraries. */
-#define DCC_LINKER_FLAG_NOUNDERSCORE 0x00000004 /*< Don't prepend leading underscores. */
-#define DCC_LINKER_FLAG_STATIC       0x00000008 /*< Perform static linking. */
-#define DCC_LINKER_FLAG_NORELOC      0x00000010 /*< Don't generate relocations, meaning that a generated image will not be position-independent.
-                                                 *  WARNING: Despite the name, this flag does _NOT_ disable import relocations on ELF targets (because that'd just break dynamic linking...) */
-#if DCC_STAFORMAT_PE
-#define DCC_LINKER_FLAG_STAPE_KEEPEXPORT 0x00000020 /*< When statically linking against a PE binary, the old export table
-                                                     *  is kept even though this will cause a copy of it to be created.
-                                                     *  NOTE: The export table is always kept when a relocation pointing inside is detected. */
-#endif
-#if DCC_TARGET_BIN == DCC_BINARY_PE
-#define DCC_LINKER_FLAG_PEDYNAMIC     0x10000000 /*< On PE targets: Consider C/ELF visibility when generating an export table.
-                                                  *  >> When this flag is set, any non-static definition matching '__attribute__((visibility("default")))'
-                                                  *     will be exported, in addition to symbols marked with '__attribute__((dllexport))'. */
-#define DCC_LINKER_FLAG_PEDYNAMIC_FWD 0x20000000 /*< On PE targets: Force enable dynamic export for symbols imported from other libraries, creating proxy declarations.
-                                                  *  NOTE: Proxy declarations can always be created by declaring a symbol with both 'dllimport' and 'dllexport'!
-                                                  *  WARNING: You probably don't want to enable this flag, because something as simple as '#pragma comment(lib,"ntdll.dll")'
-                                                  *           will cause _ALL_ symbols from ntdll to be both imported _AND_ exported from your application (It'll work, but it's a damn stupid thing to do...) */
-#endif
- uint32_t                  l_flags;   /*< Current linker-related flags (Set of 'DCC_LINKER_FLAG_*'). */
 };
 
 /* Global object: The current compiler. */
@@ -360,14 +339,14 @@ DCCFUN void DCCCompiler_Quit(struct DCCCompiler *__restrict self);
 /* Clear any preallocated memory reachable from 'self'
  * NOTE: Some flush operations are always performed:
  *        - Clear unused relocation.
- * @param: flags: A set of 'DCCCOMPILER_FLUSHFLAG_**' */
+ * @param: flags: A set of 'DCCCOMPILER_FLUSHFLAG_*' (Unknown flags are ignored) */
 DCCFUN void DCCCompiler_Flush(struct DCCCompiler *__restrict self, uint32_t flags);
 #define DCCCOMPILER_FLUSHFLAG_NONE      0x00000000
 #define DCCCOMPILER_FLUSHFLAG_DECLTAB   0x00000008 /*< Shrink the allocated size of declaration hash tables to the minimum assumed by automatic rehashing. */
 #define DCCCOMPILER_FLUSHFLAG_TABMIN    0x00000010 /*< More aggressive behavior for 'DCCUNIT_FLUSHFLAG_DECLTAB': Reduce the hash size to ONE(1) (Only use this as last way out) */
 #define DCCCOMPILER_FLUSHFLAG_VSTACK    0x00000020 /*< Free unused v-stack entries. */
 #define DCCCOMPILER_FLUSHFLAG_PACKSTACK 0x00000040 /*< Free unused pack-stack entries. */
-#define DCCCOMPILER_FLUSHFLAG_VISISTACK 0x00000040 /*< Free unused visibility-stack entries. */
+#define DCCCOMPILER_FLUSHFLAG_VISISTACK 0x00000080 /*< Free unused visibility-stack entries. */
 
 #define DCCCompiler_Pushf() \
 do{ uint32_t const _old_flags = DCCCompiler_Current.c_flags

@@ -34,38 +34,42 @@ DCC_DECL_BEGIN
 #define DCC_CPU_X86_64  5
 
 /* Known OS names. */
-#define DCC_OS_UNKNOWN        0x00
-#define DCC_OS_WINDOWS        0x01
-#define DCC_OS_LINUX          0x02
-#define DCC_OS_FREEBSD        0x12
-#define DCC_OS_FREEBSD_KERNEL 0x32
+#define DCC_OS_UNKNOWN         0x00
+#define DCC_OS_WINDOWS         0x01
+#define DCC_OS_UNIX            0x02
+#define DCC_OS_LINUX          (DCC_OS_UNIX)
+#define DCC_OS_FREEBSD        (0x10|DCC_OS_UNIX)
+#define DCC_OS_FREEBSD_KERNEL (0x20|DCC_OS_FREEBSD|DCC_OS_UNIX)
+#define DCC_OS_GENERIC         DCC_OS_UNIX /* If you don't know that it is, it's probably based on unix. */
 
-/* Known BINARY format names. */
+/* Known BINARY output format names.
+ * NOTE: Does not affect recognized input formats, which
+ *       are configured below with 'DCC_LIBFORMAT_*'. */
 #define DCC_BINARY_UNKNOWN 0x00
 #define DCC_BINARY_PE      0x01
 #define DCC_BINARY_ELF     0x02
 
-#ifndef DCC_TARGET_CPU
 /* DCC Master CPU target switch. */
+#ifndef DCC_TARGET_CPU
 #define DCC_TARGET_CPU     DCC_HOST_CPU
 #endif
 
-#ifndef DCC_TARGET_BIN
 /* DCC Master Binary target format switch. */
+#ifndef DCC_TARGET_BIN
 #define DCC_TARGET_BIN     DCC_HOST_BIN
 //#define DCC_TARGET_BIN     DCC_BINARY_ELF
 #endif
 
+/* DCC Master OS target switch. */
 #ifndef DCC_TARGET_OS
-/* DCC Master target OS switch. */
 #define DCC_TARGET_OS      DCC_HOST_OS
 #endif
 
 
 /* Recognized library formats during linking. */
-#define DCC_LIBFORMAT_PE  1 /* Recognize PE binaries as dynamic libraries. */
-#define DCC_LIBFORMAT_DEF 1 /* Recognize *.def files as dynamic libraries. */
-#define DCC_STAFORMAT_PE  1 /* Recognize PE binaries as static libraries. */
+#define DCC_LIBFORMAT_DYN_PE  1 /* Recognize PE binaries as dynamic libraries. */
+#define DCC_LIBFORMAT_DYN_DEF 1 /* Recognize *.def files as dynamic libraries. */
+#define DCC_LIBFORMAT_STA_PE  1 /* Recognize PE binaries as static libraries. */
 
 
 
@@ -126,14 +130,15 @@ DCC_DECL_BEGIN
 #   define DCC_HOST_OS DCC_OS_FREEBSD_KERNEL
 #elif defined(__FreeBSD__)
 #   define DCC_HOST_OS DCC_OS_FREEBSD
+#elif defined(__linux__) || \
+      defined(__linux) || defined(linux)
+#   define DCC_HOST_OS DCC_OS_LINUX
 #elif defined(__unix__) || defined(__unix) \
       defined(unix) || defined(__ANDROID__) || \
       defined(__ANDROID) || defined(__android__) || \
-      defined(__android) || defined(__linux__) || \
-      defined(__linux) || defined(linux) || \
-      defined(__MACOS__) || defined(__MACOSX__) || \
-      defined(__POSIX__)
-#   define DCC_HOST_OS DCC_OS_LINUX
+      defined(__android) || defined(__MACOS__) || \
+      defined(__MACOSX__) || defined(__POSIX__)
+#   define DCC_HOST_OS DCC_OS_UNIX
 #else
 #   define DCC_HOST_OS DCC_OS_UNKNOWN
 #endif
@@ -146,7 +151,7 @@ DCC_DECL_BEGIN
 #   define DCC_HOST_BIN    DCC_BINARY_PE
 #elif DCC_HOST_OS == DCC_OS_WINDOWS
 #   define DCC_HOST_BIN    DCC_BINARY_PE
-#elif DCC_HOST_OS == DCC_OS_LINUX || \
+#elif DCC_HOST_OS == DCC_OS_UNIX || \
       DCC_HOST_OS == DCC_OS_FREEBSD || \
       DCC_HOST_OS == DCC_OS_FREEBSD_KERNEL
 #   define DCC_HOST_BIN    DCC_BINARY_ELF
@@ -193,6 +198,7 @@ DCC_DECL_BEGIN
 #endif
 
 #ifndef DCC_TARGET_ELFINTERP
+/* Determine the apropriate target ELF interpreter name. */
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
 #if DCC_TARGET_OS == DCC_OS_FREEBSD
 #   define DCC_TARGET_ELFINTERP "/libexec/ld-elf.so.1"

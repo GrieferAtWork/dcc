@@ -39,9 +39,6 @@
     <ClCompile Include="..\src\dcc\type.c">
       <Filter>src\dcc</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\dcc\binary.c">
-      <Filter>src\dcc</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\dcc\gen.c">
       <Filter>src\dcc</Filter>
     </ClCompile>
@@ -64,6 +61,9 @@
       <Filter>src\dcc</Filter>
     </ClCompile>
     <ClCompile Include="..\src\dcc\unit-import.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\linker.c">
       <Filter>src\dcc</Filter>
     </ClCompile>
   </ItemGroup>
@@ -98,9 +98,6 @@
     <ClInclude Include="..\include\dcc\byteorder.h">
       <Filter>include\dcc</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\dcc\binary.h">
-      <Filter>include\dcc</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\elf.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -113,9 +110,6 @@
     <ClInclude Include="..\include\dcc\stream.h">
       <Filter>include\dcc</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\dcc\binary-pe.h">
-      <Filter>src\dcc</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\dcc\compiler.h">
       <Filter>include\dcc</Filter>
     </ClInclude>
@@ -126,6 +120,12 @@
       <Filter>src\tpp</Filter>
     </ClInclude>
     <ClInclude Include="..\src\dcc\unit-import.h">
+      <Filter>src\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\linker.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\dcc\linker-pe.h">
       <Filter>src\dcc</Filter>
     </ClInclude>
   </ItemGroup>
@@ -184,12 +184,6 @@
     <None Include="..\src\tpp\tpp-gcc-defs.inl">
       <Filter>src\tpp</Filter>
     </None>
-    <None Include="..\src\dcc\binary-pe.c.inl">
-      <Filter>src\dcc</Filter>
-    </None>
-    <None Include="..\src\dcc\binary-elf.c.inl">
-      <Filter>src\dcc</Filter>
-    </None>
     <None Include="..\src\dcc\unit-import-dyndef.c.inl">
       <Filter>src\dcc</Filter>
     </None>
@@ -197,6 +191,12 @@
       <Filter>src\dcc</Filter>
     </None>
     <None Include="..\src\dcc\unit-import-stape.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\linker-pe.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\linker-elf.c.inl">
       <Filter>src\dcc</Filter>
     </None>
   </ItemGroup>

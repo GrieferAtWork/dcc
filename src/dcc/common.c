@@ -23,6 +23,7 @@
 #include <dcc/lexer.h>
 #include <dcc/compiler.h>
 #include <dcc/unit.h>
+#include <dcc/linker.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -82,15 +83,15 @@ void dcc_assertion_failed(char const *expr, char const *file,
 
 
 #define CM_MAX_LEVEL 6
-static uint32_t const cm_level_flags[CM_MAX_LEVEL][2] = {
- /* level #0 */{DCCCOMPILER_FLUSHFLAG_NONE,DCCUNIT_FLUSHFLAG_NONE},
- /* level #1 */{DCCCOMPILER_FLUSHFLAG_PACKSTACK|
-                DCCCOMPILER_FLUSHFLAG_VISISTACK,DCCUNIT_FLUSHFLAG_NONE},
- /* level #2 */{DCCCOMPILER_FLUSHFLAG_VSTACK,DCCUNIT_FLUSHFLAG_NONE},
- /* level #3 */{DCCCOMPILER_FLUSHFLAG_NONE,DCCUNIT_FLUSHFLAG_SECMEM},
- /* level #4 */{DCCCOMPILER_FLUSHFLAG_DECLTAB,DCCUNIT_FLUSHFLAG_SYMTAB},
+static uint32_t const cm_level_flags[CM_MAX_LEVEL][3] = {
+ /* level #0 */{DCCCOMPILER_FLUSHFLAG_NONE,DCCUNIT_FLUSHFLAG_NONE,DCCLINKER_FLUSHFLAG_NONE},
+ /* level #1 */{DCCCOMPILER_FLUSHFLAG_PACKSTACK|DCCCOMPILER_FLUSHFLAG_VISISTACK,
+                DCCUNIT_FLUSHFLAG_NONE,DCCLINKER_FLUSHFLAG_LIBPATHS},
+ /* level #2 */{DCCCOMPILER_FLUSHFLAG_VSTACK,DCCUNIT_FLUSHFLAG_NONE,DCCLINKER_FLUSHFLAG_NONE},
+ /* level #3 */{DCCCOMPILER_FLUSHFLAG_NONE,DCCUNIT_FLUSHFLAG_SECMEM,DCCLINKER_FLUSHFLAG_NONE},
+ /* level #4 */{DCCCOMPILER_FLUSHFLAG_DECLTAB,DCCUNIT_FLUSHFLAG_SYMTAB,DCCLINKER_FLUSHFLAG_NONE},
  /* level #5 */{DCCCOMPILER_FLUSHFLAG_DECLTAB|DCCCOMPILER_FLUSHFLAG_TABMIN,
-                DCCUNIT_FLUSHFLAG_SYMTAB|DCCUNIT_FLUSHFLAG_TABMIN}
+                DCCUNIT_FLUSHFLAG_SYMTAB|DCCUNIT_FLUSHFLAG_TABMIN,DCCLINKER_FLUSHFLAG_NONE}
 };
 
 PRIVATE void DCC_ClearMem(int level, uint32_t flush_exclude) {
@@ -102,6 +103,7 @@ PRIVATE void DCC_ClearMem(int level, uint32_t flush_exclude) {
  /* Flush compiler/unit memory. */
  DCCCompiler_Flush(&compiler,cm_level_flags[level][0]&~flush_exclude);
  DCCUnit_Flush(&unit,cm_level_flags[level][1]&~flush_exclude);
+ DCCLinker_Flush(&linker,cm_level_flags[level][2]&~flush_exclude);
 }
 
 #undef DCC_Malloc

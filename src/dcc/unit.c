@@ -1661,6 +1661,29 @@ DCCUnit_Flush(struct DCCUnit *__restrict self, uint32_t flags) {
   if (new_size < self->u_syma)
       DCCUnit_RehashSymbols2(self,new_size);
  }
+ if (flags&DCCUNIT_FLUSHFLAG_RELOCS) {
+  section = self->u_secs;
+  while (section) {
+   assert(section->sc_relc <= section->sc_rela);
+   if (section->sc_relc != section->sc_rela) {
+    if (!section->sc_relc) {
+     free(section->sc_relv);
+     section->sc_rela = 0;
+     section->sc_relv = NULL;
+    } else {
+     struct DCCRel *newrel;
+     newrel = (struct DCCRel *)realloc(section->sc_relv,
+                                       section->sc_relc*
+                                       sizeof(struct DCCRel));
+     if likely(newrel) {
+      section->sc_relv = newrel;
+      section->sc_rela = section->sc_relc;
+     }
+    }
+   }
+   section = section->sc_next;
+  }
+ }
 }
 
 PUBLIC size_t DCCUnit_ClearUnused(void) {

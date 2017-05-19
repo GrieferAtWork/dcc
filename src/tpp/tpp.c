@@ -3453,9 +3453,12 @@ do_fix_filename(char *filename, size_t *pfilename_size) {
    } break;
    case 1: {
     /* Remove a '.' path reference. */
-    if (text_iter == filename) filename = slash+1; /* Trim at start-of-file. */
-    else if (slash == text_end) text_iter[-1] = '\0';
-    else {
+    if (text_iter == filename) {
+     filename = slash; /* Trim at start-of-file. */
+     if (slash != text_end) ++filename;
+    } else if (slash == text_end) {
+     text_iter[-1] = '\0';
+    } else {
      memmove(text_iter,slash+1, /* NOTE: This also moves the '\0'-terminator. */
             (size_t)(text_end-slash)*sizeof(char));
     }

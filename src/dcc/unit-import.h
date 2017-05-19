@@ -52,16 +52,16 @@ struct PLibLoaderDef {
 extern struct PLibLoaderDef const dcc_libloaders[];
 
 
-#if DCC_LIBFORMAT_PE
+#if DCC_LIBFORMAT_DYN_PE
 INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
-#endif /* DCC_LIBFORMAT_PE */
-#if DCC_STAFORMAT_PE
+#endif /* DCC_LIBFORMAT_DYN_PE */
+#if DCC_LIBFORMAT_STA_PE
 INTERN int DCCUNIT_IMPORTCALL DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
-#endif /* DCC_STAFORMAT_PE */
-#if DCC_LIBFORMAT_DEF
+#endif /* DCC_LIBFORMAT_STA_PE */
+#if DCC_LIBFORMAT_DYN_DEF
 INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynImportDEF(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
 INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynImportDEF2(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
-#endif /* DCC_LIBFORMAT_DEF */
+#endif /* DCC_LIBFORMAT_DYN_DEF */
 
 
 DCC_DECL_END

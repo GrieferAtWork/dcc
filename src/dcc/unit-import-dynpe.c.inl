@@ -24,14 +24,14 @@
 #include <dcc/common.h>
 #include <dcc/target.h>
 
-#if DCC_LIBFORMAT_PE || DCC_STAFORMAT_PE
+#if DCC_LIBFORMAT_DYN_PE || DCC_LIBFORMAT_STA_PE
 #include <dcc/unit.h>
 #include <dcc/stream.h>
 
 #include <string.h>
 #include <stdlib.h>
 
-#include "binary-pe.h"
+#include "linker-pe.h"
 
 DCC_DECL_BEGIN
 
@@ -101,7 +101,7 @@ ret_null:
  return NULL;
 }
 
-#if DCC_LIBFORMAT_PE
+#if DCC_LIBFORMAT_DYN_PE
 INTERN int DCCUNIT_IMPORTCALL
 DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def,
                   char const *__restrict file, stream_t fd) {
@@ -256,7 +256,7 @@ end:
 }
 
 DCC_DECL_END
-#endif /* DCC_LIBFORMAT_PE */
-#endif /* DCC_LIBFORMAT_PE || DCC_STAFORMAT_PE */
+#endif /* DCC_LIBFORMAT_DYN_PE */
+#endif /* DCC_LIBFORMAT_DYN_PE || DCC_LIBFORMAT_STA_PE */
 
 #endif /* !GUARD_DCC_UNIT_DYNLIB_PE_C_INL */

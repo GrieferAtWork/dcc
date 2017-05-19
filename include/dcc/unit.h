@@ -738,14 +738,13 @@ DCCFUN void DCCUnit_Merge(struct DCCUnit *__restrict other);
 DCCFUN void DCCUnit_Extract(struct DCCUnit *__restrict other);
 
 /* Clear any preallocated memory reachable from 'self'
- * NOTE: Some flush operations are always performed:
- *        - Clear unused relocation.
- * @param: flags: A set of 'DCCUNIT_FLUSHFLAG_*' */
+ * @param: flags: A set of 'DCCUNIT_FLUSHFLAG_*' (Unknown flags are ignored) */
 DCCFUN void DCCUnit_Flush(struct DCCUnit *__restrict self, uint32_t flags);
 #define DCCUNIT_FLUSHFLAG_NONE   0x00000000
 #define DCCUNIT_FLUSHFLAG_SECMEM 0x00000001 /*< Clear pre-allocated section text memory (when 'tb_max < tb_end', lower 'tb_end' to 'tb_max') */
 #define DCCUNIT_FLUSHFLAG_SYMTAB 0x00000002 /*< Shrink the allocated size of symbol hash tables to the minimum assumed by automatic rehashing. */
 #define DCCUNIT_FLUSHFLAG_TABMIN 0x00000010 /*< More aggressive behavior for 'DCCUNIT_FLUSHFLAG_SYMTAB': Reduce the hash size to ONE(1) (Only use this as last way out) */
+#define DCCUNIT_FLUSHFLAG_RELOCS 0x00000100 /*< Clear unused relocations. */
 
 
 #define DCCUnit_ENUMSYM(sym) \
@@ -876,6 +875,9 @@ struct DCCLibDef {
 
 
 /* Load a given library definition into the current compilation unit.
+ * NOTE: [DCCUnit_Import] The library is search by its name ('def->ld_name|def->ld_size')
+ *                        within all library paths specified within the current linker.
+ *                        s.a.: 'DCCLinker_AddLibPath()'
  * @param: def: The library definition (s.a.: documentation of 'DCCLibDef')
  * @return: 0: Data form the given stream 'fd' does not describe a binary. (No lexer error was set)
  *             A critical error occurred while parsing the given stream 'fd'. (A lexer error was set)

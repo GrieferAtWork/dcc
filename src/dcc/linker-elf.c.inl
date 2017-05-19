@@ -16,14 +16,13 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#ifndef GUARD_DCC_BINARY_ELF_C_INL
-#define GUARD_DCC_BINARY_ELF_C_INL 1
+#ifndef GUARD_DCC_LINKER_ELF_C_INL
+#define GUARD_DCC_LINKER_ELF_C_INL 1
 
 #include <dcc/common.h>
-#include <dcc/binary.h>
 #include <dcc/target.h>
 #include <dcc/unit.h>
-#include <dcc/compiler.h>
+#include <dcc/linker.h>
 #include <dcc/stream.h>
 
 #include <stdio.h>
@@ -329,7 +328,7 @@ use_text:
 PRIVATE void elf_mk_interp(void) {
  char *itp; size_t itp_len;
  if (!elf.elf_interp) return;
- if (compiler.l_flags&(DCC_LINKER_FLAG_SHARED|DCC_LINKER_FLAG_STATIC)) return;
+ if (linker.l_flags&(DCC_LINKER_FLAG_SHARED|DCC_LINKER_FLAG_STATIC)) return;
  /* XXX: Override with commandline-switch. */
  if ((itp = getenv("LD_SO")) == NULL) itp = DCC_TARGET_ELFINTERP;
  /* Create a section for the interpreter. */
@@ -683,7 +682,7 @@ PRIVATE void elf_mk_reldat(void) {
   relcnt = iter_sec->sc_relc;
   if unlikely(!relcnt) continue;
   rel_end = (rel_iter = iter_sec->sc_relv)+relcnt;
-  if (compiler.l_flags&DCC_LINKER_FLAG_NORELOC) {
+  if (linker.l_flags&DCC_LINKER_FLAG_NORELOC) {
    for (; rel_iter != rel_end; ++rel_iter) {
     if (!elf_wantrel(rel_iter)) --relcnt;
    }
@@ -698,7 +697,7 @@ PRIVATE void elf_mk_reldat(void) {
   iter->si_rel->sc_elflnk = elf.elf_dynsym;
   iter->si_rdat = reladdr;
   iter->si_rcnt = relcnt;
-  if (compiler.l_flags&DCC_LINKER_FLAG_NORELOC) {
+  if (linker.l_flags&DCC_LINKER_FLAG_NORELOC) {
    for (; rel_iter != rel_end; ++rel_iter) {
     if (!elf_wantrel(rel_iter)) continue;
     /* Use the '.dynsym' symbol index! */
@@ -1245,7 +1244,7 @@ elf_mk_outfile(stream_t fd) {
 #if DCC_TARGET_OS == DCC_OS_FREEBSD || \
     DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
  ehdr.e_ident[EI_OSABI] = ELFOSABI_FREEBSD;
-#elif DCC_TARGET_OS == DCC_OS_LINUX
+#elif DCC_TARGET_OS == DCC_OS_UNIX
  ehdr.e_ident[EI_OSABI] = ELFOSABI_LINUX;
 #else
  ehdr.e_ident[EI_OSABI] = ELFOSABI_SYSV;
@@ -1332,18 +1331,18 @@ elf_mk_outfile(stream_t fd) {
 
 
 PUBLIC void
-DCCBin_Generate(stream_t target) {
+DCCLinker_Make(stream_t target) {
  memset(&elf,0,sizeof(elf));
 
  /* TODO: Output object files? */
- if (compiler.l_flags&DCC_LINKER_FLAG_SHARED) {
+ if (linker.l_flags&DCC_LINKER_FLAG_SHARED) {
   elf.elf_base = 0; /* Load shared libraries at offset
                      * ZERO(0), relying on relocations. */
   elf.elf_type = ET_DYN;
  } else {
   /* TODO: Commandline switch: '-fPIC'
    * NOTE: This flag is actually fully implemented & working. */
-  //compiler.l_flags |= DCC_LINKER_FLAG_NORELOC;
+  //linker.l_flags |= DCC_LINKER_FLAG_NORELOC;
 
 #ifdef DCC_TARGET_X86
   elf.elf_base = 0x08048000;
@@ -1413,4 +1412,4 @@ end:
 
 DCC_DECL_END
 
-#endif /* !GUARD_DCC_BINARY_ELF_C_INL */
+#endif /* !GUARD_DCC_LINKER_ELF_C_INL */

@@ -16,9 +16,9 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-/* NOTE: Some function implementations in this file are based on on 'tcc'. */
-#ifndef GUARD_DCC_BINARY_PE_H
-#define GUARD_DCC_BINARY_PE_H 1
+/* DISCLAIMER: This file contains structures and declarations from <Windows.h> */
+#ifndef GUARD_DCC_LINKER_PE_H
+#define GUARD_DCC_LINKER_PE_H 1
 
 #include <dcc/common.h>
 #include <dcc/target.h>
@@ -97,7 +97,7 @@ typedef struct {
 #endif
 
 
-#if DCC_LIBFORMAT_PE || DCC_STAFORMAT_PE
+#if DCC_LIBFORMAT_DYN_PE || DCC_LIBFORMAT_STA_PE
 
 /* Utilities for parsing PE binaries. */
 INTERN LONG  pe_readhdr(stream_t s);
@@ -108,4 +108,4 @@ INTERN char *pe_readzstring(stream_t fd, size_t *s);
 
 DCC_DECL_END
 
-#endif /* !GUARD_DCC_BINARY_PE_H */
+#endif /* !GUARD_DCC_LINKER_PE_H */

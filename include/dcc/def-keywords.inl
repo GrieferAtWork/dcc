@@ -704,6 +704,7 @@ EXTENSION(EXT_STRUCT_COMPATIBLE,"struct-compatible",1)                   /*< All
 EXTENSION(EXT_AUTO_FOR_AUTOTYPE,"auto-in-type-expressions",1)            /*< Allow 'auto' to refer to '__auto_type' in type expressions, as well as describe automatic storage. */
 EXTENSION(EXT_VARIABLE_LENGTH_ARRAYS,"variable-length-arrays",1)         /*< Allow VLA-style arrays. */
 EXTENSION(EXT_FUNCTION_STRING_LITERALS,"function-string-literals",1)     /*< Treat '__FUNCTION__' and '__PRETTY_FUNCTION__' as string literals during language-level string-concatation. */
+EXTENSION(EXT_CANONICAL_LIB_PATHS,"canonical-lib-paths",1)               /*< Fix library paths before using them (e.g.: Remove whitespace, fix slashes, etc.). */
 EXTENSION(EXT_CANONICAL_LIB_NAMES,"canonical-lib-names",1)               /*< Fix library names before using them (e.g.: Remove whitespace, force to upper-case on windows targets, etc.). */
 WGROUP(WG_CONSTANT_CASE,"constant-case-expressions",WSTATE_ERROR)        /*< Warn about non-constant case expressions. */
 WGROUP(WG_EXTENSIONS,"extensions",WSTATE_ERROR)                          /*< Enable/disable extension warnings (Those things that are really sweet syntactically, but you sadly can't use for standard-compliance). */
@@ -805,6 +806,7 @@ DEF_WARNING(W_PRAGMA_GCC_VISIBILITY_NOTHING_TO_POP,(WG_PRAGMA,WG_SYNTAX),WSTATE_
 DEF_WARNING(W_PRAGMA_WEAK_EXPECTES_KEYWORD,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after #pragma weak, but got " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_WEAK_EXPECTES_KEYWORD_AFTER_EQUAL,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after #pragma weak ... =, but got " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_WEAK_ALREADY_WEAK,(WG_PRAGMA,WG_QUALITY),WSTATE_WARN,WARNF("Symbol '%s' passed to #pragma weak already has weak linkage",KWDNAME()))
+DEF_WARNING(W_PRAGMA_LIBPATH_NOTHING_TO_POP,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("No old library paths to pop in '#pragma DCC library_path(pop)'"))
 
 WARNING_NAMESPACE(WN_SYNTAX,1400)
 DEF_WARNING(W_EXPECTED_LBRACKET,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected '[', but got " TOK_S,TOK_A))
@@ -1289,7 +1291,7 @@ WARNING_NAMESPACE(WN_LIBLOADER,3000)
 
 /* Library loader warnings. */
 DEF_WARNING(W_LIB_NOT_FOUND,(WG_LIBLOAD),WSTATE_ERROR,{ char *n = ARG(char *); WARNF("Library not found: '%.*s'",(unsigned int)ARG(size_t),n); })
-#if DCC_LIBFORMAT_PE
+#if DCC_LIBFORMAT_DYN_PE
 DEF_WARNING(W_LIB_PE_INVMAGIC,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Invalid header magic in PE library '%s'",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_DLL,(WG_QUALITY,WG_LIBLOAD),WSTATE_WARN,WARNF("Library '%s' is not a dll.",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_RELOCATIONS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Can't link against PE library '%s' without relocations",ARG(char *)))
@@ -1297,8 +1299,8 @@ DEF_WARNING(W_LIB_PE_NO_EXPORT_TABLE,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary 
 DEF_WARNING(W_LIB_PE_NO_SECTIONS,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s' has no sections",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_SECTION_MAPPING,(WG_LIBLOAD),WSTATE_ERROR,{ char *name = ARG(char *); WARNF("No section of PE binary '%s' maps to virtual address %p",name,ARG(void *)); })
 DEF_WARNING(W_LIB_PE_EMPTY_EXPORT_TABLE,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s' has an empty export table",ARG(char *)))
-#endif /* DCC_LIBFORMAT_PE */
-#if DCC_STAFORMAT_PE
+#endif /* DCC_LIBFORMAT_DYN_PE */
+#if DCC_LIBFORMAT_STA_PE
 DEF_WARNING(W_STA_PE_CORRUPT_SYMNAME,(WG_LIBLOAD),WSTATE_ERROR,{
  target_ptr_t p = ARG(target_ptr_t);
  WARNF("Corrupt symbol name at %#lx for data at %#lx",
@@ -1375,10 +1377,10 @@ DEF_WARNING(W_STA_PE_UNMAPPED_DISP_TARGET,(WG_LIBLOAD),WSTATE_RELOCWARN,{
       (unsigned long)p,(unsigned long)ARG(target_ptr_t));
 })
 #undef WSTATE_RELOCWARN
-#endif /* DCC_STAFORMAT_PE */
-#if DCC_LIBFORMAT_DEF
+#endif /* DCC_LIBFORMAT_STA_PE */
+#if DCC_LIBFORMAT_DYN_DEF
 DEF_WARNING(W_LIB_DEF_EXPECTED_EXPORTS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Expected 'EXPORTS', but got '%s'",ARG(char *)))
-#endif /* DCC_LIBFORMAT_DEF */
+#endif /* DCC_LIBFORMAT_DYN_DEF */
 
 #undef DECL_PRINTTY_LOAD
 #undef DECL_PRINTTY
