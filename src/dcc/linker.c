@@ -95,7 +95,7 @@ PUBLIC void DCCLinker_LibPathPop(void) {
  struct TPPString **iter,**end;
  backup = linker.l_paths.lp_prev;
  if unlikely(!backup) {
-  WARN(W_PRAGMA_LIBPATH_NOTHING_TO_POP);
+  WARN(W_PRAGMA_LIBRARY_PATH_NOTHING_TO_POP);
   return;
  }
  end = (iter = linker.l_paths.lp_pathv)+linker.l_paths.lp_pathc;
@@ -118,8 +118,8 @@ DCCLinker_DoAddLibPath(char const *__restrict path, size_t pathsize) {
                linker.l_paths.lp_pathc;
  for (; iter != end; ++iter) {
   if ((elem = *iter)->s_size == pathsize &&
-     !memcmp(elem->s_text,path,pathsize*sizeof(char))
-     ) return 2; /* Path already exists. */
+      !memcmp(elem->s_text,path,pathsize*sizeof(char)))
+      return 2; /* Path already exists. */
  }
  elem = TPPString_New(path,pathsize);
  if unlikely(!elem) return 0;
@@ -166,8 +166,22 @@ DCCLinker_DelLibPath(char *__restrict path, size_t pathsize) {
  return 0;
 }
 
+PUBLIC size_t
+DCCLinker_AddLibPaths(char *__restrict list, size_t listsize) {
+ size_t result = 0;
+ while (listsize) {
+  char *sep = (char *)memchr(list,DCCLINKER_PATHS_SEP,listsize);
+  if unlikely(!sep) sep = list+listsize;
+  DCCLinker_AddLibPath(list,(size_t)(sep-list));
+  listsize -= (sep-list);
+  if unlikely(!listsize) break;
+  --listsize,list = sep+1;
+ }
+ return result;
+}
 
-PRIVATE void linker_add_dirof(char const *__restrict filename) {
+
+LOCAL void linker_add_dirof(char const *__restrict filename) {
  size_t dirbase; char *buf,*mbuf;
  assert(filename);
  dirbase = strlen(filename);
@@ -188,21 +202,50 @@ PRIVATE void linker_add_dirof(char const *__restrict filename) {
 }
 
 #if DCC_HOST_OS == DCC_OS_WINDOWS
-PRIVATE void linker_add_win32_systemdirectory(void) {
+typedef UINT (WINAPI *SYSDIR_FUN)(LPSTR lpBuffer, UINT uSize);
+typedef BOOL (WINAPI *LPISWOW64PROCESS)(HANDLE hProcess, PBOOL Wow64Process);
+
+
+LOCAL void linker_add_win32_systemdirectory(void) {
  UINT reqsize; char *p,buffer[PATH_MAX];
+#if !defined(_WIN64) && !defined(WIN64) && \
+    (DCC_TARGET_SIZEOF_POINTER == 4)
+ /* When running through emulation on a 64-bit version of windows,
+  * we must use 'GetSystemWow64DirectoryA' to determine this directory. */
+ SYSDIR_FUN get_sysdir;
+ LPISWOW64PROCESS iswow64_fun;
+ static HMODULE k32 = NULL;
+ if unlikely(!k32 && (k32 = LoadLibraryA("Kernel32.dll")) == NULL) goto nowow;
+ get_sysdir  = (SYSDIR_FUN)GetProcAddress(k32,"GetSystemWow64DirectoryA");
+ if unlikely(!get_sysdir) goto nowow;
+ iswow64_fun = (LPISWOW64PROCESS)GetProcAddress(k32,"IsWow64Process");
+ if unlikely(!iswow64_fun) goto nowow;
+ {
+  BOOL iswow = FALSE;
+  if (!(*iswow64_fun)(GetCurrentProcess(),&iswow)) iswow = FALSE;
+  if (!iswow) goto nowow;
+ }
+ if (DCC_MACRO_FALSE) { nowow: get_sysdir = &GetSystemDirectoryA; }
+#else
+#define get_sysdir  GetSystemDirectoryA
+#endif
 again:
- reqsize = GetSystemDirectoryA((p = buffer),sizeof(buffer));
+ reqsize = get_sysdir((p = buffer),sizeof(buffer));
  if (reqsize > sizeof(buffer)) {
   UINT newreqsize;
   p = (char *)DCC_Malloc(reqsize*sizeof(char),0);
   if unlikely(!p) return;
-  newreqsize = GetSystemDirectoryA(p,reqsize);
+  newreqsize = get_sysdir(p,reqsize);
   if (newreqsize != reqsize) { DCC_Free(p); goto again; }
  }
  DCCLinker_AddLibPath(p,reqsize);
  if (p != buffer) DCC_Free(p);
+#ifdef get_sysdir
+#undef get_sysdir
+#endif
 }
-PRIVATE void linker_add_win32_windowsdirectory(void) {
+
+LOCAL void linker_add_win32_windowsdirectory(void) {
  UINT reqsize; char *p,buffer[PATH_MAX];
 again:
  reqsize = GetWindowsDirectoryA((p = buffer),sizeof(buffer));
@@ -213,21 +256,37 @@ again:
   newreqsize = GetWindowsDirectoryA(p,reqsize);
   if (newreqsize != reqsize) { DCC_Free(p); goto again; }
  }
- DCCLinker_AddLibPath(p,reqsize-sizeof(char));
+ DCCLinker_AddLibPath(p,reqsize);
  if (p != buffer) DCC_Free(p);
 }
 #endif
 
 PUBLIC void
 DCCLinker_AddSysPaths(char const *__restrict outfile_or_basefile) {
-#if DCC_HOST_OS == DCC_OS_WINDOWS
- /* NOTE: The order here is important, and
-  *       mirrors LoadLibrary path resolution. */
+#if DCC_HOST_OS == DCC_OS_WINDOWS && DCC_TARGET_OS == DCC_OS_WINDOWS
+ /* For compatibility with windows dll-path resolution,
+  * the following locations must be searched by DCC (in that order):
+  *    1. <output-directory-of-executable> (binary-output-mode)
+  *    OR <directory-of-__BASE_FILE__>     (immediate-execution-mode)
+  *    2. GetSystemDirectoryA();
+  *    3. GetWindowsDirectoryA();
+  *    4. %PATH%
+  * NOTE: Before #2, windows actually searches the CWD of the calling process,
+  *       but since that can't be predicted by the compiler (and the best
+  *       prediction being what #1 already does), that step is skipped.
+  */
  linker_add_dirof(outfile_or_basefile);
  linker_add_win32_systemdirectory();
  linker_add_win32_windowsdirectory();
+ { /* Add %PATH% */
+   char *pathcopy,*path = getenv("PATH");
+   if (path && (pathcopy = strdup(path)) != NULL) {
+    DCCLinker_AddLibPaths(pathcopy,strlen(pathcopy));
+    free(pathcopy);
+   }
+ }
 #else
-#   error TODO
+ /* TODO */
 #endif
 }
 

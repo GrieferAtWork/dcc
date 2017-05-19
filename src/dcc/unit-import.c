@@ -25,6 +25,7 @@
 #include <dcc/target.h>
 #include <dcc/unit.h>
 #include <dcc/stream.h>
+#include <dcc/linker.h>
 
 #include "unit-import.h"
 
@@ -126,16 +127,16 @@ search_extensions[] = {
  {".def"},
 };
 PRIVATE int DCCUNIT_IMPORTCALL
-DCCUnit_DynLoadWithPath(char const *__restrict path,
+DCCUnit_DynLoadWithPath(struct TPPString *__restrict path,
                         struct DCCLibDef *__restrict def) {
  struct path_extension const *ext_iter,*ext_end;
  size_t pathlen,buflen;
  char *buf,*mbuf,*ext; int result;
  assert(def);
  assert(path);
- pathlen = strlen(path);
- while (pathlen && (path[pathlen-1] == '/' ||
-                    path[pathlen-1] == '\\')
+ pathlen = path->s_size;
+ while (pathlen && (path->s_text[pathlen-1] == '/' ||
+                    path->s_text[pathlen-1] == '\\')
         ) --pathlen;
  buflen = pathlen+def->ld_size+MAX_EXTLEN+2;
  if (buflen < 128) {
@@ -146,7 +147,7 @@ DCCUnit_DynLoadWithPath(char const *__restrict path,
   if unlikely(!mbuf) return 0;
  }
  ext = buf;
- memcpy(ext,path,pathlen*sizeof(char));
+ memcpy(ext,path->s_text,pathlen*sizeof(char));
  ext += pathlen;
 #if DCC_HOST_OS == DCC_OS_WINDOWS
  *ext++ = '\\';
@@ -171,30 +172,12 @@ DCCUnit_DynLoadWithPath(char const *__restrict path,
 
 
 
-static char const *const builtin_paths[] = {
- "",                        /* Search without directory. */
- "C:\\Windows\\System32\\", /* Placeholder for finding windows-dlls. */
- NULL,
-};
-
 PUBLIC int DCCUNIT_IMPORTCALL
 DCCUnit_Import(struct DCCLibDef *__restrict def) {
- char const *const *builtin_iter;
- int result = 0;
+ size_t i; int result = 0;
  assert(def);
- /* TODO: For compatibility with windows dll-path resolution,
-  *       the following locations must be searched by DCC (in that order):
-  *    1. <output-directory-of-executable> (binary-output-mode)
-  *    OR <directory-of-__BASE_FILE__>     (immediate-execution-mode)
-  *    2. GetSystemDirectoryA();
-  *    3. GetWindowsDirectoryA();
-  *    4. %PATH%
-  * NOTE: Before #2, windows actually searches the CWD of the calling process,
-  *       but since that can't be predicted by the compiler (and the best
-  *       prediction being what #1 already does), that step is skipped.
-  */
- for (builtin_iter = builtin_paths; *builtin_iter; ++builtin_iter) {
-  result = DCCUnit_DynLoadWithPath(*builtin_iter,def);
+ for (i = 0; i < linker.l_paths.lp_pathc; ++i) {
+  result = DCCUnit_DynLoadWithPath(linker.l_paths.lp_pathv[i],def);
   if (result || !OK) goto end;
  }
  /* TODO: Search user-defined library paths. */
