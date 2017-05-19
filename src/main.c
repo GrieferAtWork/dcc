@@ -92,11 +92,83 @@ void dump_symbols(void) {
 }
 
 
+static int first = 1;
+static void add_staticlib(char const *filename) {
+ struct DCCUnit old_unit;
+ char *fname = strdup(filename);
+ if (!fname) return;
+ if (!first) {
+  DCCUnit_Extract(&old_unit);
+  DCCCompiler_Quit(&compiler);
+ } else {
+  /* Initialize DCC and create+set the current text target. */
+  DCCUnit_Init(&unit);
+ }
+ DCCCompiler_Init(&compiler);
+ /* Load the static library. */
+ DCCUnit_StaLoad(fname,1);
+ if (first) first = 0;
+ else DCCUnit_Merge(&old_unit),
+      DCCUnit_Quit(&old_unit);
+ free(fname);
+}
+static void add_c_source(char *filename) {
+ struct TPPFile *infile;
+ struct DCCUnit old_unit;
+ /* Parse the input code. */
+ if (strcmp(filename,"-") != 0) {
+  infile = TPPLexer_OpenFile(TPPLEXER_OPENFILE_MODE_NORMAL|
+                             TPPLEXER_OPENFILE_FLAG_NOCASEWARN,
+                             filename,strlen(filename),NULL);
+  if (infile) TPPFile_Incref(infile);
+  if (!infile) fprintf(stderr,"File not found: \"%s\"\n",filename),_exit(1);
+ } else {
+  /* Fallback: Use stdin as input stream. */
+#ifdef _WIN32
+  infile = TPPFile_OpenStream(GetStdHandle(STD_INPUT_HANDLE),"<stdin>");
+#else
+  infile = TPPFile_OpenStream(STDIN_FILENO,"<stdin>");
+#endif
+ }
+ /* Yield the initial token. */
+ TPPLexer_PushFileInherited(infile);
+ TPPLexer_Current->l_callbacks.c_parse_pragma     = &DCCParse_Pragma;
+ TPPLexer_Current->l_callbacks.c_parse_pragma_gcc = &DCCParse_GCCPragma;
+ TPPLexer_Current->l_callbacks.c_ins_comment      = &DCCParse_InsComment;
+ TPPLexer_Current->l_extokens = (TPPLEXER_TOKEN_LANG_C|
+                                 TPPLEXER_TOKEN_TILDETILDE);
+ if (!first) {
+  DCCUnit_Extract(&old_unit);
+  /* TODO: Reset TPP warnings & macros (But _not_ keyword!) */
+  DCCCompiler_Quit(&compiler);
+ } else {
+  /* Initialize DCC and create+set the current text target. */
+  DCCUnit_Init(&unit);
+ }
+ DCCCompiler_Init(&compiler);
+
+ TPPLexer_Yield();
+ compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
+ unit.u_text = DCCUnit_NewSecs(".text",DCC_SYMFLAG_SEC_X|DCC_SYMFLAG_SEC_R);
+ unit.u_data = DCCUnit_NewSecs(".data",DCC_SYMFLAG_SEC_R);
+ unit.u_bss  = DCCUnit_NewSecs(".bss",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W);
+ unit.u_str  = DCCUnit_NewSecs(".string",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_M);
+ if (!OK) return;
+
+ DCCUnit_SetCurr(unit.u_text);
+ DCCParse_AllGlobal();
+ DCCUnit_SetCurr(NULL);
+
+ if (first) first = 0;
+ else DCCUnit_Merge(&old_unit),
+      DCCUnit_Quit(&old_unit);
+}
+
+
 
 int main(int argc, char *argv[]) {
- struct TPPFile *infile;
  struct DCCSection *sec;
- int first = 1,result = 0;
+ int result = 0;
  if (!TPP_INITIALIZE()) return 1;
  TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_TERMINATE_STRING_LF
                               |TPPLEXER_FLAG_COMMENT_NOOWN_LF
@@ -109,57 +181,14 @@ int main(int argc, char *argv[]) {
 
  //_CrtSetBreakAlloc(122);
 
+ add_staticlib("ntdll.dll"); /* TEST */
+ //dump_symbols();
+ if (!OK) goto end;
+
  do {
-  struct DCCUnit old_unit;
   /* Parse the input code. */
-  if (strcmp(argv[0],"-") != 0) {
-   infile = TPPLexer_OpenFile(TPPLEXER_OPENFILE_MODE_NORMAL|
-                              TPPLEXER_OPENFILE_FLAG_NOCASEWARN,
-                              argv[0],strlen(argv[0]),NULL);
-   if (infile) TPPFile_Incref(infile);
-   if (!infile) fprintf(stderr,"File not found: \"%s\"\n",argv[0]),_exit(1);
-  } else {
-   /* Fallback: Use stdin as input stream. */
-#ifdef _WIN32
-   infile = TPPFile_OpenStream(GetStdHandle(STD_INPUT_HANDLE),"<stdin>");
-#else
-   infile = TPPFile_OpenStream(STDIN_FILENO,"<stdin>");
-#endif
-  }
-  /* Yield the initial token. */
-  TPPLexer_PushFileInherited(infile);
-  TPPLexer_Current->l_callbacks.c_parse_pragma     = &DCCParse_Pragma;
-  TPPLexer_Current->l_callbacks.c_parse_pragma_gcc = &DCCParse_GCCPragma;
-  TPPLexer_Current->l_callbacks.c_ins_comment      = &DCCParse_InsComment;
-  TPPLexer_Current->l_extokens = (TPPLEXER_TOKEN_LANG_C|
-                                  TPPLEXER_TOKEN_TILDETILDE);
-  if (!first) {
-   DCCUnit_Extract(&old_unit);
-   /* TODO: Reset TPP warnings & macros (But _not_ keyword!) */
-   DCCCompiler_Quit(&compiler);
-  } else {
-   /* Initialize DCC and create+set the current text target. */
-   DCCUnit_Init(&unit);
-  }
-  DCCCompiler_Init(&compiler);
-
-  TPPLexer_Yield();
-  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
-  unit.u_text = DCCUnit_NewSecs(".text",DCC_SYMFLAG_SEC_X|DCC_SYMFLAG_SEC_R);
-  unit.u_data = DCCUnit_NewSecs(".data",DCC_SYMFLAG_SEC_R);
-  unit.u_bss  = DCCUnit_NewSecs(".bss",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W);
-  unit.u_str  = DCCUnit_NewSecs(".string",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_M);
+  add_c_source(argv[0]);
   if (!OK) goto end;
-
-  DCCUnit_SetCurr(unit.u_text);
-  DCCParse_AllGlobal();
-  DCCUnit_SetCurr(NULL);
-
-  if (first) first = 0;
-  else DCCUnit_Merge(&old_unit),
-       DCCUnit_Quit(&old_unit);
-  if (!OK) goto end;
-
   ++argv,--argc;
  } while (argc);
 

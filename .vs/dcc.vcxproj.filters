@@ -63,6 +63,12 @@
     <ClCompile Include="..\src\tpp\tpp.c">
       <Filter>src\tpp</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\dcc\unit-stalib.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\x86_util-instrlen.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcc\lexer.h">
@@ -188,6 +194,9 @@
       <Filter>src\dcc</Filter>
     </None>
     <None Include="..\src\dcc\binary-elf.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\unit-stalib-pe.c.inl">
       <Filter>src\dcc</Filter>
     </None>
   </ItemGroup>

@@ -625,8 +625,8 @@ asm_gen_modrm(int8_t reg, struct DCCAsmOperand const *op) {
     reg2 = op->ao_reg2;
     if (reg2 == -1) reg2 = MODRM_SIBREGISTER; /* No index */
     t_putb((uint8_t)(MODRM_MOD(op->ao_shift)|
-                       MODRM_REG(reg2)|
-                       MODRM_RM(sib_reg1)));
+                     MODRM_REG(reg2)|
+                     MODRM_RM(sib_reg1)));
    }
   } else {
    /* Convert 32-bit R/M register ids to 16-bit:

@@ -21,6 +21,10 @@
 
 #include <dcc/common.h>
 #include <dcc/assembler.h>
+#include <dcc/target.h>
+
+#include <stddef.h>
+#include <stdint.h>
 
 DCC_DECL_BEGIN
 
@@ -167,6 +171,16 @@ PRIVATE void DCCDisp_LargeCstBinRegs(tok_t op, struct DCCSymExpr const *__restri
 #define asm_op_stosl()  t_putb(0xab)
 
 
+#define DCC_CONFIG_NEED_X86_INSTRLEN  (DCC_STAFORMAT_PE)
+
+#if DCC_CONFIG_NEED_X86_INSTRLEN
+#define INSTRLEN_DEBUG 0
+extern uint8_t const *x86_instrlen(uint8_t const *p);
+#if INSTRLEN_DEBUG
+extern size_t    instrlen_offset;
+extern uint8_t  *instrlen_base;
+#endif
+#endif
 
 DCC_DECL_END
 

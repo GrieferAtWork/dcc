@@ -334,6 +334,11 @@ struct DCCCompiler {
 #define DCC_LINKER_FLAG_STATIC       0x00000008 /*< Perform static linking. */
 #define DCC_LINKER_FLAG_NORELOC      0x00000010 /*< Don't generate relocations, meaning that a generated image will not be position-independent.
                                                  *  WARNING: Despite the name, this flag does _NOT_ disable import relocations on ELF targets (because that'd just break dynamic linking...) */
+#if DCC_STAFORMAT_PE
+#define DCC_LINKER_FLAG_STAPE_KEEPEXPORT 0x00000020 /*< When statically linking against a PE binary, the old export table
+                                                     *  is kept even though this will cause a copy of it to be created.
+                                                     *  NOTE: The export table is always kept when a relocation pointing inside is detected. */
+#endif
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #define DCC_LINKER_FLAG_PEDYNAMIC     0x10000000 /*< On PE targets: Consider C/ELF visibility when generating an export table.
                                                   *  >> When this flag is set, any non-static definition matching '__attribute__((visibility("default")))'

@@ -704,6 +704,7 @@ EXTENSION(EXT_STRUCT_COMPATIBLE,"struct-compatible",1)                   /*< All
 EXTENSION(EXT_AUTO_FOR_AUTOTYPE,"auto-in-type-expressions",1)            /*< Allow 'auto' to refer to '__auto_type' in type expressions, as well as describe automatic storage. */
 EXTENSION(EXT_VARIABLE_LENGTH_ARRAYS,"variable-length-arrays",1)         /*< Allow VLA-style arrays. */
 EXTENSION(EXT_FUNCTION_STRING_LITERALS,"function-string-literals",1)     /*< Treat '__FUNCTION__' and '__PRETTY_FUNCTION__' as string literals during language-level string-concatation. */
+EXTENSION(EXT_CANONICAL_LIB_NAMES,"canonical-lib-names",1)               /*< Fix library names before using them (e.g.: Remove whitespace, force to upper-case on windows targets, etc.). */
 WGROUP(WG_CONSTANT_CASE,"constant-case-expressions",WSTATE_ERROR)        /*< Warn about non-constant case expressions. */
 WGROUP(WG_EXTENSIONS,"extensions",WSTATE_ERROR)                          /*< Enable/disable extension warnings (Those things that are really sweet syntactically, but you sadly can't use for standard-compliance). */
 WGROUP(WG_CASE_RANGES,"case-ranges",WSTATE_ERROR)                        /*< Warn about using case-ranges. */
@@ -1252,6 +1253,10 @@ DEF_WARNING(W_COMPILER_FUNCTION_NOT_DEFINED_AS_LABEL,(WG_LINKER),WSTATE_WARN,{
 })
 DEF_WARNING(W_INVALID_PE_SYMBOL_LINKAGE,(WG_LINKER),WSTATE_WARN,
             WARNF("PE import symbol '%s' is liked without indirection",KWDNAME()))
+DEF_WARNING(W_INVALID_LIBRARY_CHARACTER,(WG_LINKER,WG_QUALITY),WSTATE_WARN,{
+ int ch = ARG(int); char *n = ARG(char *);
+ WARNF("Invalid character '%c' in library name '%.*s'",ch,(unsigned int)ARG(size_t),n);
+})
 DEF_WARNING(W_LINKER_CANT_MERGE_NONIMPORT_WITH_IMPORT,(WG_LINKER),WSTATE_WARN,{ char *name = KWDNAME(); WARNF("Can't merge non-import-section '%s' with import-section '%s'",name,KWDNAME()); })
 DEF_WARNING(W_LINKER_CANT_MERGE_IMPORT_WITH_NONIMPORT,(WG_LINKER),WSTATE_WARN,{ char *name = KWDNAME(); WARNF("Can't merge import-section '%s' with non-import-section '%s'",name,KWDNAME()); })
 DEF_WARNING(W_LINKER_CANT_RELOC_LIB_SECTION,(WG_LINKER),WSTATE_WARN,
@@ -1293,6 +1298,84 @@ DEF_WARNING(W_LIB_PE_NO_SECTIONS,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s'
 DEF_WARNING(W_LIB_PE_NO_SECTION_MAPPING,(WG_LIBLOAD),WSTATE_ERROR,{ char *name = ARG(char *); WARNF("No section of PE binary '%s' maps to virtual address %p",name,ARG(void *)); })
 DEF_WARNING(W_LIB_PE_EMPTY_EXPORT_TABLE,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s' has an empty export table",ARG(char *)))
 #endif /* DCC_LIBFORMAT_PE */
+#if DCC_STAFORMAT_PE
+DEF_WARNING(W_STA_PE_CORRUPT_SYMNAME,(WG_LIBLOAD),WSTATE_ERROR,{
+ target_ptr_t p = ARG(target_ptr_t);
+ WARNF("Corrupt symbol name at %#lx for data at %#lx",
+      (unsigned long)p,(unsigned long)ARG(target_ptr_t));
+})
+DEF_WARNING(W_STA_PE_UNMAPPED_ADDR,(WG_LIBLOAD),WSTATE_WARN,{
+ target_ptr_t p = ARG(target_ptr_t);
+ WARNF("Address %#lx of symbol '%s' is not mapped to any section",
+      (unsigned long)p,KWDNAME());
+})
+DEF_WARNING(W_STA_PE_UNMAPPED_RELOC,(WG_LIBLOAD),WSTATE_WARN,{
+ target_ptr_t p = ARG(target_ptr_t);
+ target_ptr_t s = ARG(target_ptr_t);
+ WARNF("Address %#lx of relocation table at %#lx with %lu entries is not mapped to any section",
+      (unsigned long)p,(unsigned long)s,(unsigned long)ARG(size_t));
+})
+#define WSTATE_RELOCWARN WSTATE_DISABLE
+#ifdef DECLARE_WARNING_MESSAGES
+{
+ char const *relmsg;
+pe_relwarning:
+{
+ uint16_t rword = (uint16_t)ARG(unsigned int);
+ target_ptr_t p = ARG(target_ptr_t);
+ target_ptr_t s = ARG(target_ptr_t);
+ target_ptr_t w = ARG(target_ptr_t);
+ target_ptr_t x = ARG(target_ptr_t);
+ WARNF(relmsg,
+      (unsigned long)rword,
+      (unsigned long)(rword >> 12),
+      (unsigned long)(rword&((1 << 12)-1)),
+      (unsigned long)(p+(target_ptr_t)(rword&((1 << 12)-1))),
+      (unsigned long)s,
+      (unsigned long)w,
+      (unsigned long)x,
+      (unsigned long)ARG(target_ptr_t));
+} break;
+#endif
+DEF_WARNING(W_STA_PE_OUTOFBOUNDS_RELOC,(WG_LIBLOAD),WSTATE_RELOCWARN,{
+ relmsg = "Relocation word %#.4lx (type: %lu, offset: %#lx, addr %#lx) at %#lx is "
+          "out-of-bounds of relocation region %#lx...%#lx at %#lx";
+ goto pe_relwarning;
+})
+DEF_WARNING(W_STA_PE_UNKNOWN_RELOC,(WG_LIBLOAD),WSTATE_RELOCWARN,{
+ relmsg = "Unknown relocation word %#.4lx (type: %lu, offset: %#lx, addr %#lx) at %#lx "
+          "in relocation region %#lx...%#lx at %#lx";
+ goto pe_relwarning;
+})
+#ifdef DECLARE_WARNING_MESSAGES
+}
+#endif
+DEF_WARNING(W_STA_PE_UNKNOWN_RELOCATION_TARGET,(WG_LIBLOAD),WSTATE_RELOCWARN,{
+ target_ptr_t rp = ARG(target_ptr_t);
+ uint16_t rword = (uint16_t)ARG(unsigned int);
+ target_ptr_t p = ARG(target_ptr_t);
+ target_ptr_t s = ARG(target_ptr_t);
+ target_ptr_t w = ARG(target_ptr_t);
+ target_ptr_t x = ARG(target_ptr_t);
+ WARNF("Address %#lx of relocation word %#.4lx (type: %lu, offset: %#lx, addr %#lx) at %#lx "
+       "in relocation region %#lx...%#lx at %#lx points into unmapped memory",
+      (unsigned long)rp,
+      (unsigned long)rword,
+      (unsigned long)(rword >> 12),
+      (unsigned long)(rword&((1 << 12)-1)),
+      (unsigned long)(p+(target_ptr_t)(rword&((1 << 12)-1))),
+      (unsigned long)s,
+      (unsigned long)w,
+      (unsigned long)x,
+      (unsigned long)ARG(target_ptr_t));
+})
+DEF_WARNING(W_STA_PE_UNMAPPED_DISP_TARGET,(WG_LIBLOAD),WSTATE_RELOCWARN,{
+ target_ptr_t p = ARG(target_ptr_t);
+ WARNF("Disp instruction at %#lx points at unmapped address %#lx",
+      (unsigned long)p,(unsigned long)ARG(target_ptr_t));
+})
+#undef WSTATE_RELOCWARN
+#endif /* DCC_STAFORMAT_PE */
 #if DCC_LIBFORMAT_DEF
 DEF_WARNING(W_LIB_DEF_EXPECTED_EXPORTS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Expected 'EXPORTS', but got '%s'",ARG(char *)))
 #endif /* DCC_LIBFORMAT_DEF */

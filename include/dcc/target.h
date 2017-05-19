@@ -52,8 +52,8 @@ DCC_DECL_BEGIN
 
 #ifndef DCC_TARGET_BIN
 /* DCC Master Binary target format switch. */
-//#define DCC_TARGET_BIN     DCC_HOST_BIN
-#define DCC_TARGET_BIN     DCC_BINARY_ELF
+#define DCC_TARGET_BIN     DCC_HOST_BIN
+//#define DCC_TARGET_BIN     DCC_BINARY_ELF
 #endif
 
 #ifndef DCC_TARGET_OS
@@ -63,8 +63,9 @@ DCC_DECL_BEGIN
 
 
 /* Recognized library formats during linking. */
-#define DCC_LIBFORMAT_PE  1 /* Recognize PE binaries as valid libraries. */
-#define DCC_LIBFORMAT_DEF 1 /* Recognize *.def files as valid libraries. */
+#define DCC_LIBFORMAT_PE  1 /* Recognize PE binaries as dynamic libraries. */
+#define DCC_LIBFORMAT_DEF 1 /* Recognize *.def files as dynamic libraries. */
+#define DCC_STAFORMAT_PE  1 /* Recognize PE binaries as static libraries. */
 
 
 

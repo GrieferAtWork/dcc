@@ -24,7 +24,7 @@
 #include <dcc/common.h>
 #include <dcc/target.h>
 
-#if DCC_LIBFORMAT_PE
+#if DCC_LIBFORMAT_PE || DCC_STAFORMAT_PE
 #include <dcc/unit.h>
 #include <dcc/stream.h>
 
@@ -52,7 +52,7 @@ DCC_DECL_BEGIN
 #endif
 
 /* Read a PE header and navigate the file pointer to the 32-bit header. */
-PRIVATE LONG read_hdr(stream_t s) {
+INTERN LONG pe_readhdr(stream_t s) {
  IMAGE_DOS_HEADER hdr;
  if (!s_reada(s,&hdr,sizeof(IMAGE_DOS_HEADER))) return 0;
  if (hdr.e_magic != IMAGE_DOS_SIGNATURE) return 0;
@@ -60,14 +60,8 @@ PRIVATE LONG read_hdr(stream_t s) {
  return hdr.e_lfanew;
 }
 
-struct b32_hdr {
- DWORD                               ntsg; /* NT Signature (== IMAGE_NT_SIGNATURE). */
- IMAGE_FILE_HEADER                   fhdr; /* File header. */
- DCC_PE_TARGET_IMAGE_OPTIONAL_HEADER ohdr; /* Optional headers. */
-};
-
-PRIVATE char *
-read_zstring(stream_t fd, size_t *s) {
+INTERN char *
+pe_readzstring(stream_t fd, size_t *s) {
  char *result,*newresult,*resend,*readpos;
  size_t cursize,bufsize;
  ptrdiff_t read_error;
@@ -107,25 +101,25 @@ ret_null:
  return NULL;
 }
 
-
+#if DCC_LIBFORMAT_PE
 INTERN struct DCCSection *
 DCCUnit_DynLoadPE(char *__restrict filename,
                   char *__restrict name,
                   stream_t fd) {
- struct b32_hdr hdr;
+ NT_HEADER hdr;
  size_t hdr_size;
  size_t section_header_offset;
  size_t section_header_count;
  ptrdiff_t read_error;
  uintptr_t export_file_base;
  struct DCCSection *result = NULL;
- IMAGE_SECTION_HEADER *sections = NULL;
- IMAGE_SECTION_HEADER *sec,*sec_end;
+ PIMAGE_SECTION_HEADER sections = NULL;
+ PIMAGE_SECTION_HEADER sec,sec_end;
  assert(filename);
  assert(name);
- section_header_offset = (size_t)read_hdr(fd);
+ section_header_offset = (size_t)pe_readhdr(fd);
  if (!section_header_offset) goto end;
-#define HAS_FIELD(f) ((size_t)((&((struct b32_hdr *)0)->f)+1) <= hdr_size)
+#define HAS_FIELD(f) ((size_t)((&((NT_HEADER *)0)->f)+1) <= hdr_size)
 #define HAS_DIR(id)  \
  (HAS_FIELD(ohdr.DataDirectory[id]) && \
  (id) < hdr.ohdr.NumberOfRvaAndSizes && \
@@ -138,7 +132,7 @@ DCCUnit_DynLoadPE(char *__restrict filename,
  if (hdr.ntsg != IMAGE_NT_SIGNATURE) goto end;
  if (hdr.fhdr.Machine != DCC_PE_TARGET_MACHINE) goto end;
  if (HAS_FIELD(fhdr.SizeOfOptionalHeader)) {
-  size_t newsize = offsetof(struct b32_hdr,ohdr)+
+  size_t newsize = offsetof(NT_HEADER,ohdr)+
                    hdr.fhdr.SizeOfOptionalHeader;
   if (newsize < hdr_size) hdr_size = newsize;
  }
@@ -167,8 +161,8 @@ no_export_table:
  /* At this point, we know the virtual address of the export table.
   * To get its actual address, we must now iterate all sections in order
   * to find the associated section and know here it exists within the file. */
- sections = (IMAGE_SECTION_HEADER *)DCC_Malloc(section_header_count*
-                                               sizeof(IMAGE_SECTION_HEADER),0);
+ sections = (PIMAGE_SECTION_HEADER)DCC_Malloc(section_header_count*
+                                              sizeof(IMAGE_SECTION_HEADER),0);
  if unlikely(!sections) goto end;
  s_seek(fd,section_header_offset,SEEK_SET);
  read_error = s_read(fd,sections,section_header_count*
@@ -222,7 +216,7 @@ found_section:
    if (!s_reada(fd,&hint,sizeof(hint))) continue;
 #endif /* PE_PROCESS_HINTS */
    s_seek(fd,nameptr-export_file_base,SEEK_SET);
-   symname = read_zstring(fd,&symsize);
+   symname = pe_readzstring(fd,&symsize);
    if (symname && symsize) {
     struct DCCSym *sym;
     struct TPPKeyword *symname_kwd;
@@ -258,5 +252,6 @@ end:
 
 DCC_DECL_END
 #endif /* DCC_LIBFORMAT_PE */
+#endif /* DCC_LIBFORMAT_PE || DCC_STAFORMAT_PE */
 
 #endif /* !GUARD_DCC_UNIT_DYNLIB_PE_C_INL */

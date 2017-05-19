@@ -16,8 +16,8 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#ifndef GUARD_DCC_UNIT_DYNLIB_C
-#define GUARD_DCC_UNIT_DYNLIB_C 1
+#ifndef GUARD_DCC_UNIT_STALIB_C
+#define GUARD_DCC_UNIT_STALIB_C 1
 
 #define DCC(x) x
 
@@ -31,12 +31,12 @@
 DCC_DECL_BEGIN
 
 /* Generic library loader:
- * @return: NULL: Data form the given stream 's' does not describe a binary. (No lexer error was set)
- *                A critical error occurred while parsing the given stream 's'. (A lexer error was set)
- * @return: * :   Pointer to the library-section that was dynamically linked. */
-typedef struct DCCSection *(*PLibLoader)(char *__restrict filename,
-                                         char *__restrict name,
-                                         stream_t s);
+ * @return: 0: Data form the given stream 's' does not describe a binary. (No lexer error was set)
+ *             A critical error occurred while parsing the given stream 's'. (A lexer error was set)
+ * @return: 1: Successfully loaded a binary into the current unit (statically) */
+typedef int (*PLibLoader)(char *__restrict filename,
+                          char *__restrict name,
+                          stream_t s);
 
 #define LIBLOADER_MAXMAGIC  8
 struct PLibLoaderDecl {
@@ -45,39 +45,28 @@ struct PLibLoaderDecl {
  uint8_t     ld_magic[LIBLOADER_MAXMAGIC]; /*< [ld_msize] Magic header for quickly identifying this kind of loader. */
 };
 
-
-#if DCC_LIBFORMAT_PE
-INTERN struct DCCSection *DCCUnit_DynLoadPE(char *__restrict filename,
-                                            char *__restrict name, stream_t fd);
-#endif /* DCC_LIBFORMAT_PE */
-#if DCC_LIBFORMAT_DEF
-INTERN struct DCCSection *DCCUnit_DynLoadDEF(char *__restrict filename,
-                                             char *__restrict name, stream_t fd);
-INTERN struct DCCSection *DCCUnit_DynLoadDEF2(char *__restrict filename,
-                                              char *__restrict name, stream_t fd);
-#endif /* DCC_LIBFORMAT_DEF */
+#if DCC_STAFORMAT_PE
+INTERN int DCCUnit_StaLoadPE(char *__restrict filename,
+                             char *__restrict name, stream_t fd);
+#endif /* DCC_STAFORMAT_PE */
 
 static struct PLibLoaderDecl const lib_loaders[] = {
-#if DCC_LIBFORMAT_PE
- {&DCCUnit_DynLoadPE,2,{'M','Z'}}, /* '*.exe/*.dll' PE binaries. */
-#endif /* DCC_LIBFORMAT_PE */
-#if DCC_LIBFORMAT_DEF
- {&DCCUnit_DynLoadDEF2,7,{'L','I','B','R','A','R','Y'}}, /* '*.def' library files. */
- {&DCCUnit_DynLoadDEF,0,{0}},                            /* '*.def' library files. */
-#endif /* DCC_LIBFORMAT_DEF */
+#if DCC_STAFORMAT_PE
+ {&DCCUnit_StaLoadPE,2,{'M','Z'}}, /* '*.exe/*.dll' PE binaries. */
+#endif /* DCC_STAFORMAT_PE */
  {NULL,0,{0}},
 };
 
 
 
 
-PUBLIC struct DCCSection *
-DCCUnit_DynLoadStream(char *__restrict filename,
+PUBLIC int
+DCCUnit_StaLoadStream(char *__restrict filename,
                       char *__restrict name,
                       stream_t s, int warn_unknown) {
  uint8_t magic[LIBLOADER_MAXMAGIC];
  ptrdiff_t max_magic;
- struct DCCSection *result = NULL;
+ int result = 0;
  struct PLibLoaderDecl const *iter;
  max_magic = s_read(s,magic,LIBLOADER_MAXMAGIC);
  if (max_magic < 0) max_magic = 0;
@@ -104,14 +93,14 @@ done:
 
 
 
-PRIVATE struct DCCSection *
-DCCUnit_DynLoadWithPath2(char *__restrict filename,
+PRIVATE int
+DCCUnit_StaLoadWithPath2(char *__restrict filename,
                          char *__restrict name) {
  stream_t s = s_openr(filename);
- struct DCCSection *result;
+ int result;
  //printf("Checking: '%s'\n",filename);
  if (s == TPP_STREAM_INVALID) return NULL;
- result = DCCUnit_DynLoadStream(filename,name,s,0);
+ result = DCCUnit_StaLoadStream(filename,name,s,0);
  s_close(s);
  return result;
 }
@@ -120,20 +109,14 @@ static char const *const search_format[] = {
  "%s",
  "%s.dll",
  "%s.exe",
- "%s.def",
  NULL,
 };
-PRIVATE struct DCCSection *
-DCCUnit_DynLoadWithPath(char const *__restrict path,
+PRIVATE int
+DCCUnit_StaLoadWithPath(char const *__restrict path,
                         char *__restrict name) {
- struct DCCSection *result = NULL;
+ int result = 0;
  char buffer[1024],*bufpos; size_t bufsize;
  char const *const *format_iter;
- //for (format_iter = search_format; *format_iter; ++format_iter) {
- // snprintf(buffer,sizeof(buffer),*format_iter,name);
- // result = DCCUnit_DynLoadWithPath2(buffer,name);
- // if (result || !OK) break;
- //}
  bufsize = strnlen(path,sizeof(buffer));
  memcpy(buffer,path,bufsize*sizeof(char));
  bufpos = buffer+bufsize;
@@ -142,7 +125,7 @@ DCCUnit_DynLoadWithPath(char const *__restrict path,
     *bufpos++ = '\\',--bufsize;
  for (format_iter = search_format; *format_iter; ++format_iter) {
   snprintf(bufpos,bufsize,*format_iter,name);
-  result = DCCUnit_DynLoadWithPath2(buffer,name);
+  result = DCCUnit_StaLoadWithPath2(buffer,name);
   if (result || !OK) break;
  }
  return result;
@@ -157,10 +140,10 @@ static char const *const builtin_paths[] = {
  NULL,
 };
 
-PUBLIC struct DCCSection *
-DCCUnit_DynLoad(char *__restrict name, int warn_unknown) {
+PUBLIC int
+DCCUnit_StaLoad(char *__restrict name, int warn_unknown) {
  char const *const *builtin_iter;
- struct DCCSection *result = NULL;
+ int result = 0;
  /* TODO: For compatibility with windows dll-path resolution,
   *       the following locations must be searched by DCC (in that order):
   *    1. <output-directory-of-executable> (binary-output-mode)
@@ -173,7 +156,7 @@ DCCUnit_DynLoad(char *__restrict name, int warn_unknown) {
   *       prediction being what #1 already does), that step is skipped.
   */
  for (builtin_iter = builtin_paths; *builtin_iter; ++builtin_iter) {
-  result = DCCUnit_DynLoadWithPath(*builtin_iter,name);
+  result = DCCUnit_StaLoadWithPath(*builtin_iter,name);
   if (result || !OK) goto end;
  }
  /* TODO: Search user-defined library paths. */
@@ -185,8 +168,7 @@ end:
 DCC_DECL_END
 
 #ifndef __INTELLISENSE__
-#include "unit-dynlib-def.c.inl"
-#include "unit-dynlib-pe.c.inl"
+#include "unit-stalib-pe.c.inl"
 #endif
 
-#endif /* !GUARD_DCC_UNIT_DYNLIB_C */
+#endif /* !GUARD_DCC_UNIT_STALIB_C */

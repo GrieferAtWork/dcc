@@ -22,8 +22,10 @@
     <ClCompile Include="..\src\dcc\type.c" />
     <ClCompile Include="..\src\dcc\unit-dynlib.c" />
     <ClCompile Include="..\src\dcc\unit-merge.c" />
+    <ClCompile Include="..\src\dcc\unit-stalib.c" />
     <ClCompile Include="..\src\dcc\unit.c" />
     <ClCompile Include="..\src\dcc\vstack.c" />
+    <ClCompile Include="..\src\dcc\x86_util-instrlen.c" />
     <ClCompile Include="..\src\main.c" />
     <ClCompile Include="..\src\tpp\tpp.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -72,6 +74,7 @@
     <None Include="..\src\dcc\lexer-stmt.c.inl" />
     <None Include="..\src\dcc\unit-dynlib-def.c.inl" />
     <None Include="..\src\dcc\unit-dynlib-pe.c.inl" />
+    <None Include="..\src\dcc\unit-stalib-pe.c.inl" />
     <None Include="..\src\tpp\tpp-defs.inl" />
     <None Include="..\src\tpp\tpp-gcc-defs.inl" />
   </ItemGroup>

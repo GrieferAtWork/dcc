@@ -22,6 +22,7 @@
 
 #include <dcc/common.h>
 #include <dcc/target.h>
+#include <dcc/lexer.h>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -79,15 +80,30 @@ typedef struct {
  /* Section data is located here... */
 } PE_HEADER;
 
+typedef struct {
+ DWORD                               ntsg; /* NT Signature (== IMAGE_NT_SIGNATURE). */
+ IMAGE_FILE_HEADER                   fhdr; /* File header. */
+ DCC_PE_TARGET_IMAGE_OPTIONAL_HEADER ohdr; /* Optional headers. */
+} NT_HEADER;
+
+
 
 #if DCC_TARGET_IA32(0)
-#define DCC_PE_TARGET_MACHINE   IMAGE_FILE_MACHINE_I386
+#   define DCC_PE_TARGET_MACHINE   IMAGE_FILE_MACHINE_I386
 #elif DCC_TARGET_CPU == DCC_CPU_X86_64
-#define DCC_PE_TARGET_MACHINE   IMAGE_FILE_MACHINE_AMD64
+#   define DCC_PE_TARGET_MACHINE   IMAGE_FILE_MACHINE_AMD64
 #else
-#error "UNKNOWN TARGET MACHINE"
+#   error "UNKNOWN TARGET MACHINE"
 #endif
 
+
+#if DCC_LIBFORMAT_PE || DCC_STAFORMAT_PE
+
+/* Utilities for parsing PE binaries. */
+INTERN LONG  pe_readhdr(stream_t s);
+INTERN char *pe_readzstring(stream_t fd, size_t *s);
+
+#endif /* ... */
 
 
 DCC_DECL_END

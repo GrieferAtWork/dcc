@@ -26,6 +26,14 @@
 
 #include "lexer-priv.h"
 
+#include <string.h>
+#include <stdlib.h>
+#ifdef _MSC_VER
+#include <malloc.h>
+#else
+#include <alloca.h>
+#endif
+
 DCC_DECL_BEGIN
 
 #ifndef __INTELLISENSE__
@@ -296,6 +304,56 @@ DCCParse_String(void) {
   result = TPPString_Cat(result,append);
   if unlikely(!result) break;
  }
+ return result;
+}
+
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+#define INVALID_PATH_CHARACTERS "/\\:?*;"
+#elif !!(DCC_TARGET_OS&DCC_OS_LINUX)
+#define INVALID_PATH_CHARACTERS "/\\:?*"
+#endif
+
+PUBLIC struct TPPKeyword *
+DCCParse_GetLibname(char const *__restrict name, size_t size) {
+ struct TPPKeyword *result;
+ char *mbuf,*buf,*iter,*end,*dst,ch;
+ /* Don't perform any formating if not requested, to. */
+ if (!HAS(EXT_CANONICAL_LIB_NAMES))
+  return TPPLexer_LookupKeyword(name,size,1);
+ /* Strip surrounding whitespace. */
+ while (size && tpp_isspace(name[0])) ++name,--size;
+ while (size && tpp_isspace(name[size-1])) --size;
+ if (size < 64) {
+  buf = (char *)alloca((size+1)*sizeof(char));
+  mbuf = NULL;
+ } else {
+  buf = mbuf = (char *)malloc((size+1)*sizeof(char));
+  if unlikely(!mbuf) { TPPLexer_SetErr(); return NULL; }
+ }
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+ end = (iter = (char *)name)+size;
+ for (dst = buf; iter != end; ) {
+  ch = *iter++;
+  if (ch >= 'a' && ch <= 'z') ch -= 'a'-'A';
+  *dst++ = ch;
+ }
+#else
+ memcpy(buf,name,size*sizeof(char));
+#endif
+ end = (iter = buf)+size;
+ for (; iter != end; ++iter) {
+#ifdef INVALID_PATH_CHARACTERS
+  if (strchr(INVALID_PATH_CHARACTERS,*iter))
+   WARN(W_INVALID_LIBRARY_CHARACTER,*iter,name,size);
+#endif
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+  if (*iter == '/') *iter = '\\';
+#elif !!(DCC_TARGET_OS&DCC_OS_LINUX)
+  if (*iter == '\\') *iter = '/';
+#endif
+ }
+ result = TPPLexer_LookupKeyword(buf,size,1);
+ free(mbuf);
  return result;
 }
 

@@ -113,6 +113,8 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #define DCC_SYMFLAG_PE_ITA_IND   0x00000200 /*< Try to perform PE:ITA-indirection on this symbol. */
 #endif
+#define DCC_SYMFLAG_SEC_FIXED    0x20000000 /*< The section must be loaded to a fixed address already specified by 'sc_base'. (Currently not implemented...)
+                                             *  When multiple sections overlap at the same virtual address, it is the linker's job to solve such problems. */
 #define DCC_SYMFLAG_SEC_NOALLOC  0x40000000 /*< The runtime linker is not required to allocate this section. */
 #if DCC_HOST_CPU == DCC_TARGET_CPU
 #define DCC_SYMFLAG_SEC_OWNSBASE 0x80000000 /*< The base address is allocated through system-functions and must be freed. */
@@ -203,7 +205,7 @@ struct DCCSym {
  (DCC_ASSERT((self)->sy_name),\
   DCC_ASSERTF( (self)->sy_sec_pself || (!(self)->sy_sec_next),"Invalid linkage in section symbol map"),\
   DCC_ASSERTF(!(self)->sy_sec_pself || *(self)->sy_sec_pself == (self),"The self-pointer is mapped inforrectly"),\
-  DCC_ASSERTF(((self)->sy_sec != NULL) == ((self)->sy_sec_pself != NULL || (self) == &(self)->sy_sec->sc_start),"Section and section-self-pointer existance must mirror each other"),\
+  DCC_ASSERTF(((self)->sy_sec != NULL) == ((self)->sy_sec_pself != NULL || DCCSym_ISSECTION(self)),"Section and section-self-pointer existance must mirror each other"),\
 /*DCC_ASSERTF(((self)->sy_sec != NULL) || ((self)->sy_addr == 0),"A section is required for address information"),\
   DCC_ASSERTF(((self)->sy_sec != NULL) || ((self)->sy_size == 0),"A section is required for size information"),*/\
   DCC_ASSERTF(((self)->sy_alias == NULL) || ((self)->sy_sec == NULL),"Aliasing symbols may not be offset from sections"),\
@@ -815,6 +817,17 @@ DCCFUN struct DCCSection *DCCUnit_NewSecs(char const *__restrict name, DCC(symfl
 DCCFUN struct DCCSection *DCCUnit_DynLoad(char *__restrict name, int warn_unknown);
 DCCFUN struct DCCSection *DCCUnit_DynLoadStream(char *__restrict filename, char *__restrict name,
                                                 DCC(stream_t) s, int warn_unknown);
+
+/* Statically load a binary from a given stream 's'.
+ * WARNING: The caller is responsible to ensure that the current compilation unit is empty.
+ *          If the intend is to load a static binary into an existing one,
+ *          unit merging must be performed using 'DCCUnit_Merge()'.
+ * @return: 0: Data form the given stream 's' does not describe a binary. (No lexer error was set)
+ *             A critical error occurred while parsing the given stream 's'. (A lexer error was set)
+ * @return: 1: Successfully loaded a binary into the current unit (statically) */
+DCCFUN int DCCUnit_StaLoad(char *__restrict name, int warn_unknown);
+DCCFUN int DCCUnit_StaLoadStream(char *__restrict filename, char *__restrict name,
+                                 DCC(stream_t) s, int warn_unknown);
 
 
 /* Extended version of 'DCCUnit_NewSym' that allows the name to be a printf-style string. */

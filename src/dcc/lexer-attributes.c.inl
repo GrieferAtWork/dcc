@@ -288,27 +288,7 @@ incref_section:
      DCCSym_Decref(self->a_alias);
     }
     assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
-    { /* Use upper-case library names. */
-      char *mbuf = NULL,*buf,*iter,*end,*dst,ch;
-      if (text->s_size < 64) {
-       buf = (char *)alloca((text->s_size+1)*sizeof(char));
-      } else {
-       buf = mbuf = (char *)malloc((text->s_size+1)*sizeof(char));
-       if unlikely(!mbuf) { TPPLexer_SetErr(); goto done; }
-      }
-      dst = buf,end = (iter = text->s_text)+text->s_size;
-      while (iter != end) {
-       ch = *iter++;
-       if (ch >= 'a' && ch <= 'z') ch -= 'a'-'A';
-       *dst++ = ch;
-      }
-      sec_name = TPPLexer_LookupKeyword(buf,text->s_size,1);
-      free(mbuf);
-    }
-#else
-    sec_name = TPPLexer_LookupKeyword(text->s_text,text->s_size,1);
-#endif
+    sec_name = DCCParse_GetLibname(text->s_text,text->s_size);
     self->a_section = sec_name ? DCCUnit_NewSec(sec_name,DCC_SYMFLAG_SEC_ISIMPORT) : NULL;
     if (!self->a_section);
     else if (!DCCSection_ISIMPORT(self->a_section)) {

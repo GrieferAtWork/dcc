@@ -273,14 +273,11 @@ pe_mk_reldat(struct DCCSection *__restrict relocs) {
    ++iter;
    if (t != DCC_R_DATA_PTR) continue;
    if (count == 0) { /* new block */
-    blockaddr = (target_ptr_t)(relocs->sc_text.tb_max-relocs->sc_text.tb_begin);
-    DCCSection_DAlloc(relocs,sizeof(IMAGE_BASE_RELOCATION),1,0);
+    blockaddr = DCCSection_DAlloc(relocs,sizeof(IMAGE_BASE_RELOCATION),1,0);
     offset = addr & 0xFFFFFFFF<<12;
    }
    if ((addr -= offset) < (1<<12)) { /* one block spans 4k addresses */
-    WORD *wp = (WORD *)DCCSection_GetText(relocs,
-                                          DCCSection_DAlloc(relocs,sizeof(WORD),1,0),
-                                          sizeof(WORD));
+    WORD *wp = (WORD *)DCCSection_TAlloc(relocs,sizeof(WORD));
     if (wp) *wp = (WORD)addr|(IMAGE_REL_BASED_HIGHLOW << 12);
     ++count;
     continue;
