@@ -29,8 +29,10 @@ DEF_M(__INTMAX_C)
 DEF_M(__UINTMAX_C)
 
 /* Additional pragmas. */
-DEF_K(comment) /* #pragma comment(lib,"xxx") */
-DEF_K(pack)    /* #pragma pack(...) */
+DEF_K(comment)      /* #pragma comment(lib,"xxx") */
+DEF_K(pack)         /* #pragma pack(...) */
+DEF_K(DCC)          /* #pragma DCC ... */
+DEF_K(library_path) /* #pragma DCC library_path(...) */
 
 #define DEF_BUILTIN(name) \
  KWD(KWD_##name,#name) \
@@ -806,7 +808,10 @@ DEF_WARNING(W_PRAGMA_GCC_VISIBILITY_NOTHING_TO_POP,(WG_PRAGMA,WG_SYNTAX),WSTATE_
 DEF_WARNING(W_PRAGMA_WEAK_EXPECTES_KEYWORD,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after #pragma weak, but got " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_WEAK_EXPECTES_KEYWORD_AFTER_EQUAL,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after #pragma weak ... =, but got " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_WEAK_ALREADY_WEAK,(WG_PRAGMA,WG_QUALITY),WSTATE_WARN,WARNF("Symbol '%s' passed to #pragma weak already has weak linkage",KWDNAME()))
-DEF_WARNING(W_PRAGMA_LIBPATH_NOTHING_TO_POP,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("No old library paths to pop in '#pragma DCC library_path(pop)'"))
+DEF_WARNING(W_PRAGMA_LIBRARY_PATH_NOTHING_TO_POP,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("No old library paths to pop in '#pragma DCC library_path(pop)'"))
+DEF_WARNING(W_PRAGMA_LIBRARY_PATH_EXPECTED_STRING,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,WARNF("Expected string after #pragma DCC library_path, but got '%s'",CONST_STR()))
+DEF_WARNING(W_PRAGMA_LIBRARY_PATH_ALREADY_EXISTS,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("Library path '%.*s' already exists",(int)ARG(size_t),temp); })
+DEF_WARNING(W_PRAGMA_LIBRARY_PATH_UNKNOWN,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("Unknown library path '%.*s'",(int)ARG(size_t),temp); })
 
 WARNING_NAMESPACE(WN_SYNTAX,1400)
 DEF_WARNING(W_EXPECTED_LBRACKET,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected '[', but got " TOK_S,TOK_A))

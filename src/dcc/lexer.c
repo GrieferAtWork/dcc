@@ -22,6 +22,7 @@
 #include <dcc/common.h>
 #include <dcc/unit.h>
 #include <dcc/lexer.h>
+#include <dcc/linker.h>
 #include <dcc/compiler.h>
 
 #include "lexer-priv.h"
@@ -133,6 +134,66 @@ PUBLIC int DCCParse_Pragma(void) {
    /* Define 'weaksym' to be an alias for 'alias' */
    DCCSym_Alias(weaksym,alias,0);
    YIELD();
+  }
+ } break;
+
+ { /* DCC Pragma namespace. */
+ case KWD_DCC:
+  YIELD();
+  switch (TOK) {
+  { /* Configure library search paths. */
+  case KWD_library_path:
+   YIELD();
+   if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
+   else YIELD();
+   while (TOK != ')') {
+    switch (TOK) {
+     { /* push/pop the library-path vector. */
+      if (DCC_MACRO_FALSE) { case KWD_push: DCCLinker_LibPathPush(); }
+      if (DCC_MACRO_FALSE) { case KWD_pop:  DCCLinker_LibPathPop(); }
+      YIELD();
+     } break;
+     {
+      int mode,error;
+      struct TPPConst path_string;
+     case '+': YIELD();
+     default:  mode = 1;
+      if (FALSE) { case '-': mode = 0; YIELD(); }
+      if unlikely(!TPPLexer_Eval(&path_string)) return 0;
+      if (path_string.c_kind != TPP_CONST_STRING) {
+       TPPLexer_Warn(W_PRAGMA_LIBRARY_PATH_EXPECTED_STRING,&path_string);
+      } else {
+       char *path; size_t size = path_string.c_data.c_string->s_size;
+       if (path_string.c_data.c_string->s_refcnt == 1) {
+        path = path_string.c_data.c_string->s_text;
+       } else {
+        path = (char *)DCC_Malloc((size+1)*sizeof(char),0);
+        if unlikely(!path) return 0;
+        memcpy(path,path_string.c_data.c_string->s_text,
+              (size+1)*sizeof(char));
+       }
+       error = mode ? DCCLinker_AddLibPath(path,size)
+                    : DCCLinker_DelLibPath(path,size);
+       if unlikely(mode && !error) return 0;
+       if unlikely(error == 2) error = 0;
+       if unlikely(!error) {
+        WARN(mode ? W_PRAGMA_LIBRARY_PATH_ALREADY_EXISTS
+                  : W_PRAGMA_LIBRARY_PATH_UNKNOWN,
+             path,size);
+       }
+       if (path != path_string.c_data.c_string->s_text) DCC_Free(path);
+       TPPString_Decref(path_string.c_data.c_string);
+      }
+      break;
+     }
+    }
+    if (TOK != ',') break;
+    YIELD();
+   }
+   if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
+   else YIELD();
+  } break;
+  default: break; /* Reserved for future use (don't warn about unknown dcc-pragma). */
   }
  } break;
 
