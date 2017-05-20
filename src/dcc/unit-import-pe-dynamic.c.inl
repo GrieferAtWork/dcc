@@ -16,15 +16,15 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#ifndef GUARD_DCC_UNIT_IMPORT_DYNPE_C_INL
-#define GUARD_DCC_UNIT_IMPORT_DYNPE_C_INL 1
+#ifndef GUARD_DCC_UNIT_IMPORT_PE_DYNAMIC_C_INL
+#define GUARD_DCC_UNIT_IMPORT_PE_DYNAMIC_C_INL 1
 
 #define DCC(x) x
 
 #include <dcc/common.h>
 #include <dcc/target.h>
 
-#if DCC_LIBFORMAT_DYN_PE || DCC_LIBFORMAT_STA_PE
+#if DCC_LIBFORMAT_PE_DYNAMIC || DCC_LIBFORMAT_PE_STATIC
 #include <dcc/unit.h>
 #include <dcc/stream.h>
 
@@ -101,7 +101,7 @@ ret_null:
  return NULL;
 }
 
-#if DCC_LIBFORMAT_DYN_PE
+#if DCC_LIBFORMAT_PE_DYNAMIC
 INTERN int DCCUNIT_IMPORTCALL
 DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def,
                   char const *__restrict file, stream_t fd) {
@@ -272,7 +272,7 @@ end:
 }
 
 DCC_DECL_END
-#endif /* DCC_LIBFORMAT_DYN_PE */
-#endif /* DCC_LIBFORMAT_DYN_PE || DCC_LIBFORMAT_STA_PE */
+#endif /* DCC_LIBFORMAT_PE_DYNAMIC */
+#endif /* DCC_LIBFORMAT_PE_DYNAMIC || DCC_LIBFORMAT_PE_STATIC */
 
-#endif /* !GUARD_DCC_UNIT_IMPORT_DYNPE_C_INL */
+#endif /* !GUARD_DCC_UNIT_IMPORT_PE_DYNAMIC_C_INL */

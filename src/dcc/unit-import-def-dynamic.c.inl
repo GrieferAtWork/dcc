@@ -16,15 +16,15 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#ifndef GUARD_DCC_UNIT_IMPORT_DYNDEF_C_INL
-#define GUARD_DCC_UNIT_IMPORT_DYNDEF_C_INL 1
+#ifndef GUARD_DCC_UNIT_IMPORT_DEF_DYNAMIC_C_INL
+#define GUARD_DCC_UNIT_IMPORT_DEF_DYNAMIC_C_INL 1
 
 #define DCC(x) x
 
 #include <dcc/common.h>
 #include <dcc/target.h>
 
-#if DCC_LIBFORMAT_DYN_DEF
+#if DCC_LIBFORMAT_DEF_DYNAMIC
 #include <dcc/unit.h>
 #include <dcc/lexer.h>
 
@@ -160,6 +160,6 @@ DCCUnit_DynLoadDEF(struct DCCLibDef *__restrict def,
 }
 
 DCC_DECL_END
-#endif /* DCC_LIBFORMAT_DYN_DEF */
+#endif /* DCC_LIBFORMAT_DEF_DYNAMIC */
 
-#endif /* !GUARD_DCC_UNIT_IMPORT_DYNDEF_C_INL */
+#endif /* !GUARD_DCC_UNIT_IMPORT_DEF_DYNAMIC_C_INL */

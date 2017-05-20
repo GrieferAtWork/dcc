@@ -56,8 +56,8 @@ DCC_DECL_BEGIN
 
 /* DCC Master Binary target format switch. */
 #ifndef DCC_TARGET_BIN
-#define DCC_TARGET_BIN     DCC_HOST_BIN
-//#define DCC_TARGET_BIN     DCC_BINARY_ELF
+//#define DCC_TARGET_BIN     DCC_HOST_BIN
+#define DCC_TARGET_BIN     DCC_BINARY_ELF
 #endif
 
 /* DCC Master OS target switch. */
@@ -67,15 +67,19 @@ DCC_DECL_BEGIN
 
 
 /* Recognized library formats during linking. */
-#define DCC_LIBFORMAT_DYN_PE  1 /* Recognize PE binaries as dynamic libraries. */
-#define DCC_LIBFORMAT_DYN_DEF 1 /* Recognize *.def files as dynamic libraries. */
-#define DCC_LIBFORMAT_ELF     1 /* Recognize ELF binaries as dynamic/static libraries. */
-#define DCC_LIBFORMAT_STA_PE  1 /* Recognize PE binaries as static libraries. */
-#define DCC_LIBFORMAT_STA_ELF 1 /* Allow the DCC to attempt to statically link against ELF binaries,
-                                 * even when base addresses have already been assigned.
-                                 * Similar to how this is accomplished with 'DCC_LIBFORMAT_STA_PE',
-                                 * this will require DCC to decompile executable code sections to
-                                 * generate missing DISP relocations (which may not always be correct). */
+#define DCC_LIBFORMAT_DEF_DYNAMIC 1 /* Recognize *.def files as dynamic libraries. */
+
+#define DCC_LIBFORMAT_PE_DYNAMIC  1 /* Recognize PE binaries as dynamic libraries. */
+#define DCC_LIBFORMAT_PE_STATIC   1 /* Recognize PE binaries as static libraries. */
+
+#define DCC_LIBFORMAT_ELF         1 /* Recognize ELF binaries as dynamic/static libraries. */
+#define DCC_LIBFORMAT_ELF_STATIC  1 /* Allow the DCC to attempt to statically link against ELF binaries,
+                                     * even when base addresses have already been assigned.
+                                     * Similar to how this is accomplished with 'DCC_LIBFORMAT_PE_STATIC',
+                                     * this will require DCC to decompile executable code sections to
+                                     * generate missing DISP relocations (which may not always be correct)
+                                     * while assuming the presence of relocations required for position-independent
+                                     * code (such as generated when '-fPIC' is passed on the commandline). */
 
 
 

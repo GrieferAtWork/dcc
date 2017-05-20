@@ -462,12 +462,19 @@ PRIVATE void elf_mk_dynsym(void) {
    symaddr.sa_off = 0;
    symaddr.sa_sym = sym;
    /* Skip symbols form removed sections. */
-   if (sym->sy_sec && !DCCSection_ISIMPORT(sym->sy_sec)) continue;
+   if (sym->sy_sec) {
+    if (!DCCSection_ISIMPORT(sym->sy_sec)) continue;
+    /* TODO: If the symbol was declared with '__attribute__((lib(...)))',
+     *       warn about ELF's inability to import a symbol from an explicit library,
+     *       but instead always importing it from a pool of loaded modules. */
+   }
   }
 #if ELF_HAVE_NULLSYM
   if (first) {
    /* The first dynamic symbol (aka. index ZERO(0)) must be the NULL-symbol. */
    DCCSection_TWrite(elf.elf_dynsym,&null_sym,sizeof(Elf(Sym)));
+   /* Try to allocate 1 ZERO-byte so that the NULL-symbol is unnamed. */
+   DCCSection_DAllocAt(elf.elf_dynstr,0/*null_sym.st_name*/,sizeof(char));
    first = 0;
   }
 #endif /* ELF_HAVE_NULLSYM */
@@ -1004,7 +1011,7 @@ PRIVATE void elf_mk_delsecunused(secgp_t min_gp) {
        (iter->si_grp >= min_gp)) {
    /* Delete this section. */
    assert(elf.elf_secc);
-   printf("Deleting: '%s'\n",iter->si_sec->sc_start.sy_name->k_name);
+   WARN(W_LINKER_DELETE_UNUSED_SECTION,iter->si_sec->sc_start.sy_name);
    /* Must update dynamic symbol information! */
    if (elf.elf_dynsym) {
     Elf(Section) seci = (Elf(Section))(iter-elf.elf_secv);

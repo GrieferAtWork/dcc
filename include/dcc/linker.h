@@ -25,6 +25,36 @@
 
 DCC_DECL_BEGIN
 
+/* Used for dynamic linking in DCC ELF object files:
+ *  - The 'Elf(Shdr)' fields are defined as follows:
+ *      'sh_name':      The link-time name of the library hook (offset into the '.shstrtab' section)
+ *      'sh_type':      <SHT_DCC_IMPSEC>
+ *      'sh_flags':     <0>
+ *      'sh_addr':      Undefined
+ *      'sh_offset':    Undefined
+ *      'sh_size':      <0>
+ *      'sh_link':      <SHN_UNDEF>
+ *      'sh_info':      Within the binary's first 'PT_DYNAMIC' program header:
+ *                      The index of a 'DT_NEEDED' dynamic entry.
+ *                      >> PHDR(PT_DYNAMIC):  p_offset+sh_info*sizeof(Elf(Dyn));
+ *      'sh_addralign': Undefined
+ *      'sh_entsize':   Undefined
+ *  - Symbols linked against a section of type 'SHT_DCC_IMPSEC' are imported from
+ *    the associated dynamic library (as described by the 'DT_NEEDED' entry)
+ *  - Note that this section type should only appear in binaries of type 'ET_REL'
+ *  - Note that 'SHT_DCC_IMPSEC'-typed sections are optional and mainly
+ *    used to implemented '__attribute__((lib(...)))' in object files.
+ *    NOTE: Use in executable files will lead to run-time undefined behavior,
+ *          as the linker will not understand that a symbol located inside a
+ *          SHT_DCC_IMPSEC-section must be located the same way it must be
+ *          if its 'st_shndx' member was set to 'SHN_UNDEF'.
+ *  - Unlike other symbols imported from dynamic libraries, that have 'SHN_UNDEF'
+ *    set as their associated section, setting a section of type 'SHT_DCC_IMPSEC'
+ *    will exclude the symbol from being considered as undefined.
+ */
+#define SHT_DCC_IMPSEC (SHT_LOUSER+0x0305)
+
+
 #define DCC_LINKER_FLAG_SHARED       0x00000001 /*< Create shared libraries. */
 #define DCC_LINKER_FLAG_NOSTDLIB     0x00000002 /*< Don't include standard libraries. */
 #define DCC_LINKER_FLAG_NOUNDERSCORE 0x00000004 /*< Don't prepend leading underscores. */
@@ -40,7 +70,7 @@ DCC_DECL_BEGIN
                                                   *  WARNING: You probably don't want to enable this flag, because something as simple as '#pragma comment(lib,"ntdll.dll")'
                                                   *           will cause _ALL_ symbols from ntdll to be both imported _AND_ exported from your application (It'll work, but it's a damn stupid thing to do...) */
 #endif
-#if DCC_LIBFORMAT_STA_PE
+#if DCC_LIBFORMAT_PE_STATIC
 #define DCC_LINKER_FLAG_LINKPE_KEEPEXPORT 0x08000000 /*< When statically linking against a PE binary, the old export table
                                                       *  is kept even though this will cause a copy of it to be created.
                                                       *  NOTE: The export table is always kept when a relocation pointing inside is detected. */

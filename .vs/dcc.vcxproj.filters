@@ -187,19 +187,19 @@
     <None Include="..\src\tpp\tpp-gcc-defs.inl">
       <Filter>src\tpp</Filter>
     </None>
-    <None Include="..\src\dcc\unit-import-dyndef.c.inl">
-      <Filter>src\dcc</Filter>
-    </None>
-    <None Include="..\src\dcc\unit-import-dynpe.c.inl">
-      <Filter>src\dcc</Filter>
-    </None>
-    <None Include="..\src\dcc\unit-import-stape.c.inl">
-      <Filter>src\dcc</Filter>
-    </None>
     <None Include="..\src\dcc\linker-pe.c.inl">
       <Filter>src\dcc</Filter>
     </None>
     <None Include="..\src\dcc\linker-elf.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\unit-import-pe-dynamic.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\unit-import-pe-static.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\unit-import-def-dynamic.c.inl">
       <Filter>src\dcc</Filter>
     </None>
     <None Include="..\src\dcc\unit-import-elf.c.inl">

@@ -1272,6 +1272,8 @@ DEF_WARNING(W_LINKER_DELETE_UNUSED_SYMBOL,(WG_LINKER,WG_QUALITY),WSTATE_WARN,
             WARNF("Removing unused symbol '%s'",KWDNAME()))
 DEF_WARNING(W_LINKER_DELETE_UNUSED_STATIC_SYMBOL,(WG_LINKER,WG_QUALITY),WSTATE_WARN,
             WARNF("Removing unused static symbol '%s'",KWDNAME()))
+DEF_WARNING(W_LINKER_DELETE_UNUSED_SECTION,(WG_LINKER,WG_QUALITY),WSTATE_DISABLE,
+            WARNF("Removing unused section '%s'",KWDNAME()))
 DEF_WARNING(W_LINKER_RECURSIVE_ALIAS,(WG_LINKER),WSTATE_WARN,{
  struct DCCSym *path_start;
  struct DCCSym *path = path_start = ARG(struct DCCSym *);
@@ -1296,7 +1298,7 @@ WARNING_NAMESPACE(WN_LIBLOADER,3000)
 
 /* Library loader warnings. */
 DEF_WARNING(W_LIB_NOT_FOUND,(WG_LIBLOAD),WSTATE_ERROR,{ char *n = ARG(char *); WARNF("Library not found: '%.*s'",(unsigned int)ARG(size_t),n); })
-#if DCC_LIBFORMAT_DYN_PE
+#if DCC_LIBFORMAT_PE_DYNAMIC
 DEF_WARNING(W_LIB_PE_INVMAGIC,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Invalid header magic in PE library '%s'",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_DLL,(WG_QUALITY,WG_LIBLOAD),WSTATE_WARN,WARNF("Library '%s' is not a dll.",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_RELOCATIONS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Can't link against PE library '%s' without relocations",ARG(char *)))
@@ -1304,8 +1306,8 @@ DEF_WARNING(W_LIB_PE_NO_EXPORT_TABLE,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary 
 DEF_WARNING(W_LIB_PE_NO_SECTIONS,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s' has no sections",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_SECTION_MAPPING,(WG_LIBLOAD),WSTATE_ERROR,{ char *name = ARG(char *); WARNF("No section of PE binary '%s' maps to virtual address %p",name,ARG(void *)); })
 DEF_WARNING(W_LIB_PE_EMPTY_EXPORT_TABLE,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary '%s' has an empty export table",ARG(char *)))
-#endif /* DCC_LIBFORMAT_DYN_PE */
-#if DCC_LIBFORMAT_STA_PE
+#endif /* DCC_LIBFORMAT_PE_DYNAMIC */
+#if DCC_LIBFORMAT_PE_STATIC
 DEF_WARNING(W_STA_PE_CORRUPT_SYMNAME,(WG_LIBLOAD),WSTATE_ERROR,{
  target_ptr_t p = ARG(target_ptr_t);
  WARNF("Corrupt symbol name at %#lx for data at %#lx",
@@ -1382,10 +1384,10 @@ DEF_WARNING(W_STA_PE_UNMAPPED_DISP_TARGET,(WG_LIBLOAD),WSTATE_RELOCWARN,{
       (unsigned long)p,(unsigned long)ARG(target_ptr_t));
 })
 #undef WSTATE_RELOCWARN
-#endif /* DCC_LIBFORMAT_STA_PE */
-#if DCC_LIBFORMAT_DYN_DEF
+#endif /* DCC_LIBFORMAT_PE_STATIC */
+#if DCC_LIBFORMAT_DEF_DYNAMIC
 DEF_WARNING(W_LIB_DEF_EXPECTED_EXPORTS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Expected 'EXPORTS', but got '%s'",ARG(char *)))
-#endif /* DCC_LIBFORMAT_DYN_DEF */
+#endif /* DCC_LIBFORMAT_DEF_DYNAMIC */
 #if DCC_LIBFORMAT_ELF
 DEF_WARNING(W_LIB_ELF_INVALID_CLASS,       (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'EI_CLASS' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
 DEF_WARNING(W_LIB_ELF_INVALID_DATA,        (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'EI_DATA' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
@@ -1420,6 +1422,16 @@ DEF_WARNING(W_LIB_ELF_STATIC_REL_INVSECID,(WG_LIBLOAD),WSTATE_WARN,{ char *n = A
 DEF_WARNING(W_LIB_ELF_STATIC_REL_UNUSECID,(WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); size_t i = ARG(size_t); size_t u = ARG(size_t); WARNF("Effected section id #%lu of relocation section #%lu in ELF binary '%s' was removed (incompatible/future object file/binary?)",(unsigned long)i,(unsigned long)u,n); })
 DEF_WARNING(W_LIB_ELF_STATIC_REL_INVSYMID,(WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); size_t i = ARG(size_t); size_t u = ARG(size_t); WARNF("Symbol table id #%lu of relocation section #%lu in ELF binary '%s' exceeds maximum of #%lu",(unsigned long)i,(unsigned long)u,n,(unsigned long)ARG(size_t)); })
 DEF_WARNING(W_LIB_ELF_STATIC_REL_NOSYMTAB,(WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); size_t i = ARG(size_t); size_t u = ARG(size_t); WARNF("Symbol section id #%lu of relocation section #%lu in ELF binary '%s' is not a 'SHT_SYMTAB'",(unsigned long)i,(unsigned long)u,n); })
+DEF_WARNING(W_LIB_ELF_STATIC_INVRELOC,(WG_LIBLOAD),WSTATE_WARN,{
+ char *n = ARG(char *);
+ unsigned int r = ARG(unsigned int);
+ unsigned int s = ARG(unsigned int);
+ char *sn = ARG(char *);
+ target_ptr_t p = ARG(target_ptr_t);
+ WARNF("Invalid relocation %#x with symbol %#x in section '%s' of ELF binary '%s' "
+       "pointing at %#lx (range 0x0..%#lx)",r,s,sn,n,
+      (unsigned long)p,(unsigned long)ARG(target_ptr_t));
+})
 #endif /* DCC_LIBFORMAT_ELF */
 
 #undef DECL_PRINTTY_LOAD

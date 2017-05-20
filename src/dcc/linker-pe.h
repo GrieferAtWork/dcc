@@ -97,7 +97,7 @@ typedef struct {
 #endif
 
 
-#if DCC_LIBFORMAT_DYN_PE || DCC_LIBFORMAT_STA_PE
+#if DCC_LIBFORMAT_PE_DYNAMIC || DCC_LIBFORMAT_PE_STATIC
 
 /* Utilities for parsing PE binaries. */
 INTERN LONG  pe_readhdr(stream_t s);

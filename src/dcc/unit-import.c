@@ -40,7 +40,7 @@
 
 #if DCC_LIBFORMAT_ELF
 #include <elf.h>
-#endif /* DCC_LIBFORMAT_DYN_DEF */
+#endif /* DCC_LIBFORMAT_DEF_DYNAMIC */
 
 DCC_DECL_BEGIN
 
@@ -48,19 +48,19 @@ DCC_DECL_BEGIN
  {f,LIBLOADER_FLAGS(d,s,msiz),__VA_ARGS__}
 
 INTERN struct PLibLoaderDef const dcc_libloaders[] = {
-#if DCC_LIBFORMAT_STA_PE /* '*.exe/*.dll' PE binaries (static mode). */
+#if DCC_LIBFORMAT_PE_STATIC /* '*.exe/*.dll' PE binaries (static mode). */
  LOADDEF(0,1,&DCCUnit_StaLoadPE,2,{'M','Z'}),
-#endif /* DCC_LIBFORMAT_STA_PE */
-#if DCC_LIBFORMAT_DYN_PE /* '*.exe/*.dll' PE binaries (dynamic mode). */
+#endif /* DCC_LIBFORMAT_PE_STATIC */
+#if DCC_LIBFORMAT_PE_DYNAMIC /* '*.exe/*.dll' PE binaries (dynamic mode). */
  LOADDEF(1,0,&DCCUnit_DynLoadPE,2,{'M','Z'}),
-#endif /* DCC_LIBFORMAT_DYN_PE */
+#endif /* DCC_LIBFORMAT_PE_DYNAMIC */
 #if DCC_LIBFORMAT_ELF /* ELF binary/library files. */
  LOADDEF(1,1,&DCCUnit_LoadELF,SELFMAG,{ELFMAG0,ELFMAG1,ELFMAG2,ELFMAG3}),
-#endif /* DCC_LIBFORMAT_DYN_DEF */
-#if DCC_LIBFORMAT_DYN_DEF /* '*.def' library files. */
+#endif /* DCC_LIBFORMAT_DEF_DYNAMIC */
+#if DCC_LIBFORMAT_DEF_DYNAMIC /* '*.def' library files. */
  LOADDEF(1,0,&DCCUnit_DynLoadDEF2,7,{'L','I','B','R','A','R','Y'}),
  LOADDEF(1,0,&DCCUnit_DynLoadDEF,0,{0}),
-#endif /* DCC_LIBFORMAT_DYN_DEF */
+#endif /* DCC_LIBFORMAT_DEF_DYNAMIC */
  {NULL,0,{0}},
 };
 
@@ -217,10 +217,10 @@ DCCUnit_ImportStream(struct DCCLibDef *__restrict def,
 DCC_DECL_END
 
 #ifndef __INTELLISENSE__
-#include "unit-import-dyndef.c.inl"
-#include "unit-import-dynpe.c.inl"
+#include "unit-import-def-dynamic.c.inl"
 #include "unit-import-elf.c.inl"
-#include "unit-import-stape.c.inl"
+#include "unit-import-pe-dynamic.c.inl"
+#include "unit-import-pe-static.c.inl"
 #endif
 
 #endif /* !GUARD_DCC_UNIT_IMPORT_C */

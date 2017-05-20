@@ -153,14 +153,6 @@ end: text->tb_max = text->tb_pos = text->tb_end;
 empty: text->tb_begin = text->tb_end = NULL; goto end;
 }
 
-/* Find the DCC section of a given static ELF section index. */
-PRIVATE struct DCCSection *
-elf_findstaticsec(size_t index) {
- struct DCCSection *sec;
- DCCUnit_ENUMSEC(sec) if (sec->sc_merge == index) return sec;
- return NULL;
-}
-
 PRIVATE symflag_t const elfvismap[] = {
  /* [STV_DEFAULT  ] = */DCC_SYMFLAG_NONE,
  /* [STV_INTERNAL ] = */DCC_SYMFLAG_INTERNAL,
@@ -302,8 +294,8 @@ link_dynamic:
      assert(dynsiz >= sizeof(Elf(Dyn)));
      dynvec = (Elf(Dyn) *)DCC_Malloc(dynsiz,0);
      if unlikely(!dynvec) goto fail_dyn;
-     /* TODO: Does ELF guaranty that PT_DYNAMIC contains proper offset information?
-      *       Or do we have to find a PT_LOAD header containing the PT_DYNAMIC virtual address? */
+     /* XXX: Does ELF guaranty that PT_DYNAMIC contains proper offset information?
+      *      Or do we have to find a PT_LOAD header containing the PT_DYNAMIC virtual address? */
      s_seek(fd,iter->p_offset,SEEK_SET);
      read_error = s_read(fd,dynvec,dynsiz);
      if unlikely(dynsiz > (size_t)read_error || read_error < 0) {
@@ -387,13 +379,14 @@ done_dynhdr1:
                                      ehdr.e_ident[EI_CLASS] == ELFCLASS64)
              ) goto no_dynhash;
        } else {
-no_dynhash:;
+no_dynhash:
         /* TODO: Try to load the section list and locate the section associated
          *       with 'symtab_off'. Then, using that section's 'sh_size' field,
          *       we can truncate the max amount of symbols.
          * >> When that fails too (such as when there are no sections), emit a warning
          *    and perform special checks when iterating the symbol vector, stopping
          *    at the first symbol describing invalid data (e.g.: an invalid section id, or a corrupt name) */
+        ;
        }
        /* Constrict the max symbol table size using the PT_DYNAMIC header. */
        if (dt_strsz < strtab_siz) strtab_siz = dt_strsz;
@@ -571,7 +564,13 @@ nosechdr:
    }
   }
   if unlikely(!secc) { DCC_Free(secv); goto nosechdr; }
-  /* First step: Validate and find the '.shstrtab' section. */
+  /* TODO: First step: Load 'DT_NEEDED' program headers
+   *    >> Needs to be done now to ensure that 'SHT_DCC_IMPSEC'
+   *       special sections can be linked properly
+   *    >> Can only be done now because before we didn't know
+   *       that the binary should really be loaded statically. */
+
+  /* Second step: Validate and find the '.shstrtab' section. */
   if (ehdr.e_shstrndx >= secc) {
    size_t i;
    WARN(W_LIB_ELF_STATIC_UNMAPPED_SHSTR,file,ehdr.e_shstrndx,secc);
@@ -591,6 +590,7 @@ nosechdr:
 found_shstr:
    /* Load the section name section so we can figure out what everything's called!
     * Only once we did that, can we start creating the sections. */
+#define SEC_DCCSEC(shdr) (*(struct DCCSection **)&(shdr)->sh_addralign)
   {
    struct DCCTextBuf shstr_text;
    elf_loadsection(&secv[ehdr.e_shstrndx],&shstr_text,fd);
@@ -611,10 +611,17 @@ found_shstr:
     case SHT_REL         :
     case SHT_DYNSYM      :
     case SHT_GROUP       :
-    case SHT_SYMTAB_SHNDX: continue;
+    case SHT_SYMTAB_SHNDX:
+sec_unused: SEC_DCCSEC(iter) = NULL;
+     continue;
+    case SHT_DCC_IMPSEC:
+     /* TODO: Special import-section handling.
+      *      (required for DCC's '__attribute__((lib(...)))')
+      */
+     goto sec_unused;
     default:
      if (iter->sh_type >= SHT_LOOS &&
-         iter->sh_type <= SHT_HIOS) continue;
+         iter->sh_type <= SHT_HIOS) goto sec_unused;
      break; /* Skip any other section. */
     }
     name = SHSTR(iter->sh_name);
@@ -622,22 +629,22 @@ found_shstr:
      WARN(W_LIB_ELF_STATIC_SECNAME_CORRUPT,
          (size_t)(iter-secv),file,(size_t)iter->sh_name,
          (size_t)(shstr_text.tb_end-shstr_text.tb_begin));
-     continue;
+     goto sec_unused;
     }
     if (iter->sh_flags&SHF_ALLOC)     secflags |= DCC_SYMFLAG_SEC_R;
     if (iter->sh_flags&SHF_WRITE)     secflags |= DCC_SYMFLAG_SEC_W;
     if (iter->sh_flags&SHF_EXECINSTR) secflags |= DCC_SYMFLAG_SEC_X;
     if (iter->sh_flags&SHF_MERGE)     secflags |= DCC_SYMFLAG_SEC_M;
     sec = DCCUnit_NewSecs(name,secflags);
-    if unlikely(!sec) continue;
+    if unlikely(!sec) goto sec_unused;
     if (sec->sc_text.tb_begin != sec->sc_text.tb_end)
         WARN(W_LIB_ELF_STATIC_SECNAME_REUSED,file,name);
     free(sec->sc_text.tb_begin);
     elf_loadsection(iter,&sec->sc_text,fd);
     sec->sc_align = iter->sh_addralign;
     sec->sc_base  = iter->sh_addr;
-    /* We (ab-)use 'sc_merge' to save the header index of a given section. */
-    sec->sc_merge = (target_ptr_t)(iter-secv);
+    /* Save the section in the header (very hacky; don't look). */
+    SEC_DCCSEC(iter) = sec;
    }
    /* Clean up section names. */
    free(shstr_text.tb_begin);
@@ -648,6 +655,11 @@ found_shstr:
     * for tracking all DCC symbols contained. */
 #define SEC_SYMVEC(shdr) (*(struct DCCSym ***)&(shdr)->sh_addr)
 #define SEC_SYMCNT(shdr) (*(size_t *)&(shdr)->sh_size)
+
+#define SEC_DCCSECI(i) ((i) < secc ? SEC_DCCSEC(&secv[i]) : NULL)
+#define SEC_SYMVECI(i) ((i) < secc ? SEC_SYMVEC(&secv[i]) : NULL)
+#define SEC_SYMCNTI(i) ((i) < secc ? SEC_SYMCNT(&secv[i]) : NULL)
+
    /* All sections of interest have been loaded.
     * Now, we must load all symbol tables. */
    for (iter = secv; iter != end; ++iter) {
@@ -697,7 +709,8 @@ skip_symdef:
       *symdef = NULL;
       continue;
      case STT_SECTION: /* Special handling for section symbols. */
-      if ((sec = elf_findstaticsec(sym_iter->st_shndx)) != NULL) { *symdef = &sec->sc_start; continue; }
+      sec = SEC_DCCSECI(sym_iter->st_shndx);
+      if (sec) { *symdef = &sec->sc_start; continue; }
       break;
      default: break;
      }
@@ -735,13 +748,13 @@ skip_symdef:
       * >> }
       * 
       * $dcc -c source_a.c
-      * $dcc -c source_b.c # GCC fails to compile this, but DCC's supposed to accomplish this
+      * $dcc -c source_b.c # GCC fails to compile this, but DCC's supposed to be able to
       * $dcc -o app source_a.o source_b.o
       */
      sym = DCCUnit_NewSyms(name,symflags);
      if unlikely(!sym) goto skip_symdef;
      if (sym_iter->st_shndx == SHN_ABS) sec = &DCCSection_Abs;
-     else sec = elf_findstaticsec(sym_iter->st_shndx);
+     else sec = SEC_DCCSECI(sym_iter->st_shndx);
      if (sec) DCCSym_Define(sym,sec,sym_iter->st_value,sym_iter->st_size);
      *symdef = sym;
     }
@@ -771,7 +784,7 @@ done_symvec:
          (size_t)iter->sh_info,
          (size_t)(iter-secv),secc);
     }
-    relo_section = elf_findstaticsec(iter->sh_info);
+    relo_section = SEC_DCCSECI(iter->sh_info);
     if (!relo_section) {
      if (iter->sh_info < secc) {
       WARN(W_LIB_ELF_STATIC_REL_UNUSECID,file,
@@ -837,12 +850,17 @@ reloc_loaded:
      rel_end = (rel_iter = (Elf(Rel) *)relo_text.tb_begin)+relcnt;
      for (; rel_iter != rel_end; ++rel_iter) {
       rel_t relty; uint32_t symid; struct DCCSym *rsym;
-      if (rel_iter->r_offset >= relo_sec_size) {
-invrelo: /* TODO: Warning: Invalid relocation */
-       continue;
-      }
       relty = ELF(R_TYPE)(rel_iter->r_info);
       symid = ELF(R_SYM)(rel_iter->r_info);
+      if (rel_iter->r_offset >= relo_sec_size) {
+invrelo: /* Warning: Invalid relocation */
+       WARN(W_LIB_ELF_STATIC_INVRELOC,file,
+           (unsigned int)relty,
+           (unsigned int)symid,relo_section->sc_start.sy_name->k_name,
+           (target_ptr_t)rel_iter->r_offset,
+           (target_ptr_t)relo_sec_size);
+       continue;
+      }
       rsym = symid >= relsymc ? NULL : relsymv[symid];
       dcc_rel->r_addr = rel_iter->r_offset;
       if unlikely(!rsym) {
@@ -866,13 +884,18 @@ invrelo: /* TODO: Warning: Invalid relocation */
     if (iter->sh_type != SHT_SYMTAB) continue;
     free(SEC_SYMVEC(iter));
    }
-#undef SEC_SYMVEC
+#undef SEC_SYMCNTI
+#undef SEC_SYMVECI
+#undef SEC_DCCSECI
 #undef SEC_SYMCNT
+#undef SEC_SYMVEC
+#undef SEC_DCCSEC
   }
   DCC_Free(secv);
  }
-#if DCC_LIBFORMAT_STA_ELF
+
  if (ehdr.e_type != ET_REL) {
+#if DCC_LIBFORMAT_ELF_STATIC
   struct DCCSection *sec;
   /* Linking against non-relocatable binary.
    * NOTE: If there were no relocations at all, we wouldn't have gotten here.
@@ -888,8 +911,11 @@ invrelo: /* TODO: Warning: Invalid relocation */
    sec->sc_start.sy_flags &= ~(DCC_SYMFLAG_SEC_FIXED);
    sec->sc_base            = 0;
   }
- }
 #endif
+  /* TODO: Until there are no more undefined symbol references,
+   *       we must load dynamic library dependencies ('DT_NEEDED' entires)
+   *    >> This has to be done to prevent unresolved reference errors later. */
+ }
 
 end: return result;
 nodyn: not_dynamic = 1;

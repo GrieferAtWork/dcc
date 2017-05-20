@@ -16,15 +16,15 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#ifndef GUARD_DCC_UNIT_IMPORT_STAPE_C_INL
-#define GUARD_DCC_UNIT_IMPORT_STAPE_C_INL 1
+#ifndef GUARD_DCC_UNIT_IMPORT_PE_STATIC_C_INL
+#define GUARD_DCC_UNIT_IMPORT_PE_STATIC_C_INL 1
 
 #define DCC(x) x
 
 #include <dcc/common.h>
 #include <dcc/target.h>
 
-#if DCC_LIBFORMAT_STA_PE
+#if DCC_LIBFORMAT_PE_STATIC
 #include <dcc/unit.h>
 #include <dcc/stream.h>
 
@@ -190,7 +190,7 @@ DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def,
 
  /* All the sections have been loaded. - Time to collect all the symbols we can find! */
  if (HAS_DIR(IMAGE_DIRECTORY_ENTRY_IMPORT)) {
-  /* TODO */
+  /* TODO: Load imports */
  }
  if (HAS_DIR(IMAGE_DIRECTORY_ENTRY_EXPORT)) {
   PIMAGE_EXPORT_DIRECTORY export_dir;
@@ -387,6 +387,6 @@ end:
 }
 
 DCC_DECL_END
-#endif /* DCC_LIBFORMAT_STA_PE */
+#endif /* DCC_LIBFORMAT_PE_STATIC */
 
-#endif /* !GUARD_DCC_UNIT_IMPORT_STAPE_C_INL */
+#endif /* !GUARD_DCC_UNIT_IMPORT_PE_STATIC_C_INL */
