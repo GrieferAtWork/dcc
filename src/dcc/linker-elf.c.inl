@@ -330,11 +330,16 @@ use_text:
 PRIVATE void elf_mk_interp(void) {
  char *itp; size_t itp_len;
  if (!elf.elf_interp) return;
- if (linker.l_flags&(DCC_LINKER_FLAG_SHARED|DCC_LINKER_FLAG_STATIC)) return;
- /* XXX: Override with commandline-switch. */
- if ((itp = getenv("LD_SO")) == NULL) itp = DCC_TARGET_ELFINTERP;
- /* Create a section for the interpreter. */
- itp_len = strlen(itp);
+ if (linker.l_elf_interp) {
+  /* Use a custom interpreter name. */
+  itp     = linker.l_elf_interp->s_text;
+  itp_len = linker.l_elf_interp->s_size;
+ } else {
+  /* XXX: Override with commandline-switch. */
+  if ((itp = getenv("LD_SO")) == NULL) itp = DCC_TARGET_ELFINTERP;
+  /* Create a section for the interpreter. */
+  itp_len = strlen(itp);
+ }
  DCCSection_DAllocMem(elf.elf_interp,itp,
                      (itp_len+0)*sizeof(char),
                      (itp_len+1)*sizeof(char),

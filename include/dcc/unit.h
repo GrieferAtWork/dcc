@@ -192,7 +192,10 @@ struct DCCSym {
 #define DCCSym_ISUNUSED(self) \
   ((self)->sy_refcnt == 1 && !DCCSym_ISSECTION(self) && \
  !((self)->sy_flags&DCC_SYMFLAG_USED) && \
-  ((self)->sy_flags&DCC_SYMFLAG_VISIBILITYBASE) != DCC_SYMFLAG_NONE)
+    /* Unused symbols with global visibility can only \
+     * be removed when they're imported from libraries. */\
+  (((self)->sy_flags&DCC_SYMFLAG_VISIBILITYBASE) != DCC_SYMFLAG_NONE || \
+    (DCCSym_ISDEFINED(self) && DCCSection_ISIMPORT(DCCSym_SECTION(self)))))
 #else /* DCC_TARGET_BIN == DCC_BINARY_PE */
 #define DCCSym_ISUNUSED(self) \
   ((self)->sy_refcnt == 1 && !DCCSym_ISSECTION(self) && \
