@@ -110,6 +110,16 @@ DCCParse_WarnAllocaInLoop(void) {
      ) WARN(W_BUILTIN_ALLOCA_IN_LOOP);
 }
 
+PRIVATE void DCCLinker_LibPathClear(void) {
+ struct TPPString **iter,**end;
+ end = (iter = linker.l_paths.lp_pathv)+
+               linker.l_paths.lp_pathc;
+ for (; iter != end; ++iter)
+      assert(*iter),
+      TPPString_Decref(*iter);
+ linker.l_paths.lp_pathc = 0;
+}
+
 PUBLIC int DCCParse_Pragma(void) {
  switch (TOK) {
 
@@ -149,8 +159,9 @@ PUBLIC int DCCParse_Pragma(void) {
    while (TOK != ')') {
     switch (TOK) {
      { /* push/pop the library-path vector. */
-      if (DCC_MACRO_FALSE) { case KWD_push: DCCLinker_LibPathPush(); }
-      if (DCC_MACRO_FALSE) { case KWD_pop:  DCCLinker_LibPathPop(); }
+      if (DCC_MACRO_FALSE) { case KWD_clear: DCCLinker_LibPathClear(); }
+      if (DCC_MACRO_FALSE) { case KWD_push:  DCCLinker_LibPathPush(); }
+      if (DCC_MACRO_FALSE) { case KWD_pop:   DCCLinker_LibPathPop(); }
       YIELD();
      } break;
      {

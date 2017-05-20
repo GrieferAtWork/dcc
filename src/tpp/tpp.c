@@ -8112,6 +8112,21 @@ TPPLexer_ParsePragma(void) {
  }
  return result;
 }
+
+PRIVATE void
+TPPLexer_ClearInclude(void) {
+ struct TPPString **iter,**end;
+ assert(TPPLexer_Current);
+ end = (iter = current.l_syspaths.il_pathv)+
+               current.l_syspaths.il_pathc;
+ for (; iter != end; ++iter)
+      assert(*iter),
+      TPPString_Decref(*iter);
+ free(current.l_syspaths.il_pathv);
+ current.l_syspaths.il_pathc = 0;
+ current.l_syspaths.il_pathv = NULL;
+}
+
 PUBLIC int
 TPPLexer_ParseBuiltinPragma(void) {
  switch (TOK) {
@@ -8503,8 +8518,9 @@ yield_after_extension:
      while (TOK != ')') {
       switch (TOK) {
        { /* push/pop the system #include-path. */
-        if (FALSE) { case KWD_push: if unlikely(!TPPLexer_PushInclude()) goto seterr; }
-        if (FALSE) { case KWD_pop:  if unlikely(!TPPLexer_PopInclude() && !TPPLexer_Warn(W_CANT_POP_INCLUDE_PATH)) goto err; }
+        if (FALSE) { case KWD_clear: TPPLexer_ClearInclude(); }
+        if (FALSE) { case KWD_push:  if unlikely(!TPPLexer_PushInclude()) goto seterr; }
+        if (FALSE) { case KWD_pop:   if unlikely(!TPPLexer_PopInclude() && !TPPLexer_Warn(W_CANT_POP_INCLUDE_PATH)) goto err; }
         yield_fetch();
        } break;
        {

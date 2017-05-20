@@ -205,6 +205,7 @@ DEF_K(TPP)
  * >> #include <stdlib.h> // FILE NOT FOUND
  */
 DEF_K(include_path)
+DEF_K(clear)
 
 /* Additional keywords required to implement some GCC stuff. */
 DEF_K(GCC)
