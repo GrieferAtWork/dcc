@@ -58,8 +58,8 @@ INTERN struct PLibLoaderDef const dcc_libloaders[] = {
  LOADDEF(1,1,&DCCUnit_LoadELF,SELFMAG,{ELFMAG0,ELFMAG1,ELFMAG2,ELFMAG3}),
 #endif /* DCC_LIBFORMAT_DYN_DEF */
 #if DCC_LIBFORMAT_DYN_DEF /* '*.def' library files. */
- LOADDEF(1,0,&DCCUnit_DynImportDEF2,7,{'L','I','B','R','A','R','Y'}),
- LOADDEF(1,0,&DCCUnit_DynImportDEF,0,{0}),
+ LOADDEF(1,0,&DCCUnit_DynLoadDEF2,7,{'L','I','B','R','A','R','Y'}),
+ LOADDEF(1,0,&DCCUnit_DynLoadDEF,0,{0}),
 #endif /* DCC_LIBFORMAT_DYN_DEF */
  {NULL,0,{0}},
 };

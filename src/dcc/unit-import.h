@@ -59,8 +59,8 @@ INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def
 INTERN int DCCUNIT_IMPORTCALL DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
 #endif /* DCC_LIBFORMAT_STA_PE */
 #if DCC_LIBFORMAT_DYN_DEF
-INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynImportDEF(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
-INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynImportDEF2(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
+INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynLoadDEF(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
+INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynLoadDEF2(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
 #endif /* DCC_LIBFORMAT_DYN_DEF */
 #if DCC_LIBFORMAT_ELF
 INTERN int DCCUNIT_IMPORTCALL DCCUnit_LoadELF(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);

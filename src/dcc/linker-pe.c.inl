@@ -1089,6 +1089,38 @@ PRIVATE void pe_mk_buildita(void) {
    if (sym->sy_refcnt == 1 &&
      !(sym->sy_flags&DCC_SYMFLAG_USED)) continue;
 
+   /* TODO: ITA wrappers only work for function symbols.
+    *       For any other type of symbol, we must generate startup code
+    *       that will manually fix relocations by copying the addresses
+    *       of imported symbols everywhere they are needed:
+    *    >> extern int lib_x;
+    *    >> void foo() {
+    *    >>     // 'lib_x' is referenced without PE-indirection,
+    *    >>     // but doing so cannot be fixed through use of
+    *    >>     // an ITA wrapper because it's not a function.
+    *    >>     printf("%d\n",lib_x);
+    *    >> }
+    *    >> 
+    *    >> int __start() {
+    *    >>     foo();
+    *    >> }
+    *    >> 
+    *    >> ...
+    *    >> 
+    *    >> [[lib("mylib.so")]] extern int lib_x;
+    *  FIX:
+    *    >> int __real_start() {
+    *    >>     // Copy the address of 'lib_x' from the import table
+    *    >>     // and place it into the text reference of 'foo',
+    *    >>     // essentially performing the last relocation fix-ups at runtime.
+    *    >>     make_writable(.text)
+    *    >>     *(uintptr_t *)&foo$ref(lib_x) = &imptab(lib_x);
+    *    >>     make_readonly(.text)
+    *    >>
+    *    >>     __asm__("jmp $__start\n");
+    *    >> }
+    */
+
 #if defined(DCC_TARGET_X86)
    iat_addr = DCCSection_TADDR(unit.u_text);
    iat_code = (uint8_t *)DCCSection_TAlloc(unit.u_text,6);

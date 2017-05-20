@@ -64,7 +64,7 @@ PRIVATE char *getline(struct TPPFile *__restrict f) {
 
 
 INTERN int DCCUNIT_IMPORTCALL
-DCCUnit_DynImportDEF2(struct DCCLibDef *__restrict def,
+DCCUnit_DynLoadDEF2(struct DCCLibDef *__restrict def,
                       char const *__restrict file, stream_t fd) {
  struct DCCSection *ressec = NULL;
  assert(def);
@@ -147,7 +147,7 @@ end:
 }
 
 INTERN int DCCUNIT_IMPORTCALL
-DCCUnit_DynImportDEF(struct DCCLibDef *__restrict def,
+DCCUnit_DynLoadDEF(struct DCCLibDef *__restrict def,
                      char const *__restrict file, stream_t fd) {
  size_t len;
  assert(def);
@@ -156,7 +156,7 @@ DCCUnit_DynImportDEF(struct DCCLibDef *__restrict def,
  if ((len = strlen(file)) < 4 ||
      memcmp(file+len-4,".def",4*
      sizeof(char)) != 0) return NULL;
- return DCCUnit_DynImportDEF2(def,file,fd);
+ return DCCUnit_DynLoadDEF2(def,file,fd);
 }
 
 DCC_DECL_END

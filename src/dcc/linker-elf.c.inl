@@ -335,7 +335,6 @@ PRIVATE void elf_mk_interp(void) {
   itp     = linker.l_elf_interp->s_text;
   itp_len = linker.l_elf_interp->s_size;
  } else {
-  /* XXX: Override with commandline-switch. */
   if ((itp = getenv("LD_SO")) == NULL) itp = DCC_TARGET_ELFINTERP;
   /* Create a section for the interpreter. */
   itp_len = strlen(itp);
@@ -408,9 +407,29 @@ elf_mk_hash(struct DCCSection *__restrict hashsec,
  }
 }
 
+/* Force index ZERO(0) of .dynsym to be the NULL-symbol. */
+#define ELF_HAVE_NULLSYM 1
+
+
+#if ELF_HAVE_NULLSYM
+static Elf(Sym) const null_sym = {
+ /* st_name  */0,
+ /* st_value */0,
+ /* st_size  */0,
+ /* st_info  */ELF(ST_INFO)(STB_LOCAL,STT_NOTYPE),
+ /* st_other */ELF(ST_VISIBILITY)(STV_DEFAULT),
+ /* st_shndx */SHN_UNDEF,
+};
+#endif /* ELF_HAVE_NULLSYM */
+
 PRIVATE void elf_mk_dynsym(void) {
  struct DCCSym *sym; Elf(Sym) esym;
+#if ELF_HAVE_NULLSYM
+ uint32_t dynid = 1; /* Index ZERO is the NULL-symbol. */
+ int first = 1;
+#else /* ELF_HAVE_NULLSYM */
  uint32_t dynid = 0;
+#endif /* ELF_HAVE_NULLSYM */
  if unlikely(!elf.elf_dynsym ||
              !elf.elf_dynstr) return;
  /* Generate dynamic symbol information. */
@@ -419,13 +438,11 @@ PRIVATE void elf_mk_dynsym(void) {
   unsigned char st_bind,st_type;
   struct DCCSymAddr symaddr;
   if (DCCSym_ISSECTION(sym) &&
-     (/*(sym->sy_flags&DCC_SYMFLAG_SEC_NOALLOC) ||*/
+     ((!(DCCSection_VSIZE(DCCSym_TOSECTION(sym))) &&
+       !(sym->sy_flags&DCC_SYMFLAG_USED)) ||
        DCCSection_ISIMPORT(DCCSym_TOSECTION(sym)))) continue;
 #if 1 /* Don't export static symbols. */
   if (sym->sy_flags&DCC_SYMFLAG_STATIC) continue;
-#endif
-#if 0 /* Don't export section start symbols. */
-  if (DCCSym_ISSECTION(sym)) continue;
 #endif
 #if 0 /* Only export symbols with default visibility? */
   if ((sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE) != DCC_SYMFLAG_NONE) continue;
@@ -447,6 +464,13 @@ PRIVATE void elf_mk_dynsym(void) {
    /* Skip symbols form removed sections. */
    if (sym->sy_sec && !DCCSection_ISIMPORT(sym->sy_sec)) continue;
   }
+#if ELF_HAVE_NULLSYM
+  if (first) {
+   /* The first dynamic symbol (aka. index ZERO(0)) must be the NULL-symbol. */
+   DCCSection_TWrite(elf.elf_dynsym,&null_sym,sizeof(Elf(Sym)));
+   first = 0;
+  }
+#endif /* ELF_HAVE_NULLSYM */
   esym.st_name = DCCSection_DAllocMem(elf.elf_dynstr,
                                       sym->sy_name->k_name,
                                      (sym->sy_name->k_size+0)*sizeof(char),
@@ -491,6 +515,7 @@ PRIVATE void elf_mk_dynsym(void) {
               elf.elf_dynsym,
               elf.elf_dynstr,
              (dynid*2)/3);
+  /* XXX: Option to generate GNU_HASH sections instead of HASH section? */
  }
 }
 
@@ -805,8 +830,9 @@ elf_mk_dyndat(void) {
   has_relsec = 0;
   end = (iter = elf.elf_secv)+elf.elf_secc;
   for (; iter != end; ++iter) {
-   if (iter->si_grp == SECGP_RELOC)  has_relsec |= 1;
-   if (iter->si_grp == SECGP_RELOCA) has_relsec |= 2;
+   if (iter->si_grp == SECGP_RELOC) 
+    assert(secinfo_vsize(iter)),has_relsec |= 1;
+   if (iter->si_grp == SECGP_RELOCA) assert(secinfo_vsize(iter)),has_relsec |= 2;
    /* Check if there are relocations in non-writable sections. */
    if (iter->si_rel && !SECGP_ISW(iter->si_grp)) has_relsec |= 4;
   }
@@ -979,6 +1005,19 @@ PRIVATE void elf_mk_delsecunused(secgp_t min_gp) {
    /* Delete this section. */
    assert(elf.elf_secc);
    printf("Deleting: '%s'\n",iter->si_sec->sc_start.sy_name->k_name);
+   /* Must update dynamic symbol information! */
+   if (elf.elf_dynsym) {
+    Elf(Section) seci = (Elf(Section))(iter-elf.elf_secv);
+    Elf(Sym) *sym_iter,*sym_end;
+    sym_iter = (Elf(Sym) *)elf.elf_dynsym->sc_text.tb_begin;
+    sym_end  = (Elf(Sym) *)elf.elf_dynsym->sc_text.tb_end;
+    for (; sym_iter < sym_end; ++sym_iter) {
+     assertf(sym_iter->st_shndx != seci,
+             "Attempting to delete section '%s' with dynamic symbols",
+             iter->si_sec->sc_start.sy_name->k_name);
+     if (sym_iter->st_shndx > seci) --sym_iter->st_shndx;
+    }
+   }
    --end;
    memmove(iter,iter+1,(end-iter)*
            sizeof(struct secinfo));

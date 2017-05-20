@@ -14,18 +14,18 @@ Development on DCC started on <b>17.04.2017</b>, eversince then being the usual 
 
 ## Current state:
 Note that DCC is still fairly early in its development, meaning that anything can still change and that more features will be added eventually.
-  - Link against windows PE libraries (<b>\*.dll</b>).
-  - Output windows PE binary (<b>\*.exe</b>).
-  - Output linux ELF binary/library.
-  - Process and merge multiple source files.
+  - Link against windows PE binaries/libraries (<b>\*.dll</b>).
+  - Statically link against PE binaries (as is clone everything from a <b>\*.dll</b>)
+  - Dynamically/Statically link against ELF binaries/libraries/object files (<b>\*</b>, <b>\*.so</b>, <b>\*.o</b>)
+  - Output windows PE binary/library (<b>\*.exe</b>, <b>\*.dll</b>).
+  - Output linux ELF binary/library (<b>\*</b>, <b>\*.so</b>).
+  - Process and merge multiple source-/object files/static libraries.
   - Compiling DCC is only tested and working in Visual Studio.
   - Full STD-C compliance up to C99
  
 ## Planned features:
   - Full ELF target binary support.
   - Support for X86-64/AMD64 CPU architectures.
-  - Statically link against already-existing DLLs/EXEs/ELF binaries.
-  - Dynamically link against ELF shared binaries.
   - Compiling DCC under GCC (may already work; won't be too hard if it doesn't).
   - Compiling DCC on linux (most of the work's already there, but nothing's tested yet).
   - Compiling DCC with DCC (because every C compiler must be able to do that!).

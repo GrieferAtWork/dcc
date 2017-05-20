@@ -188,10 +188,10 @@ int main(int argc, char *argv[]) {
  if (argc) --argc,++argv;
  if unlikely(!argc) { result = 1; goto end_tpp; }
 
- //_CrtSetBreakAlloc(122);
+ //_CrtSetBreakAlloc(130);
  DCCLinker_AddSysPaths("a.exe");
 
- //add_staticlib("ntdll.dll"); /* TEST */
+ add_staticlib("sb.o"); /* TEST */
  //dump_symbols();
  if (!OK) goto end;
 

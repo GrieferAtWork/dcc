@@ -30,6 +30,7 @@
 #include <dcc/linker.h>
 
 #include "linker-elf.h"
+#include "x86_util.h"
 
 DCC_DECL_BEGIN
 
@@ -124,6 +125,51 @@ elf_gnuhash_findmaxsym(size_t *__restrict result,
 }
 
 
+PRIVATE void
+elf_loadsection(Elf(Shdr) const *__restrict hdr,
+                struct DCCTextBuf *__restrict text,
+                stream_t fd) {
+ uint8_t *data;
+ ptrdiff_t readsize;
+ assert(hdr);
+ assert(text);
+ data = (uint8_t *)DCC_Malloc(hdr->sh_size,0);
+ if unlikely(!data) goto empty;
+ s_seek(fd,hdr->sh_offset,SEEK_SET);
+ readsize = s_read(fd,data,hdr->sh_size);
+ if (readsize < 0) readsize = 0;
+ if (readsize == 0) { DCC_Free(data); goto empty; }
+ if ((size_t)readsize == (size_t)hdr->sh_size)
+  text->tb_begin = data;
+ else {
+  text->tb_begin = (uint8_t *)realloc(data,(size_t)readsize);
+  if likely(text->tb_begin)
+       data = text->tb_begin;
+  else text->tb_begin = data;
+ }
+ text->tb_end = data+(size_t)readsize;
+end: text->tb_max = text->tb_pos = text->tb_end;
+ return;
+empty: text->tb_begin = text->tb_end = NULL; goto end;
+}
+
+/* Find the DCC section of a given static ELF section index. */
+PRIVATE struct DCCSection *
+elf_findstaticsec(size_t index) {
+ struct DCCSection *sec;
+ DCCUnit_ENUMSEC(sec) if (sec->sc_merge == index) return sec;
+ return NULL;
+}
+
+PRIVATE symflag_t const elfvismap[] = {
+ /* [STV_DEFAULT  ] = */DCC_SYMFLAG_NONE,
+ /* [STV_INTERNAL ] = */DCC_SYMFLAG_INTERNAL,
+ /* [STV_HIDDEN   ] = */DCC_SYMFLAG_PRIVATE,
+ /* [STV_PROTECTED] = */DCC_SYMFLAG_PROTECTED,
+};
+
+
+
 INTERN int DCCUNIT_IMPORTCALL
 DCCUnit_LoadELF(struct DCCLibDef *__restrict def,
                 char const *__restrict file, stream_t fd) {
@@ -195,9 +241,7 @@ link_dynamic:
     phdr_size /= sizeof(Elf(Phdr));
     for (i = 0; i < ehdr.e_phnum; ++i) {
      s_seek(fd,ehdr.e_phoff+i*ehdr.e_phentsize,SEEK_SET);
-     read_error = s_read(fd,phdr_data+i,common_size);
-     if (read_error < 0) goto fail_dyn;
-     if ((size_t)read_error < common_size) { phdr_size = i; break; }
+     if (!s_reada(fd,phdr_data+i,common_size)) { phdr_size = i; break; }
     }
    }
    if unlikely(!phdr_size) goto nophdr;
@@ -387,8 +431,7 @@ no_dynhash:;
          symcnt /= sizeof(Elf(Sym));
          for (i = 0; i < symcnt; ++i) {
           s_seek(fd,symtab_off+i*dt_syment,SEEK_SET);
-          read_error = s_read(fd,&symtab[i],dt_syment);
-          if (read_error < (ptrdiff_t)dt_syment) { symcnt = i; break; }
+          if (!s_reada(fd,&symtab[i],dt_syment)) { symcnt = i; break; }
          }
         }
         /* Store the symbol table element count as its size. */
@@ -439,7 +482,8 @@ no_dynhash:;
           WARN(W_LIB_ELF_DYNAMIC_SYMNAME_CORRUPT,
               (size_t)(iter-cmd_dynv),file,
               (size_t)(sym_iter-symtab),
-              (size_t)symtab_siz);
+              (size_t)sym_iter->st_name,
+              (size_t)strtab_siz);
           continue;
          }
          sym = DCCUnit_NewSyms(symname,DCCLibDef_EXPFLAGS(def,flags));
@@ -478,6 +522,7 @@ fail_dyn:
 link_static:
  assert(link_statically);
  if (!ehdr.e_shnum) {
+nosechdr:
   /* If there are no section headers, we can't link statically.
    * TODO: Technically, we could load the 'PT_LOAD' program headers
    *       instead and assign auto-generated sections names to each,
@@ -501,11 +546,350 @@ link_static:
  assert(!unit.u_nsymc);
  assert(!unit.u_secc);
  assert(!unit.u_impc);
-
- /* TODO: Link static ELF binary. */
- result         = 0;
  def->ld_dynlib = NULL;
+ /* Link static ELF binary/object file. */
+ {
+  Elf(Shdr) *secv,*iter,*end;
+  size_t secc = ehdr.e_shnum;
+  ptrdiff_t read_error;
+  secv = (Elf(Shdr) *)DCC_Malloc(secc*sizeof(Elf(Shdr)),0);
+  if unlikely(!secv) goto fail;
+  if (ehdr.e_shentsize == sizeof(Elf(Shdr))) {
+   s_seek(fd,ehdr.e_shoff,SEEK_SET);
+   read_error = s_read(fd,secv,secc*sizeof(Elf(Shdr)));
+   if (read_error < 0) read_error = 0;
+   read_error /= sizeof(Elf(Shdr));
+   if (secc < (size_t)read_error)
+       secc = (size_t)read_error;
+  } else {
+   size_t i;
+   if (ehdr.e_shentsize < sizeof(Elf(Shdr)))
+       memset(secv,0,secc*sizeof(Elf(Shdr)));
+   for (i = 0; i < secc; ++i) {
+    s_seek(fd,ehdr.e_shoff+i*ehdr.e_shentsize,SEEK_SET);
+    if (!s_reada(fd,&secv[i],ehdr.e_shentsize)) { secc = i; break; }
+   }
+  }
+  if unlikely(!secc) { DCC_Free(secv); goto nosechdr; }
+  /* First step: Validate and find the '.shstrtab' section. */
+  if (ehdr.e_shstrndx >= secc) {
+   size_t i;
+   WARN(W_LIB_ELF_STATIC_UNMAPPED_SHSTR,file,ehdr.e_shstrndx,secc);
+   for (i = 0; i < secc; ++i) {
+    if (secv[i].sh_type == SHT_STRTAB) {
+     ehdr.e_shstrndx = (Elf(Half))i;
+     goto found_shstr;
+    }
+   }
+   WARN(W_LIB_ELF_STATIC_NOSHSTR,file);
+  } else if (secv[ehdr.e_shstrndx].sh_type != SHT_STRTAB) {
+   WARN(W_LIB_ELF_STATIC_WRONG_SHSTR_TYPE,
+        file,ehdr.e_shstrndx,
+       (unsigned long)SHT_STRTAB,
+       (unsigned long)secv[ehdr.e_shstrndx].sh_type);
+  }
+found_shstr:
+   /* Load the section name section so we can figure out what everything's called!
+    * Only once we did that, can we start creating the sections. */
+  {
+   struct DCCTextBuf shstr_text;
+   elf_loadsection(&secv[ehdr.e_shstrndx],&shstr_text,fd);
+   /* With the section names loaded, we can generate all the section! */
+   end = (iter = secv)+secc;
+#define SHSTR(off) (char *)(shstr_text.tb_begin+(off) >= shstr_text.tb_end ? NULL : shstr_text.tb_begin+(off))
+   for (; iter != end; ++iter) {
+    char *name; struct DCCSection *sec;
+    symflag_t secflags = DCC_SYMFLAG_NONE;
+    /* Don't load sections not marked as ALLOC. */
+    switch (iter->sh_type) {
+    case SHT_NULL        : /* Don't load these sections. */
+    case SHT_SYMTAB      :
+    case SHT_STRTAB      :
+    case SHT_RELA        :
+    case SHT_HASH        :
+    case SHT_DYNAMIC     :
+    case SHT_REL         :
+    case SHT_DYNSYM      :
+    case SHT_GROUP       :
+    case SHT_SYMTAB_SHNDX: continue;
+    default:
+     if (iter->sh_type >= SHT_LOOS &&
+         iter->sh_type <= SHT_HIOS) continue;
+     break; /* Skip any other section. */
+    }
+    name = SHSTR(iter->sh_name);
+    if unlikely(!name) {
+     WARN(W_LIB_ELF_STATIC_SECNAME_CORRUPT,
+         (size_t)(iter-secv),file,(size_t)iter->sh_name,
+         (size_t)(shstr_text.tb_end-shstr_text.tb_begin));
+     continue;
+    }
+    if (iter->sh_flags&SHF_ALLOC)     secflags |= DCC_SYMFLAG_SEC_R;
+    if (iter->sh_flags&SHF_WRITE)     secflags |= DCC_SYMFLAG_SEC_W;
+    if (iter->sh_flags&SHF_EXECINSTR) secflags |= DCC_SYMFLAG_SEC_X;
+    if (iter->sh_flags&SHF_MERGE)     secflags |= DCC_SYMFLAG_SEC_M;
+    sec = DCCUnit_NewSecs(name,secflags);
+    if unlikely(!sec) continue;
+    if (sec->sc_text.tb_begin != sec->sc_text.tb_end)
+        WARN(W_LIB_ELF_STATIC_SECNAME_REUSED,file,name);
+    free(sec->sc_text.tb_begin);
+    elf_loadsection(iter,&sec->sc_text,fd);
+    sec->sc_align = iter->sh_addralign;
+    sec->sc_base  = iter->sh_addr;
+    /* We (ab-)use 'sc_merge' to save the header index of a given section. */
+    sec->sc_merge = (target_ptr_t)(iter-secv);
+   }
+   /* Clean up section names. */
+   free(shstr_text.tb_begin);
+#undef SHSTR
+  }
+  {
+   /* Hacky way to re-use symbol section headers
+    * for tracking all DCC symbols contained. */
+#define SEC_SYMVEC(shdr) (*(struct DCCSym ***)&(shdr)->sh_addr)
+#define SEC_SYMCNT(shdr) (*(size_t *)&(shdr)->sh_size)
+   /* All sections of interest have been loaded.
+    * Now, we must load all symbol tables. */
+   for (iter = secv; iter != end; ++iter) {
+    Elf(Sym) *symvec,*sym_iter,*sym_end; size_t symcnt;
+    struct DCCSym **symdef; struct DCCTextBuf symstr_text;
+    if (iter->sh_type != SHT_SYMTAB) continue;
+    if (!iter->sh_entsize) iter->sh_entsize = sizeof(Elf(Sym));
+    symcnt = iter->sh_size/iter->sh_entsize;
+    if unlikely(!symcnt) {null_symvec: symvec = NULL; goto done_symvec; }
+    symvec = (Elf(Sym) *)DCC_Malloc(symcnt*sizeof(Elf(Sym)),0);
+    if (iter->sh_entsize == sizeof(Elf(Sym))) {
+     symcnt *= sizeof(Elf(Sym));
+     read_error = s_read(fd,symvec,symcnt);
+     if (read_error < 0) read_error = 0;
+     if (symcnt > (size_t)read_error)
+         symcnt = (size_t)read_error;
+     symcnt /= sizeof(Elf(Sym));
+    } else {
+     size_t i;
+     if (iter->sh_entsize < sizeof(Elf(Sym)))
+         memset(symvec,0,symcnt*sizeof(Elf(Sym)));
+     for (i = 0; i < symcnt; ++i) {
+      if (!s_reada(fd,&symvec[i],iter->sh_entsize)) { symcnt = i; break; }
+     }
+    }
+    if unlikely(!symcnt) {free_null_symvec: DCC_Free(symvec); goto null_symvec; }
+    /* Load symbol names from the linked section into 'symstr_text' */
+    if (iter->sh_link >= secc) {
+     WARN(W_LIB_ELF_STATIC_SYMTAB_INVSTRID,file,
+         (size_t)iter->sh_link,(size_t)(iter-secv),secc);
+     goto free_null_symvec;
+    }
+    elf_loadsection(&secv[iter->sh_link],&symstr_text,fd);
+#define SYMSTR(off) (char *)(symstr_text.tb_begin+(off) >= symstr_text.tb_end ? NULL : symstr_text.tb_begin+(off))
 
+    /* All symbols and string have been read. - Time to iterate them! */
+    symdef = (struct DCCSym **)symvec;
+    sym_end = (sym_iter = symvec)+symcnt;
+    for (; sym_iter != sym_end; ++sym_iter,++symdef) {
+     char *name; struct DCCSection *sec;
+     symflag_t symflags; struct DCCSym *sym;
+     switch (ELF(ST_TYPE)(sym_iter->st_info)) {
+      /* Ignore these symbol types (DCC doesn't use them; yet?) */
+     case STT_NOTYPE:
+     case STT_FILE:
+skip_symdef:
+      *symdef = NULL;
+      continue;
+     case STT_SECTION: /* Special handling for section symbols. */
+      if ((sec = elf_findstaticsec(sym_iter->st_shndx)) != NULL) { *symdef = &sec->sc_start; continue; }
+      break;
+     default: break;
+     }
+     name = SYMSTR(sym_iter->st_name);
+     if unlikely(!name) {
+      WARN(W_LIB_ELF_STATIC_SYMNAME_CORRUPT,
+          (size_t)(sym_iter-symvec),file,(size_t)sym_iter->st_name,
+          (size_t)(symstr_text.tb_end-symstr_text.tb_begin));
+      goto skip_symdef;
+     }
+     /* Don't warn is this symbol ends up unused. */
+     symflags = DCC_SYMFLAG_UNUSED;
+     symflags |= elfvismap[ELF(ST_VISIBILITY)(sym_iter->st_other)];
+     switch (ELF(ST_BIND)(sym_iter->st_info)) {
+     case STB_LOCAL: symflags |= DCC_SYMFLAG_STATIC; break;
+     case STB_WEAK : symflags |= DCC_SYMFLAG_WEAK; break;
+     default       : break;
+     }
+     /* TODO: What about alias symbols?
+      * ELF doesn't appear to be able to represent these, meaning
+      * that when the times comes for DCC to generate object files,
+      * I'll have to create an extension, or a new format all-together (which I don't want to):
+      * 
+      * source_a.c:
+      * >> int add(int x, int y) {
+      * >>     return x+y;
+      * >> }
+      * 
+      * source_b.c:
+      * >> [[alias("add")]] int my_add(int x, int y);
+      * >> 
+      * >> int _start() {
+      * >>     int z = my_add(10,20);
+      * >>     return z;
+      * >> }
+      * 
+      * $dcc -c source_a.c
+      * $dcc -c source_b.c # GCC fails to compile this, but DCC's supposed to accomplish this
+      * $dcc -o app source_a.o source_b.o
+      */
+     sym = DCCUnit_NewSyms(name,symflags);
+     if unlikely(!sym) goto skip_symdef;
+     if (sym_iter->st_shndx == SHN_ABS) sec = &DCCSection_Abs;
+     else sec = elf_findstaticsec(sym_iter->st_shndx);
+     if (sec) DCCSym_Define(sym,sec,sym_iter->st_value,sym_iter->st_size);
+     *symdef = sym;
+    }
+    assert(symdef <= (struct DCCSym **)symvec+symcnt);
+    symcnt = (size_t)(symdef-(struct DCCSym **)symvec);
+    if unlikely(!symcnt) goto free_null_symvec;
+    free(symstr_text.tb_begin);
+#undef SYMSTR
+done_symvec:
+    SEC_SYMVEC(iter) = (struct DCCSym **)symvec;
+    SEC_SYMCNT(iter) = symcnt;
+   }
+   /* Load relocations. Symbols can be addressed by-index
+    * through 'SEC_SYMVEC' of the associated section. */
+   for (iter = secv; iter != end; ++iter) {
+    struct DCCSection *relo_section;
+    struct DCCTextBuf relo_text;
+    struct DCCSym **relsymv;
+    size_t          relsymc,relcnt;
+    target_ptr_t    relo_sec_size;
+    Elf(Rel) *rel_iter,*rel_end;
+    struct DCCRel *dcc_rel;
+    /* TODO: What about SHT_RELA? */
+    if (iter->sh_type != SHT_REL) continue;
+    if (iter->sh_info >= secc) {
+     WARN(W_LIB_ELF_STATIC_REL_INVSECID,file,
+         (size_t)iter->sh_info,
+         (size_t)(iter-secv),secc);
+    }
+    relo_section = elf_findstaticsec(iter->sh_info);
+    if (!relo_section) {
+     if (iter->sh_info < secc) {
+      WARN(W_LIB_ELF_STATIC_REL_UNUSECID,file,
+          (size_t)iter->sh_info,
+          (size_t)(iter-secv));
+     }
+     continue;
+    }
+    if (iter->sh_link >= secc) {
+     WARN(W_LIB_ELF_STATIC_REL_INVSYMID,file,
+         (size_t)iter->sh_link,
+         (size_t)(iter-secv),secc);
+     continue;
+    }
+    if (secv[iter->sh_link].sh_type != SHT_SYMTAB) {
+     WARN(W_LIB_ELF_STATIC_REL_NOSYMTAB,file,
+         (size_t)iter->sh_link,
+         (size_t)(iter-secv));
+     continue;
+    }
+    /* Lookup the symbol vector of the associated symbol section. */
+    relsymv = SEC_SYMVEC(&secv[iter->sh_link]);
+    relsymc = SEC_SYMCNT(&secv[iter->sh_link]);
+    /* Load the relocation text. */
+    if (iter->sh_entsize == sizeof(Elf(Rel))) {
+     elf_loadsection(iter,&relo_text,fd);
+    } else if (!iter->sh_entsize) {
+     continue; /* TODO: Warning? */
+    } else {
+     size_t i;
+     /* Adjust relocation data in 'relo_text'. */
+     relcnt = iter->sh_size/iter->sh_entsize;
+     relo_text.tb_begin = (uint8_t *)DCC_Malloc(relcnt*sizeof(Elf(Rel)),0);
+     if unlikely(!relo_text.tb_begin) {
+      memset(&relo_text,0,sizeof(struct DCCTextBuf));
+      goto reloc_loaded;
+     }
+     for (i = 0; i < relcnt; ++i) {
+      s_seek(fd,iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
+      if (!s_reada(fd,relo_text.tb_begin+
+                  (i*sizeof(Elf(Rel))),
+                   sizeof(Elf(Rel)))) break;
+     }
+     if (i != relcnt) {
+      relo_text.tb_end = (uint8_t *)DCC_Realloc(relo_text.tb_begin,
+                                                i*sizeof(Elf(Rel)),0);
+      if likely(relo_text.tb_end) relo_text.tb_begin = relo_text.tb_end;
+     }
+     relo_text.tb_max = relo_text.tb_pos =
+     relo_text.tb_end = relo_text.tb_begin+i;
+    }
+reloc_loaded:
+    /* At this point, we know all we need to load the relocations:
+     *  - The ELF-compatible relocation text is stored in 'relo_text'
+     *  - The symbol vector referred to is stored in 'relsymv|relsymc'
+     *  - The section we're supposed to write the relocations to is stored in 'relo_section' */
+    relcnt  = (size_t)(relo_text.tb_end-relo_text.tb_begin);
+    relcnt /= sizeof(Elf(Rel));
+    relo_sec_size = (target_ptr_t)(relo_section->sc_text.tb_max-
+                                   relo_section->sc_text.tb_begin);
+    if (relcnt &&
+       (dcc_rel = (struct DCCRel *)DCCSection_Allocrel(relo_section,relcnt)) != NULL) {
+     rel_end = (rel_iter = (Elf(Rel) *)relo_text.tb_begin)+relcnt;
+     for (; rel_iter != rel_end; ++rel_iter) {
+      rel_t relty; uint32_t symid; struct DCCSym *rsym;
+      if (rel_iter->r_offset >= relo_sec_size) {
+invrelo: /* TODO: Warning: Invalid relocation */
+       continue;
+      }
+      relty = ELF(R_TYPE)(rel_iter->r_info);
+      symid = ELF(R_SYM)(rel_iter->r_info);
+      rsym = symid >= relsymc ? NULL : relsymv[symid];
+      dcc_rel->r_addr = rel_iter->r_offset;
+      if unlikely(!rsym) {
+       if (relty != DCC_R_RELATIVE) goto invrelo;
+       dcc_rel->r_type = DCC_R_RELATIVE;
+       dcc_rel->r_sym  = &DCCSection_Abs.sc_start;
+      } else {
+       dcc_rel->r_type = relty;
+       dcc_rel->r_sym  = rsym;
+      }
+      DCCSym_Incref(dcc_rel->r_sym);
+      ++dcc_rel;
+     }
+     /* Fix unused (aka. invalid) relocations. */
+     relo_section->sc_relc = (size_t)(dcc_rel-relo_section->sc_relv);
+    }
+    free(relo_text.tb_begin);
+   }
+   /* Free all symbol vectors previously allocated. */
+   for (iter = secv; iter != end; ++iter) {
+    if (iter->sh_type != SHT_SYMTAB) continue;
+    free(SEC_SYMVEC(iter));
+   }
+#undef SEC_SYMVEC
+#undef SEC_SYMCNT
+  }
+  DCC_Free(secv);
+ }
+#if DCC_LIBFORMAT_STA_ELF
+ if (ehdr.e_type != ET_REL) {
+  struct DCCSection *sec;
+  /* Linking against non-relocatable binary.
+   * NOTE: If there were no relocations at all, we wouldn't have gotten here.
+   *       This means that the binary is relocatable ('-fPIC'), but only as a whole,
+   *       meaning that we must reverse engineer inter-section DISP relocations. */
+  DCCUnit_ENUMSEC(sec) {
+   if (sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_X)
+       x86_mkrel_textdisp(sec,0); /* ELF doesn't use whole-image base addresses! */
+  }
+  /* With all relocations loaded, we can now
+   * delete the section base addresses! */
+  DCCUnit_ENUMSEC(sec) {
+   sec->sc_start.sy_flags &= ~(DCC_SYMFLAG_SEC_FIXED);
+   sec->sc_base            = 0;
+  }
+ }
+#endif
 
 end: return result;
 nodyn: not_dynamic = 1;

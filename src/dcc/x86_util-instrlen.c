@@ -20,13 +20,15 @@
 #define GUARD_DCC_X86_UTIL_INSTRLEN_C 1
 
 #include <dcc/common.h>
-#include <dcc/target.h>
 
 #include "x86_util.h"
 
 #if DCC_CONFIG_NEED_X86_INSTRLEN
+#include <dcc/target.h>
+#include <dcc/unit.h>
 
 #include <stdio.h>
+#include <string.h>
 
 DCC_DECL_BEGIN
 
@@ -620,6 +622,143 @@ modrm_fetched:
  default: goto done_p1;   /* one byte offset */
  }
 }
+
+
+INTERN struct DCCSection *
+dcc_getsec(target_ptr_t rva) {
+ struct DCCSection *sec;
+ DCCUnit_ENUMSEC(sec) {
+  if (rva >= sec->sc_merge &&
+      rva <= sec->sc_merge+
+      DCCSection_VSIZE(sec)) return sec;
+ }
+ return NULL;
+}
+
+
+#define NOP_TRAIL_SIZE 8
+INTERN void
+x86_mkrel_textdisp(struct DCCSection *__restrict text_section,
+                   target_ptr_t image_base) {
+ uint8_t *begin,*iter,*trail,*dispaddr;
+ ptrdiff_t oldpos,oldmax; size_t textend; rel_t type;
+ assert(text_section);
+ assert(text_section->sc_start.sy_flags&DCC_SYMFLAG_SEC_X);
+ oldmax = text_section->sc_text.tb_max-text_section->sc_text.tb_begin;
+ if unlikely(!oldmax) return; /* Skip empty sections. */
+ textend = text_section->sc_base+oldmax;
+ oldpos = text_section->sc_text.tb_pos-text_section->sc_text.tb_begin;
+ text_section->sc_text.tb_pos = text_section->sc_text.tb_max;
+ trail = (uint8_t *)DCCSection_TAlloc(text_section,NOP_TRAIL_SIZE);
+ if unlikely(!trail) return;
+ /* Allocate a small trail of nop-bytes, ensuring that the
+  * code below will not crash because of invalid input. */
+ memset(trail,0x90,NOP_TRAIL_SIZE);
+ iter = begin = text_section->sc_text.tb_begin;
+#if INSTRLEN_DEBUG
+ instrlen_offset = text_section->sc_base+image_base;
+ instrlen_base   = begin;
+#endif /* INSTRLEN_DEBUG */
+ while (iter < trail) {
+  uint8_t *next = (uint8_t *)x86_instrlen(iter);
+  assert(next > iter);
+#if INSTRLEN_DEBUG
+  printf("OP: ");
+  for (uint8_t *p = iter; p < next; ++p) printf("%.2x",*p);
+  printf("\n");
+#endif /* INSTRLEN_DEBUG */
+  if (iter[0] == 0xeb ||
+     (iter[0] >= 0x70 && iter[0] <= 0x7f)) {
+   /* jmp/jcc rel8 */
+   type     = DCC_R_DISP_8;
+   dispaddr = iter+1;
+   goto gendisp;
+  } else if (iter[0] == 0xe8 || /* call rel32 */
+             iter[0] == 0xe9 || /* jmp rel32 */
+             iter[0] == 0xa1 || /* mov rel32, %eax */
+             iter[0] == 0xe3) { /* mov %eax, rel32 */
+   type     = DCC_R_DISP_32;
+   dispaddr = iter+1;
+   goto gendisp;
+  } else if (iter[0] == 0x0f && iter[1] >= 0x80 && iter[1] <= 0x8f) {
+   /* jCC rel32 */
+   type     = DCC_R_DISP_32;
+   dispaddr = iter+2;
+   goto gendisp;
+  } else if (iter[0] == 0x66) {
+   /* 16-bit prefix. */
+   if (iter[1] == 0xe8 || /* call rel16 */
+       iter[1] == 0xe9 || /* jmp rel16 */
+       iter[1] == 0xa1 || /* mov rel16, %ax */
+       iter[1] == 0xa3) { /* mov %ax, rel16 */
+    type     = DCC_R_DISP_16;
+    dispaddr = iter+2;
+    goto gendisp;
+   } else if (iter[1] == 0x0f && iter[2] >= 0x80 && iter[2] <= 0x8f) {
+    /* jCC rel16 */
+    type     = DCC_R_DISP_16;
+    dispaddr = iter+3;
+    goto gendisp;
+   } else if (iter[1] == 0xe3) {
+    /* jcxz rel8 */
+    type     = DCC_R_DISP_8;
+    dispaddr = iter+2;
+    goto gendisp;
+   }
+  } else if (iter[0] == 0xe3 || /* jecxz rel8 */
+             iter[0] == 0xe0 || /* loopne rel8 / loopnz rel8 */
+             iter[0] == 0xe1 || /* loope rel8 / loopz rel8 */
+             iter[0] == 0xe2 || /* loop rel8 */
+             iter[0] == 0xa0 || /* mov rel8, %al */
+             iter[0] == 0xa2) { /* mov %al, rel8 */
+   type     = DCC_R_DISP_8;
+   dispaddr = iter+1;
+   goto gendisp;
+  }
+  goto adv;
+  {
+   target_off_t disp_offset;
+   target_ptr_t disp_target;
+   struct DCCSection *disp_target_sec;
+   uint8_t *instr_end;
+gendisp:
+   /* We've found a DISP instruction. - Now we must figure out where it leads to. */
+   switch (type) {
+   case DCC_R_DISP_8 : disp_offset = *(int8_t  *)dispaddr; instr_end = dispaddr+1; break;
+   case DCC_R_DISP_16: disp_offset = *(int16_t *)dispaddr; instr_end = dispaddr+2; break;
+   default           : disp_offset = *(int32_t *)dispaddr; instr_end = dispaddr+4; break;
+   }
+   disp_target      = (target_ptr_t)(instr_end-begin)+disp_offset;
+   disp_target     += text_section->sc_base;
+   if (disp_target <= textend) goto adv; /* No need for relocations into the same section. */
+   if ((disp_target_sec  = dcc_getsec(disp_target)) == NULL) {
+    WARN(W_STA_PE_UNMAPPED_DISP_TARGET,
+        (target_ptr_t)(image_base+((iter-begin)+text_section->sc_base)),
+        (target_ptr_t)(image_base+disp_target));
+    goto adv;
+   }
+   if (disp_target_sec == text_section) goto adv; /* *ditto* */
+   /* Generate a DISP relocation. */
+   DCCSection_Putrel(text_section,(target_ptr_t)(dispaddr-begin),type,
+                    &disp_target_sec->sc_start);
+   /* Adjust the old text address:
+    * >> *dispaddr -= text_section->sc_base;
+    * >> *dispaddr += disp_target_sec->sc_base;
+    */
+   switch (type) {
+   case DCC_R_DISP_8 : *(int8_t  *)dispaddr += (int8_t )(disp_target_sec->sc_base-text_section->sc_base); break;
+   case DCC_R_DISP_16: *(int16_t *)dispaddr += (int16_t)(disp_target_sec->sc_base-text_section->sc_base); break;
+   default           : *(int32_t *)dispaddr += (int32_t)(disp_target_sec->sc_base-text_section->sc_base); break;
+   }
+  }
+adv:
+  iter = next;
+ }
+ memset(trail,0,NOP_TRAIL_SIZE);
+ text_section->sc_text.tb_pos = text_section->sc_text.tb_begin+oldpos;
+ text_section->sc_text.tb_max = text_section->sc_text.tb_begin+oldmax;
+}
+
 
 DCC_DECL_END
 #endif /* DCC_CONFIG_NEED_X86_INSTRLEN */
