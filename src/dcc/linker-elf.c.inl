@@ -782,6 +782,15 @@ elf_mk_dyndat(void) {
     elf_mk_dtd(DT_NEEDED,depnam);
    }
   }
+  if (linker.l_soname) {
+   /* Allocate a custom entry for 'DT_SONAME'. */
+   target_ptr_t soname = DCCSection_DAllocMem(elf.elf_dynstr,
+                                              linker.l_soname->s_text,
+                                             (linker.l_soname->s_size+0)*sizeof(char),
+                                             (linker.l_soname->s_size+1)*sizeof(char),
+                                              1,0);
+   elf_mk_dtd(DT_SONAME,soname);
+  }
   elf_clr_unused(&elf.elf_dynstr);
   if (elf.elf_hash)   elf_mk_dt(DT_HASH);
   if (elf.elf_dynsym) elf_mk_dt(DT_SYMTAB),
@@ -856,6 +865,7 @@ elf_mk_dynfll(void) {
    iter->d_un.d_ptr = sizeof(Elf(Rel));
    break;
 
+  case DT_SONAME:
   case DT_FLAGS:
   case DT_TEXTREL:
   case DT_NEEDED:

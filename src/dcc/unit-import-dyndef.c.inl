@@ -95,7 +95,9 @@ DCCUnit_DynImportDEF2(struct DCCLibDef *__restrict def,
      /* Figure out the library name described by the file. */
      lib_end = line+strlen(line);
      while (lib_end != line && tpp_isspace(lib_end[-1])) --lib_end;
-     lib_name = TPPLexer_LookupKeyword(line,(size_t)(lib_end-line),1);
+     if (def->ld_flags&DCC_LIBDEF_FLAG_USERNAME)
+          lib_name = TPPLexer_LookupKeyword(def->ld_name,def->ld_size,1);
+     else lib_name = TPPLexer_LookupKeyword(line,(size_t)(lib_end-line),1);
      if unlikely(!lib_name) goto done;
      def->ld_dynlib = ressec = DCCUnit_NewSec(lib_name,DCC_SYMFLAG_SEC_ISIMPORT);
      if unlikely(!ressec) goto done;

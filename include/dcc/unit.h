@@ -836,6 +836,10 @@ DCCFUN struct DCCSection *DCCUnit_NewSecs(char const *__restrict name, DCC(symfl
  * but instead use the given filename as only option. */
 #define DCC_LIBDEF_FLAG_NOSEARCHSTD 0x00000008
 
+/* Always name the library after the given user-name (def->ld_name).
+ * NOTE: This flag has no effect when linking is performed statically. */
+#define DCC_LIBDEF_FLAG_USERNAME 0x00000010
+
 struct DCCLibDef {
  uint32_t           ld_flags; /*< Loader flags (A set of 'DCC_LIBDEF_FLAG_*'). */
  char const        *ld_name;  /*< [0..ld_size] Library fallback (Used when the library doesn't specify an explicit name) */

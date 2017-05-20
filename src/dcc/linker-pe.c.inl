@@ -600,10 +600,10 @@ pe_mk_exptab(struct DCCSection *__restrict thunk) {
  DWORD thunk_base;
  PIMAGE_EXPORT_DIRECTORY expdir_data;
  target_ptr_t            expdir_addr;
- target_ptr_t dll_name;  /* Address of the DLL name. */
- target_ptr_t func_addr; /* Vector of DWORD active as virtual-pointers to entry points. */
- target_ptr_t name_addr; /* Vector of DWORD acting as virtual-pointers to function name strings. */
- target_ptr_t ord_addr;  /* Vector of WORD identifying function ordinals used as import hints. */
+ target_ptr_t dll_name = 0; /* Address of the DLL name. */
+ target_ptr_t func_addr;    /* Vector of DWORD active as virtual-pointers to entry points. */
+ target_ptr_t name_addr;    /* Vector of DWORD acting as virtual-pointers to function name strings. */
+ target_ptr_t ord_addr;     /* Vector of WORD identifying function ordinals used as import hints. */
  assert(thunk);
  /* generate the export directory */
  thunk_base = thunk->sc_base-pe.pe_imgbase;
@@ -613,14 +613,13 @@ pe_mk_exptab(struct DCCSection *__restrict thunk) {
  func_addr   = DCCSection_DAlloc(thunk,pe.pe_exportc*sizeof(DWORD),sizeof(DWORD),0);
  name_addr   = DCCSection_DAlloc(thunk,pe.pe_exportc*sizeof(DWORD),sizeof(DWORD),0);
  ord_addr    = DCCSection_DAlloc(thunk,pe.pe_exportc*sizeof(WORD),sizeof(WORD),0);
- { /* Allocate memory for the module name. */
-   /* TODO: make dependent on output filename, over-writable by compiler settings. */
-   char const *module_name = "DCC_MODULE";
-   size_t      module_size = strlen(module_name);
-   dll_name = DCCSection_DAllocMem(thunk,module_name,
-                                  (module_size+0)*sizeof(char),
-                                  (module_size+1)*sizeof(char),
-                                   1,0);
+ if (linker.l_soname) {
+  /* Allocate memory for the module name. */
+  dll_name = DCCSection_DAllocMem(thunk,linker.l_soname->s_text,
+                                 (linker.l_soname->s_size+0)*sizeof(char),
+                                 (linker.l_soname->s_size+1)*sizeof(char),
+                                  1,0);
+  dll_name += thunk_base;
  }
  if unlikely(!DCCSection_GetText(thunk,func_addr,pe.pe_exportc*sizeof(DWORD)) ||
              !DCCSection_GetText(thunk,name_addr,pe.pe_exportc*sizeof(DWORD)) ||
@@ -628,9 +627,9 @@ pe_mk_exptab(struct DCCSection *__restrict thunk) {
  expdir_data = (PIMAGE_EXPORT_DIRECTORY)DCCSection_GetText(thunk,expdir_addr,
                                                            sizeof(IMAGE_EXPORT_DIRECTORY));
  if unlikely(!expdir_data) goto end;
- expdir_data->Characteristics        = 0;
- expdir_data->Name                   = dll_name+thunk_base;
- expdir_data->Base                   = 1;
+ expdir_data->Characteristics        = 0; /* ??? */
+ expdir_data->Name                   = dll_name;
+ expdir_data->Base                   = 1; /* ??? */
  expdir_data->NumberOfFunctions      = (DWORD)pe.pe_exportc;
  expdir_data->NumberOfNames          = (DWORD)pe.pe_exportc;
  expdir_data->AddressOfFunctions     = func_addr+thunk_base;

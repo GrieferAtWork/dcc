@@ -403,7 +403,7 @@ no_dynhash:;
         Elf(Sym) *sym_iter,*sym_end;
         /* OK! We've got the symbol table in 'symtab' and its element count in 'symtab_siz'.
          * And we've got the string table in 'strtab' and its size in bytes in 'strtab_siz'. */
-        if (dt_soname) {
+        if (dt_soname && !(def->ld_flags&DCC_LIBDEF_FLAG_USERNAME)) {
          /* Use a custom SO-name. */
          char *cname = STR(dt_soname);
          if (cname && *cname) {
@@ -464,7 +464,6 @@ next_dynhdr:
      DCC_Free(dynvec);
      dynvec = NULL;
     }
-    //goto fail_dyn; /* TODO: Remove me */
    }
    /* Make sure at least one non-empty dynamic header was found. */
    if (!def->ld_dynlib) goto nodynhdr;

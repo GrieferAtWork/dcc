@@ -55,8 +55,9 @@ struct DCCLibPaths {
 };
 
 struct DCCLinker {
- DCC(lflag_t)       l_flags; /*< Current linker-related flags. */
- struct DCCLibPaths l_paths; /*< List of effective library paths (may be empty). */
+ DCC(lflag_t)       l_flags;  /*< Current linker-related flags. */
+ struct DCCLibPaths l_paths;  /*< List of effective library paths (may be empty). */
+ struct TPPString  *l_soname; /*< [0..1] When non-NULL, a module name included in the binary (if apropriate). */
 };
 
 DCCDAT struct DCCLinker DCCLinker_Current; /* The current linker. */

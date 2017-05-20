@@ -198,8 +198,24 @@ found_section:
   exptab_size = (DWORD)read_error;
   if (!export_dir.NumberOfNames) { WARN(W_LIB_PE_EMPTY_EXPORT_TABLE,file); goto end; }
   /* Here we go! */
-  ressec = DCCUnit_NewSecs(file,DCC_SYMFLAG_SEC_ISIMPORT);
-  if unlikely(!ressec) goto end;
+  {
+   char const *used_libname = def->ld_name;
+   size_t      used_libsize = def->ld_size;
+   char       *mall_libname = NULL;
+   struct TPPKeyword *libkwd;
+   if (export_dir.Name && !(def->ld_flags&DCC_LIBDEF_FLAG_USERNAME)) {
+    size_t z_libsize; /* Use the name specified inside the library. */
+    s_seek(fd,export_dir.Name-export_file_base,SEEK_SET);
+    mall_libname = pe_readzstring(fd,&z_libsize);
+    if (mall_libname) used_libname = mall_libname,
+                      used_libsize = z_libsize;
+   }
+   libkwd = TPPLexer_LookupKeyword(used_libname,used_libsize,1);
+   free(mall_libname);
+   if unlikely(!libkwd) goto end;
+   ressec = DCCUnit_NewSec(libkwd,DCC_SYMFLAG_SEC_ISIMPORT);
+   if unlikely(!ressec) goto end;
+  }
   def->ld_dynlib = ressec;
 
   namepptr = export_dir.AddressOfNames-export_file_base;

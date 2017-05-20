@@ -191,7 +191,7 @@ int main(int argc, char *argv[]) {
  //_CrtSetBreakAlloc(122);
  DCCLinker_AddSysPaths("a.exe");
 
- add_staticlib("ntdll.dll"); /* TEST */
+ //add_staticlib("ntdll.dll"); /* TEST */
  //dump_symbols();
  if (!OK) goto end;
 
