@@ -114,6 +114,7 @@ static void add_staticlib(char const *filename) {
    def.ld_impsymfo = (symflag_t) 0;
    DCCUnit_Import(&def);
  }
+ if (!OK) { if (!first) DCCUnit_Quit(&old_unit); return; }
 
  if (first) first = 0;
  else DCCUnit_Merge(&old_unit),
@@ -160,7 +161,7 @@ static void add_c_source(char *filename) {
  unit.u_data = DCCUnit_NewSecs(".data",DCC_SYMFLAG_SEC_R);
  unit.u_bss  = DCCUnit_NewSecs(".bss",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W);
  unit.u_str  = DCCUnit_NewSecs(".string",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_M);
- if (!OK) return;
+ if (!OK) { if (!first) DCCUnit_Quit(&old_unit); return; }
 
  DCCUnit_SetCurr(unit.u_text);
  DCCParse_AllGlobal();
@@ -272,9 +273,9 @@ end:
 
  DCCCompiler_Quit(&compiler);
  DCCUnit_Quit(&unit);
- DCCUnit_ClearCache();
 end_tpp:
  DCCLinker_Quit(&linker);
+ DCCUnit_ClearCache();
  TPP_FINALIZE();
 #ifdef _CRTDBG_MAP_ALLOC
  _CrtDumpMemoryLeaks();

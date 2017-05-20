@@ -58,6 +58,11 @@ LOCAL void DCCUnit_RehashSymbols(size_t newsize);
 LOCAL void DCCUnit_RehashSymbols2(struct DCCUnit *__restrict self, size_t newsize);
 LOCAL void DCCSym_ClearDef(struct DCCSym *__restrict self, int warn);
 
+/* When non-zero, unused symbols don't delete their data.
+ * >> Used to speed up unit deconstruction and prevent confusing
+ *    warnings about unused symbols when DCC is shutting down. */
+PRIVATE int dcc_no_recursive_symdel = 0;
+
 #if DCC_DEBUG
 #define DCCSym_Alloc()     (struct DCCSym *)calloc(1,sizeof(struct DCCSym))
 #define DCCSym_Free(self)  free(self)
@@ -502,7 +507,7 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
   if (self->sy_alias) {
    DCCSym_Decref(self->sy_alias);
   } else if (self->sy_sec) {
-   if (self->sy_size) {
+   if (self->sy_size && !dcc_no_recursive_symdel) {
     if (!(self->sy_flags&DCC_SYMFLAG_UNUSED) &&
           self->sy_name != &TPPKeyword_Empty) {
      /* Emit a warning about removing unused symbols. */
@@ -1796,7 +1801,13 @@ DCCUnit_Init(struct DCCUnit *__restrict self) {
 }
 PUBLIC void
 DCCUnit_Quit(struct DCCUnit *__restrict self) {
+ int old_nosymdel;
  assert(self);
+ /* Secret hint to prevent recursive
+  * unused symbol deconstruction. */
+ old_nosymdel = dcc_no_recursive_symdel;
+ dcc_no_recursive_symdel = 1;
+
  /* Delete unnamed symbols. */
  { struct DCCSym *iter,*next;
    assert((unit.u_nsymc != 0) ==
@@ -1833,6 +1844,9 @@ DCCUnit_Quit(struct DCCUnit *__restrict self) {
  assert(!self->u_impc);
  assert(!self->u_secs);
  assert(!self->u_imps);
+
+ /* Restore the old symbol deletion hint. */
+ dcc_no_recursive_symdel = old_nosymdel;
 }
 
 void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym) {
