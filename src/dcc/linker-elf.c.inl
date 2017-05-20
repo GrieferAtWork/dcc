@@ -341,7 +341,7 @@ PRIVATE void elf_mk_interp(void) {
                       1,0);
 }
 
-static uint8_t vismap[4] = {
+PRIVATE uint8_t const vismap[4] = {
  /* [DCC_SYMFLAG_NONE     ] = */STV_DEFAULT,
  /* [DCC_SYMFLAG_PROTECTED] = */STV_PROTECTED,
  /* [DCC_SYMFLAG_PRIVATE  ] = */STV_HIDDEN,
@@ -796,6 +796,8 @@ elf_mk_dyndat(void) {
    /* Check if there are relocations in non-writable sections. */
    if (iter->si_rel && !SECGP_ISW(iter->si_grp)) has_relsec |= 4;
   }
+  /* TODO: 'DT_RUNPATH': With custom library paths, shouldn't we
+   *                     include that information in the binary? */
   if (has_relsec&1) elf_mk_dt(DT_REL),
                     elf_mk_dt(DT_RELSZ),
                     elf_mk_dt(DT_RELENT);

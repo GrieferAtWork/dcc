@@ -68,7 +68,8 @@ INTERN struct PLibLoaderDef const dcc_libloaders[] = {
 
 PRIVATE int DCCUNIT_IMPORTCALL
 DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
-                       char const *__restrict filename, stream_t fd) {
+                       char const *__restrict filename,
+                       stream_t fd) {
  uint8_t magic[LIBLOADER_MAXMAGIC];
  ptrdiff_t max_magic; int result = 0;
  struct PLibLoaderDef const *iter;
@@ -112,8 +113,8 @@ done:
 
 
 PRIVATE int DCCUNIT_IMPORTCALL
-DCCUnit_ImportWithPath2(struct DCCLibDef *__restrict def,
-                        char const *__restrict filename) {
+DCCUnit_ImportWithFilename(struct DCCLibDef *__restrict def,
+                           char const *__restrict filename) {
  int result; stream_t s = s_openr(filename);
  //printf("Checking: '%s'\n",filename);
  if (s == TPP_STREAM_INVALID) return NULL;
@@ -134,8 +135,8 @@ search_extensions[] = {
  {".def"},
 };
 PRIVATE int DCCUNIT_IMPORTCALL
-DCCUnit_DynLoadWithPath(struct TPPString *__restrict path,
-                        struct DCCLibDef *__restrict def) {
+DCCUnit_ImportWithPath(struct TPPString *__restrict path,
+                       struct DCCLibDef *__restrict def) {
  struct path_extension const *ext_iter,*ext_end;
  size_t pathlen,buflen;
  char *buf,*mbuf,*ext; int result;
@@ -169,7 +170,7 @@ DCCUnit_DynLoadWithPath(struct TPPString *__restrict path,
  assert(ext_iter != ext_end);
  do {
   memcpy(ext,ext_iter->ext,MAX_EXTLEN*sizeof(char));
-  result = DCCUnit_ImportWithPath2(def,buf);
+  result = DCCUnit_ImportWithFilename(def,buf);
   if (result || !OK) break;
  } while (++ext_iter != ext_end);
  DCC_Free(mbuf);
@@ -188,12 +189,12 @@ DCCUnit_Import(struct DCCLibDef *__restrict def) {
    * can search the given 'def' as-is. */
   struct TPPString *empty = TPPString_NewSized(0);
   assert(empty);
-  result = DCCUnit_DynLoadWithPath(empty,def);
+  result = DCCUnit_ImportWithPath(empty,def);
   assert(empty->s_refcnt > 1);
   --empty->s_refcnt;
  } else for (i = 0; i < linker.l_paths.lp_pathc; ++i) {
   /* Search user-defined library paths. */
-  result = DCCUnit_DynLoadWithPath(linker.l_paths.lp_pathv[i],def);
+  result = DCCUnit_ImportWithPath(linker.l_paths.lp_pathv[i],def);
   if (result || !OK) goto end;
  }
  if (!(def->ld_flags&DCC_LIBDEF_FLAG_NOWARNMISSING))
@@ -204,7 +205,8 @@ end:
 
 PUBLIC int DCCUNIT_IMPORTCALL
 DCCUnit_ImportStream(struct DCCLibDef *__restrict def,
-                     char const *__restrict filename, stream_t fd) {
+                     char const *__restrict filename,
+                     stream_t fd) {
  int result = DCCUnit_DoImportStream(def,filename,fd);
  if (!result && !(def->ld_flags&DCC_LIBDEF_FLAG_NOWARNMISSING)
      ) WARN(W_LIB_NOT_FOUND,filename,(size_t)strlen(filename));
@@ -216,8 +218,8 @@ DCC_DECL_END
 
 #ifndef __INTELLISENSE__
 #include "unit-import-dyndef.c.inl"
-#include "unit-import-dynelf.c.inl"
 #include "unit-import-dynpe.c.inl"
+#include "unit-import-elf.c.inl"
 #include "unit-import-stape.c.inl"
 #endif
 

@@ -421,6 +421,8 @@ again:
    /* GCC extension: label-expressions. */
    YIELD();
    DCCParse_Expr();
+   /* NOTE: No need to do 'vgen1('*')' because it'd
+    *       just cancel out the 'vgen1('&')' below! */
    goto gen_goto;
   } else if (TPP_ISKEYWORD(TOK)) {
    struct DCCDecl *goto_label;
