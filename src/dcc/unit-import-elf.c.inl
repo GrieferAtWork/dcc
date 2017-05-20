@@ -83,6 +83,47 @@ LOCAL Elf(Off) elf_faddrof(Elf(Phdr) *__restrict hdrv, size_t hdrc,
  return 0;
 }
 
+
+PRIVATE int
+elf_gnuhash_findmaxsym(size_t *__restrict result,
+                       Elf(Off) hash_off, size_t hash_siz,
+                       stream_t fd, int is64b) {
+ Elf(GNUHash) hdr;
+ size_t    maxsymp1 = 0; /* Max symbol index +1 */
+ uint32_t *bucket_vector,*iter,*end;
+ size_t    bucket_offset;
+ size_t    bucket_count;
+ size_t    indexsize = is64b ? 8 : 4;
+ ptrdiff_t read_error;
+ if unlikely(hash_siz < sizeof(hdr)) return 0;
+ s_seek(fd,hash_off,SEEK_SET);
+ if unlikely(!s_reada(fd,&hdr,sizeof(hdr))) return 0;
+ bucket_offset = sizeof(Elf(GNUHash))+hdr.gh_bitmask_nwords*indexsize;
+ if (bucket_offset > hash_siz) return 0;
+ bucket_count = (size_t)(hash_siz-bucket_offset)/4;
+ if (bucket_count > (size_t)hdr.gh_nbuckets)
+     bucket_count = (size_t)hdr.gh_nbuckets;
+ bucket_vector = (uint32_t *)DCC_Malloc(bucket_count*4,0);
+ if unlikely(!bucket_vector) return 0;
+ s_seek(fd,hash_off+bucket_offset,SEEK_SET);
+ read_error = s_read(fd,bucket_vector,bucket_count*4);
+ if (read_error < 0) read_error = 0;
+ read_error /= 4;
+ if (bucket_count > (size_t)read_error)
+     bucket_count = (size_t)read_error;
+ if unlikely(!bucket_count) { DCC_Free(bucket_vector); return 0; }
+ /* We've managed to read the bucket vector. - Now to find the greatest symbol index. */
+ end = (iter = bucket_vector)+bucket_count;
+ for (; iter != end; ++iter) {
+  if (*iter >= maxsymp1) maxsymp1 = *iter+1;
+ }
+ assert(maxsymp1 > 0);
+ *result = maxsymp1;
+ DCC_Free(bucket_vector);
+ return 1;
+}
+
+
 INTERN int DCCUNIT_IMPORTCALL
 DCCUnit_LoadELF(struct DCCLibDef *__restrict def,
                 char const *__restrict file, stream_t fd) {
@@ -181,12 +222,12 @@ link_dynamic:
 #endif
     cmd_dynv = iter;
     while (iter != end && iter->p_type == PT_DYNAMIC) ++iter;
-    cmd_dync = (size_t)(iter-cmd_loadv);
+    cmd_dync = (size_t)(iter-cmd_dynv);
 #else
     while (iter != end && iter->p_type != PT_DYNAMIC) ++iter;
     cmd_dynv = iter;
     while (iter != end && iter->p_type == PT_DYNAMIC) ++iter;
-    cmd_dync = (size_t)(iter-cmd_loadv);
+    cmd_dync = (size_t)(iter-cmd_dynv);
 #if PT_LOAD != PT_DYNAMIC+1
     while (iter != end && iter->p_type != PT_LOAD) ++iter;
 #endif
@@ -230,24 +271,26 @@ link_dynamic:
      assert(dynsiz >= sizeof(Elf(Dyn)));
      {
       /* Iterate the dynamic header commands. */
-      Elf(Addr) dt_soname = 0;                /* DT_SONAME (Optional; Points into 'dt_strtab' defaults to 'def->ld_name') */
-      Elf(Addr) dt_hash   = 0;                /* DT_HASH (Optional; Address of dymbol hash table; can be dereferenced for symbol count) */
-      Elf(Addr) dt_strtab = 0;                /* DT_STRTAB (Mandatory; Contains the address of the string table) */
-      Elf(Addr) dt_symtab = 0;                /* DT_SYMTAB (Mandatory; Contains the address of the symbol table) */
-      Elf(Word) dt_strsz  = 0;                /* DT_STRSZ (Optional; When omited, assume 'abs(dt_symtab-dt_strtab)' and always truncate by PT_LOAD constraints) */
-      Elf(Word) dt_syment = sizeof(Elf(Sym)); /* DT_SYMENT (Optional; size of a single symbol table entry) */
+      Elf(Addr) dt_soname   = 0;                /* DT_SONAME (Optional; Points into 'dt_strtab' defaults to 'def->ld_name') */
+      Elf(Addr) dt_hash     = 0;                /* DT_HASH (Optional; Address of dymbol hash table; can be dereferenced for symbol count) */
+      Elf(Addr) dt_gnu_hash = 0;                /* DT_GNU_HASH (Optional; Many ELF binaries no longer contain DT_HASH, but only 'DT_GNU_HASH'. - We use the later to figure out how many symbols exist) */
+      Elf(Addr) dt_strtab   = 0;                /* DT_STRTAB (Mandatory; Contains the address of the string table) */
+      Elf(Addr) dt_symtab   = 0;                /* DT_SYMTAB (Mandatory; Contains the address of the symbol table) */
+      Elf(Word) dt_strsz    = 0;                /* DT_STRSZ (Optional; When omited, assume 'abs(dt_symtab-dt_strtab)' and always truncate by PT_LOAD constraints) */
+      Elf(Word) dt_syment   = sizeof(Elf(Sym)); /* DT_SYMENT (Optional; size of a single symbol table entry) */
       dynsiz /= sizeof(Elf(Dyn));
       dyn_end = (dyn_iter = dynvec)+dynsiz;
       for (; dyn_iter != dyn_end; ++dyn_iter) {
        /* ELF says that DT_NULL should be able to terminate this list. */
        switch (dyn_iter->d_tag) {
-       case DT_NULL:   goto done_dynhdr1;
-       case DT_SONAME: dt_soname = dyn_iter->d_un.d_ptr; break;
-       case DT_HASH:   dt_hash   = dyn_iter->d_un.d_ptr; break;
-       case DT_STRTAB: dt_strtab = dyn_iter->d_un.d_ptr; break;
-       case DT_SYMTAB: dt_symtab = dyn_iter->d_un.d_ptr; break;
-       case DT_STRSZ:  dt_strsz  = dyn_iter->d_un.d_val; break;
-       case DT_SYMENT: dt_syment = dyn_iter->d_un.d_val; break;
+       case DT_NULL:     goto done_dynhdr1;
+       case DT_SONAME:   dt_soname   = dyn_iter->d_un.d_ptr; break;
+       case DT_HASH:     dt_hash     = dyn_iter->d_un.d_ptr; break;
+       case DT_STRTAB:   dt_strtab   = dyn_iter->d_un.d_ptr; break;
+       case DT_SYMTAB:   dt_symtab   = dyn_iter->d_un.d_ptr; break;
+       case DT_STRSZ:    dt_strsz    = dyn_iter->d_un.d_val; break;
+       case DT_SYMENT:   dt_syment   = dyn_iter->d_un.d_val; break;
+       case DT_GNU_HASH: dt_gnu_hash = dyn_iter->d_un.d_ptr; break;
        default: break; /* Ignore unknown entries. */
        }
       }
@@ -283,8 +326,31 @@ done_dynhdr1:
         hashcnt *= dt_syment;
         if (symtab_siz > hashcnt)
             symtab_siz = hashcnt;
+       } else if (dt_gnu_hash) {
+        Elf(Off) gnuhash_off; size_t gnuhash_siz;
+        /* The GNU hash is a bit more complicated because it only
+         * contains information about how many symbols exist implicitly.
+         * Instead, we must load the entire table and search for the greatest symbol index.
+         * A better explaination of this can be found here:
+         * >> http://deroko.phearless.org/dt_gnu_hash.txt */
+        if unlikely((gnuhash_off = FADDR(dt_gnu_hash,&gnuhash_siz)) == 0) {
+         WARN(W_LIB_ELF_DYNAMIC_UNMAPPED_STRTAB,
+             (size_t)(iter-cmd_dynv),file,
+             (target_ptr_t)dt_gnu_hash);
+         goto no_dynhash;
+        }
+        if (!elf_gnuhash_findmaxsym(&symtab_siz,gnuhash_off,gnuhash_siz,fd,
+                                     ehdr.e_ident[EI_CLASS] == ELFCLASS64)
+             ) goto no_dynhash;
+       } else {
+no_dynhash:;
+        /* TODO: Try to load the section list and locate the section associated
+         *       with 'symtab_off'. Then, using that section's 'sh_size' field,
+         *       we can truncate the max amount of symbols.
+         * >> When that fails too (such as when there are no sections), emit a warning
+         *    and perform special checks when iterating the symbol vector, stopping
+         *    at the first symbol describing invalid data (e.g.: an invalid section id, or a corrupt name) */
        }
-no_dynhash:
        /* Constrict the max symbol table size using the PT_DYNAMIC header. */
        if (dt_strsz < strtab_siz) strtab_siz = dt_strsz;
        /* Allocate & read the string table. */
@@ -305,9 +371,8 @@ no_dynhash:
         if unlikely(!symtab) goto end_free_strtab;
         if likely(dt_syment == sizeof(Elf(Sym))) {
          /* Likely case: We can read the symbol table as-is. */
-         assert(symtab_siz == symcnt);
          s_seek(fd,symtab_off,SEEK_SET);
-         read_error = s_read(fd,symtab,symtab_siz);
+         read_error = s_read(fd,symtab,symcnt);
          if (read_error < 0) goto end_free_symtab;
          if (symcnt > (size_t)read_error)
              symcnt = (size_t)read_error;

@@ -1801,12 +1801,10 @@ DCCUnit_Init(struct DCCUnit *__restrict self) {
 }
 PUBLIC void
 DCCUnit_Quit(struct DCCUnit *__restrict self) {
- int old_nosymdel;
  assert(self);
  /* Secret hint to prevent recursive
   * unused symbol deconstruction. */
- old_nosymdel = dcc_no_recursive_symdel;
- dcc_no_recursive_symdel = 1;
+ ++dcc_no_recursive_symdel;
 
  /* Delete unnamed symbols. */
  { struct DCCSym *iter,*next;
@@ -1846,7 +1844,7 @@ DCCUnit_Quit(struct DCCUnit *__restrict self) {
  assert(!self->u_imps);
 
  /* Restore the old symbol deletion hint. */
- dcc_no_recursive_symdel = old_nosymdel;
+ --dcc_no_recursive_symdel;
 }
 
 void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym) {

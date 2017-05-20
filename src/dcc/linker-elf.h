@@ -85,6 +85,26 @@ DCC_DECL_BEGIN
 #endif /* !DCC_TARGET_ELF_MACHINE */
 
 
+/* Header for data segment pointed to by 'DT_GNU_HASH'. */
+typedef struct {
+    Elf32_Word gh_nbuckets;
+    Elf32_Word gh_symbase;
+    Elf32_Word gh_bitmask_nwords;
+    Elf32_Word gh_gnushift;
+    /* Variable-length vector of 32-bit integers ('gh_bitmask_nwords' elements long) */
+    /* array of gnu buckets as 32-bit integers ('gh_nbuckets' elements long) */
+} Elf32_GNUHash;
+
+typedef struct {
+    Elf64_Word gh_nbuckets;
+    Elf64_Word gh_symbase;
+    Elf64_Word gh_bitmask_nwords;
+    Elf64_Word gh_gnushift;
+    /* Variable-length vector of 64-bit integers ('gh_bitmask_nwords' elements long) */
+    /* array of gnu buckets as 32-bit integers ('gh_nbuckets' elements long) */
+} Elf64_GNUHash;
+
+
 DCC_DECL_END
 
 #endif /* !GUARD_DCC_LINKER_ELF_H */

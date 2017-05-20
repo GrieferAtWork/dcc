@@ -38,8 +38,8 @@ typedef int (DCCUNIT_IMPORTCALL *p_libloader)(struct DCCLibDef *__restrict def,
 #define LIBLOADER_MAXMAGIC  8
 
 #define LIBLOADER_FLAG_NONE  0x00000000
-#define LIBLOADER_FLAG_DYN   0x00000001 /* The lib loader can load dynamic libraries. */
-#define LIBLOADER_FLAG_STA   0x00000002 /* The lib loader can load static libraries. */
+#define LIBLOADER_FLAG_DYN   0x00000010 /* The lib loader can load dynamic libraries. */
+#define LIBLOADER_FLAG_STA   0x00000020 /* The lib loader can load static libraries. */
 #define LIBLOADER_MASK_MSIZE 0x0000000f /* Mask for magic size */
 #define LIBLOADER_FLAGS(d,s,msiz) (((d)?LIBLOADER_FLAG_DYN:0)|((s)?LIBLOADER_FLAG_STA:0)|((msiz)&LIBLOADER_MASK_MSIZE))
 
