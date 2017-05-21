@@ -1554,6 +1554,12 @@ LOCAL void DCCTextBuf_TPutb(struct DCCTextBuf *__restrict self,
  *text_ptr = byte;
 }
 
+INTERN void *
+DCCTextBuf_TAlloc_intern(struct DCCTextBuf *__restrict self,
+                         target_siz_t size) {
+ return DCCTextBuf_TAlloc(self,size);
+}
+
 
 
 

@@ -97,6 +97,7 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 #define DCC_SYMFLAG_UNUSED    0x00000080 /*< '[[unused]]': FLAG: Don't warn if this symbol is deleted during unused symbol collection. */
 #define DCC_SYMFLAG_VISIBILITY     0x000000ff /*< Mask for visibility symbol flags. */
 #define DCC_SYMFLAG_VISIBILITYBASE 0x00000003 /*< Mask for base visibility. */
+/* TODO: Add more flags for symbol typing (unknown|function|object) */
 
 /* Additional symbol flags only meaningful for section start symbols. */
 #define DCC_SYMFLAG_SEC_R     0x01000000 /*< The section is readable. */
@@ -150,7 +151,7 @@ struct DCCSym {
                                             *         to this symbol, this symbol is actually a section and behaves as pointing to the
                                             *         start of that same section.
                                             *   WARNING: This field _must_ be NULL when 'sy_alias' isn't NULL, and the same holds true the other way around. */
-#if DCC_TARGET_BIN == DCC_BINARY_ELF
+#if DCC_TARGET_BIN == DCC_BINARY_ELF || 1 /* NOTE: Also used when generating object files. */
  uint32_t                  sy_elfid;       /*< Used during binary generation: Elf Symbol ID. */
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
  /* 'sy_addr' acts as an offset in aliased symbols!

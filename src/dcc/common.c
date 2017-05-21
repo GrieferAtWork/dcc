@@ -24,6 +24,7 @@
 #include <dcc/compiler.h>
 #include <dcc/unit.h>
 #include <dcc/linker.h>
+#include <dcc/stream.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -142,6 +143,25 @@ PUBLIC void DCC_Free(void *p) {
 }
 PUBLIC void DCC_AllocFailed(size_t s) {
  WARN(W_OUT_OF_MEMORY,s);
+}
+
+
+PUBLIC int DCCStream_PadSize(stream_t fd, size_t n_bytes) {
+ void *buffer;
+ if ((buffer = calloc(1,n_bytes)) != NULL) {
+  int result = s_writea(fd,buffer,n_bytes);
+  free(buffer);
+  return result;
+ } else while (--n_bytes) {
+  static char const zero[1] = {0};
+  if (!s_writea(fd,zero,1)) return 0;
+ }
+ return 1;
+}
+PUBLIC int DCCStream_PadAddr(stream_t fd, uint32_t offset) {
+ DWORD ptr = s_seek(fd,0,SEEK_CUR);
+ if (ptr >= offset) return 0;
+ return DCCStream_PadSize(fd,offset-ptr);
 }
 
 

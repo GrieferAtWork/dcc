@@ -218,8 +218,6 @@ PRIVATE void elf_mk_phdsort(void);          /* Sort program headers. */
 PRIVATE void elf_mk_reladj(void);           /* Adjust generated relocation offsets by section base addresses. */
 PRIVATE void elf_mk_relocbase(void);        /* Execute relocations for fix-address images. */
 PRIVATE void elf_mk_outfile(stream_t s);
-PRIVATE void elf_fd_paddata(stream_t s, Elf(Off) addr);
-PRIVATE void elf_fd_padbytes(stream_t s, size_t n_addr);
 
 PRIVATE void elf_clr_unused(struct DCCSection **psec);
 PRIVATE struct phinfo *elf_mk_phdr(void);
@@ -530,7 +528,7 @@ PRIVATE void elf_mk_dynsym(void) {
   elf_mk_hash(elf.elf_hash,
               elf.elf_dynsym,
               elf.elf_dynstr,
-             (dynid*2)/3);
+             (dynid*2)/3); /* TODO: This hash size is excessive. */
   /* XXX: Option to generate GNU_HASH sections instead of HASH section? */
  }
 }
@@ -821,11 +819,25 @@ PRIVATE void elf_mk_reladj(void) {
   text_data = iter->si_sec->sc_text.tb_begin;
   for (; reldata != relend; ++reldata) {
    /* Adjust the relocation address from section-relative to image-relative.
-    * WARNING: This can only be done after virtual addresses have been generated. */
-   if (ELF(R_SYM)(reldata->r_info)  == STN_UNDEF &&
-       ELF(R_TYPE)(reldata->r_info) == DCC_R_DATA_PTR) {
+    * WARNING: This can only be done after virtual addresses have been generated.
+    * NOTE: Relocations with a symbol index of '0' are what used to be anonymous symbols:
+    *    >>        const char *public_symbol = "foobar";
+    *    >> static const char *static_symbol = "foobar";
+    *    >> 
+    *    >> int main() {
+    *    >>     char *a = public_symbol; // R_386_32: 'a'
+    *    >>     char *b = static_symbol; // R_386_RELATIVE: <undefined>
+    *    >> }
+    * Below, the assignment to 'b' is fixed.
+    */
+   if (ELF(R_SYM)(reldata->r_info) == 0) {
     /* Must convert this relocation. */
-    reldata->r_info = ELF(R_INFO)(STN_UNDEF,DCC_R_RELATIVE);
+    if (ELF(R_TYPE)(reldata->r_info) == DCC_R_DATA_PTR) {
+     reldata->r_info = ELF(R_INFO)(0,DCC_R_RELATIVE);
+    } else {
+     /* XXX: Relative only works when a pointer-size relocation is used.
+      *      But what when the relocation is smaller than that? */
+    }
    }
    reldata->r_offset += secbase;
   }
@@ -1311,25 +1323,6 @@ elf_mk_phdsort(void) {
 }
 
 PRIVATE void
-elf_fd_padbytes(stream_t fd, size_t n_bytes) {
- void *buffer = calloc(1,n_bytes);
- if (buffer) {
-  s_writea(fd,buffer,n_bytes);
-  free(buffer);
- } else while (--n_bytes) {
-  static char const zero[1] = {0};
-  s_writea(fd,zero,1);
- }
-}
-PRIVATE void
-elf_fd_paddata(stream_t fd, Elf(Off) addr) {
- DWORD ptr = s_seek(fd,0,SEEK_CUR);
- if (ptr >= addr) return;
- elf_fd_padbytes(fd,addr-ptr);
-}
-
-
-PRIVATE void
 elf_mk_outfile(stream_t fd) {
  Elf(Ehdr) ehdr;
  memset(&ehdr,0,sizeof(ehdr));
@@ -1402,7 +1395,7 @@ elf_mk_outfile(stream_t fd) {
    for (; iter != end; ++iter) {
     size_t text_size,phys_size;
     /* Generate padding until the section data. */
-    elf_fd_paddata(fd,iter->si_hdr.sh_offset);
+    DCCStream_PadAddr(fd,iter->si_hdr.sh_offset);
     text_size = (size_t)(iter->si_sec->sc_text.tb_end-
                          iter->si_sec->sc_text.tb_begin);
     phys_size = iter->si_hdr.sh_size;
@@ -1412,7 +1405,7 @@ elf_mk_outfile(stream_t fd) {
                     iter->si_sec->sc_text.tb_begin) >= text_size);
     s_write(fd,iter->si_sec->sc_text.tb_begin,text_size);
     /* Pad a difference between the physical and text size with ZEROes. */
-    if (text_size != phys_size) elf_fd_padbytes(fd,phys_size-text_size);
+    if (text_size != phys_size) DCCStream_PadSize(fd,phys_size-text_size);
    }
  }
  /* And we're done! */
@@ -1423,8 +1416,6 @@ elf_mk_outfile(stream_t fd) {
 PUBLIC void
 DCCLinker_Make(stream_t target) {
  memset(&elf,0,sizeof(elf));
-
- /* TODO: Output object files? */
  if (linker.l_flags&DCC_LINKER_FLAG_SHARED) {
   elf.elf_base = 0; /* Load shared libraries at offset
                      * ZERO(0), relying on relocations. */

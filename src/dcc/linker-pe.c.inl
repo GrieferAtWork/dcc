@@ -205,7 +205,6 @@ PRIVATE int     pe_symsort_merge(struct DCCSym **__restrict v, size_t n, struct 
 PRIVATE void    pe_symsort_bubble(struct DCCSym **__restrict v, size_t n);
 PRIVATE void    pe_toupper(char *p, size_t s);
 PRIVATE DWORD   pe_checksum(void const *data, size_t s, DWORD sum);
-PRIVATE void    pe_fd_paddata(stream_t fd, DWORD addr);
 LOCAL   DWORD   pe_alignfile(DWORD n);
 LOCAL   target_ptr_t pe_alignsec(target_ptr_t n);
 PRIVATE secty_t secty_of(struct DCCSection const *__restrict section);
@@ -837,25 +836,6 @@ pe_checksum(void const *data, size_t s, DWORD sum) {
 }
 
 PRIVATE void
-pe_fd_paddata(stream_t fd, DWORD addr) {
- void *buffer;
- DWORD ptr = s_seek(fd,0,SEEK_CUR);
- if (ptr >= addr) return;
- buffer = calloc(1,addr-ptr);
- if (buffer) {
-  s_writea(fd,buffer,addr-ptr);
-  free(buffer);
- } else while (ptr++ <= addr) {
-  static char const zero[1] = {0};
-  s_writea(fd,zero,1);
- }
-}
-
-
-
-
-
-PRIVATE void
 pe_mk_writefile(stream_t fd) {
 #define DEFDIR(id,p,s) \
  (hdr.ohdr.DataDirectory[id].VirtualAddress = (p),\
@@ -1009,14 +989,14 @@ pe_mk_writefile(stream_t fd) {
  for (iter = pe.pe_secv; iter != end; ++iter) {
   s_writea(fd,&iter->si_hdr,sizeof(IMAGE_SECTION_HEADER));
  }
- pe_fd_paddata(fd,hdr.ohdr.SizeOfHeaders);
+ DCCStream_PadAddr(fd,hdr.ohdr.SizeOfHeaders);
  for (iter = pe.pe_secv; iter != end; ++iter) {
   if (iter->si_msize) {
    /* Must create padding data before _AND_ after! */
-   pe_fd_paddata(fd,iter->si_hdr.PointerToRawData);
+   DCCStream_PadAddr(fd,iter->si_hdr.PointerToRawData);
    s_writea(fd,iter->si_data,iter->si_msize);
-   pe_fd_paddata(fd,iter->si_hdr.PointerToRawData+
-                     iter->si_hdr.SizeOfRawData);
+   DCCStream_PadAddr(fd,iter->si_hdr.PointerToRawData+
+                        iter->si_hdr.SizeOfRawData);
   }
  }
 #undef DEFDIR

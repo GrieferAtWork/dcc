@@ -225,10 +225,11 @@ link_dynamic:
    } else {
     /* Since the program header size isn't what was expected, we
      * must adjust the read size and manually read each element. */
-    size_t i,common_size = ehdr.e_phentsize;
-    if (ehdr.e_phentsize > sizeof(Elf(Phdr)))
-        memset(phdr_data,0,phdr_size),
-        common_size = sizeof(Elf(Phdr));
+    size_t i,common_size = sizeof(Elf(Phdr));
+    if (ehdr.e_phentsize < sizeof(Elf(Phdr))) {
+     memset(phdr_data,0,phdr_size);
+     common_size = ehdr.e_phentsize;
+    }
     assert(common_size);
     phdr_size /= sizeof(Elf(Phdr));
     for (i = 0; i < ehdr.e_phnum; ++i) {
@@ -555,22 +556,18 @@ nosechdr:
    if (secc < (size_t)read_error)
        secc = (size_t)read_error;
   } else {
-   size_t i;
-   if (ehdr.e_shentsize < sizeof(Elf(Shdr)))
-       memset(secv,0,secc*sizeof(Elf(Shdr)));
+   size_t i,common_size = sizeof(Elf(Shdr));
+   if (ehdr.e_shentsize < sizeof(Elf(Shdr))) {
+    memset(secv,0,secc*sizeof(Elf(Shdr)));
+    common_size = ehdr.e_shentsize;
+   }
    for (i = 0; i < secc; ++i) {
     s_seek(fd,ehdr.e_shoff+i*ehdr.e_shentsize,SEEK_SET);
-    if (!s_reada(fd,&secv[i],ehdr.e_shentsize)) { secc = i; break; }
+    if (!s_reada(fd,&secv[i],common_size)) { secc = i; break; }
    }
   }
   if unlikely(!secc) { DCC_Free(secv); goto nosechdr; }
-  /* TODO: First step: Load 'DT_NEEDED' program headers
-   *    >> Needs to be done now to ensure that 'SHT_DCC_IMPSEC'
-   *       special sections can be linked properly
-   *    >> Can only be done now because before we didn't know
-   *       that the binary should really be loaded statically. */
-
-  /* Second step: Validate and find the '.shstrtab' section. */
+  /* First step: Validate and find the '.shstrtab' section. */
   if (ehdr.e_shstrndx >= secc) {
    size_t i;
    WARN(W_LIB_ELF_STATIC_UNMAPPED_SHSTR,file,ehdr.e_shstrndx,secc);
@@ -672,17 +669,22 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
     symvec = (Elf(Sym) *)DCC_Malloc(symcnt*sizeof(Elf(Sym)),0);
     if (iter->sh_entsize == sizeof(Elf(Sym))) {
      symcnt *= sizeof(Elf(Sym));
+     s_seek(fd,iter->sh_offset,SEEK_SET);
      read_error = s_read(fd,symvec,symcnt);
      if (read_error < 0) read_error = 0;
      if (symcnt > (size_t)read_error)
          symcnt = (size_t)read_error;
      symcnt /= sizeof(Elf(Sym));
     } else {
-     size_t i;
-     if (iter->sh_entsize < sizeof(Elf(Sym)))
-         memset(symvec,0,symcnt*sizeof(Elf(Sym)));
+     size_t i,common_size = sizeof(Elf(Sym));
+     /* Difficult case: Must read each entry individually. */
+     if (iter->sh_entsize < sizeof(Elf(Sym))) {
+      memset(symvec,0,symcnt*sizeof(Elf(Sym)));
+      common_size = iter->sh_entsize;
+     }
      for (i = 0; i < symcnt; ++i) {
-      if (!s_reada(fd,&symvec[i],iter->sh_entsize)) { symcnt = i; break; }
+      s_seek(fd,iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
+      if (!s_reada(fd,&symvec[i],common_size)) { symcnt = i; break; }
      }
     }
     if unlikely(!symcnt) {free_null_symvec: DCC_Free(symvec); goto null_symvec; }
@@ -704,6 +706,11 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
      switch (ELF(ST_TYPE)(sym_iter->st_info)) {
       /* Ignore these symbol types (DCC doesn't use them; yet?) */
      case STT_NOTYPE:
+      if (!sym_iter->st_name &&
+          !sym_iter->st_value &&
+           sym_iter->st_shndx == SHN_UNDEF
+           ) continue; /* Ignore the NULL-symbol. */
+      break;
      case STT_FILE:
 skip_symdef:
       *symdef = NULL;
@@ -814,7 +821,7 @@ done_symvec:
     } else if (!iter->sh_entsize) {
      continue; /* TODO: Warning? */
     } else {
-     size_t i;
+     size_t i,common_size = sizeof(Elf(Rel));
      /* Adjust relocation data in 'relo_text'. */
      relcnt = iter->sh_size/iter->sh_entsize;
      relo_text.tb_begin = (uint8_t *)DCC_Malloc(relcnt*sizeof(Elf(Rel)),0);
@@ -822,11 +829,13 @@ done_symvec:
       memset(&relo_text,0,sizeof(struct DCCTextBuf));
       goto reloc_loaded;
      }
+     if (iter->sh_entsize < common_size) {
+      memset(relo_text.tb_begin,0,relcnt*sizeof(Elf(Rel)));
+      common_size = iter->sh_entsize;
+     }
      for (i = 0; i < relcnt; ++i) {
       s_seek(fd,iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
-      if (!s_reada(fd,relo_text.tb_begin+
-                  (i*sizeof(Elf(Rel))),
-                   sizeof(Elf(Rel)))) break;
+      if (!s_reada(fd,relo_text.tb_begin+(i*sizeof(Elf(Rel))),common_size)) break;
      }
      if (i != relcnt) {
       relo_text.tb_end = (uint8_t *)DCC_Realloc(relo_text.tb_begin,

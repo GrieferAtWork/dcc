@@ -33,14 +33,12 @@ DCC_DECL_BEGIN
  *      'sh_addr':      Undefined
  *      'sh_offset':    Undefined
  *      'sh_size':      <0>
- *      'sh_link':      <SHN_UNDEF>
- *      'sh_info':      Within the binary's first 'PT_DYNAMIC' program header:
- *                      The index of a 'DT_NEEDED' dynamic entry.
- *                      >> PHDR(PT_DYNAMIC):  p_offset+sh_info*sizeof(Elf(Dyn));
+ *      'sh_link':      Index of a '.strtab' section containing the dependency name.
+ *      'sh_info':      String table offset within 'sh_link', pointing at the dependency name.
  *      'sh_addralign': Undefined
  *      'sh_entsize':   Undefined
- *  - Symbols linked against a section of type 'SHT_DCC_IMPSEC' are imported from
- *    the associated dynamic library (as described by the 'DT_NEEDED' entry)
+ *  - Symbols linked against a section of type 'SHT_DCC_IMPSEC'
+ *    are imported from the associated dynamic library.
  *  - Note that this section type should only appear in binaries of type 'ET_REL'
  *  - Note that 'SHT_DCC_IMPSEC'-typed sections are optional and mainly
  *    used to implemented '__attribute__((lib(...)))' in object files.

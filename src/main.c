@@ -172,6 +172,12 @@ static void add_c_source(char *filename) {
       DCCUnit_Quit(&old_unit);
 }
 
+static void save_object(char const *filename) {
+ struct DCCExpDef def;
+ def.ed_fmt   = DCC_EXPFMT_ELF;
+ def.ed_flags = DCC_EXPFLAG_NONE;
+ DCCUnit_Export(&def,filename);
+}
 
 
 int main(int argc, char *argv[]) {
@@ -186,21 +192,24 @@ int main(int argc, char *argv[]) {
 #endif
                                );
  if (argc) --argc,++argv;
- if unlikely(!argc) { result = 1; goto end_tpp; }
+ //if unlikely(!argc) { result = 1; goto end_tpp; }
 
  //_CrtSetBreakAlloc(130);
  DCCLinker_AddSysPaths("a.exe");
 
- add_staticlib("sb.o"); /* TEST */
+ add_staticlib("a.o"); /* TEST */
+ //add_staticlib("sb.o"); /* TEST */
  //dump_symbols();
  if (!OK) goto end;
 
- do {
+ while (argc) {
   /* Parse the input code. */
   add_c_source(argv[0]);
   if (!OK) goto end;
   ++argv,--argc;
- } while (argc);
+ }
+
+ save_object("a.o");
 
  /* Cleanup unused stuff. */
  DCCCompiler_ClearDecl();

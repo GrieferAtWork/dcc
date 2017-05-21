@@ -88,6 +88,8 @@ DCCStream_WriteAll(DCC(stream_t) fd, void const *p, size_t s) {
  return total == s;
 }
 
+DCCFUN int DCCStream_PadSize(DCC(stream_t) fd, size_t n_bytes);
+DCCFUN int DCCStream_PadAddr(DCC(stream_t) fd, uint32_t offset);
 
 #ifdef DCC_PRIVATE_API
 #define s_openr  DCC_STREAM_OPEN_R
