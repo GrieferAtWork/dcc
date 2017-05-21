@@ -288,18 +288,16 @@ struct TPPString {
 #define TPPString_Incref(self) (void)(++(self)->s_refcnt)
 #define TPPString_Decref(self) (void)(--(self)->s_refcnt || (free(self),0))
 
-//////////////////////////////////////////////////////////////////////////
-// Concat two given string and drop ONE(1) references from each.
-// @return: * :   A reference to a string containing the sum of what is given.
-// @return: NULL: Not enough available memory.
+/* Concat two given string and drop ONE(1) references from each.
+ * @return: * :   A reference to a string containing the sum of what is given.
+ * @return: NULL: Not enough available memory. */
 TPPFUN /*ref*/struct TPPString *
 TPPString_Cat(/*ref*/struct TPPString *__restrict lhs,
               /*ref*/struct TPPString *__restrict rhs);
 
-//////////////////////////////////////////////////////////////////////////
-// Returns a new string from the given text.
-// @return: * :   A reference to a string containing the given text.
-// @return: NULL: Not enough available memory.
+/* Returns a new string from the given text.
+ * @return: * :   A reference to a string containing the given text.
+ * @return: NULL: Not enough available memory. */
 TPPFUN /*ref*/struct TPPString *TPPString_New(char const *__restrict text, size_t size);
 TPPFUN /*ref*/struct TPPString *TPPString_NewSized(size_t size);
 
@@ -458,85 +456,73 @@ TPPFUN struct TPPFile TPPFile_Empty;
 TPPFUN void TPPFile_Destroy(struct TPPFile *__restrict self);
 
 
-//////////////////////////////////////////////////////////////////////////
-// Create a new explicit text file by inherited the given 'inherited_text'.
+/* Create a new explicit text file by inherited the given 'inherited_text'. */
 TPPFUN /*ref*/struct TPPFile *
 TPPFile_NewExplicitInherited(/*ref*/struct TPPString *__restrict inherited_text);
 
-//////////////////////////////////////////////////////////////////////////
-// Returns the zero-based line index of a given text pointer.
-// NOTE: The returned line index is always absolute to
-//       the original text file and continues to be valid
-//       even when the given file is a macro defined within.
+/* Returns the zero-based line index of a given text pointer.
+ * NOTE: The returned line index is always absolute to
+ *       the original text file and continues to be valid
+ *       even when the given file is a macro defined within. */
 TPPFUN TPP(line_t)
 TPPFile_LineAt(struct TPPFile const *__restrict self,
                char const *__restrict text_pointer);
 
-//////////////////////////////////////////////////////////////////////////
-// Similar to 'TPPFile_LineAt', but instead returns the column number.
+/* Similar to 'TPPFile_LineAt', but instead returns the column number. */
 TPPFUN TPP(col_t)
 TPPFile_ColumnAt(struct TPPFile const *__restrict self,
                  char const *__restrict text_pointer);
 
-//////////////////////////////////////////////////////////////////////////
-// Returns the human-readable filename of a given file.
-// NOTE: For macro files, the returned filename continues
-//       to referr to the file that the macro was defined
-//       within.
-// NOTE: Returns NULL if no name is associated with the
-//       given file, such as for predefined macros.
+/* Returns the human-readable filename of a given file.
+ * NOTE: For macro files, the returned filename continues
+ *       to referr to the file that the macro was defined
+ *       within.
+ * NOTE: Returns NULL if no name is associated with the
+ *       given file, such as for predefined macros. */
 TPPFUN char const *
 TPPFile_Filename(struct TPPFile const *__restrict self,
                  size_t *opt_filename_length);
 
-//////////////////////////////////////////////////////////////////////////
-// Copy the given file for use as #include-stack entry.
-// WARNING: The caller is responsible for only passing text files.
-// NOTE: Calling this function
+/* Copy the given file for use as #include-stack entry.
+ * WARNING: The caller is responsible for only passing text files. */
 TPPFUN /*ref*/struct TPPFile *
 TPPFile_CopyForInclude(struct TPPFile *__restrict self);
 
 
-//////////////////////////////////////////////////////////////////////////
-// Opens a file and caches the first block of data.
-// NOTE: The given filename is what will appear as text when expanding __FILE__
-// @return: NULL: Failed to open the given file (see 'errno' either set to ENOMEM or ENOENT)
+/* Opens a file and caches the first block of data.
+ * NOTE: The given filename is what will appear as text when expanding __FILE__
+ * @return: NULL: Failed to open the given file (see 'errno' either set to ENOMEM or ENOENT) */
 TPPFUN /*ref*/struct TPPFile *TPPFile_Open(char const *filename);
 
-//////////////////////////////////////////////////////////////////////////
-// Similar to 'TPPFile_Open', but allows the caller to specify a stream,
-// allowing them to use this function for opening things like STD handles.
-// @return: NULL: Not enough available memory.
+/* Similar to 'TPPFile_Open', but allows the caller to specify a stream,
+ * allowing them to use this function for opening things like STD handles.
+ * @return: NULL: Not enough available memory. */
 TPPFUN /*ref*/struct TPPFile *TPPFile_OpenStream(TPP(stream_t) stream, char const *name);
 
-//////////////////////////////////////////////////////////////////////////
-// Parse a #define-style preprocessor command, expecting the
-// current lexer's token to point at the name of the macro.
-// NOTE: This function will also register the macro in the keyword list.
-// WARNING: This function expects the 'TPPLEXER_FLAG_WANTLF' flag to be set.
-// WARNING: This function does _not_ return a reference.
+/* Parse a #define-style preprocessor command, expecting the
+ * current lexer's token to point at the name of the macro.
+ * NOTE: This function will also register the macro in the keyword list.
+ * WARNING: This function expects the 'TPPLEXER_FLAG_WANTLF' flag to be set.
+ * WARNING: This function does _not_ return a reference. */
 TPPFUN struct TPPFile *TPPFile_NewDefine(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Create a new keyword-style macro, as provided from the commandline.
-// NOTE: The NULL is passed for 'text', an internally optimized
-//       string equal to "1" is installed as text instead.
-//       Otherwise whitespace is truncated from the given text.
-// WARNING: The caller may choose to specify 'f_macro.m_deffile',
-//          which is initialized to NULL.
+/* Create a new keyword-style macro, as provided from the commandline.
+ * NOTE: The NULL is passed for 'text', an internally optimized
+ *       string equal to "1" is installed as text instead.
+ *       Otherwise whitespace is truncated from the given text.
+ * WARNING: The caller may choose to specify 'f_macro.m_deffile',
+ *          which is initialized to NULL. */
 TPPFUN /*ref*/struct TPPFile *
 TPPFile_NewKWMacro(char const *name, size_t name_size,
                    char const *text, size_t text_size);
 
-
-//////////////////////////////////////////////////////////////////////////
-// Advances the given file to its next chunk.
-// NOTE: When 'flags' contains 'TPPFILE_NEXTCHUNK_FLAG_EXTEND', instead of dropping
-//       already-read data from the existing chunk, new data will be appended to that
-//       chunk, meaning that the resulting stream contains both old and new data,
-//       allowing for higher-level data lookahead while still remaining
-//       as unbuffered as possible.
-// Returns 0 if the file's EOF was already reached. 1 otherwise.
+/* Advances the given file to its next chunk.
+ * NOTE: When 'flags' contains 'TPPFILE_NEXTCHUNK_FLAG_EXTEND', instead of dropping
+ *       already-read data from the existing chunk, new data will be appended to that
+ *       chunk, meaning that the resulting stream contains both old and new data,
+ *       allowing for higher-level data lookahead while still remaining
+ *       as unbuffered as possible.
+ * Returns 0 if the file's EOF was already reached. 1 otherwise. */
 TPPFUN int TPPFile_NextChunk(struct TPPFile *__restrict self, int flags);
 #define TPPFILE_NEXTCHUNK_FLAG_NONE   0
 #define TPPFILE_NEXTCHUNK_FLAG_EXTEND 1 /*< Extend the current file chunk. */
@@ -726,41 +712,36 @@ enum{ /* Figure out effective warning ID. */
 struct TPPCallbacks {
  /* Optional user-hooks for implementing special preprocessor behavior.
   * NOTE: Any function pointer in here may be specified as NULL. */
- //////////////////////////////////////////////////////////////////////////
- // Handle an unknown pragma.
- //  - The lexer currently points to the pragma's first token
- //    and is configured not to continue yielding tokens once
- //    the pragma's effective end is reached, as well as
- //    to ignore comment, space and LF tokens:
- //    >> #pragma foo bar   // [foo][bar][EOF]
- //    >> _Pragma("baz(2)") // [baz][(][2][)][EOF]
- //    >> __pragma(x*y)     // [x][*][y][EOF]
- // @return: 0: Unknown/errorous pragma.
- // @return: 1: Successfully parsed the given pragma.
+ /* Handle an unknown pragma.
+  *  - The lexer currently points to the pragma's first token
+  *    and is configured not to continue yielding tokens once
+  *    the pragma's effective end is reached, as well as
+  *    to ignore comment, space and LF tokens:
+  *    >> #pragma foo bar   // [foo][bar][EOF]
+  *    >> _Pragma("baz(2)") // [baz][(][2][)][EOF]
+  *    >> __pragma(x*y)     // [x][*][y][EOF]
+  * @return: 0: Unknown/errorous pragma.
+  * @return: 1: Successfully parsed the given pragma. */
  int (*c_parse_pragma)(void);
- //////////////////////////////////////////////////////////////////////////
- // Same as 'c_parse_pragma', but invoked for unknown GCC-namespace pragmas
- // >> #pragma GCC visibility(push)
- //                ^^^^^^^^^^ Invoked on this token
+ /* Same as 'c_parse_pragma', but invoked for unknown GCC-namespace pragmas
+  * >> #pragma GCC visibility(push)
+  *                ^^^^^^^^^^ Invoked on this token */
  int (*c_parse_pragma_gcc)(void);
- //////////////////////////////////////////////////////////////////////////
- // Insert the given text into the ".comment" section of the current object file.
- // @return: 0: Error occurred (Set a lexer error if not already set)
- // @return: 1: Successfully inserted the given text.
+ /* Insert the given text into the ".comment" section of the current object file.
+  * @return: 0: Error occurred (Set a lexer error if not already set)
+  * @return: 1: Successfully inserted the given text. */
  int (*c_ins_comment)(struct TPPString *__restrict comment);
- //////////////////////////////////////////////////////////////////////////
- // Event-callback invoked when a textfile is included the first time.
- // >> Very useful for generating dependency trees.
- // NOTE: This function will only ever be called once
- //       for any given file within the same lexer.
- // @return: 0: Error occurred (Set a lexer error if not already set)
- // @return: 1: Continue parsing (same as not filling in this member).
+ /* Event-callback invoked when a textfile is included the first time.
+  * >> Very useful for generating dependency trees.
+  * NOTE: This function will only ever be called once
+  *       for any given file within the same lexer.
+  * @return: 0: Error occurred (Set a lexer error if not already set)
+  * @return: 1: Continue parsing (same as not filling in this member). */
  int (*c_new_textfile)(struct TPPFile *__restrict file, int is_system_header);
- //////////////////////////////////////////////////////////////////////////
- // Called when a given filename could not be found, allowing this
- // function to attempt more voodoo-magic in an attempt to locate it.
- // @return: NULL: Still failed to find the file (unless a lexer error was set, only emit a warning)
- // @return: * :   The file we now managed to successfully open.
+ /* Called when a given filename could not be found, allowing this
+  * function to attempt more voodoo-magic in an attempt to locate it.
+  * @return: NULL: Still failed to find the file (unless a lexer error was set, only emit a warning)
+  * @return: * :   The file we now managed to successfully open. */
  struct TPPFile *(*c_unknown_file)(char *filename, size_t filename_size);
 };
 
@@ -789,45 +770,41 @@ struct TPPWarnings {
  struct TPPWarningState  w_basestate; /*< Base (aka. first) warning state. */
 };
 
-//////////////////////////////////////////////////////////////////////////
-// Push/Pop the current warning state.
-// @return: 0: [TPPLexer_PushWarnings] Not enough available memory.
-// @return: 0: [TPPLexer_PopWarnings] No older warning state was available to restore.
-// @return: 1: Successfully pushed/popped the warnings.
+/* Push/Pop the current warning state.
+ * @return: 0: [TPPLexer_PushWarnings] Not enough available memory.
+ * @return: 0: [TPPLexer_PopWarnings] No older warning state was available to restore.
+ * @return: 1: Successfully pushed/popped the warnings. */
 TPPFUN int TPPLexer_PushWarnings(void);
 TPPFUN int TPPLexer_PopWarnings(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Set the state of a given warning number.
-// NOTE: If the given state is 'WSTATE_SUPPRESS', ONE(1)
-//       will be added to the suppress recursion counter.
-// @return: 0: Not enough available memory.
-// @return: 1: Successfully set the given warning number.
-// @return: 2: The given warning number is unknown.
+/* Set the state of a given warning number.
+ * NOTE: If the given state is 'WSTATE_SUPPRESS', ONE(1)
+ *       will be added to the suppress recursion counter.
+ * @return: 0: Not enough available memory.
+ * @return: 1: Successfully set the given warning number.
+ * @return: 2: The given warning number is unknown. */
 TPPFUN int TPPLexer_SetWarning(int wnum, TPP(wstate_t) state);
 TPPFUN TPP(wstate_t) TPPLexer_GetWarning(int wnum);
 
-//////////////////////////////////////////////////////////////////////////
-// Similar to 'TPPLexer_SetWarning', but set the state of all warnings from a given group.
-// NOTES:
-//   - Groups work independent of warning ids, meaning you can even
-//     specify 'WSTATE_SUPPRESS' as state, with the next warning
-//     part of that group occurring simply consuming that suppression.
-//   - If you disable an entire warning group, no warning apart of it will be emit.
-//   - If a warning is invoked, that is both part of an error and a warning/disabled
-//     group it will always tend to do as little damage as possible:
-//     >> suppress >= disabled >= warning >= error
-//     With that in mind, both the warning itself, as well as all of its groups
-//     must be configured as 'WSTATE_ERROR' for the warning to actually result
-//     in an error.
-// @return: 0: Not enough available memory.
-// @return: 1: Successfully set the given warning number.
-// @return: 2: The given group name is unknown.
+/* Similar to 'TPPLexer_SetWarning', but set the state of all warnings from a given group.
+ * NOTES:
+ *   - Groups work independent of warning ids, meaning you can even
+ *     specify 'WSTATE_SUPPRESS' as state, with the next warning
+ *     part of that group occurring simply consuming that suppression.
+ *   - If you disable an entire warning group, no warning apart of it will be emit.
+ *   - If a warning is invoked, that is both part of an error and a warning/disabled
+ *     group it will always tend to do as little damage as possible:
+ *     >> suppress >= disabled >= warning >= error
+ *     With that in mind, both the warning itself, as well as all of its groups
+ *     must be configured as 'WSTATE_ERROR' for the warning to actually result
+ *     in an error.
+ * @return: 0: Not enough available memory.
+ * @return: 1: Successfully set the given warning number.
+ * @return: 2: The given group name is unknown. */
 TPPFUN int TPPLexer_SetWarnings(char const *__restrict group, TPP(wstate_t) state);
 
-//////////////////////////////////////////////////////////////////////////
-// Invoke a given warning number, returning one of 'TPP_WARNINGMODE_*'.
-// NOTE: Unknown warnings will always result in 'TPP_WARNINGMODE_WARN' being returned.
+/* Invoke a given warning number, returning one of 'TPP_WARNINGMODE_*'.
+ * NOTE: Unknown warnings will always result in 'TPP_WARNINGMODE_WARN' being returned. */
 TPPFUN int TPPLexer_InvokeWarning(int wnum);
 #define TPP_WARNINGMODE_ERROR  0 /*< Emit an error and call TPPLexer_SetErr(). */
 #define TPP_WARNINGMODE_WARN   1 /*< Emit a warning, but continue normally. */
@@ -858,15 +835,13 @@ struct TPPExtState {
  uint8_t             es_padding[(TPP(EXT_COUNT)+7)/8]; /*< Bitset of enabled extensions. */
 };
 
-//////////////////////////////////////////////////////////////////////////
-// Check if a given extension 'ext' is currently enabled.
-// @return: 0: The extension is disabled.
-// @return: !0: The extension is enabled.
+/* Check if a given extension 'ext' is currently enabled.
+ * @return: 0: The extension is disabled.
+ * @return: !0: The extension is enabled. */
 #define TPPLexer_HasExtension(ext) \
  (TPPLexer_Current->l_extensions.es_bitset[(ext)/8] & (1 << ((ext)%8)))
 
-//////////////////////////////////////////////////////////////////////////
-// Set the state of a given extension 'ext'.
+/* Set the state of a given extension 'ext'. */
 #define TPPLexer_EnableExtension(ext)  (void)(TPPLexer_Current->l_extensions.es_bitset[(ext)/8] |=  (1 << ((ext)%8)))
 #define TPPLexer_DisableExtension(ext) (void)(TPPLexer_Current->l_extensions.es_bitset[(ext)/8] &= ~(1 << ((ext)%8)))
 
@@ -878,28 +853,26 @@ struct TPPIncludeList {
  /*ref*/struct TPPString **il_pathv; /*< [1..1][0..il_pathc][owned] Vector of sanitized #include path. */
 };
 
-//////////////////////////////////////////////////////////////////////////
-// Push/Pop the current system #include-path list.
-// @return: 0: [TPPLexer_PushInclude] Not enough available memory.
-// @return: 0: [TPPLexer_PopInclude] No older #include-path list was available to restore.
-// @return: 1: Successfully pushed/popped the system #include-path list.
+/* Push/Pop the current system #include-path list.
+ * @return: 0: [TPPLexer_PushInclude] Not enough available memory.
+ * @return: 0: [TPPLexer_PopInclude] No older #include-path list was available to restore.
+ * @return: 1: Successfully pushed/popped the system #include-path list. */
 TPPFUN int TPPLexer_PushInclude(void);
 TPPFUN int TPPLexer_PopInclude(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Add/delete the given path from the list of system #include paths.
-// WARNING: This function will modify the given path.
-// WARNING: Be careful with absolute vs. relative paths!
-//          TPP can not tell that they're the same and
-//          '#pragma once' might break as a consequence!
-//       >> As a solution, _always_ use either absolute
-//          or relative paths for the same file/path.
-//         (This also goes for #include directives)
-// @return: 0: [TPPLexer_AddIncludePath] Not enough available memory.
-// @return: 1: [TPPLexer_AddIncludePath] The given path was successfully added.
-// @return: 2: [TPPLexer_AddIncludePath] The given path had already been added before.
-// @return: 0: [TPPLexer_DelIncludePath] The given path was not found.
-// @return: 1: [TPPLexer_DelIncludePath] The given path was successfully removed.
+/* Add/delete the given path from the list of system #include paths.
+ * WARNING: This function will modify the given path.
+ * WARNING: Be careful with absolute vs. relative paths!
+ *          TPP can not tell that they're the same and
+ *          '#pragma once' might break as a consequence!
+ *       >> As a solution, _always_ use either absolute
+ *          or relative paths for the same file/path.
+ *         (This also goes for #include directives)
+ * @return: 0: [TPPLexer_AddIncludePath] Not enough available memory.
+ * @return: 1: [TPPLexer_AddIncludePath] The given path was successfully added.
+ * @return: 2: [TPPLexer_AddIncludePath] The given path had already been added before.
+ * @return: 0: [TPPLexer_DelIncludePath] The given path was not found.
+ * @return: 1: [TPPLexer_DelIncludePath] The given path was successfully removed. */
 TPPFUN int TPPLexer_AddIncludePath(char *__restrict path, size_t pathsize);
 TPPFUN int TPPLexer_DelIncludePath(char *__restrict path, size_t pathsize);
 
@@ -959,9 +932,8 @@ struct TPPKeyword {
  ((self)->k_rare || ((self)->k_rare = (struct TPPRareKeyword *)\
    calloc(1,sizeof(struct TPPRareKeyword))) != NULL)
 
-//////////////////////////////////////////////////////////////////////////
-// Returns the effective keyword flags of 'self'.
-// @return: A set of 'TPP_KEYWORDFLAG_*'
+/* Returns the effective keyword flags of 'self'.
+ * @return: A set of 'TPP_KEYWORDFLAG_*' */
 TPPFUN uint32_t TPPKeyword_Getflags(struct TPPKeyword const *__restrict self);
 
 
@@ -998,9 +970,8 @@ struct TPPToken {
 #define TPPLexer_TRUE_LINE()        TPPFile_LineAt(TPPLexer_Current->l_token.t_file,TPPLexer_Current->l_token.t_begin)
 #define TPPLexer_TRUE_COLUMN()      TPPFile_ColumnAt(TPPLexer_Current->l_token.t_file,TPPLexer_Current->l_token.t_begin)
 
-//////////////////////////////////////////////////////////////////////////
-// Returns the top-most text file associated with the current lexer.
-// NOTE: This function never returns NULL
+/* Returns the top-most text file associated with the current lexer.
+ * NOTE: These functions never returns NULL. */
 TPPFUN struct TPPFile *TPPLexer_Textfile(void);
 TPPFUN struct TPPFile *TPPLexer_Basefile(void);
 
@@ -1116,39 +1087,35 @@ TPPFUN struct TPPLexer TPPLexer_Global;
 TPPFUN struct TPPLexer *TPPLexer_Current;
 #endif
 
-//////////////////////////////////////////////////////////////////////////
-// Initialize/Finalize the given TPP Lexer object.
-// @return: 1: Successfully initialized the given lexer.
-// @return: 0: Not enough available memory to setup builtin keywords.
+/* Initialize/Finalize the given TPP Lexer object.
+ * @return: 1: Successfully initialized the given lexer.
+ * @return: 0: Not enough available memory to setup builtin keywords. */
 TPPFUN int  TPPLexer_Init(struct TPPLexer *__restrict self);
 TPPFUN void TPPLexer_Quit(struct TPPLexer *__restrict self);
 
-//////////////////////////////////////////////////////////////////////////
-// Push/Pop the current extension state.
-// @return: 0: [TPPLexer_PushExtensions] Not enough available memory.
-// @return: 0: [TPPLexer_PopExtensions] No older extension state was available to restore.
-// @return: 1: Successfully pushed/popped active extensions.
+/* Push/Pop the current extension state.
+ * @return: 0: [TPPLexer_PushExtensions] Not enough available memory.
+ * @return: 0: [TPPLexer_PopExtensions] No older extension state was available to restore.
+ * @return: 1: Successfully pushed/popped active extensions. */
 TPPFUN int TPPLexer_PushExtensions(void);
 TPPFUN int TPPLexer_PopExtensions(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Set the state of a given extension 'name'.
-// Extension names attempt to follow gcc names of the same extension.
-// The name of an extension can be found above.
-// @return: 0: Unknown extension.
-// @return: 1: Successfully configured the given extension.
+/* Set the state of a given extension 'name'.
+ * Extension names attempt to follow gcc names of the same extension.
+ * The name of an extension can be found above.
+ * @return: 0: Unknown extension.
+ * @return: 1: Successfully configured the given extension. */
 TPPFUN int TPPLexer_SetExtension(char const *__restrict name, int enabled);
 
-//////////////////////////////////////////////////////////////////////////
-// Searches the cache and opens a new file if not found.
-// WARNING: If the caller intends to push the file onto the #include-stack,
-//          additional steps must be taken when the file was already
-//          located on the stack (in which case another stream must be opened,
-//          and a file that is not cached must be pushed onto the #include-stack).
-// WARNING: This function may modify the given 'filename..filename_size+1' area of memory.
-// @param: pkeyword_entry: When non-NULL, the keyword entry associated with the filename is stored here.
-// @return: * :   A pointer to the already-chached file (WARNING: This is not a reference)
-// @return: NULL: File not found.
+/* Searches the cache and opens a new file if not found.
+ * WARNING: If the caller intends to push the file onto the #include-stack,
+ *          additional steps must be taken when the file was already
+ *          located on the stack (in which case another stream must be opened,
+ *          and a file that is not cached must be pushed onto the #include-stack).
+ * WARNING: This function may modify the given 'filename..filename_size+1' area of memory.
+ * @param: pkeyword_entry: When non-NULL, the keyword entry associated with the filename is stored here.
+ * @return: * :   A pointer to the already-chached file (WARNING: This is not a reference)
+ * @return: NULL: File not found. */
 TPPFUN struct TPPFile *TPPLexer_OpenFile(int mode, char *filename, size_t filename_size,
                                          struct TPPKeyword **pkeyword_entry);
 #define TPPLEXER_OPENFILE_MODE_NORMAL      0 /* Normal open (simply pass the given filename to TPPFile_Open, but still sanitize and cache the filename) */
@@ -1159,83 +1126,72 @@ TPPFUN struct TPPFile *TPPLexer_OpenFile(int mode, char *filename, size_t filena
 #define TPPLEXER_OPENFILE_FLAG_NOCASEWARN  8 /* FLAG: Don't warn about filename casing on windows. */
 #define TPPLEXER_OPENFILE_FLAG_NOCALLBACK 16 /* FLAG: Don't invoke the unknown-file callback when set. */
 
-//////////////////////////////////////////////////////////////////////////
-// Push a given file into the #include-stack of the current lexer.
-// NOTE: These functions never fail and return void.
-// HINT: Call 'TPPLexer_PushFileInherited' if you want the lexer to inherit the file.
-// WARNING: The file argument may be evaluated more than once!
+/* Push a given file into the #include-stack of the current lexer.
+ * NOTE: These functions never fail and return void.
+ * HINT: Call 'TPPLexer_PushFileInherited' if you want the lexer to inherit the file.
+ * WARNING: The file argument may be evaluated more than once! */
 #define TPPLexer_PushFileInherited(f) \
  (void)((f)->f_prev = TPPLexer_Current->l_token.t_file,\
                       TPPLexer_Current->l_token.t_file = (f))
 #define TPPLexer_PushFile(f) \
  (TPPFile_Incref(f),TPPLexer_PushFileInherited(f))
 
-//////////////////////////////////////////////////////////////////////////
-// Lookup or create a keyword entry for the given name.
-// HINT: TPP also caches files inside the keyword hashmap.
-// @return: NULL: [create_missing]  Not enough available memory.
-// @return: NULL: [!create_missing] No keyword with the given name.
-// @return: * :    The keyword entry associated with the given name.
+/* Lookup or create a keyword entry for the given name.
+ * HINT: TPP also caches files inside the keyword hashmap.
+ * @return: NULL: [create_missing]  Not enough available memory.
+ * @return: NULL: [!create_missing] No keyword with the given name.
+ * @return: * :    The keyword entry associated with the given name. */
 TPPFUN struct TPPKeyword *TPPLexer_LookupKeyword(char const *name, size_t namelen, int create_missing);
 TPPFUN struct TPPKeyword *TPPLexer_LookupEscapedKeyword(char const *name, size_t namelen, int create_missing);
 
-//////////////////////////////////////////////////////////////////////////
-// Looks up a keyword, given its ID
-// WARNING: This function is _extremely_ slow and should only
-//          be used if there is absolutely no other choice.
+/* Looks up a keyword, given its ID
+ * WARNING: This function is _extremely_ slow and should only
+ *          be used if there is absolutely no other choice. */
 TPPFUN struct TPPKeyword *TPPLexer_LookupKeywordID(TPP(tok_t) id);
 
-//////////////////////////////////////////////////////////////////////////
-// Define a regular, keyword-style macro 'name' as 'value'.
-// @return: 0: Not enough available memory.
-// @return: 1: Successfully defined the given macro.
-// @return: 2: A macro named 'name' was already defined, and was overwritten.
+/* Define a regular, keyword-style macro 'name' as 'value'.
+ * @return: 0: Not enough available memory.
+ * @return: 1: Successfully defined the given macro.
+ * @return: 2: A macro named 'name' was already defined, and was overwritten. */
 TPPFUN int TPPLexer_Define(char const *__restrict name, size_t name_size,
                            char const *__restrict value, size_t value_size);
 
-//////////////////////////////////////////////////////////////////////////
-// Undefine the macro associated with a given name.
-// @return: 0: No macro was associated with the given name.
-// @return: 1: Successfully undefined a macro.
+/* Undefine the macro associated with a given name.
+ * @return: 0: No macro was associated with the given name.
+ * @return: 1: Successfully undefined a macro. */
 TPPFUN int TPPLexer_Undef(char const *__restrict name, size_t name_size);
 
-//////////////////////////////////////////////////////////////////////////
-// Add/Delete a given assertion for a given predicate.
-// @param: answer: [TPPLexer_DelAssert] When NULL, clear all assertions.
-// @return: 0: [TPPLexer_AddAssert] Not enough available memory.
-// @return: 0: [TPPLexer_DelAssert] Unknown/no answer(s)
-// @return: 1: Successfully added/deleted any assertion(s)
+/* Add/Delete a given assertion for a given predicate.
+ * @param: answer: [TPPLexer_DelAssert] When NULL, clear all assertions.
+ * @return: 0: [TPPLexer_AddAssert] Not enough available memory.
+ * @return: 0: [TPPLexer_DelAssert] Unknown/no answer(s)
+ * @return: 1: Successfully added/deleted any assertion(s) */
 TPPFUN int TPPLexer_AddAssert(char const *__restrict predicate, size_t predicate_size,
                               char const *__restrict answer, size_t answer_size);
 TPPFUN int TPPLexer_DelAssert(char const *__restrict predicate, size_t predicate_size,
                               char const *answer, size_t answer_size);
 
-//////////////////////////////////////////////////////////////////////////
-// Similar to 'TPPLexer_Yield' and used to implement it, but
-// doesn't expand macros or execute preprocessor directives.
+/* Similar to 'TPPLexer_Yield' and used to implement it, but
+ * doesn't expand macros or execute preprocessor directives. */
 TPPFUN TPP(tok_t) TPPLexer_YieldRaw(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Similar to 'TPPLexer_Yield' and used to implement it, but
-// doesn't expand macros.
+/* Similar to 'TPPLexer_Yield' and used to
+ * implement it, but doesn't expand macros. */
 TPPFUN TPP(tok_t) TPPLexer_YieldPP(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Advance the selected lexer by one token and return the id of the new one.
-// HINT: Returns ZERO(0) if the true EOF was reached.
+/* Advance the selected lexer by one token and return the id of the new one.
+ * HINT: Returns ZERO(0) if the true EOF was reached. */
 TPPFUN TPP(tok_t) TPPLexer_Yield(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Emit a given warning.
-// @return: 0: The warning was critical (TPPLexer_SetErr() was called and you should try to abort)
-// @return: 1: The warning was ignored, suppressed or simply non-fatal.
+/* Emit a given warning.
+ * @return: 0: The warning was critical (TPPLexer_SetErr() was called and you should try to abort)
+ * @return: 1: The warning was ignored, suppressed or simply non-fatal. */
 TPPFUN int TPPLexer_Warn(int wnum, ...);
 
-//////////////////////////////////////////////////////////////////////////
-// Set the lexer into an error-state in which
-// calls to to any yield function return TOK_ERR.
-// >> Called when an unrecoverable error occurrs.
-// HINT: To recover after such an event, 'TPPLexer_UnsetErr()' should be called.
+/* Set the lexer into an error-state in which
+ * calls to to any yield function return TOK_ERR.
+ * >> Called when an unrecoverable error occurrs.
+ * HINT: To recover after such an event, 'TPPLexer_UnsetErr()' should be called. */
 #define TPPLexer_SetErr() \
  ((TPPLexer_Current->l_flags&TPPLEXER_FLAG_ERROR) ? 0 : \
   (TPPLexer_Current->l_flags |= TPPLEXER_FLAG_ERROR,\
@@ -1247,17 +1203,15 @@ TPPFUN int TPPLexer_Warn(int wnum, ...);
    TPPLexer_Current->l_token.t_id = TPPLexer_Current->l_noerror,\
    1) : 0)
 
-
-//////////////////////////////////////////////////////////////////////////
-// Called after a given macro was referenced and
-// the associated parenthesis was located.
-// Expected to be called when the current token is the macro's name,
-// this function will parse the macro's argument list remainder of the macro's
-// argument list (including the terminating parenthesis), before 
-// pushing a new file describing the expanded macro onto the include stack.
-// @return: 0: A hard error occurred (such as not enough memory)
-// @return: 1: Successfully expanded the macro.
-// @return: 2: Missing argument list or illegal recursive expansion.
+/* Called after a given macro was referenced and
+ * the associated parenthesis was located.
+ * Expected to be called when the current token is the macro's name,
+ * this function will parse the macro's argument list remainder of the macro's
+ * argument list (including the terminating parenthesis), before 
+ * pushing a new file describing the expanded macro onto the include stack.
+ * @return: 0: A hard error occurred (such as not enough memory)
+ * @return: 1: Successfully expanded the macro.
+ * @return: 2: Missing argument list or illegal recursive expansion. */
 TPPFUN int TPPLexer_ExpandFunctionMacro(struct TPPFile *__restrict macro);
 
 
@@ -1333,56 +1287,51 @@ do{\
  (void)((self)->c_kind != TPP_CONST_STRING || \
         (TPPString_Decref((self)->c_data.c_string),1))
 
-//////////////////////////////////////////////////////////////////////////
-// Convert a given preprocessor constant into a string:
-// >> The returned string can be used to create a file
-//    that represents the constant's value as loaded
-//    by the '__TPP_EVAL' extension.
-// NOTE: If 'self' is a string, it will be escaped.
-// @return: NULL: Not enough available memory.
+/* Convert a given preprocessor constant into a string:
+ * >> The returned string can be used to create a file
+ *    that represents the constant's value as loaded
+ *    by the '__TPP_EVAL' extension.
+ * NOTE: If 'self' is a string, it will be escaped.
+ * @return: NULL: Not enough available memory. */
 TPPFUN /*ref*/struct TPPString *
 TPPConst_ToString(struct TPPConst const *__restrict self);
 
-//////////////////////////////////////////////////////////////////////////
-// Evaluate a constant expression as found after '#if' or in '__TPP_EVAL(...)'
-// NOTE: If 'result' is NULL, the expression's is
-//       parsed, yet warnings will not be emit.
-// NOTE: Expects the current token to point to the first one part of the expression.
-//       Upon exit, that token will point to the first one past the expression.
-// NOTE: Evaluation is compatible with standard c rules, but
-//       ',' operators are not parsed at the highest level.
-// @return: 1: Successfully parsed an expression
-// @return: 0: An error occurred.
+/* Evaluate a constant expression as found after '#if' or in '__TPP_EVAL(...)'
+ * NOTE: If 'result' is NULL, the expression's is
+ *       parsed, yet warnings will not be emit.
+ * NOTE: Expects the current token to point to the first one part of the expression.
+ *       Upon exit, that token will point to the first one past the expression.
+ * NOTE: Evaluation is compatible with standard c rules, but
+ *       ',' operators are not parsed at the highest level.
+ * @return: 1: Successfully parsed an expression
+ * @return: 0: An error occurred. */
 TPPFUN int TPPLexer_Eval(struct TPPConst *result);
 
-//////////////////////////////////////////////////////////////////////////
-// Parse the data block of a pragma.
-// NOTE: 'TPPLexer_ParseBuiltinPragma' behaves similar to
-//       'TPPLexer_ParsePragma', but will not invoke a
-//       user-provided pragma handler in the even of an
-//       unknown one.
-// @return: 0: Unknown/errorous pragma.
-// @return: 1: Successfully parsed the given pragma.
+/* Parse the data block of a pragma.
+ * NOTE: 'TPPLexer_ParseBuiltinPragma' behaves similar to
+ *       'TPPLexer_ParsePragma', but will not invoke a
+ *       user-provided pragma handler in the even of an
+ *       unknown one.
+ * @return: 0: Unknown/errorous pragma.
+ * @return: 1: Successfully parsed the given pragma. */
 TPPFUN int TPPLexer_ParsePragma(void);
 TPPFUN int TPPLexer_ParseBuiltinPragma(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Parse an evaluate a string from the current lexer.
-// NOTE: This functions expects the current token to be a string token
-//       and will continue parsing and concat-ing strings until the
-//       next non-string token.
-// @return: * :   A reference to the unescaped string that was parsed.
-// @return: NULL: A lexer error occurred (TPPLexer_SetErr() was set).
+/* Parse an evaluate a string from the current lexer.
+ * NOTE: This functions expects the current token to be a string token
+ *       and will continue parsing and concat-ing strings until the
+ *       next non-string token.
+ * @return: * :   A reference to the unescaped string that was parsed.
+ * @return: NULL: A lexer error occurred (TPPLexer_SetErr() was set). */
 TPPFUN /*ref*/struct TPPString *TPPLexer_ParseString(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Transform the current token (which must either be 'TOK_INT' or 'TOK_CHAR')
-// into an integral value, storing that value in '*pint' and returning
-// a set of 'TPP_ATOI_*' flags, indicating typing and success.
-// NOTE: This function does _NOT_ yield the current token once finished.
-//       If intended, the caller is responsible for advancing it upon success.
-// @return: TPP_ATOI_ERR: Emiting a warning caused the lexer to error out (TPPLexer_SetErr() was set).
-// @return: * :           A set of 'TPP_ATOI_*' (see below)
+/* Transform the current token (which must either be 'TOK_INT' or 'TOK_CHAR')
+ * into an integral value, storing that value in '*pint' and returning
+ * a set of 'TPP_ATOI_*' flags, indicating typing and success.
+ * NOTE: This function does _NOT_ yield the current token once finished.
+ *       If intended, the caller is responsible for advancing it upon success.
+ * @return: TPP_ATOI_ERR: Emiting a warning caused the lexer to error out (TPPLexer_SetErr() was set).
+ * @return: * :           A set of 'TPP_ATOI_*' (see below) */
 TPPFUN int TPP_Atoi(TPP(int_t) *__restrict pint);
 #define TPP_ATOI_ERR           0x00 /*< NOTE: Never used with any flags (indicates failure). */
 #define TPP_ATOI_OK            0x01 /*< Always set on success. */
@@ -1396,14 +1345,13 @@ TPPFUN int TPP_Atoi(TPP(int_t) *__restrict pint);
 #define TPP_ATOI_TYPE_INT32    0x50 /*< '__int32' (msvc-extension). */
 #define TPP_ATOI_TYPE_INT64    0x60 /*< '__int64' (msvc-extension). */
 
-//////////////////////////////////////////////////////////////////////////
-// Transform the current token (which must be 'TOK_FLOAT') into a
-// floating point value, storing that value in '*pfloat' and returning
-// a set of 'TPP_ATOF_*' flags, indicating typing and success.
-// NOTE: This function does _NOT_ yield the current token once finished.
-//       If intended, the caller is responsible for advancing it upon success.
-// @return: TPP_ATOF_ERR: Emiting a warning caused the lexer to error out (TPPLexer_SetErr() was set).
-// @return: * :           A set of 'TPP_ATOF_*' (see below)
+/* Transform the current token (which must be 'TOK_FLOAT') into a
+ * floating point value, storing that value in '*pfloat' and returning
+ * a set of 'TPP_ATOF_*' flags, indicating typing and success.
+ * NOTE: This function does _NOT_ yield the current token once finished.
+ *       If intended, the caller is responsible for advancing it upon success.
+ * @return: TPP_ATOF_ERR: Emiting a warning caused the lexer to error out (TPPLexer_SetErr() was set).
+ * @return: * :           A set of 'TPP_ATOF_*' (see below) */
 TPPFUN int TPP_Atof(TPP(float_t) *__restrict pfloat);
 #define TPP_ATOF_ERR             0x00 /*< NOTE: Never used with any flags (indicates failure). */
 #define TPP_ATOF_OK              0x01 /*< Always set on success. */
@@ -1412,14 +1360,13 @@ TPPFUN int TPP_Atof(TPP(float_t) *__restrict pfloat);
 #define TPP_ATOF_TYPE_FLOAT      0x10 /*< 'float' (float-suffix 'f') */
 #define TPP_ATOF_TYPE_LONGDOUBLE 0x20 /*< 'long double' (long-double-suffix 'L'). */
 
-//////////////////////////////////////////////////////////////////////////
-// Prints the text contained within the current token, automatically
-// skipping escaped linefeeds and converting di/trigraphs.
-// NOTE: 'TPP_PrintComment' behaves similar, but will
-//        instead handle any kind of comment token,
-//        printing the comment text within.
-// @return: 0: Successfully printed the entire text.
-// @return: *: The first non-ZERO(0) value returned by 'printer'
+/* Prints the text contained within the current token, automatically
+ * skipping escaped linefeeds and converting di/trigraphs.
+ * NOTE: 'TPP_PrintComment' behaves similar, but will
+ *        instead handle any kind of comment token,
+ *        printing the comment text within.
+ * @return: 0: Successfully printed the entire text.
+ * @return: *: The first non-ZERO(0) value returned by 'printer' */
 TPPFUN int TPP_PrintToken(TPP(printer_t) printer, void *closure);
 TPPFUN int TPP_PrintComment(TPP(printer_t) printer, void *closure);
 

@@ -739,16 +739,37 @@ DCCFUN void DCCUnit_Init(struct DCCUnit *__restrict self);
 DCCFUN void DCCUnit_Quit(struct DCCUnit *__restrict self);
 
 /* Merge 'other' into the currently selected unit.
- * NOTE: Before calling this function, the caller should first call:
- *       >> DCCUnit_SetCurr(NULL); // Make sure no section is selected.
- *       >> DCCUnit_Merge(other); */
+ * NOTES:
+ *   - Before calling this function, the caller should first call:
+ *     >> DCCUnit_SetCurr(NULL); // Make sure no section is selected.
+ *     >> DCCUnit_Merge(other);
+ *   - If the given unit 'other' is empty, this function is a no-op.
+ *   - If the current unit is empty, this function behaves the same as:
+ *     'DCCUnit_Quit(&DCCUnit_Current),DCCUnit_Restore(other);'
+ *   - Upon return, the given unit 'other' may no longer be used for
+ *     anything, but must still be destroyed using 'DCCUnit_Quit(other)' */
 DCCFUN void DCCUnit_Merge(struct DCCUnit *__restrict other);
 
 /* Extract and re-initialize the current unit,
  * storing the old one in '*other'.
  * NOTE: This function does a bit more than simply moving
- *       some memory, as it updates section-unit pointers. */
+ *       some memory, as it updates section-unit pointers.
+ * NOTE: This function will leave '&DCCUnit_Current' in
+ *       an undefined state, meaning that the caller is
+ *       left responsible to call 
+ * WARNING: You may not pass '&DCCUnit_Current' for other. */
 DCCFUN void DCCUnit_Extract(struct DCCUnit *__restrict other);
+
+/* Overwrite the current using using '*other'.
+ * This is the reverse operation of 'DCCUnit_Extract()'
+ * WARNING: The caller is responsible to call
+ *         'DCCUnit_Quit(&DCCUnit_Current)' in
+ *          the event that the current unit was
+ *          initialized before.
+ * NOTE: '*other' must have previously been initialized with
+ *       'DCCUnit_Extract()' or 'DCCUnit_Init()'
+ * WARNING: You may not pass '&DCCUnit_Current' for other. */
+DCCFUN void DCCUnit_Restore(struct DCCUnit *__restrict other);
 
 /* Clear any preallocated memory reachable from 'self'
  * @param: flags: A set of 'DCCUNIT_FLUSHFLAG_*' (Unknown flags are ignored) */
@@ -758,6 +779,39 @@ DCCFUN void DCCUnit_Flush(struct DCCUnit *__restrict self, uint32_t flags);
 #define DCCUNIT_FLUSHFLAG_SYMTAB 0x00000002 /*< Shrink the allocated size of symbol hash tables to the minimum assumed by automatic rehashing. */
 #define DCCUNIT_FLUSHFLAG_TABMIN 0x00000010 /*< More aggressive behavior for 'DCCUNIT_FLUSHFLAG_SYMTAB': Reduce the hash size to ONE(1) (Only use this as last way out) */
 #define DCCUNIT_FLUSHFLAG_RELOCS 0x00000100 /*< Clear unused relocations. */
+
+
+
+#define DCCUNIT_POP_DISCARD_NEW 0 /* Discard the new unit and restore the old one. */
+#define DCCUNIT_POP_MERGE       1 /* Merge the new unit with the old. */
+#define DCCUNIT_POP_DISCARD_OLD 2 /* Discard the old unit and keep the new one. */
+
+/* Push/Pop a new compilation unit, allowing you to either merge the
+ * units during pop, or discard either the new, or the old one.
+ * @param: mode: One of 'DCCUNIT_POP_*'
+ * HINT: Since DISCARD_NEW is ZERO(0) and MERGE is ONE(1),
+ *       the most common way to to uses macros is:
+ *    >> DCCUnitPush();
+ *    >> generate_code();
+ *    >> DCCUnitPop(OK); // Merge if OK, otherwise: discard new unit
+ */
+#define DCCUnit_Push() \
+do{ struct DCCUnit _old_unit; \
+    DCCUnit_Extract(&_old_unit);\
+    DCCUnit_Init(&DCCUnit_Current)
+#define DCCUnit_Pop(mode) \
+    switch ((int)(mode)) {\
+    case DCCUNIT_POP_DISCARD_NEW:\
+     DCCUnit_Quit(&DCCUnit_Current);\
+     DCCUnit_Restore(&_old_unit);\
+     break;\
+    default:\
+     DCCUnit_Merge(&_old_unit);\
+    case DCCUNIT_POP_DISCARD_OLD:\
+     DCCUnit_Quit(&_old_unit);\
+     break;\
+    }\
+}while(DCC_MACRO_FALSE)
 
 
 #define DCCUnit_ENUMSYM(sym) \

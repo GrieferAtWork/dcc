@@ -92,17 +92,9 @@ void dump_symbols(void) {
 }
 
 
-static int first = 1;
 static void add_staticlib(char const *filename) {
- struct DCCUnit old_unit;
- if (!first) {
-  DCCUnit_Extract(&old_unit);
-  DCCCompiler_Quit(&compiler);
- } else {
-  /* Initialize DCC and create+set the current text target. */
-  DCCUnit_Init(&unit);
- }
- DCCCompiler_Init(&compiler);
+ /* Initialize DCC and create+set the current text target. */
+ DCCUnit_Push();
  { /* Load a static library. */
    struct DCCLibDef def;
    def.ld_flags    = DCC_LIBDEF_FLAG_STATIC;
@@ -114,15 +106,10 @@ static void add_staticlib(char const *filename) {
    def.ld_impsymfo = (symflag_t) 0;
    DCCUnit_Import(&def);
  }
- if (!OK) { if (!first) DCCUnit_Quit(&old_unit); return; }
-
- if (first) first = 0;
- else DCCUnit_Merge(&old_unit),
-      DCCUnit_Quit(&old_unit);
+ DCCUnit_Pop(OK); /* Merge if OK */
 }
 static void add_c_source(char *filename) {
  struct TPPFile *infile;
- struct DCCUnit old_unit;
  /* Parse the input code. */
  if (strcmp(filename,"-") != 0) {
   infile = TPPLexer_OpenFile(TPPLEXER_OPENFILE_MODE_NORMAL|
@@ -145,15 +132,10 @@ static void add_c_source(char *filename) {
  TPPLexer_Current->l_callbacks.c_ins_comment      = &DCCParse_InsComment;
  TPPLexer_Current->l_extokens = (TPPLEXER_TOKEN_LANG_C|
                                  TPPLEXER_TOKEN_TILDETILDE);
- if (!first) {
-  DCCUnit_Extract(&old_unit);
-  /* TODO: Reset TPP warnings & macros (But _not_ keywords!) */
-  DCCCompiler_Quit(&compiler);
- } else {
-  /* Initialize DCC and create+set the current text target. */
-  DCCUnit_Init(&unit);
- }
- DCCCompiler_Init(&compiler);
+ /* Initialize DCC and create+set the current text target. */
+ DCCUnit_Push();
+ DCCCompiler_Init(&compiler); /* Initialize the compiler. */
+ /* TODO: Reset TPP warnings & macros (But _not_ keywords!) */
 
  TPPLexer_Yield();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
@@ -161,15 +143,14 @@ static void add_c_source(char *filename) {
  unit.u_data = DCCUnit_NewSecs(".data",DCC_SYMFLAG_SEC_R);
  unit.u_bss  = DCCUnit_NewSecs(".bss",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W);
  unit.u_str  = DCCUnit_NewSecs(".string",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_M);
- if (!OK) { if (!first) DCCUnit_Quit(&old_unit); return; }
 
+ /* Select the text section and begin compiling. */
  DCCUnit_SetCurr(unit.u_text);
  DCCParse_AllGlobal();
  DCCUnit_SetCurr(NULL);
 
- if (first) first = 0;
- else DCCUnit_Merge(&old_unit),
-      DCCUnit_Quit(&old_unit);
+ DCCCompiler_Quit(&compiler);
+ DCCUnit_Pop(OK); /* Merge if OK */
 }
 
 static void save_object(char const *filename) {
@@ -185,6 +166,7 @@ int main(int argc, char *argv[]) {
  int result = 0;
  if (!TPP_INITIALIZE()) return 1;
  DCCLinker_Init(&linker);
+ DCCUnit_Init(&unit);
  TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_TERMINATE_STRING_LF
                               |TPPLEXER_FLAG_COMMENT_NOOWN_LF
 #ifdef _WIN32
@@ -281,7 +263,6 @@ end:
  result = OK ? 0 : 1;
  if (!OK) dump_symbols();
 
- DCCCompiler_Quit(&compiler);
  DCCUnit_Quit(&unit);
 end_tpp:
  DCCLinker_Quit(&linker);

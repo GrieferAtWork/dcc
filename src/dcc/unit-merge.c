@@ -451,6 +451,35 @@ DCCUnit_Extract(struct DCCUnit *__restrict other) {
  }
 }
 
+PUBLIC void
+DCCUnit_Restore(struct DCCUnit *__restrict other) {
+ struct DCCSection *iter;
+ assert(other);
+ assert(other != &unit);
+ unit = *other;
+ iter = unit.u_secs;
+ if (iter) {
+  assert(iter->sc_pself == &other->u_secs);
+  iter->sc_pself = &unit.u_secs;
+  do {
+   assert(!DCCSection_ISIMPORT(iter));
+   assert(iter->sc_unit == other);
+   iter->sc_unit = &unit;
+  } while ((iter = iter->sc_next) != NULL);
+ }
+ iter = other->u_imps;
+ if (iter) {
+  assert(iter->sc_pself == &other->u_imps);
+  iter->sc_pself = &unit.u_imps;
+  do {
+   assert(DCCSection_ISIMPORT(iter));
+   assert(iter->sc_unit == other);
+   iter->sc_unit = &unit;
+  } while ((iter = iter->sc_next) != NULL);
+ }
+}
+
+
 DCC_DECL_END
 
 #endif /* !GUARD_DCC_UNIT_MERGE_C */

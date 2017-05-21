@@ -256,8 +256,7 @@ for (local i = 0; i < 256; ++i) {
 //[[[end]]]
 };
 
-//////////////////////////////////////////////////////////////////////////
-// Helpers macro/implementation variables for the current TPP context.
+/* Helpers macro/implementation variables for the current TPP context. */
 #if TPP_CONFIG_ONELEXER
 PUBLIC struct TPPLexer TPPLexer_Global;
 #define current        TPPLexer_Global
@@ -437,8 +436,7 @@ do{ tok_t              _old_tok_id    = token.t_id;\
 
 
 
-//////////////////////////////////////////////////////////////////////////
-// Debug logging helpers
+/* Debug logging helpers */
 #define LOG_CALLMACRO   1
 #define LOG_LEGACYGUARD 2
 #define LOG_PRAGMA      3
@@ -5433,7 +5431,7 @@ create_int_file:
      if unlikely(create_missing_keyword) goto seterr;
      intval = 0;
     } else switch (mode) {
-   //case KWD___is_identifier:
+   /*case KWD___is_identifier:*/
      default: intval = 1; break;
      case KWD___is_builtin_identifier:
       intval = !TPP_ISUSERKEYWORD(keyword->k_id);
@@ -5560,7 +5558,7 @@ create_int_file:
      case KWD___DATE_YEAR__ : intval = tmnow->tm_year+1900; break;
      case KWD___TIME_SEC__  : intval = tmnow->tm_sec; break;
      case KWD___TIME_MIN__  : intval = tmnow->tm_min; break;
-   //case KWD___TIME_HOUR__ :
+   /*case KWD___TIME_HOUR__ :*/
      default                : intval = tmnow->tm_hour; break;
     }
     goto create_int_file;
@@ -6274,7 +6272,7 @@ result_common:
   if (iter->ai_ins_exp) free(arg_iter->ac_expand_begin);
  }
  return result;
-//err_r:  free(result);
+/*err_r:  free(result);*/
 err_text: free(result_text);
 err_argcache_full:
  arg_iter = argv+macro->f_macro.m_function.f_argc;
@@ -8642,7 +8640,9 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
  int macro_name_size,behavior; wgroup_t const *wgroups;
  struct TPPString *temp_string = NULL;
  unsigned int wid;
- //if (current.l_flags&TPPLEXER_FLAG_ERROR) return 0; /* Already in an error-state. */
+#if 0 /* Don't warn when already in an error-state. */
+ if (current.l_flags&TPPLEXER_FLAG_ERROR) return 0;
+#endif
  ++current.l_warncount; /* Always count warnings, even if they'll be dismissed. */
  if (current.l_flags&TPPLEXER_FLAG_NO_WARNINGS) return 1; /* Warnings are disabled. */
  /* Check for per-warning behavior, as configured by the current lexer. */
