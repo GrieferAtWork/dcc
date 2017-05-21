@@ -1210,6 +1210,7 @@ again:
   }
   /* Must start over if we need to increment the header counter. */
   if (curhdr == endhdr) { alloc_more: if unlikely(!elf_mk_phdr()) return; goto again; }
+  /* TODO: What about fixed sections? */
 #if 1
   if (group_info[hdr_group].fp_type == PT_LOAD ||
       group_info[hdr_group].fp_type == PT_DYNAMIC) {

@@ -736,8 +736,10 @@ PRIVATE void pe_mk_secvec(void) {
    info->si_addr = addr;
    assert(!section->sc_base);
 
-   /* Set the section base address. */
-   DCCSection_SetBaseTo(section,addr);
+   if (!(section->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED)) {
+    /* Set the section base address when it isn't a fixed section. */
+    DCCSection_SetBaseTo(section,addr);
+   }
 
    /* (Ab-)use the first .data section as thunk for dll imports/exports. */
    if (info->si_type == SECTY_DATA &&
@@ -764,7 +766,8 @@ PRIVATE void pe_mk_secvec(void) {
                                     section->sc_text.tb_begin);
    }
    if (info->si_vsize) {
-    addr += info->si_vsize;
+    if (!(section->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED))
+          addr += info->si_vsize;
     ++info;
    }
   }
@@ -1064,16 +1067,16 @@ pe_getitasym(struct DCCSym *__restrict basesym) {
   size_t namelen = basesym->sy_name->k_size;
   char *buf,*mbuf;
   if (namelen < 64) {
-   buf = (char *)alloca((namelen+5)*sizeof(char));
+   buf = (char *)alloca((namelen+1+DCC_COMPILER_STRLEN(ITA_PREFIX))*sizeof(char));
    mbuf = NULL;
   } else {
-   mbuf = buf = (char *)malloc((namelen+5)*sizeof(char));
+   mbuf = buf = (char *)malloc((namelen+1+DCC_COMPILER_STRLEN(ITA_PREFIX))*sizeof(char));
    if unlikely(!mbuf) { TPPLexer_SetErr(); return NULL; }
   }
-  buf[0] = 'I',buf[1] = 'A';
-  buf[2] = 'T',buf[3] = '.';
-  buf[namelen+4] = '\0';
-  memcpy(buf+4,basesym->sy_name->k_name,namelen*sizeof(char));
+  memcpy(buf,ITA_PREFIX,DCC_COMPILER_STRLEN(ITA_PREFIX)*sizeof(char));
+  buf[DCC_COMPILER_STRLEN(ITA_PREFIX)+namelen] = '\0';
+  memcpy(buf+DCC_COMPILER_STRLEN(ITA_PREFIX),
+         basesym->sy_name->k_name,namelen*sizeof(char));
   /* Declare as weak to use only keep one copy of the symbol. */
   return DCCUnit_NewSyms(buf,DCC_SYMFLAG_PRIVATE|DCC_SYMFLAG_WEAK);
  }

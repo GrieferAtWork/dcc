@@ -32,6 +32,10 @@
 #include "linker-elf.h"
 #include "x86_util.h"
 
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+#include "linker-pe.h"
+#endif
+
 DCC_DECL_BEGIN
 
 
@@ -788,7 +792,9 @@ done_symvec:
     for (; sym_iter != sym_end; ++sym_iter) {
      if ((sym = *sym_iter) == NULL) continue;
      if (sym->sy_name->k_size <= 4) continue;
-     if (memcmp(sym->sy_name->k_name,"IAT.",4*sizeof(char)) != 0) continue;
+     if (memcmp(sym->sy_name->k_name,ITA_PREFIX,
+                DCC_COMPILER_STRLEN(ITA_PREFIX)*
+                sizeof(char)) != 0) continue;
      /* This is an IAT symbol. - Try to find the associated base symbol and link them! */
      basesym = DCCUnit_GetSyms(sym->sy_name->k_name+4);
      if unlikely(!basesym || basesym->sy_peind) continue;
@@ -897,6 +903,11 @@ invrelo: /* Warning: Invalid relocation */
       dcc_rel->r_addr = rel_iter->r_offset;
       if unlikely(!rsym) {
        if (relty != DCC_R_RELATIVE) goto invrelo;
+       /* TODO: Determine which section this relocation points into,
+        *       then convert it into a 'DCC_R_DATA_PTR' relocation
+        *       against the start symbol of that section.
+        *    >> If we fail to do this, we won't be able to
+        *       safely append data to any section. */
        dcc_rel->r_type = DCC_R_RELATIVE;
        dcc_rel->r_sym  = &DCCSection_Abs.sc_start;
       } else {

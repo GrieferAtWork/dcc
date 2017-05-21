@@ -286,7 +286,7 @@ DCCFUN void DCC_PARSE_CALL DCCParse_AllGlobal(void);
 
 /* Returns the canonical name of a library described by 'name...+=size',
  * emitting warnings about invalid characters or constructs as well as
- * removing any whitespace or forcing upper-case on windows targets.
+ * removing any whitespace or unifying path slashes.
  * NOTE: This function respects the 'EXT_CANONICAL_LIB_NAMES' extension
  *       and will return the given name unmodified when it is disabled. */
 DCCFUN struct TPPKeyword *DCCParse_GetLibname(char const *__restrict name, size_t size);

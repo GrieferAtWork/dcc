@@ -87,6 +87,9 @@ typedef struct {
 } NT_HEADER;
 
 
+/* Prefix for ITA wrapper symbols. */
+#define ITA_PREFIX "ITA."
+
 
 #if DCC_TARGET_IA32(0)
 #   define DCC_PE_TARGET_MACHINE   IMAGE_FILE_MACHINE_I386

@@ -1009,7 +1009,7 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
  /* Special case: Don't need to do anything if there are no relocations! */
  if unlikely(!self->sc_relc) return 0;
  base_address = self->sc_base;
- assert(base_address);
+ assert(base_address || (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED));
  relbase = self->sc_text.tb_begin;
 #ifdef DCC_SYMFLAG_SEC_OWNSBASE
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE) {
@@ -1571,7 +1571,8 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_start.sy_unit_next   */NULL,
  /* sc_start.sy_unit_before */NULL,
  /* sc_start.sy_name        */&TPPKeyword_Empty,
- /* sc_start.sy_flags       */DCC_SYMFLAG_STATIC|DCC_SYMFLAG_SEC(1,1,1,0,0,1), /* rwxu */
+ /* sc_start.sy_flags       */DCC_SYMFLAG_STATIC|DCC_SYMFLAG_SEC_FIXED|
+                              DCC_SYMFLAG_SEC(1,1,1,0,0,1), /* rwxu */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
  /* sc_start.sy_peind         */NULL,
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */

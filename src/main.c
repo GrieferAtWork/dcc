@@ -93,7 +93,6 @@ void dump_symbols(void) {
 
 
 static void add_import(char const *filename) {
- /* Initialize DCC and create+set the current text target. */
  DCCUnit_Push();
  { /* Load a static library or source file. */
    struct DCCLibDef def;
@@ -113,58 +112,18 @@ static void add_import(char const *filename) {
  DCCUnit_Pop(OK); /* Merge if OK */
 }
 
-
-#if 0
-static void add_c_source(char *filename) {
- struct TPPFile *infile;
- /* Parse the input code. */
- if (strcmp(filename,"-") != 0) {
-  infile = TPPLexer_OpenFile(TPPLEXER_OPENFILE_MODE_NORMAL|
-                             TPPLEXER_OPENFILE_FLAG_NOCASEWARN,
-                             filename,strlen(filename),NULL);
-  if (infile) TPPFile_Incref(infile);
-  if (!infile) fprintf(stderr,"File not found: \"%s\"\n",filename),_exit(1);
- } else {
-  /* Fallback: Use stdin as input stream. */
-#ifdef _WIN32
-  infile = TPPFile_OpenStream(GetStdHandle(STD_INPUT_HANDLE),"<stdin>");
-#else
-  infile = TPPFile_OpenStream(STDIN_FILENO,"<stdin>");
-#endif
- }
- /* Yield the initial token. */
- TPPLexer_PushFileInherited(infile);
- TPPLexer_Current->l_callbacks.c_parse_pragma     = &DCCParse_Pragma;
- TPPLexer_Current->l_callbacks.c_parse_pragma_gcc = &DCCParse_GCCPragma;
- TPPLexer_Current->l_callbacks.c_ins_comment      = &DCCParse_InsComment;
- TPPLexer_Current->l_extokens = (TPPLEXER_TOKEN_LANG_C|
-                                 TPPLEXER_TOKEN_TILDETILDE);
- /* Initialize DCC and create+set the current text target. */
- DCCUnit_Push();
- DCCCompiler_Init(&compiler); /* Initialize the compiler. */
- TPPLexer_Reset(TPPLexer_Current,
-                TPPLEXER_RESET_EXTENSIONS|
-                TPPLEXER_RESET_WARNINGS);
- TPPLexer_Yield();
- compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
- unit.u_text = DCCUnit_NewSecs(".text",DCC_SYMFLAG_SEC_X|DCC_SYMFLAG_SEC_R);
- unit.u_data = DCCUnit_NewSecs(".data",DCC_SYMFLAG_SEC_R);
- unit.u_bss  = DCCUnit_NewSecs(".bss",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W);
- unit.u_str  = DCCUnit_NewSecs(".string",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_M);
-
- /* Select the text section and begin compiling. */
- DCCUnit_SetCurr(unit.u_text);
- DCCParse_AllGlobal();
- DCCUnit_SetCurr(NULL);
-
- TPPLexer_Reset(TPPLexer_Current,
-                TPPLEXER_RESET_INCLUDE|TPPLEXER_RESET_MACRO|
-                TPPLEXER_RESET_ASSERT|TPPLEXER_RESET_KWDFLAGS|
-                TPPLEXER_RESET_COUNTER|TPPLEXER_RESET_FONCE);
- DCCCompiler_Quit(&compiler);
- DCCUnit_Pop(OK); /* Merge if OK */
+static void add_library(char const *filename) {
+ /* Add a dynamic library dependency. */
+ struct DCCLibDef def;
+ def.ld_flags    = (DCC_LIBDEF_FLAG_NONE);
+ def.ld_name     = filename;
+ def.ld_size     = strlen(filename);
+ def.ld_expsymfa = (symflag_t)-1;
+ def.ld_expsymfo = (symflag_t) 0;
+ def.ld_impsymfa = (symflag_t)-1;
+ def.ld_impsymfo = (symflag_t) 0;
+ DCCUnit_Import(&def);
 }
-#endif
 
 static void save_object(char const *filename) {
  struct DCCExpDef def;
@@ -178,6 +137,12 @@ int main(int argc, char *argv[]) {
  struct DCCSection *sec;
  int result = 0;
  if (!TPP_INITIALIZE()) return 1;
+
+ /* Initialize TPP callback hooks. */
+ TPPLexer_Current->l_callbacks.c_parse_pragma     = &DCCParse_Pragma;
+ TPPLexer_Current->l_callbacks.c_parse_pragma_gcc = &DCCParse_GCCPragma;
+ TPPLexer_Current->l_callbacks.c_ins_comment      = &DCCParse_InsComment;
+
  DCCLinker_Init(&linker);
  DCCUnit_Init(&unit);
  TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_TERMINATE_STRING_LF
@@ -191,15 +156,14 @@ int main(int argc, char *argv[]) {
  //_CrtSetBreakAlloc(130);
  DCCLinker_AddSysPaths("a.exe");
 
- //add_import("a.o"); /* TEST */
- //add_import("sb.o"); /* TEST */
-
  //dump_symbols();
  if (!OK) goto end;
 
  while (argc) {
   /* Parse the input code. */
-  add_import(argv[0]);
+  if (!memcmp(argv[0],"-l",2*sizeof(char)))
+       add_library(argv[0]+2);
+  else add_import(argv[0]);
   if (!OK) goto end;
   ++argv,--argc;
  }

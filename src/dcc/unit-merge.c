@@ -420,6 +420,13 @@ merge_symflags:
    while (sym) validate_sym(sym),sym = sym->sy_unit_next;
  }
 #endif
+ /* TODO: In sections that allow it, merge all symbols.
+  *    >> When two compilation units contain the same string (which happens more often than not),
+  *       we can merge those string into one, simply by taking the string symbol
+  *      (from which we can tell the address and size), and searching for an identical
+  *       string in lower memory addresses.
+  * NOTE: This kind of merge-optimization should be given its own function
+  */
 }
 
 PUBLIC void

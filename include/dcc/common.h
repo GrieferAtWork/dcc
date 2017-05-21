@@ -47,6 +47,12 @@
 #endif
 #endif
 
+
+/* DCC Configuration (NOTE: Target configs are in "/include/dcc/target.h") */
+#define DCC_CONFIG_LIBPREFIX   "lib"
+
+
+
 #ifdef _MSC_VER
 #ifndef __INTELLISENSE__
 #if defined(DCC_PRIVATE_API) && DCC_DEBUG
@@ -122,6 +128,12 @@
 #   define DCC_COMPILER_ALIGNOF  __builtin_alignof
 #else
 #   define DCC_COMPILER_ALIGNOF(T) ((size_t)&((struct { char x; T s; } *)0)->s)
+#endif
+
+#if defined(__TPP_EVAL) && __TPP_VERSION__ >= 200
+#   define DCC_COMPILER_STRLEN(s) __TPP_EVAL(#(s))
+#else
+#   define DCC_COMPILER_STRLEN(s) ((sizeof(s)/sizeof(char))-1)
 #endif
 
 

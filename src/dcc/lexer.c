@@ -397,7 +397,7 @@ DCCParse_String(void) {
 PUBLIC struct TPPKeyword *
 DCCParse_GetLibname(char const *__restrict name, size_t size) {
  struct TPPKeyword *result;
- char *mbuf,*buf,*iter,*end,*dst,ch;
+ char *mbuf,*buf,*iter,*end;
  /* Don't perform any formating if not requested, to. */
  if (!HAS(EXT_CANONICAL_LIB_NAMES))
   return TPPLexer_LookupKeyword(name,size,1);
@@ -411,12 +411,15 @@ DCCParse_GetLibname(char const *__restrict name, size_t size) {
   buf = mbuf = (char *)malloc((size+1)*sizeof(char));
   if unlikely(!mbuf) { TPPLexer_SetErr(); return NULL; }
  }
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
- end = (iter = (char *)name)+size;
- for (dst = buf; iter != end; ) {
-  ch = *iter++;
-  if (ch >= 'a' && ch <= 'z') ch -= 'a'-'A';
-  *dst++ = ch;
+#if DCC_TARGET_OS == DCC_OS_WINDOWS && 0 /* Don't do this... */
+ {
+  char *dst,ch;
+  end = (iter = (char *)name)+size;
+  for (dst = buf; iter != end; ) {
+   ch = *iter++;
+   if (ch >= 'a' && ch <= 'z') ch -= 'a'-'A';
+   *dst++ = ch;
+  }
  }
 #else
  memcpy(buf,name,size*sizeof(char));

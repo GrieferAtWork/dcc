@@ -439,7 +439,14 @@ DCCDAT struct DCCSection DCCSection_Abs;
 #define DCCSection_MSIZE(self) ((DCC(target_siz_t))(((self)->sc_text.tb_end < (self)->sc_text.tb_max ? \
                                                      (self)->sc_text.tb_end : (self)->sc_text.tb_max)-\
                                                      (self)->sc_text.tb_begin))
-#define DCCSection_HASBASE(self) ((self) == &DCCSection_Abs || (!DCCSection_ISIMPORT(self) && (self)->sc_base))
+#if 1
+#define DCCSection_HASBASE(self) \
+ ((self)->sc_base || ((self)->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED))
+#else
+#define DCCSection_HASBASE(self) \
+ ((self) == &DCCSection_Abs || (!DCCSection_ISIMPORT(self) && (self)->sc_base))
+#endif
+
 #define DCCSection_ENUMSYM(sym,self) \
  for (struct DCCSym **sym_iter = (self)->sc_symv,\
                     **sym_end  = sym_iter+(self)->sc_syma;\

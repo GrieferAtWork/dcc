@@ -153,6 +153,9 @@ srcloader_exec(struct SrcLoaderDef const *__restrict loader,
  }
  CURRENT.l_flags    = old_tpp_flags;
  CURRENT.l_extokens = old_tpp_extokens;
+ /* XXX: Shouldn't we update all symbols according
+  *      to 'def->ld_expsymfa' and 'def->ld_expsymfo', as well
+  *      as 'def->ld_impsymfa' and 'def->ld_impsymfo'? */
 end:
  DCCCompiler_Quit(&compiler);
  compiler = old_compiler;
@@ -245,20 +248,20 @@ DCCUnit_ImportWithFilename(struct DCCLibDef *__restrict def,
 }
 
 
-#define MAX_EXTLEN 8
+#define MAX_EXTLEN 4
 struct path_extension { char ext[MAX_EXTLEN]; };
 
 static struct path_extension const
 search_extensions[] = {
- {""    },
+ {{0}},
 #if DCC_HOST_OS == DCC_OS_WINDOWS
- {".dll"},
- {".exe"},
+ {{'.','d','l','l'}},
+ {{'.','e','x','e'}},
 #endif
 #if DCC_HOST_OS == DCC_OS_LINUX
- {".so"},
+ {{'.','s','o'}},
 #endif
- {".def"},
+ {{'.','d','e','f'}},
 };
 PRIVATE int DCCUNIT_IMPORTCALL
 DCCUnit_ImportWithPath(struct TPPString *__restrict path,
@@ -271,7 +274,7 @@ DCCUnit_ImportWithPath(struct TPPString *__restrict path,
  pathlen = path->s_size;
  if (pathlen == 1 && path->s_text[0] == '.') pathlen = 0;
  while (pathlen && path->s_text[pathlen-1] == '/') --pathlen;
- buflen = pathlen+def->ld_size+MAX_EXTLEN+2;
+ buflen = pathlen+def->ld_size+(MAX_EXTLEN+DCC_COMPILER_STRLEN(DCC_CONFIG_LIBPREFIX))+2;
  if (buflen < 128) {
   buf = (char *)alloca(buflen);
   mbuf = NULL;
@@ -296,10 +299,23 @@ DCCUnit_ImportWithPath(struct TPPString *__restrict path,
   do {
    memcpy(ext,ext_iter->ext,MAX_EXTLEN*sizeof(char));
    result = DCCUnit_ImportWithFilename(def,buf);
-   if (result || !OK) break;
+   if (result || !OK) goto done;
   } while (++ext_iter != ext_end);
-  /* TODO: Retry with 'lib' prefixed before the filename. */
+  /* Retry with 'lib' prefixed before the filename. */
+  ext -= def->ld_size;
+  memcpy(ext,DCC_CONFIG_LIBPREFIX,DCC_COMPILER_STRLEN(DCC_CONFIG_LIBPREFIX)*sizeof(char));
+  ext += DCC_COMPILER_STRLEN(DCC_CONFIG_LIBPREFIX);
+  memcpy(ext,def->ld_name,def->ld_size*sizeof(char));
+  ext += def->ld_size;
+  ext[MAX_EXTLEN] = '\0';
+  ext_iter = search_extensions;
+  do {
+   memcpy(ext,ext_iter->ext,MAX_EXTLEN*sizeof(char));
+   result = DCCUnit_ImportWithFilename(def,buf);
+   if (result || !OK) goto done;
+  } while (++ext_iter != ext_end);
  }
+done:
  DCC_Free(mbuf);
  return result;
 }

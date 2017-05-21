@@ -19,6 +19,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Dynamically/Statically link against ELF binaries/libraries/object files (<b>\*</b>, <b>\*.so</b>, <b>\*.o</b>)
   - Output windows PE binary/library (<b>\*.exe</b>, <b>\*.dll</b>).
   - Output linux ELF binary/library (<b>\*</b>, <b>\*.so</b>).
+  - Output ELF relocatable object files (<b>\*.o</b>)
   - Process and merge multiple source-/object files/static libraries.
   - Compiling DCC is only tested and working in Visual Studio.
   - Full STD-C compliance up to C99
