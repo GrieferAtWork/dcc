@@ -819,6 +819,16 @@ do{ struct DCCUnit _old_unit; \
                     **sym_end  = sym_iter+DCCUnit_Current.u_syma;\
       sym_iter != sym_end; ++sym_iter)\
  for ((sym) = *sym_iter; (sym); (sym) = (sym)->sy_unit_next)
+#define DCCUnit_ENUMNSYM(sym) \
+ for ((sym) = DCCUnit_Current.u_nsym; (sym); (sym) = (sym)->sy_unit_next)
+#define DCCUnit_ENUMALLSYM(sym) \
+ for (struct DCCSym **sym_iter = DCCUnit_Current.u_symv,\
+                    **sym_end  = sym_iter+DCCUnit_Current.u_syma,\
+                     *sym_nsym = DCCUnit_Current.u_nsym;\
+      (sym_iter < sym_end) || sym_nsym; ++sym_iter)\
+ for ((sym_iter < sym_end) ? (sym) = *sym_iter : ((sym) = sym_nsym,sym_nsym = NULL); \
+     (sym); (sym) = (sym)->sy_unit_next)
+
 #if 1
 #define DCCUnit_ENUMSEC(sec) \
  for ((sec) = DCCUnit_Current.u_secs; (sec); (sec) = (sec)->sc_next)
@@ -903,9 +913,48 @@ DCCFUN struct DCCSection *DCCUnit_NewSecs(char const *__restrict name, DCC(symfl
  * but instead use the given filename as only option. */
 #define DCC_LIBDEF_FLAG_NOSEARCHSTD 0x00000008
 
+/* Don't try various file extensions of the 'lib'
+ * filename prefix when searching for library files. */
+#define DCC_LIBDEF_FLAG_NOSEARCHEXT 0x00000010
+
 /* Always name the library after the given user-name (def->ld_name).
  * NOTE: This flag has no effect when linking is performed statically. */
-#define DCC_LIBDEF_FLAG_USERNAME 0x00000010
+#define DCC_LIBDEF_FLAG_USERNAME 0x00000020
+
+/* Don't attempt to load library files, but always assume
+ * that the input file is some kind of source file (see below.)
+ * NOTE: If none of the 'DCC_LIBDEF_FLAG_*_SOURCE' flags are
+ *       or'd together with this one, the library loader will
+ *       always fail.
+ * NOTE: This flag implies 'DCC_LIBDEF_FLAG_NODYN' behavior.
+ * NOTE: Only when this flag is set, can file streams not supporting
+ *       the seek interface be used as with 'DCCUnit_ImportStream',
+ *       as this flag will also prevent seek operations on 'fd', which
+ *       would otherwise be necessary for loading header magic.
+ */
+#define DCC_LIBDEF_FLAG_ONLY_SOURCE 0x00000040
+
+/* After parsing a source file, don't reset
+ * macros, assertions, keyword flags, etc. */
+#define DCC_LIBDEF_FLAG_NO_RESET_TPP 0x00000100
+
+/* When used alongside 'DCC_LIBDEF_FLAG_STATIC', open the
+ * library as a source file, using 'ld_name' as direct path.
+ * WARNING: These flags are ignored when 'DCC_LIBDEF_FLAG_STATIC' is not
+ *          set, as source files can only be linked statically (obviously...)
+ * >> When used together with 'DCC_LIBDEF_FLAG_NOSEARCHSTD'
+ *    and 'DCC_LIBDEF_FLAG_NOSEARCHEXT', this flag can be used
+ *    to automatically load an input file, either as a static
+ *    library, or as source-code.
+ * NOTE: Multiple source-code flags may be or'd together
+ *       if the intend is for DCC to automatically deduce
+ *       the source type from the file extension. */
+#define DCC_LIBDEF_FLAG_C_SOURCE   0x80000000
+#define DCC_LIBDEF_FLAG_ASM_SOURCE 0x40000000
+
+/* Enable all source types with fully automatic
+ * detection of what kind of source is given. */
+#define DCC_LIBDEF_FLAG_SOURCE     0xffff0000
 
 struct DCCLibDef {
  uint32_t           ld_flags; /*< Loader flags (A set of 'DCC_LIBDEF_FLAG_*'). */
@@ -952,8 +1001,10 @@ struct DCCLibDef {
  *                        within all library paths specified within the current linker.
  *                        s.a.: 'DCCLinker_AddLibPath()'
  * @param: def: The library definition (s.a.: documentation of 'DCCLibDef')
- * @return: 0: Data form the given stream 'fd' does not describe a binary. (No lexer error was set)
- *             A critical error occurred while parsing the given stream 'fd'. (A lexer error was set)
+ * @return: 0: - Data form the given stream 'fd' does not describe a binary.
+ *               >> No lexer error was set & the current unit was not modified.
+ *             - A critical error occurred while parsing the given stream 'fd'.
+ *               >> A lexer error was set; the current unit may have been modified.
  * @return: 1: Successfully loaded a binary into the current unit (either statically, or dynamically) */
 DCCFUN int DCCUNIT_IMPORTCALL DCCUnit_Import(struct DCCLibDef *__restrict def);
 DCCFUN int DCCUNIT_IMPORTCALL DCCUnit_ImportStream(struct DCCLibDef *__restrict def,

@@ -349,7 +349,8 @@ LEXPRIV /*ref*/struct TPPString *DCC_PARSE_CALL
 DCCParse_GetPrettyFunction(void) {
  if (!compiler.c_fun) {
   WARN(W_EXPR_FUNC_OUTSIDE_OF_FUNCTION);
-  return TPPString_NewSized(0);
+  TPPString_Incref(TPPFile_Empty.f_text);
+  return TPPFile_Empty.f_text;
  }
  return DCCType_ToTPPString(&compiler.c_fun->d_type,
                              compiler.c_fun->d_name);

@@ -139,6 +139,7 @@ expect_exports:
     }
    }
 done:
+   assert(TOKEN.t_file == f);
    TOKEN.t_file = f->f_prev;
    TPPFile_Decref(f);
  }

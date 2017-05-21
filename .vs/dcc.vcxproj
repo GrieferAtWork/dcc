@@ -80,6 +80,7 @@
     <None Include="..\src\dcc\unit-import-elf.c.inl" />
     <None Include="..\src\dcc\unit-import-pe-dynamic.c.inl" />
     <None Include="..\src\dcc\unit-import-pe-static.c.inl" />
+    <None Include="..\src\dcc\unit-import-source.c.inl" />
     <None Include="..\src\tpp\tpp-defs.inl" />
     <None Include="..\src\tpp\tpp-gcc-defs.inl" />
   </ItemGroup>

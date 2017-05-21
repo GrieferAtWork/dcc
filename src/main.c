@@ -92,12 +92,16 @@ void dump_symbols(void) {
 }
 
 
-static void add_staticlib(char const *filename) {
+static void add_import(char const *filename) {
  /* Initialize DCC and create+set the current text target. */
  DCCUnit_Push();
- { /* Load a static library. */
+ { /* Load a static library or source file. */
    struct DCCLibDef def;
-   def.ld_flags    = DCC_LIBDEF_FLAG_STATIC;
+   def.ld_flags    = (DCC_LIBDEF_FLAG_STATIC|
+                      DCC_LIBDEF_FLAG_NODYN|
+                      DCC_LIBDEF_FLAG_NOSEARCHSTD|
+                      DCC_LIBDEF_FLAG_NOSEARCHEXT|
+                      DCC_LIBDEF_FLAG_SOURCE);
    def.ld_name     = filename;
    def.ld_size     = strlen(filename);
    def.ld_expsymfa = (symflag_t)-1;
@@ -108,6 +112,9 @@ static void add_staticlib(char const *filename) {
  }
  DCCUnit_Pop(OK); /* Merge if OK */
 }
+
+
+#if 0
 static void add_c_source(char *filename) {
  struct TPPFile *infile;
  /* Parse the input code. */
@@ -157,6 +164,7 @@ static void add_c_source(char *filename) {
  DCCCompiler_Quit(&compiler);
  DCCUnit_Pop(OK); /* Merge if OK */
 }
+#endif
 
 static void save_object(char const *filename) {
  struct DCCExpDef def;
@@ -179,27 +187,28 @@ int main(int argc, char *argv[]) {
 #endif
                                );
  if (argc) --argc,++argv;
- //if unlikely(!argc) { result = 1; goto end_tpp; }
 
  //_CrtSetBreakAlloc(130);
  DCCLinker_AddSysPaths("a.exe");
 
- add_staticlib("a.o"); /* TEST */
- //add_staticlib("sb.o"); /* TEST */
+ //add_import("a.o"); /* TEST */
+ //add_import("sb.o"); /* TEST */
+
  //dump_symbols();
  if (!OK) goto end;
 
  while (argc) {
   /* Parse the input code. */
-  add_c_source(argv[0]);
+  add_import(argv[0]);
   if (!OK) goto end;
   ++argv,--argc;
  }
 
- save_object("a.o");
 
  /* Cleanup unused stuff. */
  DCCUnit_ClearStatic();
+
+ //save_object("a.o");
 
  //linker.l_flags |= DCC_LINKER_FLAG_NORELOC;
 #ifdef DCC_LINKER_FLAG_PEDYNAMIC
@@ -268,7 +277,6 @@ end:
  if (!OK) dump_symbols();
 
  DCCUnit_Quit(&unit);
-end_tpp:
  DCCLinker_Quit(&linker);
  DCCUnit_ClearCache();
  TPP_FINALIZE();

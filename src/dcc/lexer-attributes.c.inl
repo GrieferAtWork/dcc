@@ -210,7 +210,8 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   YIELD();
   if (TOK == '(' || TOK == KWD___pack) goto parse_alias;
   /* Empty string. */
-  text = TPPString_NewSized(0);
+  text = TPPFile_Empty.f_text;
+  TPPString_Incref(TPPFile_Empty.f_text);
   has_paren = 0;
   goto set_text;
 

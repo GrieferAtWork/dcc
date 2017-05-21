@@ -55,7 +55,11 @@ DCCAsm_ExecStringInherited(struct TPPString *__restrict asm_text) {
                                 TPPLEXER_FLAG_NO_BUILTIN_MACROS);
   YIELD(); /* Yield the initial token using ASM configurations. */
   /* Parse assembly directives. */
-  while (TOK > 0) DCCParse_AsmInstr();
+  while (TOK > 0) {
+   unsigned long old_num = TOKEN.t_num;
+   DCCParse_AsmInstr();
+   if (old_num == TOKEN.t_num) YIELD();
+  }
   DCCParse_AsmEnd();
   TPPLexer_Current->l_eob_file = old_eob;
   YIELD(); /* Yield the next token after the assembly (which should be a ';'). */
@@ -93,10 +97,14 @@ DCCParse_AsmOp(struct asm_operand *__restrict self) {
   WARN(W_IASM_EXPECTED_STRING_FOR_CONSTRAINTS);
   constraints = NULL;
  }
- if (!constraints) constraints = TPPString_NewSized(0);
+ if (!constraints) {
+  constraints = TPPFile_Empty.f_text;
+  TPPString_Incref(TPPFile_Empty.f_text);
+ }
  DCCParse_ParPairBegin();
  DCCParse_Expr();
  DCCParse_ParPairEnd();
+ TPPString_Decref(constraints);
 }
 
 LEXPRIV void DCC_PARSE_CALL

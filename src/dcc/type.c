@@ -856,7 +856,8 @@ DCCType_ToTPPString(struct DCCType const *__restrict self,
   }
  }
  /* This returns the empty string. */
- return TPPString_NewSized(0);
+ TPPString_Incref(TPPFile_Empty.f_text);
+ return TPPFile_Empty.f_text;
 }
 
 

@@ -1113,8 +1113,9 @@ PRIVATE void pe_mk_buildita(void) {
 #error FIXME
 #endif
    if ((iat_sym = sym->sy_peind) == NULL) {
-    iat_sym = DCCSym_New(&TPPKeyword_Empty,DCC_SYMFLAG_STATIC);
-    if unlikely(!iat_sym) return;
+    /* The symbol must be part of the unnamed symbol list! */
+    if unlikely((iat_sym = DCCUnit_AllocSym()) == NULL) return;
+    DCCSym_Incref(iat_sym);
     sym->sy_peind = iat_sym; /* Inherit reference. */
    }
    /* - Here, 'iat_addr' is the address of the jump-instruction that

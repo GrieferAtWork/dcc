@@ -22,6 +22,7 @@
 #define DCC(x) x
 
 #include <dcc/common.h>
+#include <dcc/compiler.h>
 #include <dcc/target.h>
 #include <dcc/unit.h>
 #include <dcc/stream.h>
@@ -47,7 +48,7 @@ DCC_DECL_BEGIN
 #define LOADDEF(d,s,f,msiz,...) \
  {f,LIBLOADER_FLAGS(d,s,msiz),__VA_ARGS__}
 
-INTERN struct PLibLoaderDef const dcc_libloaders[] = {
+INTERN struct LibLoaderDef const dcc_libloaders[] = {
 #if DCC_LIBFORMAT_PE_STATIC /* '*.exe/*.dll' PE binaries (static mode). */
  LOADDEF(0,1,&DCCUnit_StaLoadPE,2,{'M','Z'}),
 #endif /* DCC_LIBFORMAT_PE_STATIC */
@@ -65,6 +66,98 @@ INTERN struct PLibLoaderDef const dcc_libloaders[] = {
 };
 
 
+INTERN struct SrcLoaderDef const dcc_srcloaders[] = {
+ /* NOTE: This order mirrors GCC behavior, as documented here:
+  * >> http://labor-liber.org/en/gnu-linux/development/extensions */
+ {&DCCUnit_LoadSrc_C,SRCLOADER_FLAG_PP,DCC_LIBDEF_FLAG_C_SOURCE,{'c','\0'}},
+ {&DCCUnit_LoadSrc_C,SRCLOADER_FLAG_NONE,DCC_LIBDEF_FLAG_C_SOURCE,{'i','\0'}},
+ {&DCCUnit_LoadSrc_ASM,SRCLOADER_FLAG_PP,DCC_LIBDEF_FLAG_ASM_SOURCE,{'S','\0'}},
+ {&DCCUnit_LoadSrc_ASM,SRCLOADER_FLAG_NONE,DCC_LIBDEF_FLAG_ASM_SOURCE,{'s','\0'}},
+
+ /* Fallback load handling when no extension is present. */
+ {&DCCUnit_LoadSrc_C,SRCLOADER_FLAG_PP,DCC_LIBDEF_FLAG_C_SOURCE,{'\0'}},
+ {&DCCUnit_LoadSrc_ASM,SRCLOADER_FLAG_PP,DCC_LIBDEF_FLAG_ASM_SOURCE,{'\0'}},
+ {NULL,SRCLOADER_FLAG_NONE,0,{'\0'}},
+};
+
+
+
+PRIVATE void DCCUNIT_IMPORTCALL
+srcloader_exec(struct SrcLoaderDef const *__restrict loader,
+               struct DCCLibDef *__restrict def,
+               char const *__restrict filename,
+               stream_t fd) {
+ struct TPPFile *tpp_file;
+ struct DCCCompiler old_compiler;
+ uint32_t old_tpp_flags;
+ uint32_t old_tpp_extokens;
+ struct TPPFile *old_tpp_eof_file;
+
+ /* Make sure the loading a source file
+  * behaves like loading a static library does. */
+ def->ld_dynlib = NULL;
+
+ /* Initialize a new compiler. */
+ old_compiler = compiler;
+ DCCCompiler_Init(&compiler);
+
+ /* Re-configure TPP */
+ old_tpp_flags    = CURRENT.l_flags;
+ old_tpp_extokens = CURRENT.l_extokens;
+ old_tpp_eof_file = CURRENT.l_eof_file;
+ TPPLexer_Current->l_flags &= (TPPLEXER_FLAG_TERMINATE_STRING_LF|
+                               TPPLEXER_FLAG_MESSAGE_LOCATION|
+                               TPPLEXER_FLAG_MESSAGE_NOLINEFEED|
+                               TPPLEXER_FLAG_WERROR|
+                               TPPLEXER_FLAG_WSYSTEMHEADERS|
+                               TPPLEXER_FLAG_NO_DEPRECATED|
+                               TPPLEXER_FLAG_MSVC_MESSAGEFORMAT|
+                               TPPLEXER_FLAG_MERGEMASK);
+ if (!(loader->sld_flags&SRCLOADER_FLAG_PP)) {
+  TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_NO_MACROS|
+                                TPPLEXER_FLAG_NO_DIRECTIVES|
+                                TPPLEXER_FLAG_NO_BUILTIN_MACROS);
+ }
+ tpp_file = TPPFile_OpenStream(fd,filename);
+ if unlikely(!tpp_file) { TPPLexer_SetErr(); goto end; }
+ /* Manipulate the previous file to re-parse the last token. */
+ assert(TOKEN.t_file);
+ assert(TOKEN.t_begin >= TOKEN.t_file->f_begin);
+ assert(TOKEN.t_begin <= TOKEN.t_file->f_end);
+ TOKEN.t_file->f_pos = TOKEN.t_begin;
+
+ TPPLexer_PushFileInherited(tpp_file);
+ CURRENT.l_eof_file = tpp_file;
+
+ /* Execute the loader. */
+ (*loader->sld_func)(def);
+
+ assert(CURRENT.l_eof_file == tpp_file);
+ while (TOKEN.t_file != tpp_file) {
+  struct TPPFile *drop_file;
+  /* Manually pop all files until 'tpp_file' is found. */
+  assert(tpp_file->f_refcnt);
+  drop_file = TOKEN.t_file;
+  assert(drop_file);
+  TOKEN.t_file = drop_file->f_prev;
+  TPPFile_Decref(drop_file);
+ }
+ /* Restore the old token. */
+ YIELD();
+
+ if (!(def->ld_flags&DCC_LIBDEF_FLAG_NO_RESET_TPP)) {
+  TPPLexer_Reset(TPPLexer_Current,
+                 TPPLEXER_RESET_MACRO|TPPLEXER_RESET_ASSERT|
+                 TPPLEXER_RESET_KWDFLAGS|TPPLEXER_RESET_COUNTER|
+                 TPPLEXER_RESET_FONCE);
+ }
+ CURRENT.l_flags    = old_tpp_flags;
+ CURRENT.l_extokens = old_tpp_extokens;
+end:
+ DCCCompiler_Quit(&compiler);
+ compiler = old_compiler;
+}
+
 
 PRIVATE int DCCUNIT_IMPORTCALL
 DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
@@ -72,7 +165,7 @@ DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
                        stream_t fd) {
  uint8_t magic[LIBLOADER_MAXMAGIC];
  ptrdiff_t max_magic; int result = 0;
- struct PLibLoaderDef const *iter;
+ struct LibLoaderDef const *iter;
  uint32_t reqflags;
  assert(def);
  /* Do some initial assertions about the unit state during static import. */
@@ -85,26 +178,49 @@ DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
   : (LIBLOADER_FLAG_DYN);
  if (def->ld_flags&DCC_LIBDEF_FLAG_NODYN)
      reqflags &= ~(LIBLOADER_FLAG_DYN);
- max_magic = s_read(fd,magic,LIBLOADER_MAXMAGIC);
- if (max_magic < 0) max_magic = 0;
- if (max_magic) s_seek(fd,-max_magic,SEEK_CUR);
- for (iter = dcc_libloaders; iter->lld_func; ++iter) {
-  if ((iter->lld_flags&reqflags) &&
-      (iter->lld_flags&LIBLOADER_MASK_MSIZE) &&
-      (iter->lld_flags&LIBLOADER_MASK_MSIZE) <= (size_t)max_magic &&
-      !memcmp(iter->lld_magic,magic,
-             (iter->lld_flags&LIBLOADER_MASK_MSIZE))) {
-   /* Got a magic match. */
-   result = (*iter->lld_func)(def,filename,fd);
-   if (result || !OK) goto done;
+ if (!(def->ld_flags&DCC_LIBDEF_FLAG_ONLY_SOURCE)) {
+  max_magic = s_read(fd,magic,LIBLOADER_MAXMAGIC);
+  if (max_magic < 0) max_magic = 0;
+  if (max_magic) s_seek(fd,-max_magic,SEEK_CUR);
+  for (iter = dcc_libloaders; iter->lld_func; ++iter) {
+   if ((iter->lld_flags&reqflags) &&
+       (iter->lld_flags&LIBLOADER_MASK_MSIZE) &&
+       (iter->lld_flags&LIBLOADER_MASK_MSIZE) <= (size_t)max_magic &&
+       !memcmp(iter->lld_magic,magic,
+              (iter->lld_flags&LIBLOADER_MASK_MSIZE))) {
+    /* Got a magic match. */
+    result = (*iter->lld_func)(def,filename,fd);
+    if (result || !OK) goto done;
+   }
+  }
+  /* Check for magic-less formats. */
+  for (iter = dcc_libloaders; iter->lld_func; ++iter) {
+   if ((iter->lld_flags&reqflags) &&
+      !(iter->lld_flags&LIBLOADER_MASK_MSIZE)) {
+    result = (*iter->lld_func)(def,filename,fd);
+    if (result || !OK) goto done;
+   }
   }
  }
- /* Check for magic-less formats. */
- for (iter = dcc_libloaders; iter->lld_func; ++iter) {
-  if ((iter->lld_flags&reqflags) &&
-     !(iter->lld_flags&LIBLOADER_MASK_MSIZE)) {
-   result = (*iter->lld_func)(def,filename,fd);
-   if (result || !OK) goto done;
+ if ((def->ld_flags&DCC_LIBDEF_FLAG_STATIC) &&
+     (def->ld_flags&DCC_LIBDEF_FLAG_SOURCE)) {
+  /* load source files. */
+  struct SrcLoaderDef const *loader = dcc_srcloaders;
+  size_t filename_len = strlen(filename);
+  for (; loader->sld_func; ++loader) {
+   size_t extlen;
+   /* Make sure that at least one source
+    * type handled by this loader is enabled. */
+   if (!(def->ld_flags&loader->sld_type)) continue;
+   /* Check for a matching extension. */
+   extlen = strnlen(loader->sld_ext,SRCLOADER_MAXEXT);
+   if (extlen >= filename_len ||
+       filename[filename_len-(extlen+1)] != '.' ||
+       memcmp(filename+(filename_len-extlen),
+              loader->sld_ext,extlen) != 0) continue;
+   srcloader_exec(loader,def,filename,fd);
+   result = OK;
+   goto done;
   }
  }
 done:
@@ -117,7 +233,12 @@ DCCUnit_ImportWithFilename(struct DCCLibDef *__restrict def,
                            char const *__restrict filename) {
  int result; stream_t s = s_openr(filename);
  //printf("Checking: '%s'\n",filename);
- if (s == TPP_STREAM_INVALID) return NULL;
+ if (s == TPP_STREAM_INVALID) {
+#if DCC_HOST_OS == DCC_OS_WINDOWS
+  /* TODO: maybe retry with fixed slashes? ('filename.replace("/","\\")') */
+#endif
+  return NULL;
+ }
  result = DCCUnit_DoImportStream(def,filename,s);
  s_close(s);
  return result;
@@ -130,8 +251,13 @@ struct path_extension { char ext[MAX_EXTLEN]; };
 static struct path_extension const
 search_extensions[] = {
  {""    },
+#if DCC_HOST_OS == DCC_OS_WINDOWS
  {".dll"},
  {".exe"},
+#endif
+#if DCC_HOST_OS == DCC_OS_LINUX
+ {".so"},
+#endif
  {".def"},
 };
 PRIVATE int DCCUNIT_IMPORTCALL
@@ -143,9 +269,8 @@ DCCUnit_ImportWithPath(struct TPPString *__restrict path,
  assert(def);
  assert(path);
  pathlen = path->s_size;
- while (pathlen && (path->s_text[pathlen-1] == '/' ||
-                    path->s_text[pathlen-1] == '\\')
-        ) --pathlen;
+ if (pathlen == 1 && path->s_text[0] == '.') pathlen = 0;
+ while (pathlen && path->s_text[pathlen-1] == '/') --pathlen;
  buflen = pathlen+def->ld_size+MAX_EXTLEN+2;
  if (buflen < 128) {
   buf = (char *)alloca(buflen);
@@ -157,22 +282,24 @@ DCCUnit_ImportWithPath(struct TPPString *__restrict path,
  ext = buf;
  memcpy(ext,path->s_text,pathlen*sizeof(char));
  ext += pathlen;
-#if DCC_HOST_OS == DCC_OS_WINDOWS
- if (pathlen) *ext++ = '\\';
-#else
  if (pathlen) *ext++ = '/';
-#endif
  memcpy(ext,def->ld_name,def->ld_size*sizeof(char));
  ext += def->ld_size;
- ext[MAX_EXTLEN] = '\0';
- ext_end = (ext_iter = search_extensions)+(sizeof(search_extensions)/
-                                           sizeof(search_extensions[0]));
- assert(ext_iter != ext_end);
- do {
-  memcpy(ext,ext_iter->ext,MAX_EXTLEN*sizeof(char));
+ if (def->ld_flags&DCC_LIBDEF_FLAG_NOSEARCHEXT) {
+  ext[0] = '\0';
   result = DCCUnit_ImportWithFilename(def,buf);
-  if (result || !OK) break;
- } while (++ext_iter != ext_end);
+ } else {
+  ext[MAX_EXTLEN] = '\0';
+  ext_end = (ext_iter = search_extensions)+(sizeof(search_extensions)/
+                                            sizeof(search_extensions[0]));
+  assert(ext_iter != ext_end);
+  do {
+   memcpy(ext,ext_iter->ext,MAX_EXTLEN*sizeof(char));
+   result = DCCUnit_ImportWithFilename(def,buf);
+   if (result || !OK) break;
+  } while (++ext_iter != ext_end);
+  /* TODO: Retry with 'lib' prefixed before the filename. */
+ }
  DCC_Free(mbuf);
  return result;
 }
@@ -187,11 +314,8 @@ DCCUnit_Import(struct DCCLibDef *__restrict def) {
  if (def->ld_flags&DCC_LIBDEF_FLAG_NOSEARCHSTD) {
   /* Using an empty string as path, we
    * can search the given 'def' as-is. */
-  struct TPPString *empty = TPPString_NewSized(0);
-  assert(empty);
-  result = DCCUnit_ImportWithPath(empty,def);
-  assert(empty->s_refcnt > 1);
-  --empty->s_refcnt;
+  result = DCCUnit_ImportWithPath(TPPFile_Empty.f_text,def);
+  if (result || !OK) goto end;
  } else for (i = 0; i < linker.l_paths.lp_pathc; ++i) {
   /* Search user-defined library paths. */
   result = DCCUnit_ImportWithPath(linker.l_paths.lp_pathv[i],def);
@@ -221,6 +345,7 @@ DCC_DECL_END
 #include "unit-import-elf.c.inl"
 #include "unit-import-pe-dynamic.c.inl"
 #include "unit-import-pe-static.c.inl"
+#include "unit-import-source.c.inl"
 #endif
 
 #endif /* !GUARD_DCC_UNIT_IMPORT_C */

@@ -1048,6 +1048,8 @@ TPP_LOCAL TPP(col_t) TPPLexer_COLUMN(void) { struct TPPFile *f = TPPLexer_Textfi
  * WARNING: Most of these languages will also need additional tweaks to other flags. */
 #define TPPLEXER_TOKEN_LANG_C       (TPPLEXER_TOKEN_ARROW|TPPLEXER_TOKEN_C_COMMENT|\
                                      TPPLEXER_TOKEN_CPP_COMMENT)
+#define TPPLEXER_TOKEN_LANG_ASM     (TPPLEXER_TOKEN_DOLLAR|TPPLEXER_TOKEN_LOGT|\
+                                     TPPLEXER_TOKEN_C_COMMENT|TPPLEXER_TOKEN_CPP_COMMENT)
 #define TPPLEXER_TOKEN_LANG_CPP     (TPPLEXER_TOKEN_COLLONCOLLON|TPPLEXER_TOKEN_ARROW|\
                                      TPPLEXER_TOKEN_ARROWSTAR|TPPLEXER_TOKEN_DOTSTAR|\
                                      TPPLEXER_TOKEN_C_COMMENT|TPPLEXER_TOKEN_CPP_COMMENT)

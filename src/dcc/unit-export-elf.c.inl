@@ -42,11 +42,11 @@ struct elf_shdr {
 #else
  Elf(Shdr)                 s_hdr; /*< Representation of the section header. */
 #endif
- target_ptr_t              s_oldmerge; /* Save 's_sec->sc_merge' value, as the
-                                        * field is (ab-)used for mapping sections
-                                        * to their header indices.
-                                        * NOTE: 'sy_elfid' cannot be used, as the
-                                        *       section must also has a symbol index! */
+ target_ptr_t              s_oldaddr; /* Save 's_sec->sc_start.sy_addr' value, as the
+                                       * field is (ab-)used for mapping sections
+                                       * to their header indices.
+                                       * NOTE: 'sy_elfid' cannot be used, as the
+                                       *       section must also has a symbol index! */
 };
 
 extern void *
@@ -160,14 +160,16 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
   shdr_iter = shdr_impv;
   DCCUnit_ENUMIMP(sec) {
    assert(shdr_iter < shdr_impv+shdr_impc);
-   /* Declare an 'SHT_DCC_IMPSEC' section. */
+   shdr_iter->s_oldaddr = sec->sc_start.sy_addr;
    shdr_iter->s_hdr.sh_name = DCCTextBuf_AllocString(&SHDR_SHSTRTAB->s_buf,
                                                      sec->sc_start.sy_name->k_name,
                                                      sec->sc_start.sy_name->k_size);
+   /* Declare an 'SHT_DCC_IMPSEC' section. */
    shdr_iter->s_hdr.sh_type = SHT_DCC_IMPSEC;
    /* Currently, we simply re-use the section name as dependency name. */
    shdr_iter->s_hdr.sh_link = ELF_SHDR_IDX(SHDR_SHSTRTAB);
    shdr_iter->s_hdr.sh_info = shdr_iter->s_hdr.sh_name;
+   sec->sc_start.sy_addr = ELF_SHDR_IDX(shdr_iter);
    ++shdr_iter;
   }
   assert(shdr_iter == shdr_impv+shdr_impc);
@@ -180,7 +182,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
   assert(shdr_iter < shdr_regv+shdr_regc);
   shdr_iter->s_sec              = sec;
   shdr_iter->s_buf              = sec->sc_text;
-  shdr_iter->s_oldmerge         = sec->sc_merge;
+  shdr_iter->s_oldaddr          = sec->sc_start.sy_addr;
   shdr_iter->s_hdr.sh_name      = DCCTextBuf_AllocString(&SHDR_SHSTRTAB->s_buf,
                                                          sec->sc_start.sy_name->k_name,
                                                          sec->sc_start.sy_name->k_size);
@@ -191,7 +193,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
   if (secflags&DCC_SYMFLAG_SEC_X) shdr_iter->s_hdr.sh_flags |= SHF_EXECINSTR;
   if (secflags&DCC_SYMFLAG_SEC_M) shdr_iter->s_hdr.sh_flags |= SHF_MERGE;
   shdr_iter->s_hdr.sh_addralign = sec->sc_align;
-  sec->sc_merge = ELF_SHDR_IDX(shdr_iter);
+  sec->sc_start.sy_addr = ELF_SHDR_IDX(shdr_iter);
   ++shdr_iter;
  }
  assert(shdr_iter == shdr_regv+shdr_regc);
@@ -202,16 +204,18 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
                                              sizeof(Elf(Sym)));
    if (null_sym) memset(null_sym,0,sizeof(Elf(Sym)));
    /* Load all symbols into 'SHDR_SYMTAB' (Both those named & those unnamed!) */
-   DCCUnit_ENUMSYM(sym) {
+   DCCUnit_ENUMALLSYM(sym) {
     unsigned char bind,type;
     if (DCCSym_ISSECTION(sym)) type = STT_SECTION;
     else                       type = STT_NOTYPE;
          if (sym->sy_flags&DCC_SYMFLAG_STATIC) bind = STB_LOCAL;
     else if (sym->sy_flags&DCC_SYMFLAG_WEAK)   bind = STB_WEAK;
     else                                       bind = STB_GLOBAL;
-    symhdr.st_name  = DCCTextBuf_AllocString(&SHDR_STRTAB->s_buf,
-                                             sym->sy_name->k_name,
-                                             sym->sy_name->k_size);
+    if (sym->sy_name == &TPPKeyword_Empty)
+         symhdr.st_name = 0;
+    else symhdr.st_name = DCCTextBuf_AllocString(&SHDR_STRTAB->s_buf,
+                                                 sym->sy_name->k_name,
+                                                 sym->sy_name->k_size);
     symhdr.st_value = sym->sy_addr;
     symhdr.st_size  = sym->sy_size;
     symhdr.st_info  = ELF(ST_INFO)(bind,type);
@@ -222,7 +226,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
      else if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ||
               /* Allow import indices only when ELF extensions are allowed. */
               !DCCSection_ISIMPORT(sym->sy_sec)) {
-      symhdr.st_shndx = (Elf(Section))sym->sy_sec->sc_merge;
+      symhdr.st_shndx = (Elf(Section))sym->sy_sec->sc_start.sy_addr;
      } else {
       symhdr.st_shndx = SHN_UNDEF;
      }
@@ -248,8 +252,8 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
   shdr_iter->s_hdr.sh_type      = SHT_REL;
   shdr_iter->s_hdr.sh_flags     = SHF_INFO_LINK;
   shdr_iter->s_hdr.sh_link      = ELF_SHDR_IDX(SHDR_SYMTAB);
-  assert(sec->sc_merge < (shdr_regc+1));
-  shdr_iter->s_hdr.sh_info      = (Elf(Word))sec->sc_merge;
+  assert(sec->sc_start.sy_addr < (shdr_regc+1));
+  shdr_iter->s_hdr.sh_info      = (Elf(Word))sec->sc_start.sy_addr;
   shdr_iter->s_hdr.sh_entsize   = sizeof(Elf(Rel));
   shdr_iter->s_hdr.sh_addralign = DCC_COMPILER_ALIGNOF(Elf(Rel));
   rel_data = (Elf(Rel) *)DCCTextBuf_TAlloc_intern(&shdr_iter->s_buf,
@@ -335,7 +339,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
  shdr_impv = (shdr_iter = shdrv)+shdrc;
  for (; shdr_iter != shdr_impv; ++shdr_iter) {
   if (shdr_iter->s_sec)
-      shdr_iter->s_sec->sc_merge = shdr_iter->s_oldmerge;
+      shdr_iter->s_sec->sc_start.sy_addr = shdr_iter->s_oldaddr;
   else free(shdr_iter->s_buf.tb_begin);
  }
  DCC_Free(shdrv);

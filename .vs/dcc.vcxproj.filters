@@ -214,5 +214,8 @@
     <None Include="..\src\dcc\unit-export-elf.c.inl">
       <Filter>src\dcc</Filter>
     </None>
+    <None Include="..\src\dcc\unit-import-source.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
   </ItemGroup>
 </Project>

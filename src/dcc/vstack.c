@@ -916,8 +916,11 @@ DCCLinker_PEIndImport(struct DCCStackValue *__restrict self) {
  if (!DCCSection_ISIMPORT(symsec)) return;
  /* Fix this symbol through PE indirection. */
  if ((iat_sym = pesym->sy_peind) == NULL) {
-  iat_sym = DCCSym_New(&TPPKeyword_Empty,DCC_SYMFLAG_STATIC);
-  if unlikely(!iat_sym) return;
+  /* Don't generate missing IAT functions when no code should be generated. */
+  if (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
+  /* The symbol must be part of the unnamed symbol list! */
+  if unlikely((iat_sym = DCCUnit_AllocSym()) == NULL) return;
+  DCCSym_Incref(iat_sym);
   pesym->sy_peind = iat_sym; /* Inherit reference. */
  }
  DCCSym_Incref(iat_sym);

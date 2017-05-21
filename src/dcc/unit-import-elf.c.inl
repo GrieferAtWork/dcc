@@ -708,8 +708,10 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
      case STT_NOTYPE:
       if (!sym_iter->st_name &&
           !sym_iter->st_value &&
-           sym_iter->st_shndx == SHN_UNDEF
-           ) continue; /* Ignore the NULL-symbol. */
+           sym_iter->st_shndx == SHN_UNDEF) {
+       *symdef = NULL;
+       continue; /* Ignore the NULL-symbol. */
+      }
       break;
      case STT_FILE:
 skip_symdef:

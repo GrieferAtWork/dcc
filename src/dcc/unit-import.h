@@ -34,6 +34,7 @@ DCC_DECL_BEGIN
  * @return: 1: Successfully loaded a binary into the current unit (either statically, or dynamically) */
 typedef int (DCCUNIT_IMPORTCALL *p_libloader)(struct DCCLibDef *__restrict def,
                                               char const *__restrict file, stream_t fd);
+typedef void (DCCUNIT_IMPORTCALL *p_srcloader)(struct DCCLibDef *__restrict def);
 
 #define LIBLOADER_MAXMAGIC  8
 
@@ -43,13 +44,60 @@ typedef int (DCCUNIT_IMPORTCALL *p_libloader)(struct DCCLibDef *__restrict def,
 #define LIBLOADER_MASK_MSIZE 0x0000000f /* Mask for magic size */
 #define LIBLOADER_FLAGS(d,s,msiz) (((d)?LIBLOADER_FLAG_DYN:0)|((s)?LIBLOADER_FLAG_STA:0)|((msiz)&LIBLOADER_MASK_MSIZE))
 
-struct PLibLoaderDef {
+struct LibLoaderDef {
  p_libloader lld_func;  /*< [1..1] Loader entry point (NULL used for list terminator). */
  uint32_t    lld_flags; /*< Flags and magic size (Set of 'LIBLOADER_FLAG_*' or'd with any value matching 'LIBLOADER_MASK_MSIZE'). */
  uint8_t     lld_magic[LIBLOADER_MAXMAGIC]; /*< [ld_msize] Magic header for quickly identifying this kind of loader. */
 };
 
-extern struct PLibLoaderDef const dcc_libloaders[];
+
+
+#define SRCLOADER_MAXEXT    4
+#define SRCLOADER_FLAG_NONE 0x00000000
+#define SRCLOADER_FLAG_PP   0x00000001 /*< TPP macro preprocessing must be enabled
+                                        *  while parsing source files of this type. */
+
+/* When a source loader is executed, TPP will be in the following state:
+ *  - The source file has been pushed on the #include-stack.
+ *  - The #include-stack is limited to the current source file.
+ *  - The current token is EOF and no tokens have been parsed yet.
+ *  - The configuration for enabled token ('l_extokens') is in an undefined state.
+ *  - Lexer flags ('l_flags') have been cleared, except
+ *    for the following flags, which are inherited (unchanged):
+ *    All flags are cleared except:
+ *      - TPPLEXER_FLAG_TERMINATE_STRING_LF
+ *      - TPPLEXER_FLAG_MESSAGE_LOCATION
+ *      - TPPLEXER_FLAG_MESSAGE_NOLINEFEED
+ *      - TPPLEXER_FLAG_WERROR
+ *      - TPPLEXER_FLAG_WSYSTEMHEADERS
+ *      - TPPLEXER_FLAG_NO_DEPRECATED
+ *      - TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+ *      - TPPLEXER_FLAG_MERGEMASK (All flags masked)
+ *    The following flags are set when the loader
+ *    hasn't been declared with 'SRCLOADER_FLAG_PP':
+ *      - TPPLEXER_FLAG_NO_MACROS
+ *      - TPPLEXER_FLAG_NO_DIRECTIVES
+ *      - TPPLEXER_FLAG_NO_BUILTIN_MACROS
+ * Upon return of the source loader, the
+ * following TPP options will be restored:
+ *  - 'CURRENT.l_flags'
+ *  - 'CURRENT.l_extokens'
+ *  - 'CURRENT.l_eof_file'
+ *  - All files still on-stack after the original source file,
+ *    as well as the original source file itself are removed.
+ * NOTE: 'def->ld_dynlib' was already set to NULL, meaning
+ *        that the source file loader is not required to
+ *        update the value to mirror static linkage behavior.
+ */
+struct SrcLoaderDef {
+ p_srcloader sld_func;  /*< [1..1] The function to call for parsing. */
+ uint32_t    sld_flags; /*< A set of 'SRCLOADER_FLAG_*' */
+ uint32_t    sld_type;  /*< A set of 'DCC_LIBDEF_*_SOURCE' of all source types handled by this loaders or'd together. */
+ char        sld_ext[SRCLOADER_MAXEXT]; /*< File extension applicable to this loader. */
+};
+
+
+extern struct SrcLoaderDef const dcc_srcloaders[];
 
 
 #if DCC_LIBFORMAT_PE_DYNAMIC
@@ -65,6 +113,11 @@ INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynLoadDEF2(struct DCCLibDef *__restrict d
 #if DCC_LIBFORMAT_ELF
 INTERN int DCCUNIT_IMPORTCALL DCCUnit_LoadELF(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
 #endif /* DCC_LIBFORMAT_ELF */
+
+/* Source code loaders. */
+INTERN void DCCUNIT_IMPORTCALL DCCUnit_LoadSrc_C(struct DCCLibDef *__restrict def);
+INTERN void DCCUNIT_IMPORTCALL DCCUnit_LoadSrc_ASM(struct DCCLibDef *__restrict def);
+
 
 
 DCC_DECL_END
