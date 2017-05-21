@@ -201,6 +201,7 @@ PRIVATE void elf_mk_entry(void);
 PRIVATE void elf_mk_interp(void);
 PRIVATE void elf_mk_relsec(void);           /* Generate stub relocation sections. */
 PRIVATE void elf_mk_secvec(void);           /* Generate the vector of sections, calculation their groups and basic header data. */
+PRIVATE void elf_mk_relinfo(void);          /* Generate 'sh_info' links for relocation sections. */
 PRIVATE void elf_mk_secnam(void);           /* Allocate section names. */
 PRIVATE void elf_mk_seclnk(void);           /* Fix section links. */
 PRIVATE void elf_mk_secsort(void);          /* Sort sections according to their weight. */
@@ -225,6 +226,7 @@ PRIVATE struct phinfo *elf_mk_phdr(void);
 
 /* Return the section index of a given section, or 'SHN_UNDEF' if not known. */
 PRIVATE Elf(Half) elf_get_secidx(struct DCCSection const *__restrict sec);
+PRIVATE struct secinfo *elf_get_secinfo(struct DCCSection const *__restrict sec);
 
 #ifndef DCC_TARGET_ELFINTERP
 #define DCC_TARGET_ELFINTERP  "/lib/ld-linux.so.2"
@@ -274,8 +276,8 @@ secty_of(struct DCCSection const *__restrict section) {
    !memcmp(section_name->k_name,s,sizeof(s)-sizeof(char)))
  if (CHECK_ENDSWITH("strtab") || CHECK_NAME(".dynstr")) return SHT_STRTAB;
  if (CHECK_ENDSWITH("symtab")) return SHT_SYMTAB;
- if (CHECK_NAME(".rel") || CHECK_STARTSWITH(".rel.")) return SHT_REL;
- if (CHECK_NAME(".rela") || CHECK_STARTSWITH(".rela.")) return SHT_RELA;
+ if (CHECK_STARTSWITH(".rel")) return SHT_REL;
+ if (CHECK_STARTSWITH(".rela")) return SHT_RELA;
  if (CHECK_NAME(".dynsym")) return SHT_DYNSYM;
  if (CHECK_NAME(".dynamic")) return SHT_DYNAMIC;
  if (CHECK_NAME(".hash")) return SHT_HASH;
@@ -313,6 +315,13 @@ PRIVATE Elf(Half) elf_get_secidx(struct DCCSection const *__restrict sec) {
   return (Elf(Half))((iter-elf.elf_secv)+1);
  }
  return SHN_UNDEF;
+}
+PRIVATE struct secinfo *
+elf_get_secinfo(struct DCCSection const *__restrict sec) {
+ struct secinfo *iter,*end;
+ end = (iter = elf.elf_secv)+elf.elf_secc;
+ for (; iter != end; ++iter) if (iter->si_sec == sec) return iter;
+ return NULL;
 }
 
 
@@ -623,6 +632,16 @@ nosec:
  elf.elf_secc = (size_t)(iter-info);
  if unlikely(!elf.elf_secc) { free(info); return; }
 }
+PRIVATE void elf_mk_relinfo(void) {
+ struct secinfo *iter,*end;
+ /* Generate 'sh_info' links for relocation sections. */
+ end = (iter = elf.elf_secv)+elf.elf_secc;
+ for (; iter != end; ++iter) if (iter->si_rel) {
+  struct secinfo *relinfo = elf_get_secinfo(iter->si_rel);
+  if (relinfo) relinfo->si_hdr.sh_info = (Elf(Word))((iter-elf.elf_secv)+1);
+ }
+}
+
 PRIVATE void elf_mk_secnam(void) {
  struct secinfo *shstrtab = NULL;
  struct secinfo *iter,*end;
@@ -703,9 +722,32 @@ PRIVATE void elf_mk_delnoprel(void) {
 
 /* When compiling with the 'DCC_LINKER_FLAG_NORELOC'
  * flag set, check if 'rel' can be determined at compile-time. */
-PRIVATE int elf_wantrel(struct DCCRel const *__restrict rel) {
+LOCAL int elf_wantrel(struct DCCRel const *__restrict rel) {
+ struct DCCSymAddr symaddr;
  assert(rel),assert(rel->r_sym);
- return !rel->r_sym->sy_sec || DCCSection_ISIMPORT(rel->r_sym->sy_sec);
+ if (!DCCSym_LoadAddr(rel->r_sym,&symaddr,0)) return 1;
+ if (symaddr.sa_sym->sy_alias) return 1;
+ if (symaddr.sa_sym->sy_sec &&
+     DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) return 1;
+ return 0;
+}
+LOCAL int elf_wantpicrel(struct DCCRel const *__restrict rel) {
+ assert(rel);
+ switch (rel->r_type) {
+  /* Always keep image-relative relocations in PIC binaries. */
+ case DCC_R_DATA_8  :
+ case DCC_R_DATA_16 :
+ case DCC_R_DATA_32 :
+#ifdef DCC_R_DATA_64
+ case DCC_R_DATA_64 :
+#endif
+ case DCC_R_JMP_SLOT:
+ case DCC_R_COPY    :
+ case DCC_R_RELATIVE:
+  return 1;
+ default: break;
+ }
+ return elf_wantrel(rel);
 }
 
 PRIVATE void elf_mk_reldat(void) {
@@ -725,8 +767,12 @@ PRIVATE void elf_mk_reldat(void) {
    for (; rel_iter != rel_end; ++rel_iter) {
     if (!elf_wantrel(rel_iter)) --relcnt;
    }
-   rel_iter = iter_sec->sc_relv;
+  } else {
+   for (; rel_iter != rel_end; ++rel_iter) {
+    if (!elf_wantpicrel(rel_iter)) --relcnt;
+   }
   }
+  if unlikely(!relcnt) continue;
   reladdr = DCCSection_DAlloc(iter->si_rel,relcnt*sizeof(Elf(Rel)),
                               DCC_COMPILER_ALIGNOF(Elf(Rel)),0);
   reldata = (Elf(Rel) *)DCCSection_GetText(iter->si_rel,reladdr,
@@ -736,6 +782,7 @@ PRIVATE void elf_mk_reldat(void) {
   iter->si_rel->sc_elflnk = elf.elf_dynsym;
   iter->si_rdat = reladdr;
   iter->si_rcnt = relcnt;
+  rel_iter = iter_sec->sc_relv;
   if (linker.l_flags&DCC_LINKER_FLAG_NORELOC) {
    for (; rel_iter != rel_end; ++rel_iter) {
     if (!elf_wantrel(rel_iter)) continue;
@@ -747,6 +794,7 @@ PRIVATE void elf_mk_reldat(void) {
    }
   } else {
    for (; rel_iter != rel_end; ++rel_iter) {
+    if (!elf_wantpicrel(rel_iter)) continue;
     /* Use the '.dynsym' symbol index! */
     reldata->r_info    = ELF(R_INFO)(rel_iter->r_sym->sy_elfid,
                                      rel_iter->r_type);
@@ -1335,7 +1383,7 @@ elf_mk_outfile(stream_t fd) {
 
  { /* Write the NULL-section header. */
    Elf(Shdr) null_hdr;
-   memset(&null_hdr,0,sizeof(null_hdr));
+   memset(&null_hdr,0,sizeof(null_hdr)); /* TODO: Use a static const for this. */
    s_writea(fd,&null_hdr,sizeof(null_hdr));
  }
 
@@ -1444,6 +1492,7 @@ DCCLinker_Make(stream_t target) {
 
  CC(elf_mk_execrel(0));      /* Execute all relocations. */
  CC(elf_mk_reladj());        /* Adjust relocation addresses to image-relative. */
+ CC(elf_mk_relinfo());       /* Fill relocation section 'sh_info' fields. */
  elf_mk_outfile(target);
 #undef CC
 end:

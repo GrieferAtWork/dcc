@@ -20,6 +20,7 @@
     <ClCompile Include="..\src\dcc\linker.c" />
     <ClCompile Include="..\src\dcc\tpp-wrapper.c" />
     <ClCompile Include="..\src\dcc\type.c" />
+    <ClCompile Include="..\src\dcc\unit-export.c" />
     <ClCompile Include="..\src\dcc\unit-import.c" />
     <ClCompile Include="..\src\dcc\unit-merge.c" />
     <ClCompile Include="..\src\dcc\unit.c" />
@@ -49,6 +50,7 @@
     <ClInclude Include="..\src\dcc\lexer-priv.h" />
     <ClInclude Include="..\src\dcc\linker-elf.h" />
     <ClInclude Include="..\src\dcc\linker-pe.h" />
+    <ClInclude Include="..\src\dcc\unit-export.h" />
     <ClInclude Include="..\src\dcc\unit-import.h" />
     <ClInclude Include="..\src\dcc\x86_util.h" />
     <ClInclude Include="..\src\tpp\tpp-backwards-compatibility.h" />
@@ -73,6 +75,7 @@
     <None Include="..\src\dcc\lexer-stmt.c.inl" />
     <None Include="..\src\dcc\linker-elf.c.inl" />
     <None Include="..\src\dcc\linker-pe.c.inl" />
+    <None Include="..\src\dcc\unit-export-elf.c.inl" />
     <None Include="..\src\dcc\unit-import-def-dynamic.c.inl" />
     <None Include="..\src\dcc\unit-import-elf.c.inl" />
     <None Include="..\src\dcc\unit-import-pe-dynamic.c.inl" />

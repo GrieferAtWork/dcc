@@ -66,6 +66,9 @@
     <ClCompile Include="..\src\dcc\linker.c">
       <Filter>src\dcc</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\dcc\unit-export.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcc\lexer.h">
@@ -129,6 +132,9 @@
       <Filter>src\dcc</Filter>
     </ClInclude>
     <ClInclude Include="..\src\dcc\linker-elf.h">
+      <Filter>src\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\dcc\unit-export.h">
       <Filter>src\dcc</Filter>
     </ClInclude>
   </ItemGroup>
@@ -203,6 +209,9 @@
       <Filter>src\dcc</Filter>
     </None>
     <None Include="..\src\dcc\unit-import-elf.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\unit-export-elf.c.inl">
       <Filter>src\dcc</Filter>
     </None>
   </ItemGroup>

@@ -564,6 +564,15 @@ DCCSection_Delrel(struct DCCSection *__restrict self,
                   DCC(target_ptr_t) addr,
                   DCC(target_siz_t) size);
 
+/* Check if there are relocations within the given address range.
+ * @return: 0 : No relocations where found.
+ * @return: !0 : At least one relocation was found.
+ * @requires: !DCCSection_ISIMPORT(self) */
+DCCFUN int
+DCCSection_Hasrel(struct DCCSection *__restrict self,
+                  DCC(target_ptr_t) addr,
+                  DCC(target_siz_t) size);
+
 DCC_LOCAL void
 DCCSection_Putrel(struct DCCSection *__restrict self,
                   DCC(target_ptr_t) addr, DCC(rel_t) type,
@@ -880,6 +889,7 @@ struct DCCLibDef {
 #define DCCLibDef_IMPFLAGS(self,f) (((f)&(self)->ld_impsymfa)|(self)->ld_impsymfo)
 
 #define DCCUNIT_IMPORTCALL  DCC_ATTRIBUTE_FASTCALL
+#define DCCUNIT_EXPORTCALL  DCC_ATTRIBUTE_FASTCALL
 
 
 /* Load a given library definition into the current compilation unit.
@@ -894,6 +904,34 @@ DCCFUN int DCCUNIT_IMPORTCALL DCCUnit_Import(struct DCCLibDef *__restrict def);
 DCCFUN int DCCUNIT_IMPORTCALL DCCUnit_ImportStream(struct DCCLibDef *__restrict def,
                                                    char const *__restrict filename,
                                                    DCC(stream_t) fd);
+
+
+#define DCC_EXPFMT_ELF 0 /* Generate ELF object files. */
+typedef uint32_t DCC(expfmt_t); /* Export format (One of 'DCC_EXPFMT_*'). */
+
+#define DCC_EXPFLAG_NONE      0x00000000
+#define DCC_EXPFLAG_ELF_NOEXT 0x00000001 /* Don't use DCC ELF-extensions, rather
+                                          * creating a (potentially broken) object
+                                          * file that can also be used by GCC. */
+
+struct DCCExpDef {
+ /* Compilation unit export definition.
+  * NOTE: This function is used to create so-called object
+  *       files that can later be statically linked against. */
+ DCC(expfmt_t) ed_fmt;   /*< Object file export format. */
+ uint32_t      ed_flags; /*< Export flags (set of 'DCC_EXPFLAG_*') */
+};
+
+/* Export the current compilation unit into a stream, or a file.
+ * The exported file can later be re-imported using
+ * 'DCCUnit_Import*', and should always be linked statically.
+ * Upon failure, a lexer error is set. */
+DCCFUN void DCCUNIT_EXPORTCALL
+DCCUnit_Export(struct DCCExpDef *__restrict def,
+               char const *__restrict filename);
+DCCFUN void DCCUNIT_EXPORTCALL
+DCCUnit_ExportStream(struct DCCExpDef *__restrict def,
+                     DCC(stream_t) fd);
 
 /* Extended version of 'DCCUnit_NewSym' that allows the name to be a printf-style string. */
 DCCFUN struct DCCSym *DCCUnit_NewSymf(DCC(symflag_t) flags, char const *__restrict fmt, ...);

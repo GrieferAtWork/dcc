@@ -66,13 +66,20 @@ DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
    assert(!symaddr.sa_sym->sy_alias);
    target_sec = symaddr.sa_sym->sy_sec;
    if (!(compiler.c_flags&DCC_COMPILER_FLAG_SINIT) &&
-       !(target_sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_W)) return NULL;
+        (target_sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_W)) return NULL;
+   symaddr.sa_off += symaddr.sa_sym->sy_addr;
+   symaddr.sa_off += l->ml_off;
+   /* If there are relocations within the requested address range, we can't
+    * evaluate the data at compile-time, as it might change during linking.
+    * A situation in which this is important:
+    * >> extern char s[];
+    * >> // 'ps' cannot be resolved at compile-time because its data block contains relocations.
+    * >> static char *const ps __attribute__((section(".data"))) = s; */
+   if (DCCSection_Hasrel(target_sec,symaddr.sa_off,n_bytes)) return NULL;
    /* Directly write to target memory (at compile-time).
     * >> This is used for static initializer of global data. */
    DCCSection_TBEGIN(target_sec);
-   target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off+
-                                               symaddr.sa_sym->sy_addr+
-                                               l->ml_off,n_bytes);
+   target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off,n_bytes);
    DCCSection_TEND(target_sec);
    return target_data;
   }

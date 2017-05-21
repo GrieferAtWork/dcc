@@ -500,8 +500,7 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
  }
  if (DCCSym_ISSECTION(self)) {
   assert(!self->sy_alias);
-  DCCSection_Destroy((struct DCCSection *)((uintptr_t)self-
-                      offsetof(struct DCCSection,sc_start)));
+  DCCSection_Destroy(DCCSym_TOSECTION(self));
   free(self);
  } else {
   if (self->sy_alias) {
@@ -880,7 +879,7 @@ DCCSection_Delrel(struct DCCSection *__restrict self,
  assert(self);
  DCCSECTION_ASSERT_NOTANIMPORT(self);
  end = del_end = (begin = self->sc_relv)+self->sc_relc;
- while (del_end != begin && del_end[-1].r_addr > addr_end) --del_end;
+ while (del_end != begin && del_end[-1].r_addr >= addr_end) --del_end;
  del_begin = del_end;
  while (del_begin != begin && del_begin[-1].r_addr >= addr) --del_begin;
  result = (size_t)(del_end-del_begin);
@@ -913,6 +912,23 @@ stack_alloc_oldsym:
 done:
  return result;
 }
+
+PUBLIC int
+DCCSection_Hasrel(struct DCCSection *__restrict self,
+                  target_ptr_t addr, target_siz_t size) {
+ struct DCCRel *rel_end,*begin;
+ target_ptr_t addr_end = addr+size;
+ assert(self);
+ DCCSECTION_ASSERT_NOTANIMPORT(self);
+ rel_end = (begin = self->sc_relv)+self->sc_relc;
+ for (;;) {
+  if (rel_end == begin) return 0;
+  if (rel_end[-1].r_addr < addr_end) break;
+  --rel_end;
+ }
+ return (rel_end[-1].r_addr >= addr);
+}
+
 
 PUBLIC void
 DCCSection_SetBaseTo(struct DCCSection *__restrict self,

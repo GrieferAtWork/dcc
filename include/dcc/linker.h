@@ -58,8 +58,7 @@ DCC_DECL_BEGIN
 #define DCC_LINKER_FLAG_SHARED       0x00000001 /*< Create shared libraries. */
 #define DCC_LINKER_FLAG_NOSTDLIB     0x00000002 /*< Don't include standard libraries. */
 #define DCC_LINKER_FLAG_NOUNDERSCORE 0x00000004 /*< Don't prepend leading underscores. */
-#define DCC_LINKER_FLAG_STATIC       0x00000008 /*< Perform static linking. */
-#define DCC_LINKER_FLAG_NORELOC      0x00000010 /*< Don't generate relocations, meaning that a generated image will not be position-independent.
+#define DCC_LINKER_FLAG_NORELOC      0x00000008 /*< Don't generate relocations, meaning that a generated image will not be position-independent.
                                                  *  WARNING: Despite the name, this flag does _NOT_ disable import relocations on ELF targets (because that'd just break dynamic linking...) */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #define DCC_LINKER_FLAG_PEDYNAMIC     0x10000000 /*< On PE binary targets: Consider C/ELF visibility when generating an export table.

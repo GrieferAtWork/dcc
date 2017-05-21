@@ -641,7 +641,7 @@ pe_mk_exptab(struct DCCSection *__restrict thunk) {
    for (; iter != end; ++iter) {
     DWORD name_address;
     struct TPPKeyword const *sym_name = (*iter)->sy_name;
-#if 1
+#if 0
     printf("Exporting: '%s'\n",sym_name->k_name);
 #endif
     /* Add a relocation for the export address.
@@ -1107,9 +1107,9 @@ PRIVATE void pe_mk_buildita(void) {
     *    >> 
     *    >> ...
     *    >> 
-    *    >> [[lib("mylib.so")]] extern int lib_x;
+    *    >> [[lib("mylib.dll")]] extern int lib_x;
     *  FIX:
-    *    >> int __real_start() {
+    *    >> static int __real_start() { // This symbol is unnamed and therefor not addressable
     *    >>     // Copy the address of 'lib_x' from the import table
     *    >>     // and place it into the text reference of 'foo',
     *    >>     // essentially performing the last relocation fix-ups at runtime.
