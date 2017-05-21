@@ -903,6 +903,7 @@ load_reg: /* Make sure we're operating on a register. */
 
 
 #if DCC_TARGET_BIN == DCC_BINARY_PE
+extern struct DCCSym *pe_getitasym(struct DCCSym *__restrict basesym);
 PUBLIC void
 DCCLinker_PEIndImport(struct DCCStackValue *__restrict self) {
  struct DCCSym *pesym,*iat_sym;
@@ -919,7 +920,7 @@ DCCLinker_PEIndImport(struct DCCStackValue *__restrict self) {
   /* Don't generate missing IAT functions when no code should be generated. */
   if (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
   /* The symbol must be part of the unnamed symbol list! */
-  if unlikely((iat_sym = DCCUnit_AllocSym()) == NULL) return;
+  if unlikely((iat_sym = pe_getitasym(pesym)) == NULL) return;
   DCCSym_Incref(iat_sym);
   pesym->sy_peind = iat_sym; /* Inherit reference. */
  }

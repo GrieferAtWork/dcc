@@ -160,8 +160,6 @@ PRIVATE symflag_t const elfvismap[] = {
  /* [STV_PROTECTED] = */DCC_SYMFLAG_PROTECTED,
 };
 
-
-
 INTERN int DCCUNIT_IMPORTCALL
 DCCUnit_LoadELF(struct DCCLibDef *__restrict def,
                 char const *__restrict file, stream_t fd) {
@@ -611,15 +609,7 @@ found_shstr:
     case SHT_SYMTAB_SHNDX:
 sec_unused: SEC_DCCSEC(iter) = NULL;
      continue;
-    case SHT_DCC_IMPSEC:
-     /* TODO: Special import-section handling.
-      *      (required for DCC's '__attribute__((lib(...)))')
-      */
-     goto sec_unused;
-    default:
-     if (iter->sh_type >= SHT_LOOS &&
-         iter->sh_type <= SHT_HIOS) goto sec_unused;
-     break; /* Skip any other section. */
+    default: break; /* Link any other section. */
     }
     name = SHSTR(iter->sh_name);
     if unlikely(!name) {
@@ -632,14 +622,21 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
     if (iter->sh_flags&SHF_WRITE)     secflags |= DCC_SYMFLAG_SEC_W;
     if (iter->sh_flags&SHF_EXECINSTR) secflags |= DCC_SYMFLAG_SEC_X;
     if (iter->sh_flags&SHF_MERGE)     secflags |= DCC_SYMFLAG_SEC_M;
+    if (iter->sh_type == SHT_DCC_IMPSEC) {
+     /* TODO: According to my specs, we must use a custom
+      *       filename obtained from 'sh_link[sh_info]' */
+     secflags |= DCC_SYMFLAG_SEC_ISIMPORT;
+    }
     sec = DCCUnit_NewSecs(name,secflags);
     if unlikely(!sec) goto sec_unused;
-    if (sec->sc_text.tb_begin != sec->sc_text.tb_end)
-        WARN(W_LIB_ELF_STATIC_SECNAME_REUSED,file,name);
-    free(sec->sc_text.tb_begin);
-    elf_loadsection(iter,&sec->sc_text,fd);
-    sec->sc_align = iter->sh_addralign;
-    sec->sc_base  = iter->sh_addr;
+    if (!(secflags&DCC_SYMFLAG_SEC_ISIMPORT)) {
+     if (sec->sc_text.tb_begin != sec->sc_text.tb_end)
+         WARN(W_LIB_ELF_STATIC_SECNAME_REUSED,file,name);
+     free(sec->sc_text.tb_begin);
+     elf_loadsection(iter,&sec->sc_text,fd);
+     sec->sc_align = iter->sh_addralign;
+     sec->sc_base  = iter->sh_addr;
+    }
     /* Save the section in the header (very hacky; don't look). */
     SEC_DCCSEC(iter) = sec;
    }
@@ -760,8 +757,14 @@ skip_symdef:
       * $dcc -c source_b.c # GCC fails to compile this, but DCC's supposed to be able to
       * $dcc -o app source_a.o source_b.o
       */
-     sym = DCCUnit_NewSyms(name,symflags);
-     if unlikely(!sym) goto skip_symdef;
+     if (*name) {
+      sym = DCCUnit_NewSyms(name,symflags);
+      if unlikely(!sym) goto skip_symdef;
+     } else {
+      sym = DCCUnit_AllocSym();
+      if unlikely(!sym) goto skip_symdef;
+      sym->sy_flags |= symflags;
+     }
      if (sym_iter->st_shndx == SHN_ABS) sec = &DCCSection_Abs;
      else sec = SEC_DCCSECI(sym_iter->st_shndx);
      if (sec) DCCSym_Define(sym,sec,sym_iter->st_value,sym_iter->st_size);
@@ -776,6 +779,24 @@ done_symvec:
     SEC_SYMVEC(iter) = (struct DCCSym **)symvec;
     SEC_SYMCNT(iter) = symcnt;
    }
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+   /* Bind all IAT symbols. */
+   for (iter = secv; iter != end; ++iter) {
+    struct DCCSym **sym_iter,**sym_end,*sym,*basesym;
+    if (iter->sh_type != SHT_SYMTAB) continue;
+    sym_end = (sym_iter = SEC_SYMVEC(iter))+SEC_SYMCNT(iter);
+    for (; sym_iter != sym_end; ++sym_iter) {
+     if ((sym = *sym_iter) == NULL) continue;
+     if (sym->sy_name->k_size <= 4) continue;
+     if (memcmp(sym->sy_name->k_name,"IAT.",4*sizeof(char)) != 0) continue;
+     /* This is an IAT symbol. - Try to find the associated base symbol and link them! */
+     basesym = DCCUnit_GetSyms(sym->sy_name->k_name+4);
+     if unlikely(!basesym || basesym->sy_peind) continue;
+     DCCSym_Incref(sym);
+     basesym->sy_peind = sym; /* Inherit reference. */
+    }
+   }
+#endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
    /* Load relocations. Symbols can be addressed by-index
     * through 'SEC_SYMVEC' of the associated section. */
    for (iter = secv; iter != end; ++iter) {

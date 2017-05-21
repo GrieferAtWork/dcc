@@ -1056,6 +1056,33 @@ PRIVATE void pe_mk_genrt(void) {
 }
 
 
+INTERN struct DCCSym *
+pe_getitasym(struct DCCSym *__restrict basesym) {
+ assert(basesym);
+ assert(!basesym->sy_peind);
+#if 1 /* Name the symbol for unique linkage between object files. */
+ {
+  size_t namelen = basesym->sy_name->k_size;
+  char *buf,*mbuf;
+  if (namelen < 64) {
+   buf = (char *)alloca((namelen+5)*sizeof(char));
+   mbuf = NULL;
+  } else {
+   mbuf = buf = (char *)malloc((namelen+5)*sizeof(char));
+   if unlikely(!mbuf) { TPPLexer_SetErr(); return NULL; }
+  }
+  buf[0] = 'I',buf[1] = 'A';
+  buf[2] = 'T',buf[3] = '.';
+  buf[namelen+4] = '\0';
+  memcpy(buf+4,basesym->sy_name->k_name,namelen*sizeof(char));
+  /* Declare as weak to use only keep one copy of the symbol. */
+  return DCCUnit_NewSyms(buf,DCC_SYMFLAG_PRIVATE|DCC_SYMFLAG_WEAK);
+ }
+#else
+ return DCCUnit_AllocSym();
+#endif
+}
+
 PRIVATE void pe_mk_buildita(void) {
  struct DCCSection *lib;
  struct DCCSym *sym;
@@ -1066,7 +1093,7 @@ PRIVATE void pe_mk_buildita(void) {
    uint8_t *iat_code;
    struct DCCSym *iat_sym;
    /* Don't generate an ITA entry if it would go unused! */
-   if (sym->sy_refcnt == 1 &&
+   if (sym->sy_refcnt == 1 && !sym->sy_peind &&
      !(sym->sy_flags&DCC_SYMFLAG_USED)) continue;
 
    /* TODO: ITA wrappers only work for function symbols.
@@ -1114,7 +1141,7 @@ PRIVATE void pe_mk_buildita(void) {
 #endif
    if ((iat_sym = sym->sy_peind) == NULL) {
     /* The symbol must be part of the unnamed symbol list! */
-    if unlikely((iat_sym = DCCUnit_AllocSym()) == NULL) return;
+    if unlikely((iat_sym = pe_getitasym(sym)) == NULL) return;
     DCCSym_Incref(iat_sym);
     sym->sy_peind = iat_sym; /* Inherit reference. */
    }
@@ -1161,12 +1188,14 @@ PRIVATE void pe_mk_buildita(void) {
 PUBLIC void
 DCCLinker_Make(stream_t fd) {
  memset(&pe,0,sizeof(pe));
+ unit.u_text = DCCUnit_NewSecs(".text",DCC_SYMFLAG_SEC_X|DCC_SYMFLAG_SEC_R);
 
  /* Determine PE settings, as well as the entry point. */
  pe_mk_genrt();
 
  /* Collect all symbols that should be exported from the binary. */
  pe_mk_collect_exports();
+ if (!OK) goto end;
  
  /* Everything that is externally visible has been collected,
   * meaning that everything that's still unused can be removed. */

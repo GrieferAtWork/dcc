@@ -208,7 +208,7 @@ int main(int argc, char *argv[]) {
  /* Cleanup unused stuff. */
  DCCUnit_ClearStatic();
 
- //save_object("a.o");
+ save_object("b.o");
 
  //linker.l_flags |= DCC_LINKER_FLAG_NORELOC;
 #ifdef DCC_LINKER_FLAG_PEDYNAMIC

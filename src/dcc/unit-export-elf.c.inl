@@ -198,45 +198,46 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
  }
  assert(shdr_iter == shdr_regv+shdr_regc);
 
- { /* Allocate the NULL-symbol at index ZERO. */
-   uint32_t symid = 1; Elf(Sym) symhdr;
-   void *null_sym = DCCTextBuf_TAlloc_intern(&SHDR_SYMTAB->s_buf,
-                                             sizeof(Elf(Sym)));
-   if (null_sym) memset(null_sym,0,sizeof(Elf(Sym)));
-   /* Load all symbols into 'SHDR_SYMTAB' (Both those named & those unnamed!) */
-   DCCUnit_ENUMALLSYM(sym) {
-    unsigned char bind,type;
-    if (DCCSym_ISSECTION(sym)) type = STT_SECTION;
-    else                       type = STT_NOTYPE;
-         if (sym->sy_flags&DCC_SYMFLAG_STATIC) bind = STB_LOCAL;
-    else if (sym->sy_flags&DCC_SYMFLAG_WEAK)   bind = STB_WEAK;
-    else                                       bind = STB_GLOBAL;
-    if (sym->sy_name == &TPPKeyword_Empty)
-         symhdr.st_name = 0;
-    else symhdr.st_name = DCCTextBuf_AllocString(&SHDR_STRTAB->s_buf,
-                                                 sym->sy_name->k_name,
-                                                 sym->sy_name->k_size);
-    symhdr.st_value = sym->sy_addr;
-    symhdr.st_size  = sym->sy_size;
-    symhdr.st_info  = ELF(ST_INFO)(bind,type);
-    symhdr.st_other = ELF(ST_VISIBILITY)(elf_vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE]);
-    if (sym->sy_sec) {
-     if (sym->sy_sec == &DCCSection_Abs)
-      symhdr.st_shndx = SHN_ABS;
-     else if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ||
-              /* Allow import indices only when ELF extensions are allowed. */
-              !DCCSection_ISIMPORT(sym->sy_sec)) {
-      symhdr.st_shndx = (Elf(Section))sym->sy_sec->sc_start.sy_addr;
-     } else {
-      symhdr.st_shndx = SHN_UNDEF;
-     }
+ {
+  uint32_t symid = 1; Elf(Sym) symhdr;
+  /* Allocate the NULL-symbol at index ZERO. */
+  void *null_sym = DCCTextBuf_TAlloc_intern(&SHDR_SYMTAB->s_buf,
+                                            sizeof(Elf(Sym)));
+  if (null_sym) memset(null_sym,0,sizeof(Elf(Sym)));
+  /* Load all symbols into 'SHDR_SYMTAB' (Both those named & those unnamed!) */
+  DCCUnit_ENUMALLSYM(sym) {
+   unsigned char bind,type;
+   if (DCCSym_ISSECTION(sym)) type = STT_SECTION;
+   else                       type = STT_NOTYPE;
+        if (sym->sy_flags&DCC_SYMFLAG_STATIC) bind = STB_LOCAL;
+   else if (sym->sy_flags&DCC_SYMFLAG_WEAK)   bind = STB_WEAK;
+   else                                       bind = STB_GLOBAL;
+   if (sym->sy_name == &TPPKeyword_Empty)
+        symhdr.st_name = 0;
+   else symhdr.st_name = DCCTextBuf_AllocString(&SHDR_STRTAB->s_buf,
+                                                sym->sy_name->k_name,
+                                                sym->sy_name->k_size);
+   symhdr.st_value = sym->sy_addr;
+   symhdr.st_size  = sym->sy_size;
+   symhdr.st_info  = ELF(ST_INFO)(bind,type);
+   symhdr.st_other = ELF(ST_VISIBILITY)(elf_vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE]);
+   if (sym->sy_sec) {
+    if (sym->sy_sec == &DCCSection_Abs)
+     symhdr.st_shndx = SHN_ABS;
+    else if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ||
+             /* Allow import indices only when ELF extensions are allowed. */
+             !DCCSection_ISIMPORT(sym->sy_sec)) {
+     symhdr.st_shndx = (Elf(Section))sym->sy_sec->sc_start.sy_addr;
     } else {
-     if (sym->sy_alias) { /* TODO: So what do we do about alias symbols now? */ }
      symhdr.st_shndx = SHN_UNDEF;
     }
-    sym->sy_elfid = symid++;
-    DCCTextBuf_AllocData(&SHDR_SYMTAB->s_buf,&symhdr,sizeof(symhdr));
+   } else {
+    if (sym->sy_alias) { /* TODO: So what do we do about alias symbols now? */ }
+    symhdr.st_shndx = SHN_UNDEF;
    }
+   sym->sy_elfid = symid++;
+   DCCTextBuf_AllocData(&SHDR_SYMTAB->s_buf,&symhdr,sizeof(symhdr));
+  }
  }
 
  /* Generate relocation sections. */
