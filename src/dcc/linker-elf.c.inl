@@ -439,6 +439,9 @@ PRIVATE void elf_mk_dynsym(void) {
 #endif /* ELF_HAVE_NULLSYM */
  if unlikely(!elf.elf_dynsym ||
              !elf.elf_dynstr) return;
+ /* Make sure all unnamed symbol have no ID assigned.
+  * Otherwise, invalid relocations may be generated. */
+ DCCUnit_ENUMNSYM(sym) sym->sy_elfid = 0;
  /* Generate dynamic symbol information. */
  DCCUnit_ENUMSYM(sym) {
   target_ptr_t entry_addr;
@@ -447,12 +450,14 @@ PRIVATE void elf_mk_dynsym(void) {
   if (DCCSym_ISSECTION(sym) &&
      ((!(DCCSection_VSIZE(DCCSym_TOSECTION(sym))) &&
        !(sym->sy_flags&DCC_SYMFLAG_USED)) ||
-       DCCSection_ISIMPORT(DCCSym_TOSECTION(sym)))) continue;
+       DCCSection_ISIMPORT(DCCSym_TOSECTION(sym)))) {
+skip_sym: sym->sy_elfid = 0; continue;
+  }
 #if 1 /* Don't export static symbols. */
-  if (sym->sy_flags&DCC_SYMFLAG_STATIC) continue;
+  if (sym->sy_flags&DCC_SYMFLAG_STATIC) goto skip_sym;
 #endif
 #if 0 /* Only export symbols with default visibility? */
-  if ((sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE) != DCC_SYMFLAG_NONE) continue;
+  if ((sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE) != DCC_SYMFLAG_NONE) goto skip_sym;
 #endif
   if (DCCSym_LoadAddr(sym,&symaddr,0)) {
    /* Handle special sections. */
@@ -462,7 +467,7 @@ PRIVATE void elf_mk_dynsym(void) {
     esym.st_shndx = elf_get_secidx(symaddr.sa_sym->sy_sec);
     /* Skip symbols from removed sections (including removed sections themself). */
     if (symaddr.sa_sym->sy_sec && esym.st_shndx == SHN_UNDEF &&
-        !DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) continue;
+        !DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) goto skip_sym;
    }
   } else {
    esym.st_shndx  = SHN_UNDEF;
@@ -470,7 +475,7 @@ PRIVATE void elf_mk_dynsym(void) {
    symaddr.sa_sym = sym;
    /* Skip symbols form removed sections. */
    if (sym->sy_sec) {
-    if (!DCCSection_ISIMPORT(sym->sy_sec)) continue;
+    if (!DCCSection_ISIMPORT(sym->sy_sec)) goto skip_sym;
     /* TODO: If the symbol was declared with '__attribute__((lib(...)))',
      *       warn about ELF's inability to import a symbol from an explicit library,
      *       but instead always importing it from a pool of loaded modules. */
