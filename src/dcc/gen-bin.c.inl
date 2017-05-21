@@ -36,7 +36,7 @@ DCCDisp_MemsBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
                    target_siz_t src_bytes, rc_t dst, int src_unsigned) {
  rc_t temp;
  if (op == '=') { DCCDisp_MemsMovReg(src,src_bytes,dst,src_unsigned); return; }
- if (src_bytes <= DCC_RC_FORSIZE(dst)) { DCCDisp_MemBinReg(op,src,dst,src_unsigned); return; }
+ if (src_bytes <= DCC_RC_SIZE(dst)) { DCCDisp_MemBinReg(op,src,dst,src_unsigned); return; }
  temp = DCCVStack_GetReg(DCC_RC_FORSIZE(src_bytes),1);
  DCCDisp_MemMovReg(src,temp);
  DCCDisp_RegBinReg(op,temp,dst,src_unsigned);

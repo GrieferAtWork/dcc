@@ -267,8 +267,8 @@ PRIVATE int DCCUNIT_IMPORTCALL
 DCCUnit_ImportWithPath(struct TPPString *__restrict path,
                        struct DCCLibDef *__restrict def) {
  struct path_extension const *ext_iter,*ext_end;
- size_t pathlen,buflen;
  char *buf,*mbuf,*ext; int result;
+ size_t pathlen,buflen;
  assert(def);
  assert(path);
  pathlen = path->s_size;
@@ -348,8 +348,8 @@ DCCUnit_ImportStream(struct DCCLibDef *__restrict def,
                      char const *__restrict filename,
                      stream_t fd) {
  int result = DCCUnit_DoImportStream(def,filename,fd);
- if (!result && !(def->ld_flags&DCC_LIBDEF_FLAG_NOWARNMISSING)
-     ) WARN(W_LIB_NOT_FOUND,filename,(size_t)strlen(filename));
+ if (!result && !(def->ld_flags&DCC_LIBDEF_FLAG_NOWARNMISSING))
+      WARN(W_LIB_NOT_FOUND,filename,(size_t)strlen(filename));
  return result;
 }
 
