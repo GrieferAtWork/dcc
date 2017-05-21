@@ -2612,44 +2612,48 @@ const builtin_keywords[_KWD_COUNT] = {
 };
 #undef KWD
 
+PRIVATE void
+cleanup_keyword(struct TPPKeyword *__restrict self) {
+ struct TPPRareKeyword *rare;
+ if (self->k_macro) TPPFile_Decref(self->k_macro);
+ if ((rare = self->k_rare) != NULL) {
+  struct TPPFile *fileiter,*filenext;
+  struct TPPAssertion **ass_iter,**ass_end,*aiter,*anext;
+  if (rare->kr_file) TPPFile_Decref(rare->kr_file);
+  fileiter = rare->kr_oldmacro;
+  while (fileiter) {
+   assert(fileiter->f_kind == TPPFILE_KIND_MACRO);
+   filenext = fileiter->f_macro.m_pushprev;
+   TPPFile_Decref(fileiter);
+   fileiter = filenext;
+  }
+  assert((rare->kr_asserts.as_assv != NULL) ==
+         (rare->kr_asserts.as_assa != 0));
+  ass_end = (ass_iter = rare->kr_asserts.as_assv)+
+                        rare->kr_asserts.as_assa;
+  for (; ass_iter != ass_end; ++ass_iter) {
+   aiter = *ass_iter;
+   while (aiter) {
+    anext = aiter->as_next;
+    assert(aiter->as_kwd);
+    free(aiter);
+    aiter = anext;
+   }
+  }
+  free(rare->kr_asserts.as_assv);
+  free(rare);
+ }
+}
 
 PRIVATE void
 destroy_keyword_map(struct TPPKeywordMap *__restrict self) {
  struct TPPKeyword **bucket_iter,**bucket_end,*iter,*next;
- struct TPPFile *fileiter,*filenext; struct TPPRareKeyword *rare;
  bucket_end = (bucket_iter = self->km_bucketv)+self->km_bucketc;
  for (; bucket_iter != bucket_end; ++bucket_iter) {
   iter = *bucket_iter;
   while (iter) {
    next = iter->k_next;
-   /* Drop all macro definitions. */
-   if (iter->k_macro) TPPFile_Decref(iter->k_macro);
-   if ((rare = iter->k_rare) != NULL) {
-    struct TPPAssertion **ass_iter,**ass_end,*aiter,*anext;
-    if (rare->kr_file) TPPFile_Decref(rare->kr_file);
-    fileiter = rare->kr_oldmacro;
-    while (fileiter) {
-     assert(fileiter->f_kind == TPPFILE_KIND_MACRO);
-     filenext = fileiter->f_macro.m_pushprev;
-     TPPFile_Decref(fileiter);
-     fileiter = filenext;
-    }
-    assert((rare->kr_asserts.as_assv != NULL) ==
-           (rare->kr_asserts.as_assa != 0));
-    ass_end = (ass_iter = rare->kr_asserts.as_assv)+
-                          rare->kr_asserts.as_assa;
-    for (; ass_iter != ass_end; ++ass_iter) {
-     aiter = *ass_iter;
-     while (aiter) {
-      anext = aiter->as_next;
-      assert(aiter->as_kwd);
-      free(aiter);
-      aiter = anext;
-     }
-    }
-    free(rare->kr_asserts.as_assv);
-    free(rare);
-   }
+   cleanup_keyword(iter);
 #if TPP_CONFIG_ONELEXER
    /* Must only free if the keyword isn't a builtin. */
    if (TPP_ISUSERKEYWORD(iter->k_id))
@@ -3160,6 +3164,174 @@ PUBLIC void TPPLexer_Quit(struct TPPLexer *__restrict self) {
    next = iter->es_prev;
    free(iter);
    iter = next;
+  }
+ }
+}
+PUBLIC void
+TPPLexer_Reset(struct TPPLexer *__restrict self, uint32_t flags) {
+ assert(self);
+ if (flags&TPPLEXER_RESET_INCLUDE) {
+  struct TPPFile *iter,*next;
+  self->l_eob_file    = NULL;
+  self->l_eof_file    = NULL;
+  self->l_noerror     = TOK_EOF;
+  self->l_warncount   = 0;
+  self->l_token.t_id  = TOK_EOF;
+  //self->l_token.t_num = 0; /* No need to do this... */
+  self->l_token.t_kwd = NULL;
+  iter = self->l_token.t_file;
+  self->l_token.t_file = &TPPFile_Empty;
+  TPPFile_Incref(&TPPFile_Empty);
+  self->l_token.t_begin = TPPFile_Empty.f_begin;
+  self->l_token.t_end   = TPPFile_Empty.f_end;
+  /* Clear the #include-stack. */
+  while (iter) {
+   next = iter->f_prev;
+   TPPFile_Decref(iter);
+   iter = next;
+  }
+  /* Clear the #ifdef-stack. */
+  self->l_ifdef.is_slotc = 0;
+ }
+ if (flags&TPPLEXER_RESET_EXTENSIONS) {
+  /* Reset extensions. */
+  struct TPPExtState *iter,*next;
+  iter = self->l_extensions.es_prev;
+  while (iter) {
+   next = iter->es_prev;
+   assert(iter != next);
+   free(iter);
+   iter = next;
+  }
+  memcpy(self->l_extensions.es_bitset,
+        &default_extensions_state,
+         TPP_EXTENSIONS_BITSETSIZE);
+  self->l_extensions.es_prev = NULL;
+ }
+ if (flags&TPPLEXER_RESET_WARNINGS) {
+  /* Reset warnings. */
+  struct TPPWarningState *iter,*next;
+  iter = self->l_warnings.w_curstate;
+  while (iter) {
+   next = iter->ws_prev;
+   assert(iter != next);
+   free(iter->ws_extendedv);
+   if (iter != &self->l_warnings.w_basestate) free(iter);
+   iter = next;
+  }
+  memcpy(self->l_warnings.w_basestate.ws_state,
+        &default_warnings_state,
+         TPP_WARNING_BITSETSIZE);
+  self->l_warnings.w_basestate.ws_extendeda = 0;
+  self->l_warnings.w_basestate.ws_extendedv = NULL;
+  self->l_warnings.w_basestate.ws_prev      = NULL;
+  self->l_warnings.w_curstate = &self->l_warnings.w_basestate;
+ }
+ if (flags&TPPLEXER_RESET_SYSPATHS) {
+  struct TPPIncludeList *iter,*next;
+  /* Clear all system #include-paths. */
+  iter = &self->l_syspaths;
+  do {
+   struct TPPString **siter,**send;
+   next = iter->il_prev;
+   assert(iter != next);
+   send = (siter = iter->il_pathv)+iter->il_pathc;
+   for (; siter != send; ++siter)
+        assert(*siter),
+        TPPString_Decref(*siter);
+   free(iter->il_pathv);
+   if (iter != &self->l_syspaths) free(iter);
+  } while ((iter = next) != NULL);
+  self->l_syspaths.il_pathc = 0;
+  self->l_syspaths.il_pathv = NULL;
+ }
+ if (flags&TPPLEXER_RESET_KEYWORDS) {
+  struct TPPKeyword **bucket_iter,**bucket_end,**piter,*kwd;
+  /* Clear all user-defined keywords. */
+  bucket_end = (bucket_iter = self->l_keywords.km_bucketv)+
+                              self->l_keywords.km_bucketc;
+  for (; bucket_iter != bucket_end; ++bucket_iter) {
+   piter = bucket_iter;
+   while ((kwd = *piter) != NULL) {
+    if (!TPP_ISUSERKEYWORD(kwd->k_id))
+     piter = &kwd->k_next;
+    else {
+     cleanup_keyword(kwd);
+     *piter = kwd->k_next;
+     free(kwd);
+    }
+   }
+  }
+  self->l_keywords.km_entryc = _KWD_COUNT;
+ } else if (flags&(TPPLEXER_RESET_MACRO|TPPLEXER_RESET_ASSERT|
+                   TPPLEXER_RESET_KWDFLAGS|TPPLEXER_RESET_COUNTER|
+                   TPPLEXER_RESET_FONCE)) {
+  struct TPPKeyword **bucket_iter,**bucket_end,*iter;
+  if (flags&TPPLEXER_RESET_COUNTER) self->l_counter = 0;
+
+  /* When any of the per-keyword flags are set, iterate the keyword map. */
+  bucket_end = (bucket_iter = self->l_keywords.km_bucketv)+
+                              self->l_keywords.km_bucketc;
+  for (; bucket_iter != bucket_end; ++bucket_iter) {
+   for (iter = *bucket_iter; iter; iter = iter->k_next) {
+    struct TPPRareKeyword *rare;
+    if (iter->k_macro && (flags&TPPLEXER_RESET_MACRO))
+        TPPFile_Decref(iter->k_macro),
+        iter->k_macro = NULL;
+    if ((rare = iter->k_rare) != NULL) {
+     struct TPPAssertion **ass_iter,**ass_end,*aiter,*anext;
+     if (rare->kr_file && (flags&TPPLEXER_RESET_FONCE) &&
+         rare->kr_file->f_kind == TPPFILE_KIND_TEXT) {
+      /* Delete include guard names. */
+      rare->kr_file->f_textfile.f_guard    = NULL;
+      rare->kr_file->f_textfile.f_newguard = NULL;
+      rare->kr_file->f_textfile.f_flags    = TPP_TEXTFILE_FLAG_NONE;
+     }
+     if (flags&TPPLEXER_RESET_MACRO) {
+      struct TPPFile *fileiter,*filenext;
+      fileiter = rare->kr_oldmacro;
+      rare->kr_oldmacro = NULL;
+      while (fileiter) {
+       assert(fileiter->f_kind == TPPFILE_KIND_MACRO);
+       filenext = fileiter->f_macro.m_pushprev;
+       TPPFile_Decref(fileiter);
+       fileiter = filenext;
+      }
+     }
+     assert((rare->kr_asserts.as_assv != NULL) ==
+            (rare->kr_asserts.as_assa != 0));
+     if (flags&TPPLEXER_RESET_ASSERT) {
+      ass_end = (ass_iter = rare->kr_asserts.as_assv)+
+                            rare->kr_asserts.as_assa;
+      for (; ass_iter != ass_end; ++ass_iter) {
+       aiter = *ass_iter;
+       while (aiter) {
+        anext = aiter->as_next;
+        assert(aiter->as_kwd);
+        free(aiter);
+        aiter = anext;
+       }
+      }
+      rare->kr_asserts.as_assc = 0;
+     }
+     if (flags&TPPLEXER_RESET_KWDFLAGS)
+         rare->kr_flags = TPP_KEYWORDFLAG_NONE;
+     if (flags&TPPLEXER_RESET_COUNTER)
+         rare->kr_counter = 0;
+     /* Delete the rare entry if it is empty. */
+     if (!rare->kr_file &&
+         !rare->kr_oldmacro &&
+         !rare->kr_counter &&
+         !rare->kr_flags &&
+         !rare->kr_asserts.as_assc) {
+      free(rare->kr_asserts.as_assv);
+      rare->kr_asserts.as_assa = 0;
+      rare->kr_asserts.as_assv = NULL;
+      free(rare);
+      iter->k_rare = NULL;
+     }
+    }
+   }
   }
  }
 }

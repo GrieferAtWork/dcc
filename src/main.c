@@ -135,8 +135,9 @@ static void add_c_source(char *filename) {
  /* Initialize DCC and create+set the current text target. */
  DCCUnit_Push();
  DCCCompiler_Init(&compiler); /* Initialize the compiler. */
- /* TODO: Reset TPP warnings & macros (But _not_ keywords!) */
-
+ TPPLexer_Reset(TPPLexer_Current,
+                TPPLEXER_RESET_EXTENSIONS|
+                TPPLEXER_RESET_WARNINGS);
  TPPLexer_Yield();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
  unit.u_text = DCCUnit_NewSecs(".text",DCC_SYMFLAG_SEC_X|DCC_SYMFLAG_SEC_R);
@@ -149,6 +150,10 @@ static void add_c_source(char *filename) {
  DCCParse_AllGlobal();
  DCCUnit_SetCurr(NULL);
 
+ TPPLexer_Reset(TPPLexer_Current,
+                TPPLEXER_RESET_INCLUDE|TPPLEXER_RESET_MACRO|
+                TPPLEXER_RESET_ASSERT|TPPLEXER_RESET_KWDFLAGS|
+                TPPLEXER_RESET_COUNTER|TPPLEXER_RESET_FONCE);
  DCCCompiler_Quit(&compiler);
  DCCUnit_Pop(OK); /* Merge if OK */
 }
@@ -194,7 +199,6 @@ int main(int argc, char *argv[]) {
  save_object("a.o");
 
  /* Cleanup unused stuff. */
- DCCCompiler_ClearDecl();
  DCCUnit_ClearStatic();
 
  //linker.l_flags |= DCC_LINKER_FLAG_NORELOC;
