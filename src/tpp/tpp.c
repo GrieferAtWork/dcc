@@ -2141,6 +2141,7 @@ err: result = 0; codewriter_quit(&writer); goto done;
 }
 #undef func
 
+PRIVATE void TPPKeyword_Undef(struct TPPKeyword *__restrict self);
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -2370,7 +2371,7 @@ skip_argument_name:
     return NULL;
    }
   }
-  TPPFile_Decref(keyword_entry->k_macro);
+  TPPKeyword_Undef(keyword_entry);
  }
  keyword_entry->k_macro = result; /*< Inherit reference. */
  return result;
@@ -2620,6 +2621,7 @@ cleanup_keyword(struct TPPKeyword *__restrict self) {
   struct TPPFile *fileiter,*filenext;
   struct TPPAssertion **ass_iter,**ass_end,*aiter,*anext;
   if (rare->kr_file) TPPFile_Decref(rare->kr_file);
+  if (rare->kr_defmacro) TPPFile_Decref(rare->kr_defmacro);
   fileiter = rare->kr_oldmacro;
   while (fileiter) {
    assert(fileiter->f_kind == TPPFILE_KIND_MACRO);
@@ -3289,6 +3291,7 @@ TPPLexer_Reset(struct TPPLexer *__restrict self, uint32_t flags) {
      }
      if (flags&TPPLEXER_RESET_MACRO) {
       struct TPPFile *fileiter,*filenext;
+      assert(!iter->k_macro);
       fileiter = rare->kr_oldmacro;
       rare->kr_oldmacro = NULL;
       while (fileiter) {
@@ -3296,6 +3299,16 @@ TPPLexer_Reset(struct TPPLexer *__restrict self, uint32_t flags) {
        filenext = fileiter->f_macro.m_pushprev;
        TPPFile_Decref(fileiter);
        fileiter = filenext;
+      }
+      if (rare->kr_defmacro) {
+       if (flags&TPPLEXER_RESET_NORESTOREMACROS) {
+        TPPFile_Decref(rare->kr_defmacro);
+        rare->kr_defmacro = NULL;
+        rare->kr_flags   &= ~(TPP_KEYWORDFLAG_BUILTINMACRO);
+       } else {
+        iter->k_macro = rare->kr_defmacro;
+        rare->kr_defmacro = NULL;
+       }
       }
      }
      assert((rare->kr_asserts.as_assv != NULL) ==
@@ -3321,6 +3334,7 @@ TPPLexer_Reset(struct TPPLexer *__restrict self, uint32_t flags) {
      /* Delete the rare entry if it is empty. */
      if (!rare->kr_file &&
          !rare->kr_oldmacro &&
+         !rare->kr_defmacro &&
          !rare->kr_counter &&
          !rare->kr_flags &&
          !rare->kr_asserts.as_assc) {
@@ -3748,7 +3762,8 @@ TPPLexer_DelIncludePath(char *__restrict path, size_t pathsize) {
 
 PUBLIC int
 TPPLexer_Define(char const *__restrict name, size_t name_size,
-                char const *__restrict value, size_t value_size) {
+                char const *__restrict value, size_t value_size,
+                uint32_t flags) {
  struct TPPKeyword *keyword;
  struct TPPString *value_string;
  struct TPPFile *macro_file,*oldfile;
@@ -3781,10 +3796,28 @@ TPPLexer_Define(char const *__restrict name, size_t name_size,
  macro_file->f_macro.m_pushcount = 0;
  oldfile          = keyword->k_macro; /*< Inherit reference. */
  keyword->k_macro = macro_file;       /*< Inherit reference. */
+ /* Define keyword flags. */
+ if (flags && TPPKeyword_MAKERARE(keyword))
+     keyword->k_rare->kr_flags |= flags;
  if (oldfile) TPPFile_Decref(oldfile);
  return oldfile ? 2 : 1;
 err_value_string: TPPString_Decref(value_string); return 0;
 }
+PRIVATE void
+TPPKeyword_Undef(struct TPPKeyword *__restrict self) {
+ assert(self);
+ assert(self->k_macro);
+ if (self->k_rare &&
+    (self->k_rare->kr_flags&TPP_KEYWORDFLAG_BUILTINMACRO) &&
+    !self->k_rare->kr_defmacro) {
+  /* Backup the original definition of a builtin macro. */
+  self->k_rare->kr_defmacro = self->k_macro;
+ } else {
+  TPPFile_Decref(self->k_macro);
+ }
+ self->k_macro = NULL;
+}
+
 PUBLIC int
 TPPLexer_Undef(char const *__restrict name, size_t name_size) {
  struct TPPKeyword *keyword;
@@ -3793,8 +3826,7 @@ TPPLexer_Undef(char const *__restrict name, size_t name_size) {
  /* Lookup the keyword associated with 'name'. */
  keyword = TPPLexer_LookupKeyword(name,name_size,0);
  if (!keyword || !keyword->k_macro) return 0;
- TPPFile_Decref(keyword->k_macro);
- keyword->k_macro = NULL;
+ TPPKeyword_Undef(keyword);
  return 1;
 }
 
@@ -4821,8 +4853,7 @@ def_skip_until_lf:
      keyword = token.t_kwd;
      assert(keyword);
      if (keyword->k_macro) {
-      TPPFile_Decref(keyword->k_macro);
-      keyword->k_macro = NULL;
+      TPPKeyword_Undef(keyword);
      } else if (TPP_ISBUILTINMACRO(TOK)) {
       TPPLexer_Warn(W_CANT_UNDEF_BUILTIN_MACRO,keyword);
      } else {

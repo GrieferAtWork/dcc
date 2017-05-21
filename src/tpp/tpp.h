@@ -896,8 +896,12 @@ struct TPPRareKeyword {
                                          *   NOTE: Sadly, this cannot simply be made into a union with 'k_macro',
                                          *         as a filename could potentially be equal to a keyword (e.g.: '#include "header"' vs. '#define header 42') */
  /*ref*/struct TPPFile    *kr_oldmacro; /*< [0..1][linked_list(->f_hashnext...)] Linked list of old (aka. pushed) version of this macro. */
+ /*ref*/struct TPPFile    *kr_defmacro; /*< [0..1] Default macro definition (backup of the original, builtin macro when re-defined by the user).
+                                         *         This macro file is restored as the active macro when lexer macros are reset and the
+                                         *        'TPP_KEYWORDFLAG_BUILTINMACRO' keyword flag is set below. */
  TPP(int_t)                kr_counter;  /*< Counter value used by '__TPP_COUNTER()' */
 #define TPP_KEYWORDFLAG_NONE                   0x00000000
+#define TPP_KEYWORDFLAG_BUILTINMACRO           0x20000000 /*< An explicitly defined builtin macro-definition, that can't be #undef'ed and is not  */
 #define TPP_KEYWORDFLAG_NO_UNDERSCORES         0x40000000 /*< When looking up keyword flags, don't allow this keyword to alias another with additional underscores at the front and back:
                                                            *  >> __has_feature(__tpp_dollar_is_alpha__) // If 'tpp_dollar_is_alpha' doesn't have this flag set, it can alias '__tpp_dollar_is_alpha__'
                                                            */
@@ -1104,7 +1108,9 @@ TPPFUN void TPPLexer_Reset(struct TPPLexer *__restrict self, uint32_t flags);
 #define TPPLEXER_RESET_EXTENSIONS 0x00000002 /* Reset enabled extensions to mirror the default-state. */
 #define TPPLEXER_RESET_WARNINGS   0x00000004 /* Reset enabled warnings to mirror the default-state. */
 #define TPPLEXER_RESET_SYSPATHS   0x00000008 /* Clears all system #include-paths. */
-#define TPPLEXER_RESET_MACRO      0x00000010 /* Reset user-defined macros. */
+#define TPPLEXER_RESET_MACRO      0x00000010 /* Reset user-defined macros.
+                                              * The original definitions of runtime builtin macros are restored,
+                                              * unless the 'TPPLEXER_RESET_NORESTOREMACROS' flag is set. */
 #define TPPLEXER_RESET_ASSERT     0x00000020 /* Reset user-defined assertions. */
 #define TPPLEXER_RESET_KWDFLAGS   0x00000040 /* Reset user-defined keyword flags. */
 #define TPPLEXER_RESET_COUNTER    0x00000080 /* Reset __COUNTER__ and __TPP_COUNTER for all keywords. */
@@ -1112,7 +1118,9 @@ TPPFUN void TPPLexer_Reset(struct TPPLexer *__restrict self, uint32_t flags);
 #define TPPLEXER_RESET_KEYWORDS   0x00000200 /* Clear all keywords, but keep all predefined.
                                               * NOTE: When set, this flag implies 'TPPLEXER_RESET_MACRO',
                                               *       'TPPLEXER_RESET_ASSERT', 'TPPLEXER_RESET_KWDFLAGS',
-                                              *       'TPPLEXER_RESET_COUNTER' and 'TPPLEXER_RESET_FONCE'. */
+                                              *       'TPPLEXER_RESET_COUNTER' and 'TPPLEXER_RESET_FONCE'.
+                                              * NOTE: It also implies 'TPPLEXER_RESET_NORESTOREMACROS' */
+#define TPPLEXER_RESET_NORESTOREMACROS 0x00000400 /* When used with 'TPPLEXER_RESET_MACRO': Don't restore builtin macro definitions. */
 
 /* Push/Pop the current extension state.
  * @return: 0: [TPPLexer_PushExtensions] Not enough available memory.
@@ -1171,11 +1179,17 @@ TPPFUN struct TPPKeyword *TPPLexer_LookupEscapedKeyword(char const *name, size_t
 TPPFUN struct TPPKeyword *TPPLexer_LookupKeywordID(TPP(tok_t) id);
 
 /* Define a regular, keyword-style macro 'name' as 'value'.
+ * @param: flags: A set of 'TPPLEXER_DEFINE_FLAG_*'
  * @return: 0: Not enough available memory.
  * @return: 1: Successfully defined the given macro.
  * @return: 2: A macro named 'name' was already defined, and was overwritten. */
 TPPFUN int TPPLexer_Define(char const *__restrict name, size_t name_size,
-                           char const *__restrict value, size_t value_size);
+                           char const *__restrict value, size_t value_size,
+                           uint32_t flags);
+#define TPPLEXER_DEFINE_FLAG_NONE    0x00000000
+#define TPPLEXER_DEFINE_FLAG_BUILTIN TPP_KEYWORDFLAG_BUILTINMACRO /*< Define the macro as builtin, meaning the definition
+                                                                   *  set by 'value' will be restored when 'TPPLexer_Reset()'
+                                                                   *  is called with 'TPPLEXER_RESET_MACRO'. */
 
 /* Undefine the macro associated with a given name.
  * @return: 0: No macro was associated with the given name.

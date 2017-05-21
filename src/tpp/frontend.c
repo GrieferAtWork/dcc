@@ -680,7 +680,7 @@ int main(int argc, char *argv[]) {
                           if (!*arg && argc > 1) arg = argv[1],++argv,--argc;
                           val = strchr(arg,'=');
                           if (val) *val++ = '\0'; else val = "1";
-                          if (!TPPLexer_Define(arg,strlen(arg),val,strlen(val))) _exit(1); }
+                          if (!TPPLexer_Define(arg,strlen(arg),val,strlen(val),TPPLEXER_DEFINE_FLAG_BUILTIN)) _exit(1); }
   else if (*arg == 'U') { if (!*++arg && argc > 1) arg = argv[1],++argv,--argc;
                           TPPLexer_Undef(arg,strlen(arg)); }
   else if (*arg == 'A') { int add = 1; char *val;
