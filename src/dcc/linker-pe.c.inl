@@ -266,6 +266,9 @@ pe_mk_reldat(struct DCCSection *__restrict relocs) {
  for (;;) {
   if (iter < end) {
    rel_t t = iter->r_type;
+   if (iter->r_sym->sy_sec == &DCCSection_Abs &&
+       /* Relocation into 'SHN_ABS' */
+       t == DCC_R_DISP_32) t = DCC_R_DATA_32;
    addr = iter->r_addr+siter->si_addr;
    ++iter;
    if (t != DCC_R_DATA_PTR) continue;

@@ -263,10 +263,15 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
   if unlikely(!rel_data) continue;
   rel_end = (rel_iter = sec->sc_relv)+sec->sc_relc;
   for (; rel_iter != rel_end; ++rel_iter,++rel_data) {
-   uint32_t symid = (assert(rel_iter->r_sym),ELF_SYMIDX(rel_iter->r_sym));
-   assertf(symid != 0,"Unmapped reference to '%s' in '%s'",
-           rel_iter->r_sym->sy_name->k_name,
-           sec->sc_start.sy_name->k_name);
+   uint32_t symid;
+   if (rel_iter->r_sym == &DCCSection_Abs.sc_start) {
+    symid = 0; /* ??? */
+   } else {
+    symid = (assert(rel_iter->r_sym),ELF_SYMIDX(rel_iter->r_sym));
+    assertf(symid != 0,"Unmapped reference to '%s' in '%s'",
+            rel_iter->r_sym->sy_name->k_name,
+            sec->sc_start.sy_name->k_name);
+   }
    rel_data->r_info   = ELF(R_INFO)(symid,rel_iter->r_type);
    rel_data->r_offset = rel_iter->r_addr;
   }

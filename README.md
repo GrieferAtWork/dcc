@@ -32,6 +32,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Compiling DCC with DCC (because every C compiler must be able to do that!).
   - Generation of debug information (recognizeable by gdb).
   - Finish many partially implemented features (see below).
+  - Support for ~true~ thread-local storage (aka. segment-based)
 
 ## Features (Compiler):
   - DCC as host compiler can easily be detected with <code>defined(\_\_DCC\_VERSION\_\_)</code>.

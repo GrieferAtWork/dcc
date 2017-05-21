@@ -1588,7 +1588,7 @@ PUBLIC struct DCCSection DCCSection_Abs = {
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
  /* sc_start.sy_alias       */NULL,
  /* sc_start.sy_sec         */&DCCSection_Abs,
-#if DCC_TARGET_BIN == DCC_BINARY_ELF
+#if DCC_TARGET_BIN == DCC_BINARY_ELF || 1
  /* sc_start.sy_elfid       */0,
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
  /* sc_start.sy_addr        */0,

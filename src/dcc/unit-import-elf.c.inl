@@ -902,13 +902,15 @@ invrelo: /* Warning: Invalid relocation */
       rsym = symid >= relsymc ? NULL : relsymv[symid];
       dcc_rel->r_addr = rel_iter->r_offset;
       if unlikely(!rsym) {
+       if (!symid) goto absrel;
        if (relty != DCC_R_RELATIVE) goto invrelo;
        /* TODO: Determine which section this relocation points into,
         *       then convert it into a 'DCC_R_DATA_PTR' relocation
         *       against the start symbol of that section.
         *    >> If we fail to do this, we won't be able to
         *       safely append data to any section. */
-       dcc_rel->r_type = DCC_R_RELATIVE;
+absrel:
+       dcc_rel->r_type = relty;
        dcc_rel->r_sym  = &DCCSection_Abs.sc_start;
       } else {
        dcc_rel->r_type = relty;
