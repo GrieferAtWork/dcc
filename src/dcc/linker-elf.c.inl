@@ -329,7 +329,7 @@ PRIVATE void elf_mk_entry(void) {
  if unlikely(!elf.elf_entry) {
   WARN(W_MISSING_ENTRY_POINT,"_start");
 use_text:
-  elf.elf_entry = &unit.u_text->sc_start;
+  elf.elf_entry = &linker.l_text->sc_start;
  }
  DCCSym_Incref(elf.elf_entry);
 }
@@ -1349,7 +1349,7 @@ elf_mk_outfile(stream_t fd) {
   if (!DCCSym_LoadAddr(elf.elf_entry,&entryaddr,1)) {
    WARN(W_MISSING_ENTRY_POINT,elf.elf_entry->sy_name->k_name);
    /* TODO: What if the text section is empty? */
-   entryaddr.sa_sym = &unit.u_text->sc_start;
+   entryaddr.sa_sym = &linker.l_text->sc_start;
    entryaddr.sa_off = 0;
   }
   ehdr.e_entry = (Elf(Addr))(entryaddr.sa_sym->sy_addr+entryaddr.sa_off+
@@ -1416,6 +1416,13 @@ elf_mk_outfile(stream_t fd) {
 PUBLIC void
 DCCLinker_Make(stream_t target) {
  memset(&elf,0,sizeof(elf));
+
+ if (!linker.l_text) {
+  if (unit.u_text)
+       linker.l_text = unit.u_text;
+  else linker.l_text = DCCUnit_NewSecs(".text",DCC_SYMFLAG_SEC_X|DCC_SYMFLAG_SEC_R);
+ }
+
  if (linker.l_flags&DCC_LINKER_FLAG_SHARED) {
   elf.elf_base = 0; /* Load shared libraries at offset
                      * ZERO(0), relying on relocations. */

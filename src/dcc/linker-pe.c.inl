@@ -212,7 +212,6 @@ PRIVATE secty_t secty_of(struct DCCSection const *__restrict section);
 
 
 
-
 LOCAL DWORD pe_alignfile(DWORD n) { return (n+(pe.pe_filalign-1)) & ~(pe.pe_filalign-1); }
 LOCAL target_ptr_t pe_alignsec(target_ptr_t n) { return (n+(pe.pe_secalign-1)) & ~(pe.pe_secalign-1); }
 
@@ -395,7 +394,7 @@ pe_mk_imptab(struct DCCSection *__restrict thunk) {
        import_addr = iat_sym->sy_size;
        DCCSym_Define(iat_sym,thunk,thunk_ptr,0); /* Point the IAT symbol into the thunk table. */
        DCCSym_ClrDef(sym);
-       DCCSym_Define(sym,unit.u_text,import_addr,0); /* Point the library symbol to the IAT code. */
+       DCCSym_Define(sym,linker.l_text,import_addr,0); /* Point the library symbol to the IAT code. */
       } else {
        /* We shouldn't really get here because the only way we could would be if
         * the symbol was never accessed, either through PE:ITA-Indirection,
@@ -953,7 +952,7 @@ pe_mk_writefile(stream_t fd) {
    if (!DCCSym_LoadAddr(pe.pe_entry,&entryaddr,1)) {
     WARN(W_MISSING_ENTRY_POINT,pe.pe_entry->sy_name->k_name);
     /* TODO: What if the text section is empty? */
-    entryaddr.sa_sym = &unit.u_text->sc_start;
+    entryaddr.sa_sym = &linker.l_text->sc_start;
     entryaddr.sa_off = 0;
    }
    hdr.ohdr.AddressOfEntryPoint = (entryaddr.sa_sym->sy_addr+entryaddr.sa_off+
@@ -1018,7 +1017,7 @@ PRIVATE void pe_mk_genrt(void) {
  pe.pe_entry = DCCUnit_GetSyms(entry_point);
  if (!pe.pe_entry) {
   WARN(W_MISSING_ENTRY_POINT,entry_point);
-  pe.pe_entry = &unit.u_text->sc_start;
+  pe.pe_entry = &linker.l_text->sc_start;
  }
  /* Keep a reference to the entry point to prevent it
   * from being deleted when unused symbols are all removed. */
@@ -1129,8 +1128,8 @@ PRIVATE void pe_mk_buildita(void) {
     */
 
 #if defined(DCC_TARGET_X86)
-   iat_addr = DCCSection_TADDR(unit.u_text);
-   iat_code = (uint8_t *)DCCSection_TAlloc(unit.u_text,6);
+   iat_addr = DCCSection_TADDR(linker.l_text);
+   iat_code = (uint8_t *)DCCSection_TAlloc(linker.l_text,6);
    if unlikely(!iat_code) return;
    /* jmp *$(thunk->sc_base + thunk_ptr) */
    *iat_code++           = 0xff;
@@ -1176,11 +1175,11 @@ PRIVATE void pe_mk_buildita(void) {
     */
    /* Hacky temporary storage for what will eventually become 'lib_sym->sy_addr' */
    iat_sym->sy_size = iat_addr;
-   DCCSection_Putrel(unit.u_text,iat_addr+2,DCC_R_DATA_PTR,iat_sym);
+   DCCSection_Putrel(linker.l_text,iat_addr+2,DCC_R_DATA_PTR,iat_sym);
 
    /* These must are done later to keep the library symbols inside! */
    // DCCSym_ClrDef(sym);
-   // DCCSym_Define(sym,unit.u_text,iat_addr,0);
+   // DCCSym_Define(sym,linker.l_text,iat_addr,0);
   }
  }
 }
@@ -1188,7 +1187,12 @@ PRIVATE void pe_mk_buildita(void) {
 PUBLIC void
 DCCLinker_Make(stream_t fd) {
  memset(&pe,0,sizeof(pe));
- unit.u_text = DCCUnit_NewSecs(".text",DCC_SYMFLAG_SEC_X|DCC_SYMFLAG_SEC_R);
+
+ if (!linker.l_text) {
+  if (unit.u_text)
+       linker.l_text = unit.u_text;
+  else linker.l_text = DCCUnit_NewSecs(".text",DCC_SYMFLAG_SEC_X|DCC_SYMFLAG_SEC_R);
+ }
 
  /* Determine PE settings, as well as the entry point. */
  pe_mk_genrt();
