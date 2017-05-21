@@ -1217,8 +1217,9 @@ DEF_WARNING(W_OUT_OF_MEMORY,(WG_LINKER),WSTATE_ERROR,WARNF("Out of memory when a
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMPLUSSYM,(WG_LINKER),WSTATE_WARN,WARNF("Symbol+Symbol expression cannot be relocated"))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM,(WG_LINKER),WSTATE_WARN,WARNF("Symbol-Symbol expressions can only be relocated when both symbols are declared and exist in the same section"))
 DEF_WARNING(W_MISSING_ENTRY_POINT,(WG_LINKER,WG_USAGE),WSTATE_WARN,WARNF("Missing entry point '%s' (Using start of default .text section)",ARG(char *)))
-DEF_WARNING(W_SYMBOL_ALREADY_DEFINED,(WG_LINKER),WSTATE_WARN,
-            WARNF("Symbol '%s' was already defined\n",ARG(char *)))
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_SEC,(WG_LINKER),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined in section '%s'\n",n,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP,(WG_LINKER),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined as import from '%s'\n",n,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_ALIAS,(WG_LINKER),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined as alias for '%s'\n",n,ARG(char *)); })
 DEF_WARNING(W_UNRESOLVED_REFERENCE,(WG_LINKER,WG_USAGE),WSTATE_ERROR,{
  char *kwdname = KWDNAME();
  char *secname = KWDNAME();

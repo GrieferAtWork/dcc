@@ -1044,7 +1044,7 @@ DCCParse_Enum(void) {
    constant_decl = DCCCompiler_NewLocalDecl(cst_name,DCC_NS_LOCALS);
    if (constant_decl) {
     if (constant_decl->d_kind != DCC_DECLKIND_NONE) {
-     WARN(W_SYMBOL_ALREADY_DEFINED,constant_decl);
+     WARN(W_DECL_ALREADY_DEFINED,constant_decl);
     } else {
      DCCDecl_SetAttr(constant_decl,&attr);
      /* TODO: clamp to int? (Shouldn't always be done; also: enum classes?) */

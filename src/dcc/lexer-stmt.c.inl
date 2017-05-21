@@ -96,9 +96,9 @@ DCCParse_Typedef(struct DCCType *__restrict base, struct DCCAttrDecl *__restrict
   if likely(ty_decl) {
    if (ty_decl->d_kind != DCC_DECLKIND_NONE) {
     if (!(ty_decl->d_kind&DCC_DECLKIND_TYPE)) {
-     WARN(W_SYMBOL_ALREADY_DEFINED,ty_decl);
+     WARN(W_DECL_ALREADY_DEFINED,ty_decl);
     } else if (!DCCType_IsCompatible(&ty_decl->d_type,&type,0)) {
-     WARN(W_SYMBOL_ALREADY_DEFINED,ty_decl);
+     WARN(W_DECL_ALREADY_DEFINED,ty_decl);
      /* Redefine a typedef (used for by DCC fixed system headers to
       * redefine potentially wrong typedefs from system definitions).
       * NOTE: Using '#pragma GCC system_header', those

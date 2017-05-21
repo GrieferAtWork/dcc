@@ -621,7 +621,17 @@ DCCSym_ClearDef(struct DCCSym *__restrict self, int warn) {
   struct DCCSym *old_alias;
   /* Simply allow overriding a weak symbol. */
   if (warn && !(self->sy_flags&DCC_SYMFLAG_WEAK)) {
-   WARN(W_SYMBOL_ALREADY_DEFINED,self->sy_name->k_name);
+   if (self->sy_alias) WARN(W_SYMBOL_ALREADY_DEFINED_ALIAS,
+                            self->sy_name->k_name,
+                            self->sy_alias->sy_name->k_name);
+   else {
+    assert(self->sy_sec);
+    WARN(DCCSection_ISIMPORT(self->sy_sec)
+         ? W_SYMBOL_ALREADY_DEFINED_IMP
+         : W_SYMBOL_ALREADY_DEFINED_SEC,
+         self->sy_name->k_name,
+         self->sy_sec->sc_start.sy_name->k_name);
+   }
   }
   old_sec        = self->sy_sec; /* Inherit reference. */
   old_alias      = self->sy_alias; /* Inherit reference. */
