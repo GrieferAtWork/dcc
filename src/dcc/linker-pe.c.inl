@@ -157,7 +157,7 @@ struct DCCPEInfo {
  uint8_t                pe_type;      /*< One of 'PETYPE_*' */
  uint8_t                pe_subsystem; /*< One of 'IMAGE_SUBSYSTEM_*' */
  DWORD                  pe_filalign;  /*< Minimum alignment for headers within the generated binary. */
- target_ptr_t           pe_secalign;  /*< Minimum alignment for sections within the generated binary. */
+ target_siz_t           pe_secalign;  /*< Minimum alignment for sections within the generated binary. */
  target_ptr_t           pe_imgbase;   /*< Image base address. */
                        
  size_t                 pe_secc;      /*< Amount of sections contained in this PE binary. */
@@ -968,6 +968,7 @@ pe_mk_writefile(stream_t fd) {
  hdr.fhdr.NumberOfSections = (WORD)pe.pe_secc;
  hdr.ohdr.ImageBase        = pe.pe_imgbase;
  hdr.ohdr.Subsystem        = pe.pe_subsystem;
+ if (linker.l_pe_stacksiz) hdr.ohdr.SizeOfStackReserve = linker.l_pe_stacksiz;
  if (pe.pe_type == PETYPE_DLL) hdr.fhdr.Characteristics |= IMAGE_FILE_DLL;
  if (!pe.pe_reloc) {
   /* Setup the relocs-stripped flag correctly. */
@@ -1020,19 +1021,25 @@ PRIVATE void pe_mk_genrt(void) {
                                         :            "__start";
  if (linker.l_flags&DCC_LINKER_FLAG_NOUNDERSCORE) ++entry_point;
  assert(!pe.pe_entry);
- pe.pe_entry = DCCUnit_GetSyms(entry_point);
- if (!pe.pe_entry) {
-  WARN(W_MISSING_ENTRY_POINT,entry_point);
-  pe.pe_entry = &linker.l_text->sc_start;
+ if (linker.l_entry) {
+  pe.pe_entry = DCCUnit_NewSyms(linker.l_entry,DCC_SYMFLAG_NONE);
+  if unlikely(!pe.pe_entry) return;
+ } else {
+  pe.pe_entry = DCCUnit_GetSyms(entry_point);
+  if (!pe.pe_entry) {
+   WARN(W_MISSING_ENTRY_POINT,entry_point);
+   pe.pe_entry = &linker.l_text->sc_start;
+  }
  }
  /* Keep a reference to the entry point to prevent it
   * from being deleted when unused symbols are all removed. */
  DCCSym_Incref(pe.pe_entry);
 
+ /* NOTE: 'pe_subsystem' can be overwritten with '-Wl,-subsystem=...' */
  pe.pe_subsystem = (pe.pe_type == PETYPE_DLL || pe.pe_type == PETYPE_EXE)
-                  ? IMAGE_SUBSYSTEM_WINDOWS_CUI
-                  : IMAGE_SUBSYSTEM_WINDOWS_GUI;
- /* TODO: 'pe_subsystem' can be overwritten with '-Wl,-subsystem=...' */
+                    ? IMAGE_SUBSYSTEM_WINDOWS_CUI
+                    : IMAGE_SUBSYSTEM_WINDOWS_GUI;
+ if (linker.l_pe_subsys) pe.pe_subsystem = linker.l_pe_subsys;
  if (pe.pe_subsystem == IMAGE_SUBSYSTEM_NATIVE) {
   pe.pe_secalign = 0x20;
   pe.pe_filalign = 0x20;
@@ -1040,9 +1047,8 @@ PRIVATE void pe_mk_genrt(void) {
   pe.pe_secalign = DCC_TARGET_PAGESIZE;
   pe.pe_filalign = 0x200;
  }
-
- /* TODO: 'pe.pe_secalign' can be overwritten. */
- /* TODO: 'pe.pe_filalign' can be overwritten. */
+ if (linker.l_secalign)    pe.pe_secalign = linker.l_secalign;
+ if (linker.l_pe_filalign) pe.pe_secalign = linker.l_pe_filalign;
 
  if (!(linker.l_flags&DCC_LINKER_FLAG_NORELOC)) {
        DCCUnit_NewSecs(".reloc",DCC_SYMFLAG_SEC_NOALLOC);
@@ -1057,7 +1063,8 @@ PRIVATE void pe_mk_genrt(void) {
      pe.pe_subsystem == IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER ||
      pe.pe_subsystem == IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER
      ) pe.pe_imgbase = 0;
- /* TODO: 'pe.pe_imgbase' can be overwritten. */
+ if (linker.l_flags&DCC_LINKER_FLAG_IMGBASE)
+     pe.pe_imgbase = linker.l_imgbase;
 }
 
 

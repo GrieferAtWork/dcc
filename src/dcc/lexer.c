@@ -27,6 +27,8 @@
 
 #include "lexer-priv.h"
 
+#include "cmd.h"
+
 #include <string.h>
 #include <stdlib.h>
 #ifdef _MSC_VER
@@ -241,7 +243,9 @@ skip_yield_after_pack:
   if (TOK != '(') WARN(W_EXPECTED_LPAREN); else YIELD();
   comment_group = TOK;
   if (!TPP_ISKEYWORD(comment_group)) WARN(W_PRAGMA_COMMENT_EXPECTED_KEYWORD);
-  else if (comment_group != KWD_lib) WARN(W_PRAGMA_COMMENT_UNKNOWN);
+  else if (comment_group != KWD_lib &&
+           comment_group != KWD_compiler &&
+           comment_group != KWD_linker) WARN(W_PRAGMA_COMMENT_UNKNOWN);
   YIELD();
   if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
   if (TOK != TOK_STRING)
@@ -259,6 +263,14 @@ skip_yield_after_pack:
     def.ld_impsymfa = (symflag_t)-1;
     def.ld_impsymfo = (symflag_t) 0;
     DCCUnit_Import(&def); /* Load a new library. */
+   } else if (comment_group == KWD_compiler) {
+    DCCCmd_ExecString(OPG_grp_main,
+                      comment_string->s_text,
+                      comment_string->s_size);
+   } else if (comment_group == KWD_linker) {
+    DCCCmd_ExecString(OPG_grp_Wl,
+                      comment_string->s_text,
+                      comment_string->s_size);
    }
    TPPString_Decref(comment_string);
   }

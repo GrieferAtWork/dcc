@@ -506,7 +506,9 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
   if (self->sy_alias) {
    DCCSym_Decref(self->sy_alias);
   } else if (self->sy_sec) {
-   if (!dcc_no_recursive_symdel) {
+   if (!dcc_no_recursive_symdel && self->sy_size) {
+    target_siz_t siz_max;
+    target_ptr_t sym_end;
     if (!(self->sy_flags&DCC_SYMFLAG_UNUSED) &&
           self->sy_name != &TPPKeyword_Empty) {
      /* Emit a warning about removing unused symbols. */
@@ -514,24 +516,22 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
           ? W_LINKER_DELETE_UNUSED_STATIC_SYMBOL
           : W_LINKER_DELETE_UNUSED_SYMBOL,self->sy_name);
     }
-    if (self->sy_size) {
-     /* Since symbol size can be set from assembly using the '.size' directive,
-      * we must make sure that out-of-bounds symbol sizes don't cause undefined
-      * behavior, but are warned about instead. */
-     target_siz_t siz_max = (target_siz_t)(self->sy_sec->sc_text.tb_max-
-                                           self->sy_sec->sc_text.tb_begin);
-     target_ptr_t sym_end = self->sy_addr+self->sy_size;
-     if (sym_end > self->sy_addr || sym_end > siz_max) {
-      WARN(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,
-           self->sy_name,self->sy_addr,self->sy_size,
-           self->sy_sec->sc_start.sy_name,siz_max);
-      if (self->sy_addr > siz_max) self->sy_addr = siz_max;
-      self->sy_size = siz_max-self->sy_addr;
-     }
-     DCCSection_DFree(self->sy_sec,
-                      self->sy_addr,
-                      self->sy_size);
+    /* Since symbol size can be set from assembly using the '.size' directive,
+     * we must make sure that out-of-bounds symbol sizes don't cause undefined
+     * behavior, but are warned about instead. */
+    siz_max = (target_siz_t)(self->sy_sec->sc_text.tb_max-
+                             self->sy_sec->sc_text.tb_begin);
+    sym_end = self->sy_addr+self->sy_size;
+    if (sym_end > self->sy_addr || sym_end > siz_max) {
+     WARN(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,
+          self->sy_name,self->sy_addr,self->sy_size,
+          self->sy_sec->sc_start.sy_name,siz_max);
+     if (self->sy_addr > siz_max) self->sy_addr = siz_max;
+     self->sy_size = siz_max-self->sy_addr;
     }
+    DCCSection_DFree(self->sy_sec,
+                     self->sy_addr,
+                     self->sy_size);
    }
    DCCSection_Decref(self->sy_sec);
   }

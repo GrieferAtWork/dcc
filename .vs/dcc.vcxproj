@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\dcc\assembler.c" />
+    <ClCompile Include="..\src\dcc\cmd.c" />
     <ClCompile Include="..\src\dcc\common.c" />
     <ClCompile Include="..\src\dcc\compiler.c" />
     <ClCompile Include="..\src\dcc\fundecl.c" />
@@ -47,6 +48,7 @@
     <ClInclude Include="..\include\dcc\unit.h" />
     <ClInclude Include="..\include\dcc\vstack.h" />
     <ClInclude Include="..\include\elf.h" />
+    <ClInclude Include="..\src\dcc\cmd.h" />
     <ClInclude Include="..\src\dcc\lexer-priv.h" />
     <ClInclude Include="..\src\dcc\linker-elf.h" />
     <ClInclude Include="..\src\dcc\linker-pe.h" />
@@ -59,6 +61,8 @@
   <ItemGroup>
     <None Include="..\include\dcc\def-asm.inl" />
     <None Include="..\include\dcc\def-keywords.inl" />
+    <None Include="..\src\dcc\cmd-def.inl" />
+    <None Include="..\src\dcc\cmd-parse.c.inl" />
     <None Include="..\src\dcc\gen-bin.c.inl" />
     <None Include="..\src\dcc\gen-jmp.c.inl" />
     <None Include="..\src\dcc\gen-large.c.inl" />

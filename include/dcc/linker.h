@@ -53,11 +53,21 @@ DCC_DECL_BEGIN
 #define SHT_DCC_IMPSEC (SHT_LOUSER+0x0305)
 
 
+struct DCCLibPaths {
+ struct DCCLibPaths       *lp_prev;  /*< [0..1][owned] Previous list of library paths. */
+ size_t                    lp_patha; /*< Allocated amount of library paths. */
+ size_t                    lp_pathc; /*< Amount of elements in the vector below (may be empty). */
+ /*ref*/struct TPPString **lp_pathv; /*< [1..1][0..il_pathc][owned] Vector of sanitized library paths. */
+};
+
+
 #define DCC_LINKER_FLAG_SHARED       0x00000001 /*< Create shared libraries. */
 #define DCC_LINKER_FLAG_NOSTDLIB     0x00000002 /*< Don't include standard libraries. */
 #define DCC_LINKER_FLAG_NOUNDERSCORE 0x00000004 /*< Don't prepend leading underscores. */
 #define DCC_LINKER_FLAG_NORELOC      0x00000008 /*< Don't generate relocations, meaning that a generated image will not be position-independent.
                                                  *  WARNING: Despite the name, this flag does _NOT_ disable import relocations on ELF targets (because that'd just break dynamic linking...) */
+#define DCC_LINKER_FLAG_SYMBOLIC     0x00000010 /*< Set if '-Wl,Bsymbolic' was passed on the commandline. */
+#define DCC_LINKER_FLAG_IMGBASE      0x00000020 /*< Set when an explicit image base has been stored in 'l_imgbase'. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #define DCC_LINKER_FLAG_PEDYNAMIC     0x10000000 /*< On PE binary targets: Consider C/ELF visibility when generating an export table.
                                                   *  >> When this flag is set, any non-static definition matching '__attribute__((visibility("default")))'
@@ -74,22 +84,25 @@ DCC_DECL_BEGIN
 #endif
 typedef uint32_t DCC(lflag_t); /*< Set of 'DCC_LINKER_FLAG_*'. */
 
-struct DCCLibPaths {
- struct DCCLibPaths       *lp_prev;  /*< [0..1][owned] Previous list of library paths. */
- size_t                    lp_patha; /*< Allocated amount of library paths. */
- size_t                    lp_pathc; /*< Amount of elements in the vector below (may be empty). */
- /*ref*/struct TPPString **lp_pathv; /*< [1..1][0..il_pathc][owned] Vector of sanitized library paths. */
-};
-
 struct DCCLinker {
- DCC(lflag_t)       l_flags;      /*< Current linker-related flags. */
- struct DCCLibPaths l_paths;      /*< List of effective library paths (may be empty). */
- struct TPPString  *l_soname;     /*< [0..1] When non-NULL, a module name included in the binary (if appropriate). */
- struct DCCSection *l_text;       /*< [0..1] When non-NULL, the section used for wrapper code such as IAT functions.
-                                   *         When not defined, a target-specific default section
-                                   *         is used, and when not needed, this field is ignored. */
+ DCC(lflag_t)          l_flags;       /*< Current linker-related flags. */
+ struct DCCLibPaths    l_paths;       /*< List of effective library paths (may be empty). */
+ struct TPPString     *l_soname;      /*< [0..1] When non-NULL, a module name included in the binary (if appropriate). */
+ struct DCCSection    *l_text;        /*< [0..1] When non-NULL, the section used for wrapper code such as IAT functions.
+                                       *         When not defined, a target-specific default section
+                                       *         is used, and when not needed, this field is ignored. */
+ char                 *l_entry;       /*< [0..1][owned] Command-line option for '-Wl,entry=...'. */
+ char                 *l_init;        /*< [0..1][owned] Command-line option for '-Wl,init=...'. */
+ char                 *l_fini;        /*< [0..1][owned] Command-line option for '-Wl,fini=...'. */
+ target_ptr_t          l_imgbase;     /*< Used when 'DCC_LINKER_FLAG_IMGBASE' has been set: An explicit image base address. */
+ target_siz_t          l_secalign;    /*< [if(!=0)] Command-line override for section/program header alignment. */
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+ uint8_t               l_pe_subsys;   /*< [if(!=0)] Command-line override for PE subsystem. */
+ uint32_t              l_pe_filalign; /*< [if(!=0)] Command-line override for PE file alignment. */
+ target_siz_t          l_pe_stacksiz; /*< [if(!=0)] Command-line override for PE stack size. */
+#endif
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
- struct TPPString  *l_elf_interp; /*< [0..1] When non-NULL, the linked interpreter name. */
+ struct TPPString     *l_elf_interp; /*< [0..1] When non-NULL, the linked interpreter name. */
 #endif
 };
 

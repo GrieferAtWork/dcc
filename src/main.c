@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "dcc/cmd.h"
 
 void def(char const *name, void *addr) {
  struct DCCSym *sym = DCCUnit_NewSyms(name,DCC_SYMFLAG_NONE);
@@ -132,10 +133,13 @@ static void save_object(char const *filename) {
  DCCUnit_Export(&def,filename);
 }
 
-
 int main(int argc, char *argv[]) {
  struct DCCSection *sec;
  int result = 0;
+ char *outfile_name = NULL;
+#define F_COMPILEONLY 0x00000001
+ uint32_t flags = 0;
+
  if (!TPP_INITIALIZE()) return 1;
 
  /* Initialize TPP callback hooks. */
@@ -153,8 +157,35 @@ int main(int argc, char *argv[]) {
                                );
  if (argc) --argc,++argv;
 
+ /* Parse the commandline. */
+ { struct cmd c;
+   cmd_init(&c,argc,argv);
+   while (OK && cmd_yield(&c)) {
+    /* True commandline options allow for a few more settings. */
+    switch (c.c_id) {
+
+    case OPT_E: break; /* TODO: Enable preprocessor mode. */
+    case OPT_o: outfile_name = c.c_val; break;
+    case OPT_c: flags |= F_COMPILEONLY; break;
+
+    default: exec_cmd(&c,1); break;
+    }
+   }
+   argc = c.c_argc;
+   argv = c.c_argv;
+ }
+
+ if (!outfile_name) {
+  /* TODO: deduce default output name from first source file? */
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+  if (!(flags&F_COMPILEONLY))
+       outfile_name = "a.exe";
+#endif
+  else outfile_name = "a.out";
+ }
+
  //_CrtSetBreakAlloc(130);
- DCCLinker_AddSysPaths("a.exe");
+ DCCLinker_AddSysPaths(outfile_name);
 
  //dump_symbols();
  if (!OK) goto end;
@@ -168,11 +199,8 @@ int main(int argc, char *argv[]) {
   ++argv,--argc;
  }
 
-
  /* Cleanup unused stuff. */
  DCCUnit_ClearStatic();
-
- save_object("b.o");
 
  //linker.l_flags |= DCC_LINKER_FLAG_NORELOC;
 #ifdef DCC_LINKER_FLAG_PEDYNAMIC
@@ -180,14 +208,17 @@ int main(int argc, char *argv[]) {
  linker.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 #endif
 
-#if 1
- /* Prepare generated code for output to file. */
- DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);
- { stream_t hout = s_openw("a.exe");
-   DCCLinker_Make(hout); /* Generate the binary. */
-   s_close(hout);
+ if (flags&F_COMPILEONLY) save_object(outfile_name);
+ else {
+  stream_t s_out;
+  /* Prepare generated code for output to file. */
+  DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);
+  s_out = s_openw(outfile_name);
+  DCCLinker_Make(s_out); /* Generate the binary. */
+  s_close(s_out);
  }
-#else
+
+#if 0 /* TODO: Direct execution mode. */
  {
   struct DCCSym *entry_sym;
   void(*entry)(void);

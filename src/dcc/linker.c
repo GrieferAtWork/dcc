@@ -22,6 +22,7 @@
 #include <dcc/common.h>
 #include <dcc/linker.h>
 #include <dcc/target.h>
+#include <dcc/unit.h>
 
 #include <string.h>
 
@@ -71,6 +72,9 @@ PUBLIC void DCCLinker_Quit(struct DCCLinker *__restrict self) {
     if (piter != &self->l_paths) free(piter);
    } while ((piter = next) != NULL);
  }
+ DCC_Free(self->l_entry);
+ DCC_Free(self->l_init);
+ DCC_Free(self->l_fini);
 }
 
 PUBLIC void DCCLinker_LibPathPush(void) {
