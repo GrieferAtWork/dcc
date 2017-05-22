@@ -21,15 +21,6 @@
 #define OPTION_A  OPTION_ALIAS
 #define OPTION_N  OPTION_UNNAMED
 
-#define OPT_FLG(name,str)         OPTION(name,OPTION_FLAG_NONE,str,str,NULL)
-#define OPT_VAL(name,str)         OPTION(name,OPTION_FLAG_VALUE,str,str,NULL)
-#define OPT_VAL2(name,short,long) OPTION(name,OPTION_FLAG_VALUE,short,long,NULL)
-#define OPT_EQU(name,str)         OPTION(name,OPTION_FLAG_EQUAL,str,str,NULL)
-#define OPT_EQU2(name,short,long) OPTION(name,OPTION_FLAG_EQUAL,short,long,NULL)
-#define OPT_PRE(name,short,long)  OPTION(name,OPTION_FLAG_PREFIX,short,long,NULL)
-#define OPT_GRP(short,long,group) OPTION_UNNAMED(OPTION_FLAG_NONE,short,long,group)
-#define OPT_NOP(short,long)       OPTION_UNNAMED(OPTION_FLAG_NOOPT,short,long,NULL)
-
 GROUP_BEGIN(grp_Wl)
    OPTION_O(OPT_Wl_Bsymbolic,        OPTION_FLAG_NONE, "Bsymbolic",NULL,        NULL) /* -Wl,-Bsymbolic */
    OPTION_O(OPT_Wl_shared,           OPTION_FLAG_NONE, "shared",   NULL,        NULL) /* -Wl,-shared */
@@ -89,7 +80,7 @@ GROUP_BEGIN(grp_main) /* Main options group */
    OPTION_O(OPT_E,  OPTION_FLAG_NONE,  "E",   NULL,          NULL) /* -E */
    OPTION_O(OPT_D,  OPTION_FLAG_VALUE, "D",   NULL,          NULL) /* -DFOO */
    OPTION_O(OPT_U,  OPTION_FLAG_VALUE, "U",   NULL,          NULL) /* -UFOO */
-   OPTION_O(OPT_A,  OPTION_FLAG_VALUE, "A",   NULL,          NULL) /* -AFOO */
+   OPTION_O(OPT_A,  OPTION_FLAG_VALUE, "A",   NULL,          NULL) /* -Acpu=i386 */
    OPTION_O(OPT_I,  OPTION_FLAG_VALUE, "I",   NULL,          NULL) /* -Iinclude */
    OPTION_O(OPT_o,  OPTION_FLAG_VALUE, "o",   NULL,          NULL) /* -o a.exe */
    OPTION_O(OPT_c,  OPTION_FLAG_NONE,  "c",   NULL,          NULL) /* -c */

@@ -299,8 +299,14 @@ PUBLIC int DCCParse_GCCPragma(void) {
    DCCCompiler_VisibilityPush();
    YIELD();
    if (TOK != '(') WARN(W_EXPECTED_LPAREN); else YIELD();
-   if (TOK != TOK_STRING) WARN(W_PRAGMA_GCC_VISIBILITY_EXPECTED_STRING);
-   else if ((vis_text = TPPLexer_ParseString()) != NULL) {
+   if (TOK != TOK_STRING) {
+         if (TOK == KWD_hidden)    compiler.c_visibility.vs_viscur = DCC_SYMFLAG_PRIVATE;
+    else if (TOK == KWD_default)   compiler.c_visibility.vs_viscur = DCC_SYMFLAG_NONE;
+    else if (TOK == KWD_protected) compiler.c_visibility.vs_viscur = DCC_SYMFLAG_PROTECTED;
+    else if (TOK == KWD_internal)  compiler.c_visibility.vs_viscur = DCC_SYMFLAG_INTERNAL;
+    else WARN(W_PRAGMA_GCC_VISIBILITY_EXPECTED_STRING);
+    if (TPP_ISKEYWORD(TOK)) YIELD();
+   } else if ((vis_text = TPPLexer_ParseString()) != NULL) {
     symflag_t newvis = DCCSymflag_FromString(vis_text);
     if (newvis == (symflag_t)-1)
      WARN(W_PRAGMA_GCC_VISIBILITY_UNKNOWN_VISIBILITY,vis_text->s_text);

@@ -29,12 +29,13 @@ DEF_M(__INTMAX_C)
 DEF_M(__UINTMAX_C)
 
 /* Additional pragmas. */
-DEF_K(comment)      /* #pragma comment(lib,"xxx") */
-DEF_K(compiler)     /* #pragma comment(compiler,"xxx") */
-DEF_K(linker)       /* #pragma comment(linker,"xxx") */
-DEF_K(pack)         /* #pragma pack(...) */
-DEF_K(DCC)          /* #pragma DCC ... */
-DEF_K(library_path) /* #pragma DCC library_path(...) */
+DEF_K(comment)        /* #pragma comment(lib,"xxx") */
+DEF_K(compiler)       /* #pragma comment(compiler,"xxx") */
+DEF_K(linker)         /* #pragma comment(linker,"xxx") */
+DEF_K(pack)           /* #pragma pack(...) */
+DEF_K(DCC)            /* #pragma DCC ... */
+DEF_K(library_path)   /* #pragma DCC library_path(...) */
+DEF_K(delete_symbols) /* #pragma DCC delete_symbols(unused,...) */
 
 #define DEF_BUILTIN(name) \
  KWD(KWD_##name,#name) \
