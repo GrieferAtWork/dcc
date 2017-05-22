@@ -1112,7 +1112,7 @@ PRIVATE void pe_mk_buildita(void) {
    uint8_t *iat_code;
    struct DCCSym *iat_sym;
    /* Don't generate an ITA entry if it would go unused! */
-   if (sym->sy_refcnt == 1 && !sym->sy_peind &&
+   if (sym->sy_refcnt == 1 && /*!sym->sy_peind &&*/
      !(sym->sy_flags&DCC_SYMFLAG_USED)) continue;
 
    /* TODO: ITA wrappers only work for function symbols.
@@ -1223,8 +1223,10 @@ DCCLinker_Make(stream_t fd) {
  
  /* Everything that is externally visible has been collected,
   * meaning that everything that's still unused can be removed. */
- DCCUnit_ClearUnused();
- DCCUnit_ClearUnusedLibs();
+ if (!(linker.l_flags&DCC_LINKER_FLAG_NOCLRUNUSED)) {
+  DCCUnit_ClearUnused();
+  DCCUnit_ClearUnusedLibs();
+ }
  
  /* Build ITA wrapper functions for all symbols still in use. */
  pe_mk_buildita();

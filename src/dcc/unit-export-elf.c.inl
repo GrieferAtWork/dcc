@@ -206,6 +206,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
   if (null_sym) memset(null_sym,0,sizeof(Elf(Sym)));
   /* Load all symbols into 'SHDR_SYMTAB' (Both those named & those unnamed!) */
   DCCUnit_ENUMALLSYM(sym) {
+   struct DCCSymAddr symaddr;
    unsigned char bind,type;
    if (DCCSym_ISSECTION(sym)) type = STT_SECTION;
    else                       type = STT_NOTYPE;
@@ -217,25 +218,29 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
    else symhdr.st_name = DCCTextBuf_AllocString(&SHDR_STRTAB->s_buf,
                                                 sym->sy_name->k_name,
                                                 sym->sy_name->k_size);
-   symhdr.st_value = sym->sy_addr;
    symhdr.st_size  = sym->sy_size;
    symhdr.st_info  = ELF(ST_INFO)(bind,type);
    symhdr.st_other = ELF(ST_VISIBILITY)(elf_vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE]);
-   if (sym->sy_sec) {
-    if (sym->sy_sec == &DCCSection_Abs)
+   sym->sy_elfid   = symid++;
+   if (!DCCSym_LoadAddr(sym,&symaddr,0)) {
+    symaddr.sa_off = 0;
+    symaddr.sa_sym = sym;
+   }
+   symhdr.st_value = symaddr.sa_off+symaddr.sa_sym->sy_addr;
+   if (symaddr.sa_sym->sy_sec) {
+    if (symaddr.sa_sym->sy_sec == &DCCSection_Abs)
      symhdr.st_shndx = SHN_ABS;
     else if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ||
              /* Allow import indices only when ELF extensions are allowed. */
-             !DCCSection_ISIMPORT(sym->sy_sec)) {
-     symhdr.st_shndx = (Elf(Section))sym->sy_sec->sc_start.sy_addr;
+             !DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
+     symhdr.st_shndx = (Elf(Section))symaddr.sa_sym->sy_sec->sc_start.sy_addr;
     } else {
      symhdr.st_shndx = SHN_UNDEF;
     }
    } else {
-    if (sym->sy_alias) { /* TODO: So what do we do about alias symbols now? */ }
+    if (symaddr.sa_sym->sy_alias) { /* TODO: So what do we do about alias symbols now? */ }
     symhdr.st_shndx = SHN_UNDEF;
    }
-   sym->sy_elfid = symid++;
    DCCTextBuf_AllocData(&SHDR_SYMTAB->s_buf,&symhdr,sizeof(symhdr));
   }
  }

@@ -153,6 +153,7 @@ PUBLIC int DCCParse_Pragma(void) {
  case KWD_DCC:
   YIELD();
   switch (TOK) {
+
   { /* Configure library search paths. */
   case KWD_library_path:
    YIELD();

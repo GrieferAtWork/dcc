@@ -68,6 +68,8 @@ struct DCCLibPaths {
 #define DCC_LINKER_FLAG_PIC          0x00000008 /*< Generate relocations, meaning that a generated image will not be position-independent. */
 #define DCC_LINKER_FLAG_SYMBOLIC     0x00000010 /*< Set if '-Wl,Bsymbolic' was passed on the commandline. */
 #define DCC_LINKER_FLAG_IMGBASE      0x00000020 /*< Set when an explicit image base has been stored in 'l_imgbase'. */
+#define DCC_LINKER_FLAG_NOCLRUNUSED  0x00000040 /*< Don't clear unused symbols from executable/library files. */
+#define DCC_LINKER_FLAG_OBJCLRUNUSED 0x00000080 /*< Clear unused symbols from object files. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #define DCC_LINKER_FLAG_PEDYNAMIC     0x10000000 /*< On PE binary targets: Consider C/ELF visibility when generating an export table.
                                                   *  >> When this flag is set, any non-static definition matching '__attribute__((visibility("default")))'

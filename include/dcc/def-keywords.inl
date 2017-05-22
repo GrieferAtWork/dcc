@@ -35,7 +35,6 @@ DEF_K(linker)         /* #pragma comment(linker,"xxx") */
 DEF_K(pack)           /* #pragma pack(...) */
 DEF_K(DCC)            /* #pragma DCC ... */
 DEF_K(library_path)   /* #pragma DCC library_path(...) */
-DEF_K(delete_symbols) /* #pragma DCC delete_symbols(unused,...) */
 
 #define DEF_BUILTIN(name) \
  KWD(KWD_##name,#name) \
@@ -848,6 +847,8 @@ DEF_WARNING(W_PRAGMA_LIBRARY_PATH_NOTHING_TO_POP,(WG_PRAGMA,WG_SYNTAX),WSTATE_WA
 DEF_WARNING(W_PRAGMA_LIBRARY_PATH_EXPECTED_STRING,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,WARNF("Expected string after #pragma DCC library_path, but got '%s'",CONST_STR()))
 DEF_WARNING(W_PRAGMA_LIBRARY_PATH_ALREADY_EXISTS,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("Library path '%.*s' already exists",(int)ARG(size_t),temp); })
 DEF_WARNING(W_PRAGMA_LIBRARY_PATH_UNKNOWN,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("Unknown library path '%.*s'",(int)ARG(size_t),temp); })
+DEF_WARNING(W_PRAGMA_DELETE_SYMBOLS_EXPECTED_KEYWORD,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword in #pragma DCC delete_symbols(...), but got " TOK_S,TOK_A))
+DEF_WARNING(W_PRAGMA_DELETE_SYMBOLS_UNKNOWN_MODE,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,WARNF("Unknown deletion mode " TOK_S " in #pragma DCC delete_symbols(...)",TOK_A))
 
 WARNING_NAMESPACE(WN_SYNTAX,1400)
 DEF_WARNING(W_EXPECTED_LBRACKET,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected '[', but got " TOK_S,TOK_A))

@@ -128,6 +128,10 @@ static void add_library(char const *filename) {
 
 static void save_object(char const *filename) {
  struct DCCExpDef def;
+ if (linker.l_flags&DCC_LINKER_FLAG_OBJCLRUNUSED) {
+  DCCUnit_ClearUnused();
+  DCCUnit_ClearUnusedLibs();
+ }
  def.ed_fmt   = DCC_EXPFMT_ELF;
  def.ed_flags = DCC_EXPFLAG_NONE;
  DCCUnit_Export(&def,filename);
@@ -207,7 +211,8 @@ int main(int argc, char *argv[]) {
  linker.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 #endif
 
- if (flags&F_COMPILEONLY) save_object(outfile_name);
+ if (flags&F_COMPILEONLY)
+     save_object(outfile_name);
  else {
   stream_t s_out;
   /* Prepare generated code for output to file. */

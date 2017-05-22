@@ -522,10 +522,13 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
     siz_max = (target_siz_t)(self->sy_sec->sc_text.tb_max-
                              self->sy_sec->sc_text.tb_begin);
     sym_end = self->sy_addr+self->sy_size;
-    if (sym_end > self->sy_addr || sym_end > siz_max) {
+    if (sym_end < self->sy_addr || sym_end > siz_max) {
      WARN(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,
-          self->sy_name,self->sy_addr,self->sy_size,
-          self->sy_sec->sc_start.sy_name,siz_max);
+          self->sy_name,
+         (target_ptr_t)self->sy_addr,
+         (target_ptr_t)(self->sy_addr+self->sy_size),
+          self->sy_sec->sc_start.sy_name,
+         (target_ptr_t)siz_max);
      if (self->sy_addr > siz_max) self->sy_addr = siz_max;
      self->sy_size = siz_max-self->sy_addr;
     }

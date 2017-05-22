@@ -32,16 +32,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+#include "linker-pe.h"
+#endif
+
+
 #ifdef _MSC_VER
 #include <malloc.h>
 #else
 #include <alloca.h>
-#endif
-
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <sys/mman.h>
 #endif
 
 DCC_DECL_BEGIN
@@ -332,6 +332,26 @@ merge_symflags:
   /* And we're done! All symbols are inherited, or have been merged.
    * >> None should be remaining and once relocations have been fixed, everything should be OK! */
   free(symv);
+
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+  { struct DCCSym *sym,*basesym;
+    /* Must re-link ITA functions. */
+    DCCUnit_ENUMSYM(sym) {
+     assert(sym);
+     if (sym->sy_name->k_size <= 4) continue;
+     if (memcmp(sym->sy_name->k_name,ITA_PREFIX,
+                DCC_COMPILER_STRLEN(ITA_PREFIX)*
+                sizeof(char)) != 0) continue;
+     /* This is an IAT symbol. - Try to find the associated base symbol and link them! */
+     basesym = DCCUnit_GetSyms(sym->sy_name->k_name+4);
+     if unlikely(!basesym) continue;
+     DCCSym_Incref(sym);
+     DCCSym_XDecref(basesym->sy_peind);
+     basesym->sy_peind = sym; /* Inherit reference. */
+    }
+  }
+#endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
+
   /* Don't continue if something went wrong! */
   if unlikely(!OK) return;
  }

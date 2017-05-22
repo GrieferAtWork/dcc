@@ -128,6 +128,11 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
                              linker.l_flags &= ~(DCC_LINKER_FLAG_SHARED);
                              break;
 
+ case OPT_Wl_clear_unused:        linker.l_flags &= ~(DCC_LINKER_FLAG_NOCLRUNUSED); break;
+ case OPT_Wl_no_clear_unused:     linker.l_flags |=  (DCC_LINKER_FLAG_NOCLRUNUSED); break;
+ case OPT_Wl_clear_unused_obj:    linker.l_flags |=  (DCC_LINKER_FLAG_OBJCLRUNUSED); break;
+ case OPT_Wl_no_clear_unused_obj: linker.l_flags &= ~(DCC_LINKER_FLAG_OBJCLRUNUSED); break;
+
  {
   struct DCCSection *sec;
   target_ptr_t addr;

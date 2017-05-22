@@ -1485,9 +1485,11 @@ DCCLinker_Make(stream_t target) {
  if unlikely(!OK) goto end;
  CC(elf_mk_entry());
 
- /* Delete unused stuff. */
- DCCUnit_ClearUnused();
- DCCUnit_ClearUnusedLibs();
+ if (!(linker.l_flags&DCC_LINKER_FLAG_NOCLRUNUSED)) {
+  /* Delete unused stuff. */
+  DCCUnit_ClearUnused();
+  DCCUnit_ClearUnusedLibs();
+ }
 
  CC(elf_mk_relsec());        /* Create stub relocation sections. Must be done now
                               * because later we can no longer create new sections. */

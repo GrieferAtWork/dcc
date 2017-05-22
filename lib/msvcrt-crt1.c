@@ -17,12 +17,18 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 
+/* Compile with:
+ * $ dcc -c -o msvcrt-crt1.o msvcrt-crt1.c
+ */
+
+/* Clear unused symbol not marked as 'used' from the resulting object file.
+ * >> This will prevent symbols from 'msvcrt' from being included,
+ *    thus reducing the object size considerably! */
+#pragma comment(linker,"--clear-unused-obj")
+#pragma comment(lib,"msvcrt")
+
 /* Declare everything with hidden visibility. */
 #pragma GCC visibility push("hidden")
-
-#ifdef __PE__
-int __start(void) __attribute__((used,alias("_start")));
-#endif
 
 
 #define __UNKNOWN_APP    0
@@ -31,7 +37,6 @@ int __start(void) __attribute__((used,alias("_start")));
 void __set_app_type(int);
 void _controlfp(unsigned a, unsigned b);
 
-#pragma comment(lib,"msvcrt")
 
 typedef struct {
 	int newmode;
@@ -42,7 +47,11 @@ int main(int argc, char **argv, char **env);
 
 extern void exit(int exitcode) __attribute__((noreturn));
 
+#ifdef __PE__
+void __start(void)
+#else
 void _start(void)
+#endif
 	__attribute__((used,noreturn))
 {
 	int argc; char **argv; char **env; int ret;
@@ -60,12 +69,3 @@ void _start(void)
 }
 
 #pragma GCC visibility pop
-
-#ifdef __DCC_VERSION__
-/* Since this source file is directly linked against 'msvcrt',
- * clear all unused symbols except '_start' and '__start' in
- * order to greatly reduce the size of the object file. */
-#pragma DCC delete_symbols(unused)
-#endif
-
-
