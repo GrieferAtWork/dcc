@@ -902,7 +902,7 @@ invrelo: /* Warning: Invalid relocation */
       rsym = symid >= relsymc ? NULL : relsymv[symid];
       dcc_rel->r_addr = rel_iter->r_offset;
       if unlikely(!rsym) {
-       if (!symid) goto absrel;
+       if (!symid) goto absrel; /* symbol id ZERO(0) is interpreted as SHN_ABS::start. */
        if (relty != DCC_R_RELATIVE) goto invrelo;
        /* TODO: Determine which section this relocation points into,
         *       then convert it into a 'DCC_R_DATA_PTR' relocation

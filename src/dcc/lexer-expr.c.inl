@@ -181,8 +181,7 @@ DCCParse_FixType(struct DCCType *__restrict type) {
      real_sym_type = &real_sym_type->t_base->d_type;
  if (real_sym_type->t_base &&
      DCCTYPE_ISBASIC(real_sym_type->t_base->d_type.t_type,DCCTYPE_AUTO) &&
-    (DCCTYPE_GROUP(real_sym_type->t_type) == DCCTYPE_ARRAY ||
-     DCCTYPE_GROUP(real_sym_type->t_type) == DCCTYPE_VARRAY) &&
+     DCCTYPE_ISARRAY(real_sym_type->t_type) &&
      DCCTYPE_GROUP(vbottom->sv_ctype.t_type) == DCCTYPE_ARRAY) {
   /* Special case: 'auto' used as base of array. */
   assert(vbottom->sv_ctype.t_base);
@@ -777,10 +776,10 @@ outside_function:
     else WARN(W_SIZEOF_VOID_OR_FUNCTION,used_type);
    }
    if (t == KWD_sizeof) {
-    /* Warn about size queries on VLA array types. */
-    if (DCCTYPE_GROUP(used_type->t_type) == DCCTYPE_ARRAY &&
-       (used_type->t_base->d_kind == DCC_DECLKIND_VLA)
-        ) WARN(W_SIZEOF_VLA_ARRAY_TYPE,used_type);
+    /* Warn about size queries on VLA array types
+     * (Which is allowed but not a compile-time constant). */
+    if (DCCType_ISVLA(used_type))
+        WARN(W_SIZEOF_VLA_ARRAY_TYPE,used_type);
     DCCVStack_PushSizeof(used_type);
     if (!query_name) vswap(),vpop(1);
    } else {

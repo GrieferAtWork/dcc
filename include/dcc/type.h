@@ -122,6 +122,7 @@ struct DCCSym;
 #define DCCTYPE_GROUP(t)             ((t)&DCCTYPE_GROUPMASK)
 #define DCCTYPE_FLAGS(t)             ((t)&DCCTYPE_FLAGSMASK)
 #define DCCTYPE_ISBASIC(t,x)         (((t)&(DCCTYPE_BASICMASK|DCCTYPE_GROUPMASK)) == (DCCTYPE_BUILTIN|(x)))
+#define DCCTYPE_ISARRAY(t)           (DCCTYPE_GROUP(t) == DCCTYPE_ARRAY || DCCTYPE_GROUP(t) == DCCTYPE_VARRAY)
 #define DCCTYPE_ISSIGNLESSBASIC(t,x) (((t)&((DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))|DCCTYPE_GROUPMASK)) == (DCCTYPE_BUILTIN|(x)))
 
 
@@ -141,6 +142,10 @@ struct DCCType {
 #define DCCType_Quit(self) (void)(!(self)->t_base || (DCCDecl_Decref((self)->t_base),0))
 #define DCCType_InitCopy(self,right) \
  (void)(*(self) = *(right),(!(self)->t_base || (DCCDecl_Incref((self)->t_base),0)))
+
+#define DCCType_ISVLA(self) \
+ (DCCTYPE_GROUP((self)->t_type) == DCCTYPE_ARRAY && \
+ (assert((self)->t_base),(self)->t_base->d_kind == DCC_DECLKIND_VLA))
 
 
 /* Special builtin types describing the pointers to the 8 builtin types. */

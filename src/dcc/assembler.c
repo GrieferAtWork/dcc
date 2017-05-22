@@ -1154,7 +1154,7 @@ fill_data:
    }
    text = TPPLexer_ParseString();
    t_write(text->s_text,
-                       text->s_size+write_plus);
+           text->s_size+write_plus);
    TPPString_Decref(text);
   } while (TOK == ',');
  } break;

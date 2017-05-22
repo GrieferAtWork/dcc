@@ -177,9 +177,7 @@ DCCType_MkBase(struct DCCType *__restrict self) {
  assert(basesym);
  assert(basesym->d_kind&DCC_DECLKIND_TYPE);
  /* Don't delete qualifiers for array types. */
- if (DCCTYPE_GROUP(self->t_type) != DCCTYPE_ARRAY &&
-     DCCTYPE_GROUP(self->t_type) != DCCTYPE_VARRAY
-     ) self->t_type &= ~(DCCTYPE_QUAL);
+ if (!DCCTYPE_ISARRAY(self->t_type)) self->t_type &= ~(DCCTYPE_QUAL);
  self->t_type &= (DCCTYPE_STOREMASK|DCCTYPE_QUAL);
  self->t_type |= basesym->d_type.t_type;
  basesym = basesym->d_type.t_base;
@@ -490,6 +488,8 @@ DCCType_IsCompatible(struct DCCType const *__restrict a,
     result = sa->d_tdecl.td_size == sb->d_tdecl.td_size;
     if (!result) break;
    case DCCTYPE_POINTER:
+   case DCCTYPE_VARRAY:
+   case DCCTYPE_LVALUE:
     /* Compare pointer base types. */
     assert(sa),assert(sb);
     result = DCCType_IsCompatible(&sa->d_type,
@@ -705,12 +705,9 @@ DCCType_PutSuffix(char *buf, size_t buflen,
   assert(self->t_base);
   assert(self->t_base->d_kind&DCC_DECLKIND_TYPE);
   if (self->t_base->d_kind == DCC_DECLKIND_VLA) {
-   if (iter < end) *iter = '[';
-   ++iter;
-   if (iter < end) *iter = '?';
-   ++iter;
-   if (iter < end) *iter = ']';
-   ++iter;
+   if (iter < end) { *iter = '['; } ++iter;
+   if (iter < end) { *iter = '?'; } ++iter;
+   if (iter < end) { *iter = ']'; } ++iter;
   } else {
    iter += snprintf(iter,iter > end ? 0 : (size_t)(end-iter),"[%lu]",
                    (unsigned long)self->t_base->d_tdecl.td_size);
@@ -800,8 +797,7 @@ DCCType_DoToString(char *buf, size_t buflen,
  iter += DCCType_PutPrefix(iter,buflen,self,0);
  if (name && name->k_size) {
   struct DCCType const *prefix_type = self;
-  while (DCCTYPE_GROUP(prefix_type->t_type) == DCCTYPE_ARRAY ||
-         DCCTYPE_GROUP(prefix_type->t_type) == DCCTYPE_VARRAY)
+  while (DCCTYPE_ISARRAY(prefix_type->t_type))
          assert(prefix_type->t_base),
          prefix_type = &prefix_type->t_base->d_type;
   if (DCCTYPE_GROUP(prefix_type->t_type) != DCCTYPE_POINTER &&

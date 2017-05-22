@@ -258,7 +258,7 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
   }
   DCCParse_Attr(&attr);
  }
- if (type.t_base && type.t_base->d_kind == DCC_DECLKIND_VLA) DCCParse_WarnAllocaInLoop();
+ if (DCCType_ISVLA(&type)) DCCParse_WarnAllocaInLoop();
  if (decl_name != &TPPKeyword_Empty) {
   decl = DCCCompiler_NewLocalDecl(decl_name,DCC_NS_LOCALS);
  } else if (TOK != '=' && TOK != '{') {
@@ -324,9 +324,7 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
    DCCDecl_AllocStorage(decl,1,asmname);
    vpushd(decl); /* init, decl */
    vswap();      /* decl, init */
-   if (DCCTYPE_GROUP(real_decl_type->t_type) == DCCTYPE_ARRAY &&
-       real_decl_type->t_base &&
-       real_decl_type->t_base->d_kind == DCC_DECLKIND_VLA) {
+   if (DCCType_ISVLA(real_decl_type)) {
     /* Special case: Ignore VLA initializers. */
     vpop(1);
    } else {
@@ -362,11 +360,6 @@ declare_typedef:
    if (real_decl_type->t_type == DCCTYPE_AUTO) {
     WARN(W_AUTO_TYPE_REQUIRES_INITIALIZER);
     real_decl_type->t_type = DCCTYPE_INT;
-   } else if (DCCTYPE_GROUP(real_decl_type->t_type) == DCCTYPE_VARRAY) {
-    WARN(W_VARIADIC_REQUIRES_INITIALIZER,real_decl_type);
-    DCCType_MkBase(&decl->d_type);
-    DCCType_MkArray(&decl->d_type,1);
-    //real_decl_type = &decl->d_type;
    }
    DCCDecl_AllocStorage(decl,0,asmname);
   }

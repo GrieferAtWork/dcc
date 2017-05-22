@@ -1838,6 +1838,12 @@ DCCUnit_Quit(struct DCCUnit *__restrict self) {
  /* Secret hint to prevent recursive
   * unused symbol deconstruction. */
  ++dcc_no_recursive_symdel;
+ if (self->u_curr) {
+  memcpy(&self->u_curr->sc_text,&self->u_tbuf,
+         sizeof(struct DCCTextBuf));
+  self->u_curr = NULL;
+ }
+
 
  /* Delete unnamed symbols. */
  { struct DCCSym *iter,*next;
@@ -2108,7 +2114,7 @@ DCCUnit_SetCurr(struct DCCSection *sec) {
          sizeof(struct DCCTextBuf));
  }
  if ((unit.u_curr = sec) != NULL) {
-  memcpy(&sec->sc_text,&unit.u_tbuf,
+  memcpy(&unit.u_tbuf,&sec->sc_text,
          sizeof(struct DCCTextBuf));
  }
  unit.u_prev = result;

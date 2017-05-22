@@ -278,8 +278,7 @@ DCCVStack_PushSizeof(struct DCCType const *__restrict t) {
  slot.sv_ctype.t_type = DCCTYPE_SIZE|DCCTYPE_UNSIGNED;
  slot.sv_ctype.t_base = NULL;
  slot.sv_sym          = NULL;
- if (DCCTYPE_GROUP(t->t_type) == DCCTYPE_ARRAY &&
-     t->t_base->d_kind == DCC_DECLKIND_VLA) {
+ if (DCCType_ISVLA(t)) {
   struct DCCMemDecl offset;
   /* Special case: VLA offset. */
   slot.sv_flags        = DCC_SFLAG_LVALUE|DCC_SFLAG_RVALUE;
@@ -1196,7 +1195,7 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
    /* Simple case: Just turn an lvalue type into a pointer! */
    DCCType_MkBase(&self->sv_ctype);
    DCCType_MkPointer(&self->sv_ctype);
-  } else if (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_ARRAY) {
+  } else if (DCCTYPE_ISARRAY(self->sv_ctype.t_type)) {
    /* Referencing an array simply promotes it to the associated pointer type. */
    DCCStackValue_Promote(self);
   } else if (self->sv_flags&DCC_SFLAG_LVALUE) {
@@ -1970,8 +1969,7 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
    */
   DCCStackValue_Promote(self);
   DCCStackValue_LoadLValue(self);
- } else if (DCCTYPE_GROUP(type->t_type) == DCCTYPE_ARRAY ||
-            DCCTYPE_GROUP(type->t_type) == DCCTYPE_VARRAY) {
+ } else if (DCCTYPE_ISARRAY(type->t_type)) {
   /* Cast to array/vararray type. */
   if (!(self->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(self);
   goto done;
@@ -2257,8 +2255,11 @@ err:
 PUBLIC void DCC_VSTACK_CALL
 DCCStackValue_Promote(struct DCCStackValue *__restrict self) {
  assert(self);
- if (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_ARRAY) {
+ switch (DCCTYPE_GROUP(self->sv_ctype.t_type)) {
+ {
   int is_vla;
+ case DCCTYPE_ARRAY:
+ case DCCTYPE_VARRAY:
   /* An array should always reside on the stack,
    * but let's not be too stingy about this... */
   if (!(self->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(self);
@@ -2294,11 +2295,14 @@ DCCStackValue_Promote(struct DCCStackValue *__restrict self) {
   } else {
    self->sv_flags &= ~(DCC_SFLAG_LVALUE|DCC_SFLAG_COPY);
   }
- } else if (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_FUNCTION) {
+ } break;
+ case DCCTYPE_FUNCTION:
   if (!(self->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(self);
   DCCType_MkPointer(&self->sv_ctype);
   self->sv_flags &= ~(DCC_SFLAG_LVALUE|DCC_SFLAG_COPY);
- } else if (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_LVALUE) {
+  break;
+ {
+ case DCCTYPE_LVALUE:
   struct DCCType *lv_base;
   assert(self->sv_ctype.t_base);
   lv_base = &self->sv_ctype.t_base->d_type;
@@ -2309,6 +2313,8 @@ DCCStackValue_Promote(struct DCCStackValue *__restrict self) {
    DCCType_MkBase(&self->sv_ctype);
    DCCType_MkPointer(&self->sv_ctype);
   }
+ } break;
+ default: break;
  }
 }
 
@@ -2802,9 +2808,9 @@ DCCVStack_Store(int initial_store) {
  int wid;
  assert(vsize >= 2);
  if (!initial_store ||
-    (DCCTYPE_GROUP(vbottom[1].sv_ctype.t_type) != DCCTYPE_ARRAY &&
-     DCCTYPE_GROUP(vbottom[1].sv_ctype.t_type) != DCCTYPE_LVALUE) ||
-     DCCTYPE_GROUP(vbottom[0].sv_ctype.t_type) != DCCTYPE_ARRAY) {
+    (!DCCTYPE_ISARRAY(vbottom[1].sv_ctype.t_type) &&
+      DCCTYPE_GROUP(vbottom[1].sv_ctype.t_type) != DCCTYPE_LVALUE) ||
+     !DCCTYPE_ISARRAY(vbottom[0].sv_ctype.t_type)) {
   vprom();
  }
  target = &vbottom[1];

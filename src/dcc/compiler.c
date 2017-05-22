@@ -226,6 +226,11 @@ DCCDecl_FixLValue(struct DCCDecl *__restrict self) {
    * prevents code from being generated that could do nothing _but_ crash. */
   DCCType_MkBase(&self->d_type);
   return 1;
+ } else if (DCCTYPE_GROUP(self->d_type.t_type) == DCCTYPE_VARRAY) {
+  WARN(W_VARIADIC_REQUIRES_INITIALIZER,&self->d_type);
+  DCCType_MkBase(&self->d_type);
+  DCCType_MkArray(&self->d_type,1);
+  return 1;
  }
  return 0;
 }
@@ -377,7 +382,13 @@ reload_size:
   } else {
    storage_section = is_const ? unit.u_data : unit.u_bss;
   }
-  if (!has_init && DCCDecl_FixLValue(self)) goto reload_size;
+  if (!has_init && DCCDecl_FixLValue(self)) {
+   assert(decl_sym != NULL);
+   assert(decl_sym == self->d_mdecl.md_loc.ml_sym);
+   DCCSym_Decref(decl_sym);
+   memset(&self->d_mdecl,0,sizeof(self->d_mdecl));
+   goto reload_size;
+  }
   assert(storage_section);
   if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD) {
    symaddr = 0; /* ~shrugs~ */

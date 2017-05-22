@@ -65,16 +65,19 @@ DCCParse_CType(struct DCCType *__restrict self,
 LEXPRIV void DCC_PARSE_CALL
 DCCType_PromoteFunArg(struct DCCType *__restrict self) {
  assert(self);
- /* Convert arrays to pointers in arguments. */
- if (DCCTYPE_GROUP(self->t_type) == DCCTYPE_ARRAY ||
-     DCCTYPE_GROUP(self->t_type) == DCCTYPE_VARRAY) {
+ switch (DCCTYPE_GROUP(self->t_type)) {
+ case DCCTYPE_ARRAY:
+ case DCCTYPE_VARRAY:
+  /* Convert arrays to pointers in arguments. */
   DCCType_MkBase(self);
+ case DCCTYPE_FUNCTION:
   DCCType_MkPointer(self);
- } else if (DCCTYPE_GROUP(self->t_type) == DCCTYPE_FUNCTION) {
-  DCCType_MkPointer(self);
- } else if (DCCTYPE_ISBASIC(self->t_type,DCCTYPE_AUTO)) {
+  break;
+ case DCCTYPE_AUTO:
   /* TODO: Warn about auto used as argument type. */
   self->t_type = DCCTYPE_INT;
+  break;
+ default: break;
  }
 }
 
