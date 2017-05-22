@@ -33,12 +33,16 @@
 GROUP_BEGIN(grp_Wl)
    OPTION_O(OPT_Wl_Bsymbolic,        OPTION_FLAG_NONE, "Bsymbolic",NULL,        NULL) /* -Wl,-Bsymbolic */
    OPTION_O(OPT_Wl_shared,           OPTION_FLAG_NONE, "shared",   NULL,        NULL) /* -Wl,-shared */
+   OPTION_A(OPT_Wl_shared,           OPTION_FLAG_NONE, "Bshareable",NULL,       NULL) /* -Wl,-Bshareable */
    OPTION_O(OPT_Wl_nostdlib,         OPTION_FLAG_NONE, "nostdlib", NULL,        NULL) /* -Wl,-nostdlib */
+   OPTION_O(OPT_Wl_pie,              OPTION_FLAG_NONE, "pie",      NULL,        NULL) /* -Wl,-pie */
+   OPTION_O(OPT_Wl_pic_executable,   OPTION_FLAG_NONE, NULL,       "pic-executable",NULL) /* -Wl,--pic-executable */
    OPTION_O(OPT_Wl_init,             OPTION_FLAG_EQUAL,"init",     NULL,        NULL) /* -Wl,-init=my_init */
    OPTION_O(OPT_Wl_fini,             OPTION_FLAG_EQUAL,"fini",     NULL,        NULL) /* -Wl,-fini=my_fini */
    OPTION_O(OPT_Wl_entry,            OPTION_FLAG_VALUE,"e",        NULL,        NULL) /* -Wl,-e,foo */
    OPTION_A(OPT_Wl_entry,            OPTION_FLAG_EQUAL,NULL,"entry",            NULL) /* -Wl,--entry=_start */
    OPTION_O(OPT_Wl_defsym,           OPTION_FLAG_VALUE,NULL,"defsym",           NULL) /* -Wl,--defsym,foo=42 */
+   OPTION_O(OPT_Wl_section_start,    OPTION_FLAG_EQUAL,NULL,"section-start",    NULL) /* -Wl,--section-start=.text=0x803000 */
    OPTION_O(OPT_Wl_image_base,       OPTION_FLAG_EQUAL,NULL,"image-base",       NULL) /* -Wl,--image-base=0x801000 */
    OPTION_O(OPT_Wl_section_alignment,OPTION_FLAG_EQUAL,NULL,"section-alignment",NULL) /* -Wl,--section-alignment=4096 */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
@@ -48,17 +52,28 @@ GROUP_BEGIN(grp_Wl)
 #endif
    OPTION_O(OPT_Wl_soname,           OPTION_FLAG_VALUE,"h",NULL,                NULL) /* -Wl,-h,foo */
    OPTION_A(OPT_Wl_soname,           OPTION_FLAG_EQUAL,NULL,"soname",           NULL) /* -Wl,--soname=foo */
+   OPTION_O(OPT_Wl_fatal_warnings,   OPTION_FLAG_NONE, NULL,"fatal-warnings",   NULL) /* -Wl,--fatal-warnings */
+   OPTION_O(OPT_Wl_no_fatal_warnings,OPTION_FLAG_NONE, NULL,"no-fatal-warnings",NULL) /* -Wl,--no-fatal-warnings */
+   OPTION_O(OPT_Wl_allow_multiple_definition,OPTION_FLAG_NONE,NULL,"allow-multiple-definition",NULL) /* -Wl,--allow-multiple-definition */
+   OPTION_O(OPT_Wl_allow_shlib_undefined,OPTION_FLAG_NONE,NULL,"allow-shlib-undefined",NULL) /* -Wl,--allow-shlib-undefined */
+   OPTION_O(OPT_Wl_no_allow_shlib_undefined,OPTION_FLAG_NONE,NULL,"no-allow-shlib-undefined",NULL) /* -Wl,--no-allow-shlib-undefined */
+   OPTION_O(OPT_Wl_no_warn_mismatch,OPTION_FLAG_NONE,NULL,"no-warn-mismatch",NULL) /* -Wl,--no-warn-mismatch */
+   OPTION_O(OPT_Wl_no_warn_search_mismatch,OPTION_FLAG_NONE,NULL,"no-warn-search-mismatch",NULL) /* -Wl,--no-warn-search-mismatch */
 
    OPTION_A(OPT_o,                   OPTION_FLAG_VALUE,"o",NULL,                NULL) /* -Wl,-o,a.out */
    OPTION_A(OPT_o,                   OPTION_FLAG_EQUAL,NULL,"output",           NULL) /* -Wl,--output=a.out */
    OPTION_A(OPT_L,                   OPTION_FLAG_VALUE,"L",NULL,                NULL) /* -Wl,-L/usr/lib */
    OPTION_A(OPT_L,                   OPTION_FLAG_EQUAL,NULL,"library-path",     NULL) /* -Wl,--library-path=/usr/lib */
    OPTION_A(OPT_O,                   OPTION_FLAG_VALUE,"O",NULL,                NULL) /* -Wl,-O3 */
+   /* TODO: '-Wl,-rpath=/usr/lib'
+    *    >> Add directory that will be added to the ELF runtime search path list. */
 
    /* Ignored options. */
-   OPTION_O(OPT_UNUSED,              OPTION_FLAG_NONE, "g",        NULL,        NULL) /* -Wl,-g */
+   OPTION_A(OPT_UNUSED,              OPTION_FLAG_NONE, "qmagic",   NULL,        NULL) /* -Wl,-qmagic */
+   OPTION_A(OPT_UNUSED,              OPTION_FLAG_NONE, "Qy",       NULL,        NULL) /* -Wl,-Qy */
    OPTION_A(OPT_UNUSED,              OPTION_FLAG_NONE, "i",        NULL,        NULL) /* -Wl,-i */
    OPTION_A(OPT_UNUSED,              OPTION_FLAG_NONE, "r",        NULL,        NULL) /* -Wl,-r */
+   OPTION_O(OPT_UNUSED,              OPTION_FLAG_NONE, "g",        NULL,        NULL) /* -Wl,-g */
 GROUP_END
 
 GROUP_BEGIN(grp_main) /* Main options group */

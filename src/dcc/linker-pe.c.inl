@@ -736,10 +736,12 @@ PRIVATE void pe_mk_secvec(void) {
     /* Now align it again by the requirements of the section. */
     addr = (addr+(section->sc_align-1)) & ~(section->sc_align-1);
    }
-   info->si_addr = addr;
-   assert(!section->sc_base);
 
-   if (!(section->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED)) {
+   if (section->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED) {
+    info->si_addr = section->sc_base;
+   } else {
+    info->si_addr = addr;
+    assert(!section->sc_base);
     /* Set the section base address when it isn't a fixed section. */
     DCCSection_SetBaseTo(section,addr);
    }

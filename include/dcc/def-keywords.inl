@@ -1250,6 +1250,7 @@ WARNING_NAMESPACE(WN_LINKER,2000)
 DEF_WARNING(W_OUT_OF_MEMORY,(WG_LINKER),WSTATE_ERROR,WARNF("Out of memory when allocating '%lu' bytes",(unsigned long)ARG(size_t)))
 DEF_WARNING(W_CMD_UNKNOWN,(WG_LINKER),WSTATE_ERROR,WARNF("Unknown option: '%s'",ARG(char *)))
 DEF_WARNING(W_CMD_A_EXPECTED_VALUE,(WG_LINKER),WSTATE_ERROR,WARNF("Expected assertion value after '-A'"))
+DEF_WARNING(W_CMD_WL_SECTION_START_UNKNOWN_SECTION,(WG_LINKER),WSTATE_ERROR,WARNF("Unknown section '%s' specified for '-Wl,--section-start'",ARG(char *)))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMPLUSSYM,(WG_LINKER),WSTATE_WARN,WARNF("Symbol+Symbol expression cannot be relocated"))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM,(WG_LINKER),WSTATE_WARN,WARNF("Symbol-Symbol expressions can only be relocated when both symbols are declared and exist in the same section"))
 DEF_WARNING(W_MISSING_ENTRY_POINT,(WG_LINKER,WG_USAGE),WSTATE_WARN,WARNF("Missing entry point '%s' (Using start of default .text section)",ARG(char *)))
@@ -1344,6 +1345,9 @@ WARNING_NAMESPACE(WN_LIBLOADER,3000)
 
 /* Library loader warnings. */
 DEF_WARNING(W_LIB_NOT_FOUND,(WG_LIBLOAD),WSTATE_ERROR,{ char *n = ARG(char *); WARNF("Dependency not found: '%.*s'",(unsigned int)ARG(size_t),n); })
+#if DCC_LIBFORMAT_PE_DYNAMIC || DCC_LIBFORMAT_PE_STATIC
+DEF_WARNING(W_LIB_PE_INVALID_MACHINE,(WG_LIBLOAD),WSTATE_ERROR,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'Machine' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
+#endif
 #if DCC_LIBFORMAT_PE_DYNAMIC
 DEF_WARNING(W_LIB_PE_INVMAGIC,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Invalid header magic in PE library '%s'",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_DLL,(WG_QUALITY,WG_LIBLOAD),WSTATE_WARN,WARNF("Library '%s' is not a dll.",ARG(char *)))
@@ -1436,11 +1440,11 @@ DEF_WARNING(W_LIB_DEF_EXPECTED_EXPORTS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Expected 
 #endif /* DCC_LIBFORMAT_DEF_DYNAMIC */
 #if DCC_LIBFORMAT_ELF
 DEF_WARNING(W_LIB_ELF_INVALID_CLASS,       (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'EI_CLASS' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
-DEF_WARNING(W_LIB_ELF_INVALID_DATA,        (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'EI_DATA' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
+DEF_WARNING(W_LIB_ELF_INVALID_DATA,        (WG_LIBLOAD),WSTATE_ERROR,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'EI_DATA' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
 DEF_WARNING(W_LIB_ELF_INVALID_VERSION,     (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'EI_VERSION' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
 DEF_WARNING(W_LIB_ELF_INVALID_VERSION2,    (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'e_version' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
 DEF_WARNING(W_LIB_ELF_INVALID_OSABI,       (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'EI_OSABI' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
-DEF_WARNING(W_LIB_ELF_INVALID_MACHINE,     (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'e_machine' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
+DEF_WARNING(W_LIB_ELF_INVALID_MACHINE,     (WG_LIBLOAD),WSTATE_ERROR,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'e_machine' in '%s' (Expected '%#x', but got '%#x')",n,x,ARG(unsigned int)); })
 DEF_WARNING(W_LIB_ELF_STATIC_SHARED,       (WG_LIBLOAD),WSTATE_WARN,WARNF("Statically linking against shared library '%s'",ARG(char *)))
 DEF_WARNING(W_LIB_ELF_DYNAMIC_EXEC,        (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against executable '%s'",ARG(char *)))
 DEF_WARNING(W_LIB_ELF_DYNAMIC_RELO,        (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against relocatable object file '%s'",ARG(char *)))

@@ -161,7 +161,12 @@ DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def,
  hdr_size = (size_t)read_error;
  if (!HAS_FIELD(fhdr)) goto end;
  if (hdr.ntsg != IMAGE_NT_SIGNATURE) goto end;
- if (hdr.fhdr.Machine != DCC_PE_TARGET_MACHINE) goto end;
+ if (hdr.fhdr.Machine != DCC_PE_TARGET_MACHINE) {
+  WARN(W_LIB_PE_INVALID_MACHINE,
+      (unsigned int)DCC_PE_TARGET_MACHINE,
+      (unsigned int)hdr.fhdr.Machine);
+  goto end;
+ }
  if (HAS_FIELD(fhdr.SizeOfOptionalHeader)) {
   size_t newsize = offsetof(NT_HEADER,ohdr)+
                    hdr.fhdr.SizeOfOptionalHeader;

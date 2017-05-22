@@ -48,6 +48,23 @@ LOCAL int_t strtoint(char const *s) {
  if (is_neg) result = -result;
  return result;
 }
+LOCAL target_ptr_t hextoint(char const *s) {
+ target_ptr_t result = 0;
+ char ch;
+ while ((ch = *s,
+         ch == '0' ||
+         ch == 'x' ||
+         ch == 'x'
+         )) ++s;
+ for (;;) {
+  ch = *s++;
+       if (ch >= '0' && ch <= '9') result = (result*16)+(ch-'0');
+  else if (ch >= 'a' && ch <= 'z') result = (result*16)+(ch-'a');
+  else if (ch >= 'A' && ch <= 'Z') result = (result*16)+(ch-'A');
+  else if (!ch) break;
+ }
+ return result;
+}
 
 PRIVATE void tpp_wall(void) {
  uint8_t *iter,*end,b;
@@ -92,6 +109,12 @@ PRIVATE void asm_strexpr(struct DCCSymAddr *__restrict v,
  YIELD();
 }
 
+LOCAL char *getval(char *v) {
+ char *result = strchr(v,'=');
+ if (result) *result++ = '\0';
+ else         result   = (char *)"0";
+ return result;
+}
 
 INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
  char *v = c->c_val;
@@ -100,6 +123,25 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
  case OPT_Wl_Bsymbolic: linker.l_flags |= DCC_LINKER_FLAG_SYMBOLIC; break;
  case OPT_Wl_shared:    linker.l_flags |= DCC_LINKER_FLAG_SHARED; break;
  case OPT_Wl_nostdlib:  linker.l_flags |= DCC_LINKER_FLAG_NOSTDLIB; break;
+ case OPT_Wl_pie:            linker.l_flags |= DCC_LINKER_FLAG_PIC; break;
+ case OPT_Wl_pic_executable: linker.l_flags |= DCC_LINKER_FLAG_PIC;
+                             linker.l_flags &= ~(DCC_LINKER_FLAG_SHARED);
+                             break;
+
+ {
+  struct DCCSection *sec;
+  target_ptr_t addr;
+ case OPT_Wl_section_start:
+  addr = hextoint(getval(v));
+  sec = DCCUnit_GetSecs(v);
+  if unlikely(!sec) WARN(W_CMD_WL_SECTION_START_UNKNOWN_SECTION,v);
+  else {
+   /* Set the section base address and mark it as fixed. */
+   DCCSection_SetBaseTo(sec,addr);
+   sec->sc_start.sy_flags |= DCC_SYMFLAG_SEC_FIXED;
+  }
+ } break;
+
 
  { /* initialization/finalization/entry symbols. */
   char *v_copy; size_t v_len;
@@ -120,14 +162,10 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
   linker.l_flags  |= DCC_LINKER_FLAG_IMGBASE;
   break;
 
- { char *val;
-   struct DCCSymAddr symaddr;
+ { struct DCCSymAddr symaddr;
    struct DCCSym *defsym;
  case OPT_Wl_defsym:
-   val = strchr(v,'=');
-   if (val) *val++ = '\0';
-   else      val   = "0";
-   asm_strexpr(&symaddr,val);
+   asm_strexpr(&symaddr,getval(v));
    defsym = DCCUnit_NewSyms(v,DCC_SYMFLAG_NONE);
    if unlikely(!defsym) break;
    DCCSym_DefAddr(defsym,&symaddr);
@@ -158,11 +196,46 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
  case OPT_Wl_soname: linker.l_soname = TPPString_New(v,strlen(v)); break;
 
+ case OPT_Wl_fatal_warnings:    CURRENT.l_flags |= TPPLEXER_FLAG_WERROR; break;
+ case OPT_Wl_no_fatal_warnings: CURRENT.l_flags &= ~(TPPLEXER_FLAG_WERROR); break;
+ case OPT_Wl_allow_multiple_definition:
+  TPPLexer_SetWarning(W_SYMBOL_ALREADY_DEFINED_SEC,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_SYMBOL_ALREADY_DEFINED_IMP,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_SYMBOL_ALREADY_DEFINED_ALIAS,WSTATE_DISABLE);
+  break;
+ case OPT_Wl_allow_shlib_undefined:
+  TPPLexer_SetWarning(W_UNRESOLVED_REFERENCE,WSTATE_DISABLE);
+  break;
+ case OPT_Wl_no_allow_shlib_undefined:
+  TPPLexer_SetWarning(W_UNRESOLVED_REFERENCE,WSTATE_DEFAULT);
+  break;
+ case OPT_Wl_no_warn_mismatch:
+#if DCC_LIBFORMAT_ELF
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_CLASS,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_DATA,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_VERSION,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_OSABI,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_MACHINE,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_VERSION2,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_ELF_STATIC_SHARED,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_ELF_DYNAMIC_EXEC,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_ELF_DYNAMIC_RELO,WSTATE_DISABLE);
+#endif
+  break;
+ case OPT_Wl_no_warn_search_mismatch:
+#if DCC_LIBFORMAT_PE_DYNAMIC || DCC_LIBFORMAT_PE_STATIC
+  TPPLexer_SetWarning(W_LIB_PE_INVALID_MACHINE,WSTATE_DISABLE);
+#endif
+#if DCC_LIBFORMAT_ELF
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_DATA,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_MACHINE,WSTATE_DISABLE);
+#endif
+  break;
+
+
  { char *val;
  case OPT_D:
-   val = strchr(v,'=');
-   if (val) *val++ = '\0';
-   else      val = "1";
+   val = getval(v);
    if (!TPPLexer_Define(v,strlen(v),val,strlen(val),
                         from_cmd ? TPPLEXER_DEFINE_FLAG_BUILTIN
                                  : TPPLEXER_DEFINE_FLAG_NONE)) goto seterr;
@@ -173,7 +246,8 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
   int add = 1; char *val;
   if (*v == '-') ++v,add = 0;
   val = strchr(v,'=');
-  if (val) *val++ = '\0'; else if (add) { WARN(W_CMD_A_EXPECTED_VALUE); break; }
+  if (val) *val++ = '\0';
+  else if (add) { WARN(W_CMD_A_EXPECTED_VALUE); break; }
   add ? TPPLexer_AddAssert(v,strlen(v),val,strlen(val))
       : TPPLexer_DelAssert(v,strlen(v),val,val ? strlen(val) : 0);
  } break;
