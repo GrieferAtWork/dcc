@@ -131,8 +131,18 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
  {
   struct DCCSection *sec;
   target_ptr_t addr;
+  {
+   char *new_secname;
+   if (DCC_MACRO_FALSE) { case OPT_Wl_Tbss:  new_secname = ".bss"; }
+   if (DCC_MACRO_FALSE) { case OPT_Wl_Tbata: new_secname = ".data"; }
+   if (DCC_MACRO_FALSE) { case OPT_Wl_Ttext: new_secname = ".text"; }
+   addr = hextoint(v);
+   v = new_secname;
+   goto def_secbase;
+  }
  case OPT_Wl_section_start:
   addr = hextoint(getval(v));
+def_secbase:
   sec = DCCUnit_GetSecs(v);
   if unlikely(!sec) WARN(W_CMD_WL_SECTION_START_UNKNOWN_SECTION,v);
   else {

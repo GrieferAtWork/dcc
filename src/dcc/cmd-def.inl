@@ -43,6 +43,9 @@ GROUP_BEGIN(grp_Wl)
    OPTION_A(OPT_Wl_entry,            OPTION_FLAG_EQUAL,NULL,"entry",            NULL) /* -Wl,--entry=_start */
    OPTION_O(OPT_Wl_defsym,           OPTION_FLAG_VALUE,NULL,"defsym",           NULL) /* -Wl,--defsym,foo=42 */
    OPTION_O(OPT_Wl_section_start,    OPTION_FLAG_EQUAL,NULL,"section-start",    NULL) /* -Wl,--section-start=.text=0x803000 */
+   OPTION_O(OPT_Wl_Tbss,             OPTION_FLAG_EQUAL,"Tbss",NULL,             NULL) /* -Wl,-Tbss=0x804000 */
+   OPTION_O(OPT_Wl_Tbata,            OPTION_FLAG_EQUAL,"Tdata",NULL,            NULL) /* -Wl,-Tdata=0x805000 */
+   OPTION_O(OPT_Wl_Ttext,            OPTION_FLAG_EQUAL,"Ttext",NULL,            NULL) /* -Wl,-Ttext=0x806000 */
    OPTION_O(OPT_Wl_image_base,       OPTION_FLAG_EQUAL,NULL,"image-base",       NULL) /* -Wl,--image-base=0x801000 */
    OPTION_O(OPT_Wl_section_alignment,OPTION_FLAG_EQUAL,NULL,"section-alignment",NULL) /* -Wl,--section-alignment=4096 */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
