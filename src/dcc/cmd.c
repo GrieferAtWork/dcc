@@ -150,6 +150,10 @@ consume_argval:
    c->c_val = "";
   } else if (opt->o_flags&OPTION_FLAG_VALUE) {
    /* Value option. */
+   if (c->c_state == STATE_SUBOPT) {
+    if (*arg == ',') { ++arg;
+    if (*arg == '-')   ++arg; }
+   }
    if (*arg) goto consume_argval;
    if (c->c_argc) { /* Consume the next CMD argument. */
     c->c_val = c->c_argv[0];

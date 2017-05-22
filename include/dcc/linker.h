@@ -64,8 +64,7 @@ struct DCCLibPaths {
 #define DCC_LINKER_FLAG_SHARED       0x00000001 /*< Create shared libraries. */
 #define DCC_LINKER_FLAG_NOSTDLIB     0x00000002 /*< Don't include standard libraries. */
 #define DCC_LINKER_FLAG_NOUNDERSCORE 0x00000004 /*< Don't prepend leading underscores. */
-#define DCC_LINKER_FLAG_NORELOC      0x00000008 /*< Don't generate relocations, meaning that a generated image will not be position-independent.
-                                                 *  WARNING: Despite the name, this flag does _NOT_ disable import relocations on ELF targets (because that'd just break dynamic linking...) */
+#define DCC_LINKER_FLAG_PIC          0x00000008 /*< Generate relocations, meaning that a generated image will not be position-independent. */
 #define DCC_LINKER_FLAG_SYMBOLIC     0x00000010 /*< Set if '-Wl,Bsymbolic' was passed on the commandline. */
 #define DCC_LINKER_FLAG_IMGBASE      0x00000020 /*< Set when an explicit image base has been stored in 'l_imgbase'. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE

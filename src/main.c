@@ -202,7 +202,6 @@ int main(int argc, char *argv[]) {
  /* Cleanup unused stuff. */
  DCCUnit_ClearStatic();
 
- //linker.l_flags |= DCC_LINKER_FLAG_NORELOC;
 #ifdef DCC_LINKER_FLAG_PEDYNAMIC
  /* Dynamically export PE symbols. */
  linker.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;

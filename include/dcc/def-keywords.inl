@@ -324,6 +324,12 @@ PREDEFINED_MACRO(__STDC_NO_COMPLEX__,"1")
 /* Predefined macro: '__ASSEMBLER__' (Only defined while parsing assembler code) */
 PREDEFINED_MACRO_IF(__ASSEMBLER__,compiler.c_flags&DCC_COMPILER_FLAG_INASM,"1")
 
+
+PREDEFINED_MACRO_IF(__pic__,TPPLexer_HasExtension(EXT_SYSTEM_MACROS) && (linker.l_flags&DCC_LINKER_FLAG_PIC),"1")
+PREDEFINED_MACRO_IF(__PIC__,TPPLexer_HasExtension(EXT_SYSTEM_MACROS) && (linker.l_flags&DCC_LINKER_FLAG_PIC),"1")
+PREDEFINED_MACRO_IF(__pie__,TPPLexer_HasExtension(EXT_SYSTEM_MACROS) && (linker.l_flags&DCC_LINKER_FLAG_PIC),"1")
+PREDEFINED_MACRO_IF(__PIE__,TPPLexer_HasExtension(EXT_SYSTEM_MACROS) && (linker.l_flags&DCC_LINKER_FLAG_PIC),"1")
+
 /* Add the dcc-version predefined macro.
  * >> Got'a identify this compiler somehow! */
 PREDEFINED_MACRO(__DCC_VERSION__,DCC_PP_STR(DCC_COMPILER_VERSION))

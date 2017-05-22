@@ -259,7 +259,7 @@ pe_mk_reldat(struct DCCSection *__restrict relocs) {
  struct DCCRel *iter,*end;
  target_ptr_t addr,blockaddr = 0,offset = 0;
  size_t count = 0;
- if unlikely(linker.l_flags&DCC_LINKER_FLAG_NORELOC) return;
+ if unlikely(!(linker.l_flags&DCC_LINKER_FLAG_PIC)) return;
  send = (siter = pe.pe_secv)+pe.pe_secc;
  iter = end = NULL;
  /* Search all sections for relocations. */
@@ -1050,9 +1050,8 @@ PRIVATE void pe_mk_genrt(void) {
  if (linker.l_secalign)    pe.pe_secalign = linker.l_secalign;
  if (linker.l_pe_filalign) pe.pe_secalign = linker.l_pe_filalign;
 
- if (!(linker.l_flags&DCC_LINKER_FLAG_NORELOC)) {
-       DCCUnit_NewSecs(".reloc",DCC_SYMFLAG_SEC_NOALLOC);
- }
+ if (linker.l_flags&DCC_LINKER_FLAG_PIC)
+     DCCUnit_NewSecs(".reloc",DCC_SYMFLAG_SEC_NOALLOC);
 
  if (pe.pe_type == PETYPE_DLL) {
   pe.pe_imgbase = 0x10000000; /* Place dlls in high memory. */

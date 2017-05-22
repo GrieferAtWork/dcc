@@ -715,6 +715,31 @@ DCCSym_Alias(struct DCCSym *__restrict self,
  self->sy_addr  = offset;
  /* NOTE: 'self->sy_size' is unused by alias symbols. */
 }
+PUBLIC void
+DCCSym_DefAddr(struct DCCSym *__restrict self,
+               struct DCCSymAddr const *__restrict symaddr) {
+ struct DCCSymAddr load_addr;
+ assert(self);
+ assert(symaddr);
+ if (!symaddr->sa_sym) {
+  DCCSym_Define(self,&DCCSection_Abs,
+               (target_ptr_t)symaddr->sa_off,0);
+  return;
+ }
+ if (!DCCSym_LoadAddr(symaddr->sa_sym,&load_addr,0))
+      load_addr = *symaddr;
+ else load_addr.sa_off += symaddr->sa_off;
+ assert(load_addr.sa_sym);
+ if (load_addr.sa_sym->sy_sec) {
+  DCCSym_Define(self,load_addr.sa_sym->sy_sec,
+               (target_ptr_t)(load_addr.sa_sym->sy_addr+
+                              load_addr.sa_off),0);
+ } else {
+  DCCSym_Alias(self,load_addr.sa_sym,
+                    load_addr.sa_off);
+ }
+}
+
 PUBLIC int
 DCCSym_Equal(struct DCCSym const *a,
              struct DCCSym const *b) {

@@ -281,6 +281,11 @@ DCCFUN void DCCSym_Alias(struct DCCSym *__restrict self,
                          struct DCCSym *__restrict alias_sym,
                          DCC(target_ptr_t) offset);
 
+/* Define a given symbol 'self' to describe the symbol address 'symaddr'.
+ * During this operation, 'self' will be redefined as offset-alias, or section/abs symbol. */
+DCCFUN void DCCSym_DefAddr(struct DCCSym *__restrict self,
+                           struct DCCSymAddr const *__restrict symaddr);
+
 /* Clear the current definition of 'self' */
 DCCFUN void DCCSym_ClrDef(struct DCCSym *__restrict self);
 

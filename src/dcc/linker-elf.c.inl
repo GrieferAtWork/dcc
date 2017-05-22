@@ -735,8 +735,8 @@ PRIVATE void elf_mk_delnoprel(void) {
  }
 }
 
-/* When compiling with the 'DCC_LINKER_FLAG_NORELOC'
- * flag set, check if 'rel' can be determined at compile-time. */
+/* When compiling with the 'DCC_LINKER_FLAG_PIC' flag not
+ * set, check if 'rel' can be determined at compile-time. */
 LOCAL int elf_wantrel(struct DCCRel const *__restrict rel) {
  struct DCCSymAddr symaddr;
  assert(rel),assert(rel->r_sym);
@@ -778,13 +778,13 @@ PRIVATE void elf_mk_reldat(void) {
   relcnt = iter_sec->sc_relc;
   if unlikely(!relcnt) continue;
   rel_end = (rel_iter = iter_sec->sc_relv)+relcnt;
-  if (linker.l_flags&DCC_LINKER_FLAG_NORELOC) {
+  if (linker.l_flags&DCC_LINKER_FLAG_PIC) {
    for (; rel_iter != rel_end; ++rel_iter) {
-    if (!elf_wantrel(rel_iter)) --relcnt;
+    if (!elf_wantpicrel(rel_iter)) --relcnt;
    }
   } else {
    for (; rel_iter != rel_end; ++rel_iter) {
-    if (!elf_wantpicrel(rel_iter)) --relcnt;
+    if (!elf_wantrel(rel_iter)) --relcnt;
    }
   }
   if unlikely(!relcnt) continue;
@@ -798,9 +798,9 @@ PRIVATE void elf_mk_reldat(void) {
   iter->si_rdat = reladdr;
   iter->si_rcnt = relcnt;
   rel_iter = iter_sec->sc_relv;
-  if (linker.l_flags&DCC_LINKER_FLAG_NORELOC) {
+  if (linker.l_flags&DCC_LINKER_FLAG_PIC) {
    for (; rel_iter != rel_end; ++rel_iter) {
-    if (!elf_wantrel(rel_iter)) continue;
+    if (!elf_wantpicrel(rel_iter)) continue;
     /* Use the '.dynsym' symbol index! */
     reldata->r_info    = ELF(R_INFO)(rel_iter->r_sym->sy_elfid,
                                      rel_iter->r_type);
@@ -809,7 +809,7 @@ PRIVATE void elf_mk_reldat(void) {
    }
   } else {
    for (; rel_iter != rel_end; ++rel_iter) {
-    if (!elf_wantpicrel(rel_iter)) continue;
+    if (!elf_wantrel(rel_iter)) continue;
     /* Use the '.dynsym' symbol index! */
     reldata->r_info    = ELF(R_INFO)(rel_iter->r_sym->sy_elfid,
                                      rel_iter->r_type);
@@ -1463,10 +1463,6 @@ DCCLinker_Make(stream_t target) {
                      * ZERO(0), relying on relocations. */
   elf.elf_type = ET_DYN;
  } else {
-  /* TODO: Commandline switch: '-fPIC'
-   * NOTE: This flag is actually fully implemented & working. */
-  //linker.l_flags |= DCC_LINKER_FLAG_NORELOC;
-
 #ifdef DCC_TARGET_X86
   elf.elf_base = 0x08048000;
 #else

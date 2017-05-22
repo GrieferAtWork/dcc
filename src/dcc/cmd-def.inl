@@ -32,11 +32,13 @@
 
 GROUP_BEGIN(grp_Wl)
    OPTION_O(OPT_Wl_Bsymbolic,        OPTION_FLAG_NONE, "Bsymbolic",NULL,        NULL) /* -Wl,-Bsymbolic */
+   OPTION_O(OPT_Wl_shared,           OPTION_FLAG_NONE, "shared",   NULL,        NULL) /* -Wl,-shared */
    OPTION_O(OPT_Wl_nostdlib,         OPTION_FLAG_NONE, "nostdlib", NULL,        NULL) /* -Wl,-nostdlib */
    OPTION_O(OPT_Wl_init,             OPTION_FLAG_EQUAL,"init",     NULL,        NULL) /* -Wl,-init=my_init */
    OPTION_O(OPT_Wl_fini,             OPTION_FLAG_EQUAL,"fini",     NULL,        NULL) /* -Wl,-fini=my_fini */
-   OPTION_O(OPT_Wl_entry,            OPTION_FLAG_VALUE,"e",        NULL,        NULL) /* -Wl,-e foo */
+   OPTION_O(OPT_Wl_entry,            OPTION_FLAG_VALUE,"e",        NULL,        NULL) /* -Wl,-e,foo */
    OPTION_A(OPT_Wl_entry,            OPTION_FLAG_EQUAL,NULL,"entry",            NULL) /* -Wl,--entry=_start */
+   OPTION_O(OPT_Wl_defsym,           OPTION_FLAG_VALUE,NULL,"defsym",           NULL) /* -Wl,--defsym,foo=42 */
    OPTION_O(OPT_Wl_image_base,       OPTION_FLAG_EQUAL,NULL,"image-base",       NULL) /* -Wl,--image-base=0x801000 */
    OPTION_O(OPT_Wl_section_alignment,OPTION_FLAG_EQUAL,NULL,"section-alignment",NULL) /* -Wl,--section-alignment=4096 */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
@@ -46,6 +48,12 @@ GROUP_BEGIN(grp_Wl)
 #endif
    OPTION_O(OPT_Wl_soname,           OPTION_FLAG_VALUE,"h",NULL,                NULL) /* -Wl,-h,foo */
    OPTION_A(OPT_Wl_soname,           OPTION_FLAG_EQUAL,NULL,"soname",           NULL) /* -Wl,--soname=foo */
+
+   OPTION_A(OPT_o,                   OPTION_FLAG_VALUE,"o",NULL,                NULL) /* -Wl,-o,a.out */
+   OPTION_A(OPT_o,                   OPTION_FLAG_EQUAL,NULL,"output",           NULL) /* -Wl,--output=a.out */
+   OPTION_A(OPT_L,                   OPTION_FLAG_VALUE,"L",NULL,                NULL) /* -Wl,-L/usr/lib */
+   OPTION_A(OPT_L,                   OPTION_FLAG_EQUAL,NULL,"library-path",     NULL) /* -Wl,--library-path=/usr/lib */
+   OPTION_A(OPT_O,                   OPTION_FLAG_VALUE,"O",NULL,                NULL) /* -Wl,-O3 */
 
    /* Ignored options. */
    OPTION_O(OPT_UNUSED,              OPTION_FLAG_NONE, "g",        NULL,        NULL) /* -Wl,-g */
@@ -57,13 +65,15 @@ GROUP_BEGIN(grp_main) /* Main options group */
    OPTION_N(OPTION_FLAG_NOOPT,"l",NULL,NULL) /* -l... (dynamic library dependency) */
    OPTION_N(OPTION_FLAG_NONE,"Wl",NULL,grp_Wl) /* -Wl,... */
 
-   OPTION_O(OPT_E,  OPTION_FLAG_NONE,  "E",   NULL,NULL) /* -E */
-   OPTION_O(OPT_D,  OPTION_FLAG_VALUE, "D",   NULL,NULL) /* -DFOO */
-   OPTION_O(OPT_U,  OPTION_FLAG_VALUE, "U",   NULL,NULL) /* -UFOO */
-   OPTION_O(OPT_A,  OPTION_FLAG_VALUE, "A",   NULL,NULL) /* -AFOO */
-   OPTION_O(OPT_I,  OPTION_FLAG_VALUE, "I",   NULL,NULL) /* -Iinclude */
-   OPTION_O(OPT_o,  OPTION_FLAG_VALUE, "o",   NULL,NULL) /* -o a.exe */
-   OPTION_O(OPT_c,  OPTION_FLAG_NONE,  "c",   NULL,NULL) /* -c */
+   OPTION_O(OPT_E,  OPTION_FLAG_NONE,  "E",   NULL,          NULL) /* -E */
+   OPTION_O(OPT_D,  OPTION_FLAG_VALUE, "D",   NULL,          NULL) /* -DFOO */
+   OPTION_O(OPT_U,  OPTION_FLAG_VALUE, "U",   NULL,          NULL) /* -UFOO */
+   OPTION_O(OPT_A,  OPTION_FLAG_VALUE, "A",   NULL,          NULL) /* -AFOO */
+   OPTION_O(OPT_I,  OPTION_FLAG_VALUE, "I",   NULL,          NULL) /* -Iinclude */
+   OPTION_O(OPT_o,  OPTION_FLAG_VALUE, "o",   NULL,          NULL) /* -o a.exe */
+   OPTION_O(OPT_c,  OPTION_FLAG_NONE,  "c",   NULL,          NULL) /* -c */
+   OPTION_O(OPT_L,  OPTION_FLAG_VALUE, "L",   NULL,          NULL) /* -L/usr/lib */
+   OPTION_O(OPT_O,  OPTION_FLAG_VALUE, "O",   NULL,          NULL) /* -O3 */
 
    OPTION_O(OPT_Wno,OPTION_FLAG_PREFIX,"Wno-",NULL,NULL) /* -Wno-syntax */
    OPTION_O(OPT_W,  OPTION_FLAG_PREFIX,"W",   NULL,NULL) /* -Wsyntax */
@@ -71,8 +81,9 @@ GROUP_BEGIN(grp_main) /* Main options group */
    OPTION_O(OPT_f,  OPTION_FLAG_PREFIX,"f",   NULL,NULL) /* -fexpression-statements */
 
    /* GCC extension flags. */
-   OPTION_O(OPT_undef,    OPTION_FLAG_NONE,"undef",    NULL,NULL) /* -undef */
-   OPTION_O(OPT_trigraphs,OPTION_FLAG_NONE,"trigraphs",NULL,NULL) /* -trigraphs */
+   OPTION_O(OPT_undef,       OPTION_FLAG_NONE,"undef",    NULL,NULL) /* -undef */
+   OPTION_O(OPT_trigraphs,   OPTION_FLAG_NONE,"trigraphs",NULL,NULL) /* -trigraphs */
+   OPTION_A(OPT_Wl_Bsymbolic,OPTION_FLAG_NONE,"symbolic", NULL,NULL) /* -symbolic */
 GROUP_END
 
 

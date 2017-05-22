@@ -21,6 +21,7 @@
 
 #include <dcc/common.h>
 #include <dcc/target.h>
+#include <dcc/linker.h>
 #include <dcc/unit.h>
 #include <dcc/compiler.h>
 

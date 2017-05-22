@@ -21,6 +21,7 @@
 
 #include <dcc/common.h>
 
+#include <dcc/assembler.h>
 #include <dcc/lexer.h>
 #include <dcc/compiler.h>
 #include <dcc/unit.h>
@@ -69,12 +70,35 @@ PRIVATE void tpp_wall(void) {
  }
 }
 
+PRIVATE void asm_strexpr(struct DCCSymAddr *__restrict v,
+                         char const *__restrict str) {
+ struct TPPString *s = TPPString_New(str,strlen(str));
+ struct TPPFile *f,*oldeof;
+ if unlikely(!s) return;
+ f = TPPFile_NewExplicitInherited(s);
+ if unlikely(!f) { TPPString_Decref(s); return; }
+ assert(TOKEN.t_begin >= TOKEN.t_file->f_begin);
+ assert(TOKEN.t_begin <= TOKEN.t_file->f_end);
+ TOKEN.t_file->f_pos = TOKEN.t_begin;
+ oldeof = CURRENT.l_eof_file;
+ CURRENT.l_eof_file = f;
+ TPPLexer_PushFileInherited(f);
+ DCCParse_AsmBegin();
+ YIELD();
+ DCCParse_AsmExpr(v);
+ DCCParse_AsmEnd();
+ while (TOK > 0) YIELD();
+ CURRENT.l_eof_file = oldeof;
+ YIELD();
+}
+
 
 INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
  char *v = c->c_val;
  switch (c->c_id) {
 
  case OPT_Wl_Bsymbolic: linker.l_flags |= DCC_LINKER_FLAG_SYMBOLIC; break;
+ case OPT_Wl_shared:    linker.l_flags |= DCC_LINKER_FLAG_SHARED; break;
  case OPT_Wl_nostdlib:  linker.l_flags |= DCC_LINKER_FLAG_NOSTDLIB; break;
 
  { /* initialization/finalization/entry symbols. */
@@ -95,6 +119,19 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
   linker.l_imgbase = (target_ptr_t)strtoint(v);
   linker.l_flags  |= DCC_LINKER_FLAG_IMGBASE;
   break;
+
+ { char *val;
+   struct DCCSymAddr symaddr;
+   struct DCCSym *defsym;
+ case OPT_Wl_defsym:
+   val = strchr(v,'=');
+   if (val) *val++ = '\0';
+   else      val   = "0";
+   asm_strexpr(&symaddr,val);
+   defsym = DCCUnit_NewSyms(v,DCC_SYMFLAG_NONE);
+   if unlikely(!defsym) break;
+   DCCSym_DefAddr(defsym,&symaddr);
+ } break;
 
  case OPT_Wl_section_alignment:
   linker.l_secalign = (target_siz_t)strtoint(v);
@@ -141,9 +178,8 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
       : TPPLexer_DelAssert(v,strlen(v),val,val ? strlen(val) : 0);
  } break;
 
- case OPT_I:
-  if (!TPPLexer_AddIncludePath(v,strlen(v))) goto seterr;
-  break;
+ case OPT_I: if (!TPPLexer_AddIncludePath(v,strlen(v))) goto seterr; break;
+ case OPT_L: DCCLinker_AddLibPath(v,strlen(v)); break;
 
  case OPT_W:
   /* Special warning commands. */
@@ -170,16 +206,22 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
  case OPT_fno:
  case OPT_f:
   enable = c->c_id == OPT_f;
-#define SETFLAG(s,f) (enable?((s)|=(f)):((s)&=~(f)))
-
-       if (!strcmp(v,"spc") && from_cmd) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_WANTSPACE);
-  else if (!strcmp(v,"lf") && from_cmd) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_WANTLF);
-  else if (!strcmp(v,"comments") && from_cmd) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_WANTCOMMENTS);
-  else if (!strcmp(v,"longstring")) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_TERMINATE_STRING_LF);
+#define SETFLAG(s,f)  (enable?((s)|=(f)):((s)&=~(f)))
+#define SETFLAGI(s,f) (enable?((s)&=~(f)):((s)|=(f)))
+       if (!strcmp(v,"pic") || !strcmp(v,"PIC") ||
+           !strcmp(v,"pie") || !strcmp(v,"PIE")) SETFLAG(linker.l_flags,DCC_LINKER_FLAG_PIC);
+  else if (!strcmp(v,"spc")) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_WANTSPACE);
+  else if (!strcmp(v,"lf")) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_WANTLF);
+  else if (!strcmp(v,"comments")) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_WANTCOMMENTS);
+  else if (!strcmp(v,"stack-check"));
+  else if (!strcmp(v,"longstring") || !strcmp(v,"longstrings"))
+   SETFLAGI(TPPLexer_Current->l_flags,TPPLEXER_FLAG_TERMINATE_STRING_LF);
   else {
    enable = TPPLexer_SetExtension(v,enable);
    if (enable == 2) WARN(W_UNKNOWN_EXTENSION,v);
   }
+#undef SETFLAGI
+#undef SETFLAG
  } break;
 
 
@@ -191,6 +233,9 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
  case OPT_trigraphs: TPPLexer_EnableExtension(EXT_TRIGRAPHS); break;
 
  case OPT_UNUSED: break;
+
+ case OPT_O: break; /* Current unused. */
+
  default:
   WARN(W_CMD_UNKNOWN,c->c_val);
   break;
