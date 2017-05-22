@@ -277,8 +277,13 @@ asm_parse_expr_unary(struct DCCSymAddr *v) {
   break;
 
  case TOK_INT:
-  if (TOKEN.t_end[-1] == 'b' ||
-      TOKEN.t_end[-1] == 'f' && v) {
+  if ((TOKEN.t_end[-1] == 'b' ||
+       TOKEN.t_end[-1] == 'f') && v &&
+      (TOKEN.t_begin[0] != '0' || (
+       /* Make sure not to detect forward/backward
+        * label references in hex constants. */
+       TOKEN.t_begin[1] != 'x' &&
+       TOKEN.t_begin[1] != 'X'))) {
    struct TPPKeyword *label_kwd;
    struct DCCSym *sym;
    int backwards = TOKEN.t_end[-1] == 'b';
