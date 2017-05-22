@@ -765,6 +765,7 @@ WGROUP(WG_TYPE,"type",WSTATE_ERROR)
 WGROUP(WG_CAST,"cast",WSTATE_ERROR)
 WGROUP(WG_LINKER,"linker",WSTATE_ERROR)
 WGROUP(WG_LIBLOAD,"libload",WSTATE_ERROR)
+WGROUP(WG_CMD,"cmd",WSTATE_ERROR)
 
 #ifdef DECLARE_WARNING_MESSAGES
 {
@@ -1247,10 +1248,11 @@ DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTAT
 
 /* Switch to the Linker warning namespace. */
 WARNING_NAMESPACE(WN_LINKER,2000)
+DEF_WARNING(W_CMD_UNKNOWN,(WG_CMD),WSTATE_ERROR,WARNF("Unknown option: '%s'",ARG(char *)))
+DEF_WARNING(W_CMD_A_EXPECTED_VALUE,(WG_CMD),WSTATE_ERROR,WARNF("Expected assertion value after '-A'"))
+DEF_WARNING(W_CMD_WL_SECTION_START_UNKNOWN_SECTION,(WG_CMD),WSTATE_ERROR,WARNF("Unknown section '%s' specified for '-Wl,--section-start'",ARG(char *)))
+DEF_WARNING(W_CMD_FVISIBILITY_UNKNOWN_VISIBILITY,(WG_CMD,WG_VALUE),WSTATE_WARN,WARNF("Unknown visibility '%s' for '-fvisibility=...'",ARG(char *)))
 DEF_WARNING(W_OUT_OF_MEMORY,(WG_LINKER),WSTATE_ERROR,WARNF("Out of memory when allocating '%lu' bytes",(unsigned long)ARG(size_t)))
-DEF_WARNING(W_CMD_UNKNOWN,(WG_LINKER),WSTATE_ERROR,WARNF("Unknown option: '%s'",ARG(char *)))
-DEF_WARNING(W_CMD_A_EXPECTED_VALUE,(WG_LINKER),WSTATE_ERROR,WARNF("Expected assertion value after '-A'"))
-DEF_WARNING(W_CMD_WL_SECTION_START_UNKNOWN_SECTION,(WG_LINKER),WSTATE_ERROR,WARNF("Unknown section '%s' specified for '-Wl,--section-start'",ARG(char *)))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMPLUSSYM,(WG_LINKER),WSTATE_WARN,WARNF("Symbol+Symbol expression cannot be relocated"))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM,(WG_LINKER),WSTATE_WARN,WARNF("Symbol-Symbol expressions can only be relocated when both symbols are declared and exist in the same section"))
 DEF_WARNING(W_MISSING_ENTRY_POINT,(WG_LINKER,WG_USAGE),WSTATE_WARN,WARNF("Missing entry point '%s' (Using start of default .text section)",ARG(char *)))

@@ -25,6 +25,7 @@
 #include <dcc/compiler.h>
 #include <dcc/target.h>
 #include <dcc/vstack.h>
+#include <dcc/linker.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -650,6 +651,7 @@ PUBLIC void
 DCCCompiler_Init(struct DCCCompiler *__restrict self) {
  assert(self);
  memset(self,0,sizeof(struct DCCCompiler));
+ self->c_visibility.vs_viscur = linker.l_visdefault;
 }
 PUBLIC void
 DCCCompiler_Quit(struct DCCCompiler *__restrict self) {

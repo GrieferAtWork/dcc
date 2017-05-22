@@ -294,10 +294,22 @@ def_secbase:
 #define SETFLAGI(s,f) (enable?((s)&=~(f)):((s)|=(f)))
        if (!strcmp(v,"pic") || !strcmp(v,"PIC") ||
            !strcmp(v,"pie") || !strcmp(v,"PIE")) SETFLAG(linker.l_flags,DCC_LINKER_FLAG_PIC);
+  else if (!memcmp(v,"visibility=",DCC_COMPILER_STRLEN("visibility=")*sizeof(char)) && enable) {
+   char *val = v+DCC_COMPILER_STRLEN("visibility=");
+   symflag_t newvis;
+        if (!strcmp(val,"default"))   newvis = DCC_SYMFLAG_NONE;
+   else if (!strcmp(val,"hidden"))    newvis = DCC_SYMFLAG_PRIVATE;
+   else if (!strcmp(val,"protected")) newvis = DCC_SYMFLAG_PROTECTED;
+   else if (!strcmp(val,"internal"))  newvis = DCC_SYMFLAG_INTERNAL;
+   else { WARN(W_CMD_FVISIBILITY_UNKNOWN_VISIBILITY,val); break; }
+   if (from_cmd) linker.l_visdefault             = newvis;
+   else          compiler.c_visibility.vs_viscur = newvis;
+  }
+  else if (!strcmp(v,"leading-underscore")) SETFLAGI(linker.l_flags,DCC_LINKER_FLAG_NOUNDERSCORE);
+  else if (!strcmp(v,"stack-check"));
   else if (!strcmp(v,"spc")) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_WANTSPACE);
   else if (!strcmp(v,"lf")) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_WANTLF);
   else if (!strcmp(v,"comments")) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_WANTCOMMENTS);
-  else if (!strcmp(v,"stack-check"));
   else if (!strcmp(v,"longstring") || !strcmp(v,"longstrings"))
    SETFLAGI(TPPLexer_Current->l_flags,TPPLEXER_FLAG_TERMINATE_STRING_LF);
   else {

@@ -22,6 +22,7 @@
 #include "common.h"
 #include "target.h"
 #include "stream.h"
+#include "unit.h"
 
 DCC_DECL_BEGIN
 
@@ -95,6 +96,7 @@ struct DCCLinker {
  char                 *l_fini;        /*< [0..1][owned] Command-line option for '-Wl,fini=...'. */
  target_ptr_t          l_imgbase;     /*< Used when 'DCC_LINKER_FLAG_IMGBASE' has been set: An explicit image base address. */
  target_siz_t          l_secalign;    /*< [if(!=0)] Command-line override for section/program header alignment. */
+ DCC(symflag_t)        l_visdefault;  /*< Default symbol visibility inherited when a new compiler is created. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
  uint8_t               l_pe_subsys;   /*< [if(!=0)] Command-line override for PE subsystem. */
  uint32_t              l_pe_filalign; /*< [if(!=0)] Command-line override for PE file alignment. */

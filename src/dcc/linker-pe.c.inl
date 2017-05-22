@@ -771,8 +771,14 @@ PRIVATE void pe_mk_secvec(void) {
                                     section->sc_text.tb_begin);
    }
    if (info->si_vsize) {
+#if 0
     if (!(section->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED))
           addr += info->si_vsize;
+#elif 0
+    addr += info->si_vsize;
+#else
+    addr = section->sc_base+info->si_vsize;
+#endif
     ++info;
    }
   }

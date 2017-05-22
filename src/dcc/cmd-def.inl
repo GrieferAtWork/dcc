@@ -33,6 +33,9 @@
 GROUP_BEGIN(grp_Wl)
    OPTION_O(OPT_Wl_Bsymbolic,        OPTION_FLAG_NONE, "Bsymbolic",NULL,        NULL) /* -Wl,-Bsymbolic */
    OPTION_O(OPT_Wl_shared,           OPTION_FLAG_NONE, "shared",   NULL,        NULL) /* -Wl,-shared */
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+   OPTION_A(OPT_Wl_shared,           OPTION_FLAG_NONE, NULL,       "dll",       NULL) /* -Wl,--dll */
+#endif
    OPTION_A(OPT_Wl_shared,           OPTION_FLAG_NONE, "Bshareable",NULL,       NULL) /* -Wl,-Bshareable */
    OPTION_O(OPT_Wl_nostdlib,         OPTION_FLAG_NONE, "nostdlib", NULL,        NULL) /* -Wl,-nostdlib */
    OPTION_O(OPT_Wl_pie,              OPTION_FLAG_NONE, "pie",      NULL,        NULL) /* -Wl,-pie */
