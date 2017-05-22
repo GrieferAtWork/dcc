@@ -1042,7 +1042,8 @@ fill_data:
   }
   break;
 
- { target_ptr_t new_origin;
+ {
+  target_ptr_t new_origin;
  case KWD_org:
  case '=': /* Support for '. = 42' */
   new_origin = (target_ptr_t)DCCParse_AsmExprI();
@@ -1157,6 +1158,27 @@ fill_data:
            text->s_size+write_plus);
    TPPString_Decref(text);
   } while (TOK == ',');
+ } break;
+
+ {
+  struct DCCSym *sym;
+  target_siz_t symsiz;
+ case KWD_size:
+  YIELD();
+  if (!TPP_ISKEYWORD(TOK)) {
+   WARN(W_ASM_DIRECTIVE_SIZE_EXPECTED_KEYWORD);
+   sym = NULL;
+  } else {
+   sym = DCCUnit_NewSym(TOKEN.t_kwd,DCC_SYMFLAG_NONE);
+   YIELD();
+  }
+  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
+  symsiz = (target_siz_t)DCCParse_AsmExprI();
+  if (sym) {
+   if (sym->sy_size)
+       WARN(W_ASM_DIRECTIVE_SIZE_ALREADY_SET,sym->sy_name);
+   sym->sy_size = (target_siz_t)symsiz;
+  }
  } break;
 
  { /* Select the current section. */
@@ -1348,7 +1370,6 @@ fill_data:
   /* Directives not implemented/ignored. */
  case KWD_file:
  case KWD_ident:
- case KWD_size:
  case KWD_type:
  case KWD_lflags:
  case KWD_line:

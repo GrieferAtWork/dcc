@@ -351,6 +351,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - <code>.hidden \<SYM\></code>
     - <code>.internal \<SYM\></code>
     - <code>.weak \<SYM\></code>
+    - <code>.size \<SYM\>, <\SIZE\></code>
     - <code>.string \<STR\></code>
     - <code>.ascii \<STR\></code>
     - <code>.asciz \<STR\></code>
@@ -371,7 +372,6 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Directives ignored without warning:
     - <code>.file ...</code>
     - <code>.ident ...</code>
-    - <code>.size ...</code>
     - <code>.type ...</code>
     - <code>.lflags ...</code>
     - <code>.line ...</code>

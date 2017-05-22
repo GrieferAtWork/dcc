@@ -347,7 +347,8 @@ struct DCCRel {
 struct DCCFreeRange {
  struct DCCFreeRange *fr_next; /*< [0..1][->fr_addr > fr_addr+fr_size] Next range (Address range of this must neither overlap, or touch 'fr_addr+fr_size', as well as be greater) */
  DCC(target_ptr_t)    fr_addr; /*< Start address. */
- DCC(target_siz_t)    fr_size;
+ DCC(target_siz_t)    fr_size; /*< Range size. */
+
 };
 struct DCCFreeData {
  /* Tracking of unallocated data within a section/on the stack. */
@@ -388,8 +389,6 @@ struct DCCTextBuf {
 };
 #define DCCTextBuf_ADDR(self)            ((DCC(target_ptr_t))((self)->tb_pos-(self)->tb_begin))
 #define DCCTextBuf_SETADDR(self,a) (void)((self)->tb_pos = (self)->tb_begin+(a))
-
-
 
 struct DCCSection {
  /* Descriptor for a section/library dependency. */

@@ -175,6 +175,13 @@ DEF_BUILTIN(__builtin_clzl)
 DEF_BUILTIN(__builtin_clzll)
 DEF_BUILTIN(__builtin_clzcc) /* See above */
 
+// TODO: __builtin_ctz
+// TODO: __builtin_popcount
+// TODO: __builtin_parity
+
+// TODO: __builtin_apply_args
+// TODO: __builtin_apply
+// TODO: __builtin_return
 
 /* Automatically generates optimized code when
  * the size argument (3rd) is known at compile-time,
@@ -189,14 +196,6 @@ DEF_BUILTIN(__builtin_return_address)
 DEF_BUILTIN(__builtin_frame_address)
 DEF_BUILTIN(__builtin_extract_return_addr)
 DEF_BUILTIN(__builtin_frob_return_address)
-
-// TODO: __builtin_ctz
-// TODO: __builtin_popcount
-// TODO: __builtin_parity
-
-// TODO: __builtin_apply_args
-// TODO: __builtin_apply
-// TODO: __builtin_return
 
 DEF_BUILTIN(__sync_bool_compare_and_swap)
 DEF_BUILTIN(__sync_val_compare_and_swap)
@@ -783,6 +782,8 @@ DEF_WARNING(W_ASM_UNKNOWN_DIRECTIVE,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Unknow
 DEF_WARNING(W_ASM_EXPECTED_INTEGER_EXPRESSION,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected integer expression, but got dependency on symbol '%s'",KWDNAME()))
 DEF_WARNING(W_ASM_INVALID_ALIGNMENT,(WG_ASM,WG_VALUE),WSTATE_WARN,WARNF("Expected power-of-two for alignment, but got '%lu'",(unsigned long)ARG(size_t)))
 DEF_WARNING(W_ASM_DIRECTIVE_VISIBILITY_EXPECTED_KEYWORD,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword for symbol visibility directive, but got " TOK_S,TOK_A))
+DEF_WARNING(W_ASM_DIRECTIVE_SIZE_EXPECTED_KEYWORD,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword for symbol size directive, but got " TOK_S,TOK_A))
+DEF_WARNING(W_ASM_DIRECTIVE_SIZE_ALREADY_SET,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Symbol '%s' size was already set",KWDNAME()))
 DEF_WARNING(W_ASM_DIRECTIVE_SECTION_EXPECTED_STRING,(WG_ASM,WG_VALUE),WSTATE_WARN,WARNF("Expected string after '.section', but got " TOK_S,TOK_A))
 DEF_WARNING(W_ASM_DIRECTIVE_SECTION_UNKNOWN_FLAG,(WG_ASM,WG_VALUE),WSTATE_WARN,WARNF("Unknown section flags '%c'",ARG(char)))
 DEF_WARNING(W_ASM_DIRECTIVE_STRING_EXPECTED_STRING,(WG_ASM,WG_VALUE),WSTATE_WARN,WARNF("Expected string after '.string', but got " TOK_S,TOK_A))
@@ -1271,6 +1272,15 @@ DEF_WARNING(W_LINKER_CANT_RELOC_LIB_SECTION,(WG_LINKER),WSTATE_WARN,
             WARNF("Can't add relocations to library section '%s'",KWDNAME()))
 DEF_WARNING(W_LINKER_DELETE_UNUSED_SYMBOL,(WG_LINKER,WG_QUALITY),WSTATE_WARN,
             WARNF("Removing unused symbol '%s'",KWDNAME()))
+DEF_WARNING(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,(WG_LINKER,WG_QUALITY),WSTATE_WARN,{
+ char *sn = KWDNAME();
+ target_ptr_t p = ARG(target_siz_t);
+ target_siz_t s = ARG(target_siz_t);
+ char *sc = KWDNAME();
+ WARNF("Symbol '%s' range '%#lx..%#lx' is out-of-bounds of section '%s' range '0x0..%#lx'",
+       sn,(unsigned long)p,(unsigned long)s,
+       sc,(unsigned long)ARG(target_siz_t));
+})
 DEF_WARNING(W_LINKER_DELETE_UNUSED_STATIC_SYMBOL,(WG_LINKER,WG_QUALITY),WSTATE_WARN,
             WARNF("Removing unused static symbol '%s'",KWDNAME()))
 DEF_WARNING(W_LINKER_DELETE_UNUSED_SECTION,(WG_LINKER,WG_QUALITY),WSTATE_DISABLE,
