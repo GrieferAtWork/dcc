@@ -511,6 +511,10 @@ next_noyield:
 begin: DCCParse_Attr(attr);
  switch (TOK) {
 
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+ case KWD___w64: goto next;
+#endif
+
  { /* Parse const/volatile qualifiers. */
   tyid_t qual;
   if (DCC_MACRO_FALSE) { case KWD_const:    case KWD___const:    case KWD___const__:    qual = DCCTYPE_CONST; }

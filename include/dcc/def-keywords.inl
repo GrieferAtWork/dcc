@@ -64,6 +64,9 @@ DEF_K(inline) DEF_K(__inline) DEF_K(__inline__)
 
 /* Type flag keywords. */
 DEF_K(_Atomic)
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+DEF_K(__w64)
+#endif
 
 /* Type qualifier keywords. */
 DEF_K(const)    DEF_K(__const)    DEF_K(__const__)
@@ -347,9 +350,9 @@ PREDEFINED_MACRO_IF(_WIN64,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 PREDEFINED_MACRO_IF(linux,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 PREDEFINED_MACRO_IF(__linux,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 PREDEFINED_MACRO_IF(__linux__,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
-#elif DCC_HOST_OS == DCC_OS_FREEBSD_KERNEL
+#elif DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
 PREDEFINED_MACRO_IF(__FreeBSD_kernel__,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
-#elif DCC_HOST_OS == DCC_OS_FREEBSD
+#elif DCC_TARGET_OS == DCC_OS_FREEBSD
 PREDEFINED_MACRO_IF(__FreeBSD__,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 #endif
 
@@ -384,6 +387,11 @@ ARCH_MACRO3(i686)
 #if DCC_TARGET_CPU == DCC_CPU_X86_64
 PREDEFINED_MACRO_IF(__x86_64__,TPPLexer_HasExtension(EXT_CPU_MACROS),"1")
 #endif
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+#ifdef DCC_TARGET_IA32_VERSION
+PREDEFINED_MACRO_IF(_M_IX86,TPPLexer_HasExtension(EXT_CPU_MACROS),DCC_PP_STR(DCC_TARGET_IA32_VERSION))
+#endif
+#endif /* DCC_TARGET_OS == DCC_OS_WINDOWS */
 #undef ARCH_MACRO3
 
 #if DCC_TARGET_SIZEOF_POINTER == 8 && \
