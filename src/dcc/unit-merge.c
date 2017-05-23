@@ -475,13 +475,13 @@ merge_symflags:
    WARN(W_LINKER_CANT_RELOC_LIB_SECTION,dstsec->sc_start.sy_name);
    continue;
   }
+  merge_base = dstsec->sc_merge;
   rel_end = (rel_iter = rel_vec = srcsec->sc_relv)+srcsec->sc_relc;
-  reldst = DCCSection_Allocrel(dstsec,srcsec->sc_relc);
+  reldst = DCCSection_Allocrel(dstsec,srcsec->sc_relc,merge_base);
   srcsec->sc_rela = 0;  /* Ensure consistent state. */
   srcsec->sc_relc = 0;
   srcsec->sc_relv = NULL;
 
-  merge_base = dstsec->sc_merge;
   relbase = dstsec->sc_text.tb_begin;
   for (; rel_iter != rel_end; ++rel_iter,++reldst) {
    uint8_t *reldata; struct DCCSym *relsym;

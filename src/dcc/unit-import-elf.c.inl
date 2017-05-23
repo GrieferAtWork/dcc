@@ -810,7 +810,7 @@ done_symvec:
     struct DCCSection *relo_section;
     struct DCCTextBuf relo_text;
     struct DCCSym **relsymv;
-    size_t          relsymc,relcnt;
+    size_t          relsymc,relcnt,final_relcnt;
     target_ptr_t    relo_sec_size;
     Elf(Rel) *rel_iter,*rel_end;
     struct DCCRel *dcc_rel;
@@ -885,7 +885,7 @@ reloc_loaded:
     relo_sec_size = (target_ptr_t)(relo_section->sc_text.tb_max-
                                    relo_section->sc_text.tb_begin);
     if (relcnt &&
-       (dcc_rel = (struct DCCRel *)DCCSection_Allocrel(relo_section,relcnt)) != NULL) {
+       (dcc_rel = (struct DCCRel *)DCCSection_Allocrel(relo_section,relcnt,0)) != NULL) {
      rel_end = (rel_iter = (Elf(Rel) *)relo_text.tb_begin)+relcnt;
      for (; rel_iter != rel_end; ++rel_iter) {
       rel_t relty; uint32_t symid; struct DCCSym *rsym;
@@ -921,7 +921,16 @@ absrel:
       ++dcc_rel;
      }
      /* Fix unused (aka. invalid) relocations. */
-     relo_section->sc_relc = (size_t)(dcc_rel-relo_section->sc_relv);
+     final_relcnt = (size_t)(dcc_rel-relo_section->sc_relv);
+     assert(final_relcnt <= relcnt);
+     assert(relo_section->sc_relc >= relcnt);
+     if (relcnt != final_relcnt) {
+      memmove(relo_section->sc_relv+final_relcnt,
+              relo_section->sc_relv+relcnt,
+             (relo_section->sc_relc-relcnt)*
+              sizeof(struct DCCRel));
+      relo_section->sc_relc = final_relcnt;
+     }
     }
     free(relo_text.tb_begin);
    }

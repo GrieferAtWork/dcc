@@ -909,7 +909,7 @@ DCCSection_Putrelo(struct DCCSection *__restrict self,
   begin = self->sc_relv;
  }
  end = iter = begin+self->sc_relc;
- while (iter != begin && iter[-1].r_addr < relo->r_addr) --iter;
+ while (iter != begin && iter[-1].r_addr > relo->r_addr) --iter;
  memmove(iter+1,iter,(size_t)((end-iter)*sizeof(struct DCCRel)));
  *iter = *relo;
  DCCSym_Incref(iter->r_sym);
@@ -918,10 +918,11 @@ DCCSection_Putrelo(struct DCCSection *__restrict self,
 
 PUBLIC struct DCCRel *
 DCCSection_Allocrel(struct DCCSection *__restrict self,
-                    size_t n_relocs) {
+                    size_t n_relocs, target_ptr_t min_addr) {
  size_t minsize,newsize;
- struct DCCRel *result;
+ struct DCCRel *result,*old_end;
  assert(self);
+ assert(n_relocs);
  DCCSECTION_ASSERT_NOTANIMPORT(self);
  minsize = self->sc_relc+n_relocs;
  if (minsize > self->sc_relc) {
@@ -935,7 +936,14 @@ DCCSection_Allocrel(struct DCCSection *__restrict self,
   self->sc_relv = result;
   self->sc_rela = newsize;
  }
- result = self->sc_relv+self->sc_relc;
+ result = old_end = self->sc_relv+self->sc_relc;
+ /* Make sure to allocate relocations in the correct place! */
+ if (!min_addr) result = self->sc_relv;
+ else while (result != self->sc_relv &&
+             result[-1].r_addr >= min_addr) --result;
+ if (result != old_end) {
+  memmove(old_end,result,n_relocs*sizeof(struct DCCRel));
+ }
  self->sc_relc += n_relocs;
  return result;
 seterr: TPPLexer_SetErr();
@@ -968,6 +976,7 @@ stack_alloc_oldsym:
  }
  for (begin = del_begin,sym_iter = old_symv;
       begin != del_end; ++begin,++sym_iter)
+      assert(begin->r_addr >= addr && begin->r_addr < addr_end),
       assert(begin->r_sym),*sym_iter = begin->r_sym;
  assert(sym_iter == old_symv+result);
  assert(result <= self->sc_relc);
@@ -1863,9 +1872,12 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
      }
      assert((!*prange) || !(*prange)->ar_next ||
             (*prange)->ar_addr+(*prange)->ar_size <= (*prange)->ar_next->ar_addr);
-     if (!size) return;
+     continue;
     } else {
-     target_siz_t delsize = (addr-range->ar_addr);
+     target_siz_t delsize;
+     assert(addr_end >= range->ar_addr);
+     delsize = (addr_end-range->ar_addr);
+     assert(delsize < range->ar_size);
      DCCSection_DSafeFree(self,range->ar_addr,delsize);
      if (range->ar_refcnt == 1) {
       /* Must shrink this range. */
@@ -2243,6 +2255,7 @@ PUBLIC size_t DCCUnit_ClearUnused(void) {
    /* Delete this symbol. */
    *piter = iter->sy_unit_next; /* Inherit reference to next in '*piter'; Inherit reference in 'iter'. */
    iter->sy_unit_next = NULL;   /* Make sure that 'iter' is in a consistent state. */
+   assert(iter->sy_refcnt == 1);
 #if DCC_DEBUG
    iter->sy_refcnt = 0;
 #endif
@@ -2263,6 +2276,7 @@ PUBLIC size_t DCCUnit_ClearUnused(void) {
     /* Delete this symbols. */
     *piter = iter->sy_unit_next; /* Inherit reference to next in '*piter'; Inherit reference in 'iter'. */
     iter->sy_unit_next = NULL;   /* Make sure that 'iter' is in a consistent state. */
+    assert(iter->sy_refcnt == 1);
 #if DCC_DEBUG
     iter->sy_refcnt = 0;
 #endif

@@ -565,7 +565,8 @@ DCCFUN void DCCSection_Putrelo(struct DCCSection *__restrict self,
  * @requires: !DCCSection_ISIMPORT(self)
  * @return: NULL: Failed to allocate more relocations (A lexer error was set). */
 DCCFUN struct DCCRel *
-DCCSection_Allocrel(struct DCCSection *__restrict self, size_t n_relocs);
+DCCSection_Allocrel(struct DCCSection *__restrict self,
+                    size_t n_relocs, target_ptr_t min_addr);
 
 /* Try to resolve disposition relocations.
  * >> This function handles any redundant relocation
