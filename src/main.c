@@ -212,7 +212,8 @@ int main(int argc, char *argv[]) {
  //_CrtSetBreakAlloc(5941);
  DCCLinker_AddSysPaths(outfile_name);
 
- if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB)) {
+ if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB) &&
+     !(flags&F_COMPILEONLY)) {
 #define STDLIB(name,f) \
    {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
   static struct DCCLibDef default_stdlib[] = {

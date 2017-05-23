@@ -23,7 +23,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Process and merge multiple source-/object files/static libraries.
   - Compiling DCC is only tested and working in Visual Studio.
   - Full STD-C compliance up to C99
- 
+
 ## Planned features:
   - Full ELF target binary support.
   - Support for X86-64/AMD64 CPU architectures.
@@ -32,7 +32,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Compiling DCC with DCC (because every C compiler must be able to do that!).
   - Generation of debug information (recognizeable by gdb).
   - Finish many partially implemented features (see below).
-  - Support for ~true~ thread-local storage (aka. segment-based)
+  - Support for <b>true</b> thread-local storage (aka. segment-based)
 
 ## Features (Compiler):
   - DCC as host compiler can easily be detected with <code>defined(\_\_DCC\_VERSION\_\_)</code>.
@@ -384,6 +384,6 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Directly link against already-generated PE binaries
   - Add new library dependencies from source code (<code>#pragma comment(lib,...)</code>)
   - Output to PE binary (<b>\*.exe</b>/<b>\*.dll</b>)
- 
- 
- 
+
+
+

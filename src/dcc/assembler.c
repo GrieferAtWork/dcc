@@ -931,8 +931,8 @@ again:
   if (TOK == ':' || TOK == '=') {
    /* Assembly label. */
    sym = (instr_name == TOK_INT)
-    ? DCCUnit_NewForwardSym(instr_kwd,DCC_SYMFLAG_NONE)
-    : DCCUnit_NewSym(instr_kwd,DCC_SYMFLAG_NONE);
+    ? DCCUnit_NewForwardSym(instr_kwd,DCC_SYMFLAG_STATIC)
+    : DCCUnit_NewSym(instr_kwd,compiler.c_visibility.vs_viscur);
    if unlikely(!sym) return;
    if (TOK == '=') {
     struct DCCSymAddr v;
@@ -1174,7 +1174,7 @@ fill_data:
    WARN(W_ASM_DIRECTIVE_SIZE_EXPECTED_KEYWORD);
    sym = NULL;
   } else {
-   sym = DCCUnit_NewSym(TOKEN.t_kwd,DCC_SYMFLAG_NONE);
+   sym = DCCUnit_NewSym(TOKEN.t_kwd,compiler.c_visibility.vs_viscur);
    YIELD();
   }
   if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
@@ -1278,7 +1278,7 @@ fill_data:
   else YIELD();
   DCCParse_AsmExpr(&v);
   if unlikely(!sym_kwd) break;
-  sym = DCCUnit_NewSym(sym_kwd,DCC_SYMFLAG_NONE);
+  sym = DCCUnit_NewSym(sym_kwd,compiler.c_visibility.vs_viscur);
   if unlikely(!sym) break;
   if (v.sa_sym)
        DCCSym_Alias(sym,v.sa_sym,(target_ptr_t)v.sa_off);
