@@ -485,7 +485,8 @@ no_dynhash:
          sym = DCCUnit_NewSyms(symname,DCCLibDef_EXPFLAGS(def,flags));
          /* NOTE: Only (re-)define a symbol when it is forward,
           *       or when the library definition isn't weak. */
-         if (sym && (DCCSym_ISFORWARD(sym) || !(flags&DCC_SYMFLAG_WEAK))) {
+         if (sym && sym->sy_sec != libsec &&
+            (!(flags&DCC_SYMFLAG_WEAK) && DCCSym_ISFORWARD(sym))) {
 #if 1 /* Don't include symbol value/size information (cannot rely on either) */
           DCCSym_Define(sym,libsec,0,0);
 #else

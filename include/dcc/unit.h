@@ -171,6 +171,12 @@ struct DCCSym {
   * >>    add $4, %esp
   * >>    ret */
 #ifdef DCC_PRIVATE_API
+ /* NOTE: When defined inside a section, the following two hold a data reference
+  *       to the pointed-to memory, meaning that upon symbol deletion, any data
+  *       not otherwise shared with other symbols will be made available again.
+  * WARNING: In the event of 'sy_sec' being an import section, this behavior will not take place.
+  * WARNING: For this reason, 'sy_addr' and 'sy_size' may only be modified through
+  *          symbol re-definitions with calls to 'DCCSym_Define', 'DCCSym_Alias' and 'DCCSym_SetSize' */
  target_ptr_t              sy_addr;        /*< [const_if(sy_sec != NULL)] Symbol address (offset from associated section; undefined if 'sy_sec == NULL')
                                             *   NOTE: When this symbol depends on a library, this field may be used as a linker hint. */
  target_siz_t              sy_size;        /*< Symbol size, or 0 if unknown (used for generating better debug information & tracking free section data)
@@ -273,13 +279,28 @@ DCCFUN /*ref*/struct DCCSym *
 DCCSym_New(struct TPPKeyword const *__restrict name, DCC(symflag_t) flags);
 
 /* Define a given symbol 'self' to describe the given location.
- * NOTE: If 'self' was already defined, emit a warning, but allow it to be re-defined. */
+ * NOTES:
+ *   - If 'self' was already defined, emit a warning, but allow it to be re-defined.
+ *   - When 'size' is non-ZERO, the reference counter of the pointed-to data in
+ *     the given section 'section' will be incremented using 'DCCSection_DIncRef'.
+ *     With that in mind, it is _NOT_ the responsibility of the caller to track
+ *     symbol data reference counts! */
 DCCFUN void DCCSym_Define(struct DCCSym *__restrict self,
                           struct DCCSection *__restrict section,
                           DCC(target_ptr_t) addr, DCC(target_siz_t) size);
 DCCFUN void DCCSym_Alias(struct DCCSym *__restrict self,
                          struct DCCSym *__restrict alias_sym,
                          DCC(target_ptr_t) offset);
+
+/* Set the size of a given symbol to 'size', updating
+ * the reference counter of potentially mapped data.
+ * Note though, that while setting the size of an undefined symbol
+ * is technically allowed, there is not much point to it as
+ * it being re-defined as either an alias, or section symbol
+ * will override the stored size unless the caller at that time
+ * would explicitly state the stored size as new size. */
+DCCFUN void DCCSym_SetSize(struct DCCSym *__restrict self,
+                           DCC(target_siz_t) size);
 
 /* Define a given symbol 'self' to describe the symbol address 'symaddr'.
  * During this operation, 'self' will be redefined as offset-alias, or section/abs symbol. */
@@ -353,11 +374,11 @@ struct DCCFreeRange {
  struct DCCFreeRange *fr_next; /*< [0..1][->fr_addr > fr_addr+fr_size] Next range (Address range of this must neither overlap, or touch 'fr_addr+fr_size', as well as be greater) */
  DCC(target_ptr_t)    fr_addr; /*< Start address. */
  DCC(target_siz_t)    fr_size; /*< Range size. */
-
 };
+
 struct DCCFreeData {
  /* Tracking of unallocated data within a section/on the stack. */
- struct DCCFreeRange *fd_begin; /*< [0..1][->fr_prev == NULL][owned|owned(->fr_next->...)]
+ struct DCCFreeRange *fd_begin; /*< [0..1][owned|owned(->fr_next->...)]
                                  *   Linked list head of free address ranges. */
 };
 
@@ -385,6 +406,15 @@ DCCFreeData_Release(struct DCCFreeData *__restrict self,
                     DCC(target_ptr_t) addr, DCC(target_siz_t) size);
 
 
+struct DCCAllocRange {
+ struct DCCAllocRange *ar_next;   /*< [0..1][->ar_addr > ar_addr+ar_size] Next range (Address range of this must neither overlap, or touch 'ar_addr+ar_size', as well as be greater) */
+ DCC(target_ptr_t)     ar_addr;   /*< Start address. */
+ DCC(target_siz_t)     ar_size;   /*< [!0] Range size. */
+ unsigned int          ar_refcnt; /*< [!0] Range reference counter (When this hits ZERO, the range is deallocated). */
+};
+
+
+
 struct DCCTextBuf {
  uint8_t *tb_begin; /*< [0..1][<= tb_end][owned] Start pointer for assembly code. */
  uint8_t *tb_end;   /*< [0..1][>= tb_begin] Compile-time allocated code end. */
@@ -397,36 +427,49 @@ struct DCCTextBuf {
 
 struct DCCSection {
  /* Descriptor for a section/library dependency. */
- struct DCCSym       sc_start; /*< Start symbol (always a label at offset '0' of this same section).
-                                *  NOTE: This symbol also contains the name & flags of this section. */
- size_t              sc_symc;  /*< Amount of symbols in 'sc_symv'. */
- size_t              sc_syma;  /*< Allocated bucket count in 'sc_symv'. */
- struct DCCSym     **sc_symv;  /*< [0..1][chain(sy_sec_pself|sy_sec_next->...)][0..sc_syma][owned]
-                                *   Hash-map of symbols declared within this section. */
+ struct DCCSym         sc_start; /*< Start symbol (always a label at offset '0' of this same section).
+                                  *  NOTE: This symbol also contains the name & flags of this section. */
+ size_t                sc_symc;  /*< Amount of symbols in 'sc_symv'. */
+ size_t                sc_syma;  /*< Allocated bucket count in 'sc_symv'. */
+ struct DCCSym       **sc_symv;  /*< [0..1][chain(->sy_sec_pself|->sy_sec_next->...)][0..sc_syma][owned]
+                                  *   Hash-map of symbols declared within this section. */
  /* NOTE: The linked list described by the following pointer triple depends on 'DCCSection_ISIMPORT(self)'. */
- struct DCCUnit     *sc_unit;  /*< [0..1] Unit associated with this section. */
- struct DCCSection **sc_pself; /*< [1..1|==self][0..1] Self-pointer in the 'sc_next->...' section chain. */
- struct DCCSection  *sc_next;  /*< [0..1][chain(sc_next->...)] Next section in the unit with the same moduled name-id. */
+ struct DCCUnit       *sc_unit;  /*< [0..1] Unit associated with this section. */
+ struct DCCSection   **sc_pself; /*< [1..1|==self][0..1] Self-pointer in the 'sc_next->...' section chain. */
+ struct DCCSection    *sc_next;  /*< [0..1][chain(->sc_next->...)] Next section in the unit with the same moduled name-id. */
  /* NOTE: None of the below are available when 'DCCSection_ISIMPORT(self)' evaluates to non-ZERO(0). */
- /* TODO: Add a system for dynamically counting usage of text ranges.
-  *    >> Required for tracking references when merging data.
-  *       Basically: 'DCCSection_DFree' must act like a decref() function. */
- struct DCCTextBuf   sc_text;  /*< Flushed section text buffer (May not be up-to-date for the current section). */
- struct DCCFreeData  sc_free;  /*< Tracker for free section data. */
+ struct DCCTextBuf     sc_text;  /*< Flushed section text buffer (May not be up-to-date for the current section). */
+ struct DCCFreeData    sc_free;  /*< Tracker for free section data. */
+ /* Why is reference-counted section memory important? - This is why:
+  *     Because now that assembly can define symbol sizes, we can no
+  *     longer safely use those values for section data tracking.
+  *     Instead, changing the size in assembly must acquire/release
+  *     references which is going to be a requirement for keeping
+  *     data references throughout object file generation.
+  * PROBLEM: Two assembly symbols describe the same area of memory (aka. hard-alias)
+  * >> a:                    
+  * >> b:                    
+  * >> .string "This is the data"                    
+  * >> .size a, . - a
+  * >> .size b, . - b
+  * When neither 'a', nor 'b' are used, both will try to free the same data.
+  * >> CRASH!
+  * ALSO: This will be required for object-file hard aliases. */
+ struct DCCAllocRange *sc_alloc; /*< [0..1][chain(->ar_next->...)] Reference-counted tracking of section text. */
 #ifdef DCC_PRIVATE_API
- target_ptr_t        sc_align; /*< Minimum section alignment (ignored & interpreted as '1' when 'DCC_SYMFLAG_SEC_U' is set) */
+ target_ptr_t          sc_align; /*< Minimum section alignment (ignored & interpreted as '1' when 'DCC_SYMFLAG_SEC_U' is set) */
 #else
- DCC(target_ptr_t)   sc_align; /*< Minimum section alignment (ignored & interpreted as '1' when 'DCC_SYMFLAG_SEC_U' is set) */
+ DCC(target_ptr_t)     sc_align; /*< Minimum section alignment (ignored & interpreted as '1' when 'DCC_SYMFLAG_SEC_U' is set) */
 #endif
- target_ptr_t        sc_base;  /*< Base address of this section (or NULL if &DCCSection_Abs, or not runtime-relocated) */
- target_ptr_t        sc_merge; /*< Used during merging: Base address of merge destination. */
+ target_ptr_t          sc_base;  /*< Base address of this section (or NULL if &DCCSection_Abs, or not runtime-relocated) */
+ target_ptr_t          sc_merge; /*< Used during merging: Base address of merge destination. */
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
- struct DCCSection  *sc_elflnk; /*< [0..1] Used by ELF: Link section. */
+ struct DCCSection    *sc_elflnk; /*< [0..1] Used by ELF: Link section. */
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
- size_t              sc_relc;  /*< Amount of relocations currently in use. */
- size_t              sc_rela;  /*< Amount of allocated relocations. */
- struct DCCRel      *sc_relv;  /*< [0..sc_relc|alloc(sc_rela)|sort(->r_addr,<)][owned]
-                                *   Vector of relocations to memory within this section. */
+ size_t                sc_relc;  /*< Amount of relocations currently in use. */
+ size_t                sc_rela;  /*< Amount of allocated relocations. */
+ struct DCCRel        *sc_relv;  /*< [0..sc_relc|alloc(sc_rela)|sort(->r_addr,<)][owned]
+                                  *   Vector of relocations to memory within this section. */
 };
 
 /* Builtin section: ABS (Absolute section always relocated & with a base at ZERO) */
@@ -681,6 +724,9 @@ DCCSection_DAllocMem(struct DCCSection *__restrict self,
 /* A further simplification for 'DCCSection_DAllocMem', that returns
  * a reference to a symbol describing the newly allocated data.
  * NOTE: The symbol is added to the current unit as an unnamed, static definition.
+ * NOTE: A reference to the allocated memory will be associated
+ *       with the symbol, meaning that data will be released
+ *       through 'DCCSection_DDecRef' upon the symbol's deletion.
  * @requires: !DCCSection_ISIMPORT(self) */
 DCCFUN struct DCCSym *
 DCCSection_DAllocSym(struct DCCSection *__restrict self,
@@ -688,7 +734,51 @@ DCCSection_DAllocSym(struct DCCSection *__restrict self,
                      DCC(target_siz_t) mem_size, DCC(target_siz_t) size,
                      DCC(target_siz_t) align, DCC(target_siz_t) offset);
 
+/* Increments the reference counter of shared section data.
+ * NOTE: Out-of-bounds address ranges will be allocated symbolically,
+ *       meaning that it is possible to hold references to unallocated
+ *       regions of memory.
+ * WARNING: Upon internal failure, a lexer error may be set.
+ * NOTE: Simply because this function never modifies the section
+ *       text buffer, it is fully legitimate to pass 'unit.u_curr'
+ *       as argument for 'self', meaning this function still
+ *       behaves properly, even when the passed section is
+ *       the one currently selected as text target.
+ * @requires: !DCCSection_ISIMPORT(self) */
+DCCFUN void
+DCCSection_DIncref(struct DCCSection *__restrict self,
+                   DCC(target_ptr_t) addr,
+                   DCC(target_siz_t) size);
+
+/* Doing the opposite of 'DCCSection_DIncref', the reference
+ * counter associated with the given address range is
+ * decremented, with the additional side-effect being
+ * that any part of the address range containing a
+ * reference counter that is then going to be ZERO(0), is
+ * going to be de-allocated with a call to 'DCCSection_DFree'.
+ * NOTE: In the event that data is freed using 'DCCSection_DFree',
+ *       additional checks are performed to ensure that no out-of-bounds
+ *       data would be marked as free, with a warning being emit
+ *       in the event that data was out-of-bounds.
+ * On the flip-side though, just as with 'DCCSection_DIncref',
+ * it is still possible to pass out-of-bounds address ranges
+ * simply because of the ability of explicitly setting/overriding
+ * a symbol's size from assembly.
+ * WARNING: Upon internal failure, a lexer error may be set.
+ * NOTE: Unlike all other data/text-related section functions,
+ *       it is allowed to pass 'unit.u_curr' for 'self', as the
+ *       function will automatically flush/restore the section
+ *       text buffer in the event that it must be modified
+ *       when data is freed during a call to 'DCCSection_DFree'
+ * @requires: !DCCSection_ISIMPORT(self) */
+DCCFUN void
+DCCSection_DDecref(struct DCCSection *__restrict self,
+                   DCC(target_ptr_t) addr,
+                   DCC(target_siz_t) size);
+
 /* Free a given section address range & clear all relocations inside.
+ * NOTE: This function differs from section incref/decref,
+ *       as associated memory is freed immediately.
  * @requires: !DCCSection_ISIMPORT(self) */
 DCCFUN void
 DCCSection_DFree(struct DCCSection *__restrict self,

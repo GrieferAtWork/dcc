@@ -84,6 +84,56 @@ found_sec:
 }
 #endif
 
+extern void
+DCCSection_DIncrefN_impl(struct DCCSection *__restrict self,
+                         target_ptr_t addr, target_siz_t size,
+                         unsigned int n_refcnt);
+PRIVATE void DCCSection_InsAlloc(struct DCCSection *__restrict self,
+                    /*inherited*/struct DCCAllocRange *range,
+                                 target_ptr_t ins_base) {
+ struct DCCAllocRange *iter,*next,**pinsert;
+ if unlikely(!range) return; /* nothing to inherit! */
+ pinsert = &self->sc_alloc;
+ while ((iter = *pinsert) != NULL &&
+         iter->ar_addr+iter->ar_size < ins_base)
+         pinsert = &iter->ar_next;
+ assert(iter == *pinsert);
+ if (!iter) {
+  /* Simple (and likely) case: We can append the inherited range chain at the end. */
+  if (ins_base) {
+   for (iter = range; iter; iter = iter->ar_next)
+        iter->ar_addr += ins_base;
+  }
+  *pinsert = range; /* Inherit _all_ */
+  if (pinsert != &self->sc_alloc) {
+   /* Check if we must merge the last range of 'self' with 'range'. */
+   iter = (struct DCCAllocRange *)((uintptr_t)pinsert-
+                                   offsetof(struct DCCAllocRange,ar_next));
+   if (iter->ar_refcnt == range->ar_refcnt &&
+       iter->ar_addr+iter->ar_size == range->ar_addr) {
+    /* Extend the last range of 'self' and delete the first from 'range'. */
+    iter->ar_size += range->ar_size;
+    iter->ar_next  = range->ar_next;
+    free(range);
+   }
+  }
+ } else {
+  /* Complicated case: Manually merge all references by allocating new ones. */
+  iter = range;
+  for (;;) {
+   assert(iter);
+   assert(iter->ar_refcnt);
+   DCCSection_DIncrefN_impl(self,
+                            iter->ar_addr+ins_base,
+                            iter->ar_size,
+                            iter->ar_refcnt);
+   next = iter->ar_next;
+   free(iter);
+   if unlikely(!next) break;
+   iter = next;
+  }
+ }
+}
 
 
 PUBLIC void
@@ -119,8 +169,51 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
     memcpy(dst_buffer,srcsec->sc_text.tb_begin,other_sec_size);
    }
    dstsec->sc_merge = other_sec_base;
-   /* TODO: Inherit all free data ranges. */
-   //srcsec->sc_free.fd_begin;
+   /* Inherit all allocated data ranges. */
+   DCCSection_InsAlloc(dstsec,srcsec->sc_alloc,other_sec_base);
+   srcsec->sc_alloc = NULL;
+   /* Inherit all free data ranges. */
+   if (srcsec->sc_free.fd_begin) {
+    struct DCCFreeRange **pinsert,*ins,*iter,*before_ins;
+    /* Update all source free address ranges. */
+    iter = srcsec->sc_free.fd_begin;
+    do iter->fr_addr += other_sec_base;
+    while ((iter = iter->fr_next) != NULL);
+
+    pinsert = &dstsec->sc_free.fd_begin;
+    while ((ins = *pinsert) != NULL &&
+            ins->fr_addr < other_sec_base)
+            pinsert = &ins->fr_next;
+    /* Insert all source free ranges into '*pinsert' */
+    *pinsert = iter = srcsec->sc_free.fd_begin;
+    if (pinsert != &dstsec->sc_free.fd_begin) {
+     /* Must check to see if we must merge this free range with the previous one! */
+     before_ins = (struct DCCFreeRange *)((uintptr_t)pinsert-
+                                          offsetof(struct DCCFreeRange,fr_next));
+     if (before_ins->fr_addr+before_ins->fr_size == iter->fr_addr) {
+      /* Must merge the first range of the new section with the last of the old. */
+      before_ins->fr_size += iter->fr_size;
+      before_ins->fr_next = iter->fr_next;
+      free(iter);
+      iter = before_ins->fr_next;
+     }
+    }
+    srcsec->sc_free.fd_begin = NULL;
+    if (ins) {
+     /* Must append this portion to the end. */
+     while (iter->fr_next) iter = iter->fr_next;
+     assert(ins->fr_addr >= iter->fr_addr+iter->fr_size);
+     if (iter->fr_addr+iter->fr_size == ins->fr_addr) {
+      /* Must merge the last range of the new section
+       * with the one following the insertion point. */
+      iter->fr_size += ins->fr_size;
+      iter->fr_next = ins->fr_next;
+      free(ins);
+     } else {
+      iter->fr_next = ins;
+     }
+    }
+   }
   }
  }
 
@@ -311,8 +404,16 @@ fix_alias:
      if (src_sym->sy_sec) {
       /* Section merge adjustments were already made above! */
       DCCSym_Define(dst_sym,src_sym->sy_sec,
-                    src_sym->sy_addr,src_sym->sy_size);
-      src_sym->sy_size = 0; /* Inherit all data. */
+                    src_sym->sy_addr,0);
+      /* Really hacky: inherit all data.
+       * Since we've already inherited all section references,
+       * we must not create new ones when inheriting symbol data!
+       * For that reason, we manually inherit the data after initially
+       * lying by stating that the symbol wouldn't have a size.
+       * >> This way, we prevent an unnecessary (and temporary)
+       *    data reference to the source symbol! */
+      dst_sym->sy_size = src_sym->sy_size;
+      src_sym->sy_size = 0;
       goto merge_symflags;
      } else if (src_sym->sy_alias) {
       /* 'sy_alias' is known to belong to the merged unit. */
@@ -337,6 +438,8 @@ merge_symflags:
   { struct DCCSym *sym,*basesym;
     /* Must re-link ITA functions. */
     DCCUnit_ENUMSYM(sym) {
+     /* TODO: Wouldn't it suffice only to relink ITA functions of symbols from 'other'.
+      *       >> As in everything symbol from other with 'sy_peind' set? */
      assert(sym);
      if (sym->sy_name->k_size <= 4) continue;
      if (memcmp(sym->sy_name->k_name,ITA_PREFIX,

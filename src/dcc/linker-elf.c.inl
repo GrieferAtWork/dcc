@@ -720,6 +720,7 @@ PRIVATE void elf_mk_delnoprel(void) {
    if (rel_iter->r_type == DCC_R_NONE) {
     /* Delete this relocation, but inherit the associated symbol's data. */
     assert(rel_iter->r_sym);
+    /* NOTE: Leaving the associated section data dangling here, is intended! */
     rel_iter->r_sym->sy_size = 0;
     DCCSym_Decref(rel_iter->r_sym);
     assert(sec->sc_relc);

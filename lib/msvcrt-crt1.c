@@ -47,12 +47,18 @@ int main(int argc, char **argv, char **env);
 
 extern void exit(int exitcode) __attribute__((noreturn));
 
+__attribute__((
+	used, /* Must mark as 'used' to not delete
+	       * this symbol from the object file
+	       * NOTE: Symbol are only being deleted because of
+	       *       the '--clear-unused-obj' comment above! */
+	noreturn
+))
 #ifdef __PE__
 void __start(void)
 #else
 void _start(void)
 #endif
-	__attribute__((used,noreturn))
 {
 	int argc; char **argv; char **env; int ret;
 	_startupinfo start_info = {0};

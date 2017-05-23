@@ -1182,7 +1182,7 @@ fill_data:
   if (sym) {
    if (sym->sy_size)
        WARN(W_ASM_DIRECTIVE_SIZE_ALREADY_SET,sym->sy_name);
-   sym->sy_size = (target_siz_t)symsiz;
+   DCCSym_SetSize(sym,(target_siz_t)symsiz);
   }
  } break;
 

@@ -1193,7 +1193,8 @@ PRIVATE void pe_mk_buildita(void) {
     * >> .section ".string"
     * >> message: .string "Messagebox Text!"
     */
-   /* Hacky temporary storage for what will eventually become 'lib_sym->sy_addr' */
+   /* Hacky temporary storage for what will eventually become 'lib_sym->sy_addr'
+    * NOTE: Using 'sy_size' here is OK, because the field is unused for IMPORT symbols. */
    iat_sym->sy_size = iat_addr;
    DCCSection_Putrel(linker.l_text,iat_addr+2,DCC_R_DATA_PTR,iat_sym);
 

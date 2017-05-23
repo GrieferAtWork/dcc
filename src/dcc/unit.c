@@ -45,13 +45,13 @@
 
 DCC_DECL_BEGIN
 
-#define DCC_SECTION_HAVE_MERGE 0 /* Requires reference-counted data-allocation tracking. */
-
 LOCAL struct DCCFreeRange *DCCFreeRange_New(target_ptr_t addr, target_siz_t size);
 LOCAL void DCCSection_Destroy(struct DCCSection *__restrict self);
 extern void DCCSection_InsSym(struct DCCSection *__restrict self, struct DCCSym *__restrict sym);
 LOCAL void DCCSection_CheckRehash(struct DCCSection *__restrict self);
 LOCAL void DCCSection_RehashSymbols(struct DCCSection *__restrict self, size_t newsize);
+LOCAL void DCCSection_DSafeFree(struct DCCSection *__restrict self, target_ptr_t addr, target_siz_t size);
+
 extern void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym);
 LOCAL void DCCUnit_CheckRehash(void);
 LOCAL void DCCUnit_RehashSymbols(size_t newsize);
@@ -450,6 +450,16 @@ DCCSection_Destroy(struct DCCSection *__restrict self) {
   /* Delete free section memory. */
   DCCFreeData_Quit(&self->sc_free);
 
+  /* Delete allocated section memory reference counters. */
+  { struct DCCAllocRange *iter,*next;
+    iter = self->sc_alloc;
+    while (iter) {
+     next = iter->ar_next;
+     free(iter);
+     iter = next;
+    }
+  }
+
   /* Delete base memory. */
 #ifdef DCC_SYMFLAG_SEC_OWNSBASE
   if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE) {
@@ -506,9 +516,8 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
   if (self->sy_alias) {
    DCCSym_Decref(self->sy_alias);
   } else if (self->sy_sec) {
-   if (!dcc_no_recursive_symdel && self->sy_size) {
-    target_siz_t siz_max;
-    target_ptr_t sym_end;
+   if (!dcc_no_recursive_symdel && self->sy_size &&
+       !DCCSection_ISIMPORT(self->sy_sec)) {
     if (!(self->sy_flags&DCC_SYMFLAG_UNUSED) &&
           self->sy_name != &TPPKeyword_Empty) {
      /* Emit a warning about removing unused symbols. */
@@ -516,25 +525,9 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
           ? W_LINKER_DELETE_UNUSED_STATIC_SYMBOL
           : W_LINKER_DELETE_UNUSED_SYMBOL,self->sy_name);
     }
-    /* Since symbol size can be set from assembly using the '.size' directive,
-     * we must make sure that out-of-bounds symbol sizes don't cause undefined
-     * behavior, but are warned about instead. */
-    siz_max = (target_siz_t)(self->sy_sec->sc_text.tb_max-
-                             self->sy_sec->sc_text.tb_begin);
-    sym_end = self->sy_addr+self->sy_size;
-    if (sym_end < self->sy_addr || sym_end > siz_max) {
-     WARN(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,
-          self->sy_name,
-         (target_ptr_t)self->sy_addr,
-         (target_ptr_t)(self->sy_addr+self->sy_size),
-          self->sy_sec->sc_start.sy_name,
-         (target_ptr_t)siz_max);
-     if (self->sy_addr > siz_max) self->sy_addr = siz_max;
-     self->sy_size = siz_max-self->sy_addr;
-    }
-    DCCSection_DFree(self->sy_sec,
-                     self->sy_addr,
-                     self->sy_size);
+    DCCSection_DDecref(self->sy_sec,
+                       self->sy_addr,
+                       self->sy_size);
    }
    DCCSection_Decref(self->sy_sec);
   }
@@ -663,7 +656,15 @@ DCCSym_ClearDef(struct DCCSym *__restrict self, int warn) {
    self->sy_sec_pself = NULL;
    self->sy_sec_next  = NULL;
   }
-  if (old_sec) DCCSection_Decref(old_sec);
+  if (old_sec) {
+   if (self->sy_size &&
+      !DCCSection_ISIMPORT(old_sec)) {
+    DCCSection_DDecref(old_sec,
+                       self->sy_addr,
+                       self->sy_size);
+   }
+   DCCSection_Decref(old_sec);
+  }
   if (old_alias) DCCSym_Decref(old_alias);
  }
 }
@@ -689,7 +690,27 @@ DCCSym_Define(struct DCCSym *__restrict self,
  self->sy_sec  = section; /* Inherit reference. */
  DCCSection_Incref(section); /* Create reference for above. */
  DCCSection_InsSym(section,self);
+ /* Acquire a reference to the pointed-to address range of this symbol. */
+ if (!DCCSection_ISIMPORT(section))
+      DCCSection_DIncref(section,addr,size);
 }
+PUBLIC void
+DCCSym_SetSize(struct DCCSym *__restrict self,
+               target_siz_t size) {
+ target_siz_t old_size;
+ DCCSym_ASSERT(self);
+ old_size = self->sy_size;
+ self->sy_size = size;
+ if (self->sy_sec && !DCCSection_ISIMPORT(self->sy_sec)) {
+  /* Must update section data reference counters. */
+  if (size < old_size) { /* Decref old region. */
+   DCCSection_DDecref(self->sy_sec,self->sy_addr+size,old_size-size);
+  } else if (size > old_size) { /* Incref new region. */
+   DCCSection_DIncref(self->sy_sec,self->sy_addr+old_size,size-old_size);
+  }
+ }
+}
+
 PUBLIC void
 DCCSym_Alias(struct DCCSym *__restrict self,
              struct DCCSym *__restrict alias_sym,
@@ -698,7 +719,7 @@ DCCSym_Alias(struct DCCSym *__restrict self,
  DCCSym_ASSERT(alias_sym);
  /* Don't warn when re-declared as the same alias. */
  if (self->sy_alias == alias_sym &&
-     self->sy_addr == offset) return;
+     self->sy_addr  == offset) return;
  { /* Make sure this alias doesn't produce an infinite recursion,
     * which could happen when 'self' can be reached through 'alias_sym' */
   struct DCCSym *alias_iter = alias_sym;
@@ -711,7 +732,6 @@ DCCSym_Alias(struct DCCSym *__restrict self,
    alias_iter = alias_iter->sy_alias;
   }
  }
-
  DCCSym_ClearDef(self,1);
  DCCSym_Incref(alias_sym);
  self->sy_alias = alias_sym; /* Inherit reference. */
@@ -1379,19 +1399,17 @@ end:
  return result;
 }
 
-#if DCC_SECTION_HAVE_MERGE
 PRIVATE int
 memeq_sized(uint8_t const *a, size_t a_size,
             uint8_t const *b, size_t b_size) {
  uint8_t const *iter,*end;
  assert(a_size >= b_size);
- if (!memcmp(a,b,b_size)) return 0;
+ if (memcmp(a,b,b_size) != 0) return 0;
  end = (iter = a+b_size)+(a_size-b_size);
  /* Check the overflow area for being filled with nothing but ZEROes. */
  for (; iter != end; ++iter) if (*iter != 0) return 0;
  return 1;
 }
-#endif /* DCC_SECTION_HAVE_MERGE */
 
 PUBLIC target_ptr_t
 DCCSection_DMerge(struct DCCSection *__restrict self,
@@ -1405,7 +1423,6 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
         (unsigned long)addr,(unsigned long)min_align);
  (void)size;
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
-#if DCC_SECTION_HAVE_MERGE
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_M) {
   uint8_t *addr_data,*search_iter,*search_end;
   target_siz_t allocated_size;
@@ -1444,7 +1461,6 @@ check_bss:
   }
  }
 end:
-#endif /* DCC_SECTION_HAVE_MERGE */
  return result;
 }
 
@@ -1455,6 +1471,7 @@ DCCSection_DAllocMem(struct DCCSection *__restrict self,
                      target_siz_t mem_size, target_siz_t size,
                      target_siz_t align, target_siz_t offset) {
  target_ptr_t result; void *secdat;
+ uint8_t *iter,*end;
  assert(self);
  assert(mem_size <= size);
  assertf(align,"Invalid alignment");
@@ -1463,32 +1480,52 @@ DCCSection_DAllocMem(struct DCCSection *__restrict self,
      self->sc_align = align;
  /* Optimize away trailing ZERO-bytes, instead using bss-trailing memory. */
  while (mem_size && ((uint8_t *)memory)[mem_size-1] == 0) --mem_size;
-#if DCC_SECTION_HAVE_MERGE
  if (!(self->sc_start.sy_flags&DCC_SYMFLAG_SEC_M)) goto alloc_normal;
- uint8_t *iter,*end;
  iter = self->sc_text.tb_begin;
  end  = self->sc_text.tb_end;
- if (self->sc_text.tb_max < end) end = self->sc_text.tb_max;
+ if (end > self->sc_text.tb_max)
+     end = self->sc_text.tb_max;
  end -= (size+offset);
  if (end >= self->sc_text.tb_end) goto alloc_normal;
+ iter += offset;
  while (iter < end) {
-  if (memeq_sized(iter+offset,size,(uint8_t const *)memory,mem_size)) {
+  if (memeq_sized(iter,size,(uint8_t const *)memory,mem_size)) {
    /* We've got a match! */
-   result = (target_ptr_t)(iter-self->sc_text.tb_begin)+offset;
-   goto end;
+   result = (target_ptr_t)(iter-self->sc_text.tb_begin);
+   goto done;
   }
   iter += align;
  }
+ if (size != mem_size) {
+  target_ptr_t trail_addr;
+  /* Check for match in trailing ZERO-memory. */
+  end = self->sc_text.tb_end;
+  if (end > self->sc_text.tb_max)
+      end = self->sc_text.tb_max;
+  trail_addr  = (end-self->sc_text.tb_begin);
+  trail_addr -=  mem_size;
+  trail_addr  = (trail_addr+(align-1)) & ~(align-1);
+  trail_addr += offset;
+  iter = self->sc_text.tb_begin+trail_addr;
+  if (iter <  self->sc_text.tb_begin || iter >= end) goto alloc_normal;
+  if (!memcmp(iter,memory,mem_size)) {
+   /* We've got a match! */
+   result = trail_addr;
+   iter  += size;
+   /* Make sure to reserve trailing ZERO-memory. */
+   if (self->sc_text.tb_max < iter)
+       self->sc_text.tb_max = iter;
+   goto done;
+  }
+ }
+
 alloc_normal:
-#endif /* DCC_SECTION_HAVE_MERGE */
  result = DCCSection_DAlloc(self,size,align,offset);
  secdat = DCCSection_GetText(self,result,mem_size);
  if likely(secdat) memcpy(secdat,memory,mem_size);
- /* No need to merge. - If we've here that wouldn't do any good! */
-//result = DCCSection_DMerge(self,result,size,align);
-#if DCC_SECTION_HAVE_MERGE
-end:
-#endif
+ /* No need to merge. - If we're here that wouldn't do any good! */
+ //result = DCCSection_DMerge(self,result,size,align);
+done:
  return result;
 }
 PUBLIC struct DCCSym *
@@ -1505,6 +1542,433 @@ DCCSection_DAllocSym(struct DCCSection *__restrict self,
  DCCSym_ASSERT(result);
  return result;
 }
+
+
+/* Same as 'DCCSection_DFree', but validates the addr|size arguments
+ * and fixes them while emitting a warning if they are out-of-bounds.
+ * >> Since symbol size can be set from assembly using the '.size' directive,
+ *    we must make sure that out-of-bounds symbol sizes don't cause undefined
+ *    behavior, but are warned about instead.
+ * NOTE: In addition, this function handles the even of
+ *      'self' being the currently selected section. */
+LOCAL void
+DCCSection_DSafeFree(struct DCCSection *__restrict self,
+                     target_ptr_t addr, target_siz_t size) {
+ target_ptr_t sym_end;
+ target_siz_t siz_max;
+ DCCSection_TBEGIN(self);
+ siz_max = (target_siz_t)(self->sc_text.tb_max-
+                          self->sc_text.tb_begin);
+ sym_end = addr+size;
+ if (sym_end < addr || sym_end > siz_max) {
+  WARN(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,
+      (target_ptr_t)addr,
+      (target_ptr_t)(addr+size),
+       self->sc_start.sy_name,
+      (target_ptr_t)siz_max);
+  if (addr > siz_max) addr = siz_max;
+  size = siz_max-addr;
+ }
+ DCCSection_DFree(self,addr,size);
+ DCCSection_TEND(self);
+}
+
+
+LOCAL struct DCCAllocRange *
+DCCAllocRange_New(target_ptr_t addr,
+                  target_siz_t size,
+                  unsigned int refcnt) {
+ struct DCCAllocRange *result;
+ assert(refcnt);
+ assert(size);
+ result = (struct DCCAllocRange *)malloc(sizeof(struct DCCAllocRange));
+ if unlikely(!result) TPPLexer_SetErr();
+ else {
+  result->ar_addr = addr;
+  result->ar_size = size;
+  result->ar_refcnt = refcnt;
+ }
+ return result;
+}
+
+LOCAL void
+DCCSection_DIncrefN(struct DCCSection *__restrict self,
+                    target_ptr_t addr, target_siz_t size,
+                    unsigned int n_refcnt) {
+ struct DCCAllocRange **prange,*range;
+ struct DCCAllocRange *newrange;
+ target_ptr_t addr_end,range_end;
+ assert(self);
+ assert(!DCCSection_ISIMPORT(self));
+ assert(n_refcnt);
+ if unlikely(!OK) return; /* Don't do anything if an error occurred. */
+ if unlikely(!size) return; /* nothing to do here! */
+ addr_end = addr+size;
+ prange = &self->sc_alloc;
+ /* TODO: This function (seems) to work, but it could be written _MUCH_ better! */
+ while ((range = *prange) != NULL) {
+  target_siz_t bytes_until_next_range;
+  assert(size);
+  assert(range->ar_size);
+  assert(range->ar_refcnt);
+  assert(addr_end == addr+size);
+  range_end = range->ar_addr+range->ar_size;
+  assert(addr >= range->ar_addr);
+  assert(range_end > range->ar_addr);
+  assert(!range->ar_next || range_end <= range->ar_next->ar_addr);
+
+  if (range_end >= addr) {
+   target_siz_t insbefore_size;
+   /* The requested range is located before this one. */
+   if (range->ar_refcnt == n_refcnt &&
+       range->ar_addr   == addr_end) {
+    /* Extend this range downwards. */
+    range->ar_addr -= size;
+    if (prange != &self->sc_alloc) {
+     struct DCCAllocRange *prev_range;
+     prev_range = ((struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)));
+     assert(prev_range->ar_next == range);
+     assert(prev_range->ar_addr+prev_range->ar_size <= range->ar_addr);
+     if (prev_range->ar_addr+prev_range->ar_size == range->ar_addr &&
+         prev_range->ar_refcnt == range->ar_refcnt) {
+      /* Special case: Merge these two ranges. */
+      prev_range->ar_size += range->ar_size;
+      prev_range->ar_next  = range->ar_next;
+      free(range);
+     }
+     assert(!prev_range->ar_next ||
+             prev_range->ar_addr+prev_range->ar_size <=
+             prev_range->ar_next->ar_addr);
+    }
+    return;
+   }
+   if (range->ar_addr >= addr) {
+    insbefore_size = range->ar_addr-addr;
+    if (insbefore_size) {
+     if (insbefore_size > size)
+         insbefore_size = size;
+     assert(insbefore_size);
+     /* Must insert a new range before this one! */
+     newrange = DCCAllocRange_New(addr,insbefore_size,n_refcnt);
+     if unlikely(!newrange) return;
+     newrange->ar_next = range; /* Inherit object. */
+     *prange           = newrange; /* Inherit object. */
+     size             -= insbefore_size;
+     assert(newrange->ar_next == range);
+     assert(newrange->ar_addr+newrange->ar_size <= range->ar_addr);
+     assert(!range->ar_next ||
+             range->ar_addr+range->ar_size <=
+             range->ar_next->ar_addr);
+     if unlikely(!size) return;
+     addr += insbefore_size;
+     range = newrange;
+     range_end = addr;
+     assert(range_end == range->ar_addr+range->ar_size);
+    } else if ((assert(addr      == range->ar_addr),
+                       range_end == addr_end)) {
+     assert(range->ar_addr == addr);
+     assert(range->ar_size == size);
+     /* This entire range is the perfect match! */
+     range->ar_refcnt += n_refcnt;
+     /* Must check neighboring ranges for merging. */
+     newrange = range->ar_next;
+     if (newrange &&
+         newrange->ar_refcnt == range->ar_refcnt &&
+         newrange->ar_addr == range_end) {
+      /* Merge with range above. */
+      range->ar_size += newrange->ar_size;
+      range->ar_next  = newrange->ar_next;
+      free(newrange);
+     }
+     assert(!range->ar_next ||
+             range->ar_addr+range->ar_size <=
+             range->ar_next->ar_addr);
+     assert(addr == range->ar_addr);
+     if (prange != &self->sc_alloc) {
+      newrange = ((struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)));
+      assert(newrange->ar_next == range);
+      assert(newrange->ar_addr+newrange->ar_size <= range->ar_addr);
+      if (newrange->ar_refcnt == range->ar_refcnt &&
+          newrange->ar_addr+newrange->ar_size == addr) {
+       /* Merge with range below. */
+       newrange->ar_size += range->ar_size;
+       newrange->ar_next  = range->ar_next;
+       free(range);
+      }
+      assert(!newrange->ar_next ||
+              newrange->ar_addr+newrange->ar_size <=
+              newrange->ar_next->ar_addr);
+     }
+     return;
+    }
+   }
+  }
+  assert(addr >= range->ar_addr);
+  assert(range_end == range->ar_addr+range->ar_size);
+  if (range_end < addr) goto next;
+  assert(range_end >= addr);
+  /* Partial overlap near the middle, or end of 'range', or perfect adjacency. */
+  if (addr_end <= range_end) {
+   /* Partial overlap!
+    * >> Must split the range into 2/3 parts! */
+   assert(addr > range->ar_addr);
+   assert(addr_end <= range_end);
+   if (addr_end == range_end) {
+    /* split & Incref at upper memory. */
+    newrange = DCCAllocRange_New(addr,size,range->ar_refcnt+n_refcnt);
+    if unlikely(!newrange) return;
+    newrange->ar_next = range->ar_next;
+    assert(!newrange->ar_next ||
+            newrange->ar_addr+newrange->ar_size <=
+            newrange->ar_next->ar_addr);
+    range->ar_next    = newrange;
+    range->ar_size    = addr-range->ar_addr;
+   } else {
+    struct DCCAllocRange *insrange;
+    /* Must split into 3 parts! */
+    assert(addr > range->ar_addr);
+    assert(addr_end < range_end);
+    insrange = DCCAllocRange_New(addr,size,range->ar_refcnt+n_refcnt);
+    if unlikely(!insrange) return;
+    newrange = DCCAllocRange_New(addr_end,range_end-addr_end,
+                                 range->ar_refcnt);
+    if unlikely(!newrange) { free(insrange); return; }
+    range->ar_size    = addr-range->ar_addr;
+    newrange->ar_next = range->ar_next;
+    insrange->ar_next = newrange;
+    range->ar_next    = insrange;
+    assert(range->ar_size);
+    assert(insrange->ar_size);
+    assert(newrange->ar_size);
+    assert(range->ar_next    == insrange);
+    assert(insrange->ar_next == newrange);
+    assert(range->ar_addr+range->ar_size       == insrange->ar_addr);
+    assert(insrange->ar_addr+insrange->ar_size == newrange->ar_addr);
+    assert(range->ar_refcnt == newrange->ar_refcnt);
+    assert(range->ar_refcnt == insrange->ar_refcnt-n_refcnt);
+   }
+   assert(!range->ar_next || range->ar_addr+range->ar_size <= range->ar_next->ar_addr);
+   return;
+  }
+  assert(addr >= range->ar_addr);
+  if (addr < range_end) {
+   if (addr == range->ar_addr) {
+    /* This range is fully covered. */
+    range->ar_refcnt += n_refcnt;
+    size -= range->ar_size;
+    if unlikely(!size) return;
+    addr += range->ar_size;
+   } else {
+    /* Must split the range. */
+    target_siz_t incsize = (range_end-addr);
+    assert(incsize);
+    assert(addr >= range->ar_addr);
+    assert(addr <  range_end);
+    newrange = DCCAllocRange_New(addr,incsize,range->ar_refcnt+n_refcnt);
+    if unlikely(!newrange) return;
+    newrange->ar_next = range->ar_next;
+    range->ar_next    = newrange;
+    range->ar_size   -= incsize;
+    assert(range->ar_size);
+    assert(!newrange->ar_next || newrange->ar_addr+newrange->ar_size <= newrange->ar_next->ar_addr);
+    assert(range->ar_addr+range->ar_size <= newrange->ar_addr);
+    size -= incsize;
+    if (!size) return;
+    range_end = addr;
+    addr += incsize;
+   }
+  }
+  assert(range_end == range->ar_addr+range->ar_size);
+  if (range->ar_next) {
+   assert(range->ar_next->ar_addr >= range_end);
+   bytes_until_next_range = range->ar_next->ar_addr-range_end;
+   if (bytes_until_next_range > size)
+       bytes_until_next_range = size;
+  } else {
+   bytes_until_next_range = size;
+  }
+  if (!bytes_until_next_range) goto next;
+  if (range->ar_refcnt == n_refcnt &&
+      range_end        == addr) {
+   /* Perfect adjacency (Extend upwards). */
+   range->ar_size += bytes_until_next_range;
+  } else {
+   /* Insert a new range after 'range'. */
+   newrange = DCCAllocRange_New(addr,bytes_until_next_range,n_refcnt);
+   if unlikely(!newrange) return;
+   newrange->ar_next = range->ar_next;
+   assert(!newrange->ar_next ||
+           newrange->ar_addr+newrange->ar_size <=
+           newrange->ar_next->ar_addr);
+   range->ar_next    = newrange;
+   assert(range->ar_addr+range->ar_size <= newrange->ar_addr);
+   range             = newrange;
+  }
+  assert(!range->ar_next ||
+          range->ar_addr+range->ar_size <=
+          range->ar_next->ar_addr);
+  size -= bytes_until_next_range;
+  if unlikely(!size) return;
+  addr += bytes_until_next_range;
+next:
+  prange = &range->ar_next;
+ }
+ /* Append a new range. */
+ assert(range == *prange);
+ assert(!range);
+ assert(prange == &self->sc_alloc ||
+       ((struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)))->ar_addr+
+       ((struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)))->ar_size <= addr);
+ range = DCCAllocRange_New(addr,size,n_refcnt);
+ if unlikely(!range) return;
+ range->ar_next = NULL;
+ *prange = range;
+}
+
+PUBLIC void
+DCCSection_DDecref(struct DCCSection *__restrict self,
+                   target_ptr_t addr, target_siz_t size) {
+ struct DCCAllocRange **prange,*range,*newrange;
+ target_ptr_t addr_end,range_end;
+ assert(self);
+ assert(!DCCSection_ISIMPORT(self));
+ if unlikely(!OK) return; /* Don't do anything if an error occurred. */
+ prange   = &self->sc_alloc;
+ addr_end = addr+size;
+ /* Search range and only free reference that dropped to ZERO(0). */
+ while (size) {
+  assert(addr_end == addr+size);
+  range = *prange;
+  assertf(range && addr >= range->ar_addr,
+          "No reference count mapping for address range %#lx...%#lx",
+         (unsigned long)addr,(unsigned long)(addr+size));
+  assert(range->ar_size);
+  assert(range->ar_refcnt);
+  range_end = range->ar_addr+range->ar_size;
+  assert(!range->ar_next || range_end <= range->ar_next->ar_addr);
+  if (range_end > addr) {
+   /* Overlap found! */
+   assert(range->ar_addr <= addr);
+   if (range->ar_addr == addr) {
+    /* Matching lower bound. */
+    if (addr_end >= range_end) {
+     /* All bounds are matching! */
+     assert(size >= range->ar_size);
+     size -= range->ar_size;
+     addr += range->ar_size;
+     if (!--range->ar_refcnt) {
+      *prange = range->ar_next;
+      DCCSection_DSafeFree(self,range->ar_addr,range->ar_size);
+      free(range);
+     }
+     assert((!*prange) || !(*prange)->ar_next ||
+            (*prange)->ar_addr+(*prange)->ar_size <= (*prange)->ar_next->ar_addr);
+     if (!size) return;
+    } else {
+     target_siz_t delsize = (addr-range->ar_addr);
+     DCCSection_DSafeFree(self,range->ar_addr,delsize);
+     if (range->ar_refcnt == 1) {
+      /* Must shrink this range. */
+     } else {
+      /* Must split this range. */
+      newrange = DCCAllocRange_New(addr,range_end-addr,range->ar_refcnt);
+      if unlikely(!newrange) return;
+      newrange->ar_next = range->ar_next;
+      range->ar_next = newrange;
+      --range->ar_refcnt;
+     }
+     range->ar_addr += delsize;
+     range->ar_size -= delsize;
+     assert(range->ar_size);
+     assert(!range->ar_next || range->ar_addr+range->ar_size <= range->ar_next->ar_addr);
+     size -= delsize;
+     if (!size) return;
+     addr += delsize;
+    }
+   } else if ((assert(range->ar_addr < addr),
+                      range_end <= addr_end)) {
+    /* Matching upper bound. */
+    target_siz_t delsize;
+    assert(range_end >= addr);
+    delsize = range_end-addr;
+    assert(addr == range_end-delsize);
+    if (range->ar_refcnt == 1) {
+     /* Must shrink this range. */
+    } else {
+     /* Must split this range. */
+     newrange = DCCAllocRange_New(addr,delsize,range->ar_refcnt);
+     if unlikely(!newrange) return;
+     newrange->ar_next = range->ar_next;
+     range->ar_next = newrange;
+     --range->ar_refcnt;
+    }
+    range->ar_size -= delsize;
+    assert(range->ar_size);
+    assert(!range->ar_next || range->ar_addr+range->ar_size <= range->ar_next->ar_addr);
+    size -= delsize;
+    if (!size) return;
+    addr += delsize;
+   } else {
+    /* Decref sub-range: must split this range twice. */
+    assert(addr > range->ar_addr);
+    assert(addr_end < range_end);
+    if (range->ar_refcnt == 1) {
+     /* We can fake the second split by re-using that would otherwise be deleted. */
+     newrange = DCCAllocRange_New(addr_end,
+                                 (target_siz_t)(range_end-addr_end),
+                                  1);
+     if unlikely(!newrange) return;
+     newrange->ar_next = range->ar_next;
+     range->ar_next = newrange;
+     range->ar_size = (target_siz_t)(addr-range->ar_addr);
+     DCCSection_DSafeFree(self,addr,size);
+     assert(range->ar_size);
+     assert(newrange->ar_size);
+     assert(range->ar_next == newrange);
+     assert(range->ar_addr+range->ar_size <= newrange->ar_addr);
+    } else {
+     struct DCCAllocRange *insrange;
+     /* Well... Now we must ~actually~ create two sub-ranges. */
+     insrange = DCCAllocRange_New(addr,size,range->ar_refcnt-1);
+     if unlikely(!insrange) return;
+     newrange = DCCAllocRange_New(addr_end,
+                                 (target_siz_t)(range_end-addr_end),
+                                  range->ar_refcnt);
+     if unlikely(!newrange) { free(insrange); return; }
+     newrange->ar_next = range->ar_next;
+     insrange->ar_next = newrange;
+     range->ar_next    = insrange;
+     range->ar_size    = (target_siz_t)(addr-range->ar_addr);
+     /* Make sure the ranges were linked properly. */
+     assert(range->ar_size);
+     assert(insrange->ar_size);
+     assert(newrange->ar_size);
+     assert(range->ar_next    == insrange);
+     assert(insrange->ar_next == newrange);
+     assert(range->ar_addr+range->ar_size       == insrange->ar_addr);
+     assert(insrange->ar_addr+insrange->ar_size == newrange->ar_addr);
+     assert(range->ar_refcnt == newrange->ar_refcnt);
+     assert(range->ar_refcnt == insrange->ar_refcnt+1);
+    }
+    return;
+   }
+  }
+  prange = &range->ar_next;
+ }
+}
+
+PUBLIC void
+DCCSection_DIncref(struct DCCSection *__restrict self,
+                   target_ptr_t addr, target_siz_t size) {
+ DCCSection_DIncrefN(self,addr,size,1);
+}
+INTERN void
+DCCSection_DIncrefN_impl(struct DCCSection *__restrict self,
+                         target_ptr_t addr, target_siz_t size,
+                         unsigned int n_refcnt) {
+ DCCSection_DIncrefN(self,addr,size,n_refcnt);
+}
+
 
 
 PUBLIC void
@@ -1649,6 +2113,7 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_text.tb_pos          */(uint8_t *)(uintptr_t)(intptr_t)-1},
  /* sc_free                 */{
  /* sc_free.fd_begin        */NULL},
+ /* sc_alloc                */NULL,
  /* sc_align                */1,
  /* sc_base                 */0, /* Section is based at ZERO(0). */
  /* sc_merge                */0,

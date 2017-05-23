@@ -32,7 +32,6 @@
 
 DCC_DECL_BEGIN
 
-#define DCC_SECTION_HAVE_MERGE 0 /* Requires reference-counted data-allocation tracking. */
 LOCAL void DCCDecltab_CheckRehash(struct DCCDecltab *__restrict self);
 LOCAL void DCCDecltab_RehashSymbols(struct DCCDecltab *__restrict self, size_t newsize);
 

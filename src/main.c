@@ -140,7 +140,7 @@ static void save_object(char const *filename) {
 int main(int argc, char *argv[]) {
  struct DCCSection *sec;
  int result = 0;
- char *outfile_name = NULL;
+ char const *outfile_name = NULL;
 #define F_COMPILEONLY 0x00000001
  uint32_t flags = 0;
 

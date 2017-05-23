@@ -165,7 +165,7 @@ DCCFunctionFrame_Leave(struct DCCFunctionFrame *__restrict self) {
  if (unit.u_curr == self->ff_new_section) {
   /* Fill in the actual size of this function.
    * >> This is required for data association and cleanup of unused functions. */
-  self->ff_funsym->sy_size = t_addr-self->ff_funsym->sy_addr;
+  DCCSym_SetSize(self->ff_funsym,(size_t)(t_addr-self->ff_funsym->sy_addr));
  }
  
  /* Restore all the things... */

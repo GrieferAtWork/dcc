@@ -1313,13 +1313,12 @@ DEF_WARNING(W_LINKER_CANT_RELOC_LIB_SECTION,(WG_LINKER),WSTATE_WARN,
 DEF_WARNING(W_LINKER_DELETE_UNUSED_SYMBOL,(WG_LINKER,WG_QUALITY),WSTATE_WARN,
             WARNF("Removing unused symbol '%s'",KWDNAME()))
 DEF_WARNING(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,(WG_LINKER,WG_QUALITY),WSTATE_WARN,{
- char *sn = KWDNAME();
  target_ptr_t p = ARG(target_siz_t);
  target_siz_t s = ARG(target_siz_t);
  char *sc = KWDNAME();
- WARNF("Symbol '%s' range '%#lx..%#lx' is out-of-bounds of section '%s' range '0x0..%#lx'",
-       sn,(unsigned long)p,(unsigned long)s,
-       sc,(unsigned long)ARG(target_siz_t));
+ WARNF("Symbol range '%#lx..%#lx' is out-of-bounds of section '%s' range '0x0..%#lx'",
+       (unsigned long)p,(unsigned long)s,sc,
+       (unsigned long)ARG(target_siz_t));
 })
 DEF_WARNING(W_LINKER_DELETE_UNUSED_STATIC_SYMBOL,(WG_LINKER,WG_QUALITY),WSTATE_WARN,
             WARNF("Removing unused static symbol '%s'",KWDNAME()))
