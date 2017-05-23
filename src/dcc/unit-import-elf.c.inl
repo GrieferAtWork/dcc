@@ -1027,9 +1027,7 @@ absrel:
    sec->sc_base            = 0;
   }
 #endif
-  /* TODO: Until there are no more undefined symbol references,
-   *       we must load dynamic library dependencies ('DT_NEEDED' entires)
-   *    >> This has to be done to prevent unresolved reference errors later. */
+  /* TODO: Load dynamic library dependencies ('DT_NEEDED' program header entires) */
  }
 
 end: return result;

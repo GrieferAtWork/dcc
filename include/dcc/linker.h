@@ -134,6 +134,7 @@ typedef uint32_t DCC(lflag_t); /*< Set of 'DCC_LINKER_FLAG_*'. */
 
 struct DCCLinker {
  DCC(lflag_t)          l_flags;       /*< Current linker-related flags. */
+ struct DCCLibPaths    l_intpaths;    /*< List of internal library paths (may be empty). */
  struct DCCLibPaths    l_paths;       /*< List of effective library paths (may be empty). */
  struct TPPString     *l_soname;      /*< [0..1] When non-NULL, a module name included in the binary (if appropriate). */
  struct DCCSection    *l_text;        /*< [0..1] When non-NULL, the section used for wrapper code such as IAT functions.

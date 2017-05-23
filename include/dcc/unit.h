@@ -1057,6 +1057,11 @@ DCCFUN struct DCCSection *DCCUnit_NewSecs(char const *__restrict name, DCC(symfl
  * macros, assertions, keyword flags, etc. */
 #define DCC_LIBDEF_FLAG_NO_RESET_TPP 0x00000100
 
+/* This library defines an internal object.
+ * When this flag is set, a special, hard-coded
+ * search path is used for locating the object. */
+#define DCC_LIBDEF_FLAG_INTERN     0x00008000
+
 /* When used alongside 'DCC_LIBDEF_FLAG_STATIC', open the
  * library as a source file, using 'ld_name' as direct path.
  * WARNING: These flags are ignored when 'DCC_LIBDEF_FLAG_STATIC' is not

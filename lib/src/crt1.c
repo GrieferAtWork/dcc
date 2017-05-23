@@ -16,10 +16,8 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
+/* Compile with: $ dcc -nostdlib -c -o crt1.o crt1.c */
 
-/* Compile with:
- * $ dcc -c -o msvcrt-crt1.o msvcrt-crt1.c
- */
 
 /* Clear unused symbol not marked as 'used' from the resulting object file.
  * >> This will prevent symbols from 'msvcrt' from being included,

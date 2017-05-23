@@ -254,12 +254,14 @@ struct path_extension { char ext[MAX_EXTLEN]; };
 static struct path_extension const
 search_extensions[] = {
  {{0}},
+ {{'.','o'}},
 #if DCC_HOST_OS == DCC_OS_WINDOWS
  {{'.','d','l','l'}},
  {{'.','e','x','e'}},
 #endif
 #if DCC_HOST_OS == DCC_OS_LINUX
  {{'.','s','o'}},
+ //{{'.','o','u','t'}},
 #endif
  {{'.','d','e','f'}},
 };
@@ -320,22 +322,27 @@ done:
  return result;
 }
 
-
-
-
 PUBLIC int DCCUNIT_IMPORTCALL
 DCCUnit_Import(struct DCCLibDef *__restrict def) {
+ struct DCCLibPaths *pathlist;
  size_t i; int result = 0;
  assert(def);
- if (def->ld_flags&DCC_LIBDEF_FLAG_NOSEARCHSTD) {
+ if (def->ld_flags&DCC_LIBDEF_FLAG_INTERN) {
+  pathlist = &linker.l_intpaths;
+  goto search_pathlist;
+ } else if (def->ld_flags&DCC_LIBDEF_FLAG_NOSEARCHSTD) {
   /* Using an empty string as path, we
    * can search the given 'def' as-is. */
   result = DCCUnit_ImportWithPath(TPPFile_Empty.f_text,def);
   if (result || !OK) goto end;
- } else for (i = 0; i < linker.l_paths.lp_pathc; ++i) {
-  /* Search user-defined library paths. */
-  result = DCCUnit_ImportWithPath(linker.l_paths.lp_pathv[i],def);
-  if (result || !OK) goto end;
+ } else {
+  pathlist = &linker.l_paths;
+search_pathlist:
+  for (i = 0; i < pathlist->lp_pathc; ++i) {
+   /* Search user-defined library paths. */
+   result = DCCUnit_ImportWithPath(pathlist->lp_pathv[i],def);
+   if (result || !OK) goto end;
+  }
  }
  if (!(def->ld_flags&DCC_LIBDEF_FLAG_NOWARNMISSING))
        WARN(W_LIB_NOT_FOUND,def->ld_name,def->ld_size);

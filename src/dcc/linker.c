@@ -44,7 +44,7 @@
 #elif defined(MAXPATH)
 #   define PATH_MAX  MAXPATH
 #elif DCC_HOST_OS == DCC_OS_WINDOWS
-#   define PATH_MAX  256
+#   define PATH_MAX  260
 #else
 #   define PATH_MAX  1024
 #endif
@@ -53,116 +53,118 @@
 
 DCC_DECL_BEGIN
 
-PUBLIC struct DCCLinker DCCLinker_Current = {0};
-
-PUBLIC void DCCLinker_Init(struct DCCLinker *__restrict self) {
- assert(self);
- memset(self,0,sizeof(struct DCCLinker));
-}
-PUBLIC void DCCLinker_Quit(struct DCCLinker *__restrict self) {
- assert(self);
- { struct TPPString **iter,**end;
-   struct DCCLibPaths *next,*piter = &self->l_paths;
-   do {
-    /* Clear allocated library paths. */
-    end = (iter = piter->lp_pathv)+piter->lp_pathc;
-    for (; iter != end; ++iter) TPPString_Decref(*iter);
-    free(piter->lp_pathv);
-    next = piter->lp_prev;
-    if (piter != &self->l_paths) free(piter);
-   } while ((piter = next) != NULL);
- }
- DCC_Free(self->l_entry);
- DCC_Free(self->l_init);
- DCC_Free(self->l_fini);
+LOCAL void
+DCCLibPaths_Quit(struct DCCLibPaths *__restrict self) {
+ struct TPPString **iter,**end;
+ struct DCCLibPaths *next,*piter = self;
+ do {
+  /* Clear allocated library paths. */
+  end = (iter = piter->lp_pathv)+piter->lp_pathc;
+  for (; iter != end; ++iter) TPPString_Decref(*iter);
+  free(piter->lp_pathv);
+  next = piter->lp_prev;
+  if (piter != self) free(piter);
+ } while ((piter = next) != NULL);
 }
 
-PUBLIC void DCCLinker_LibPathPush(void) {
+LOCAL void
+DCCLibPaths_Push(struct DCCLibPaths *__restrict self) {
  struct DCCLibPaths *backup;
  struct TPPString **iter,**end,**dst;
  backup = (struct DCCLibPaths *)DCC_Malloc(sizeof(struct DCCLibPaths),0);
  if unlikely(!backup) return;
- backup->lp_pathv = (struct TPPString **)DCC_Malloc(linker.l_paths.lp_pathc*
+ backup->lp_pathv = (struct TPPString **)DCC_Malloc(self->lp_pathc*
                                                     sizeof(struct TPPString *),0);
  if unlikely(!backup->lp_pathv) return;
  backup->lp_patha =
- backup->lp_pathc = linker.l_paths.lp_pathc;
+ backup->lp_pathc = self->lp_pathc;
  dst = backup->lp_pathv;
- end = (iter = linker.l_paths.lp_pathv)+linker.l_paths.lp_pathc;
+ end = (iter = self->lp_pathv)+self->lp_pathc;
  for (; iter != end; ++iter,++dst) *dst = *iter,assert(*dst),
                                       TPPString_Incref(*dst);
- backup->lp_prev        = linker.l_paths.lp_prev; /* Inherit data. */
- linker.l_paths.lp_prev = backup; /* Inherit data. */
+ backup->lp_prev = self->lp_prev; /* Inherit data. */
+ self->lp_prev   = backup; /* Inherit data. */
 }
-PUBLIC void DCCLinker_LibPathPop(void) {
+
+LOCAL void
+DCCLibPaths_Pop(struct DCCLibPaths *__restrict self) {
  struct DCCLibPaths *backup;
  struct TPPString **iter,**end;
- backup = linker.l_paths.lp_prev;
+ backup = self->lp_prev;
  if unlikely(!backup) {
   WARN(W_PRAGMA_LIBRARY_PATH_NOTHING_TO_POP);
   return;
  }
- end = (iter = linker.l_paths.lp_pathv)+linker.l_paths.lp_pathc;
+ end = (iter = self->lp_pathv)+self->lp_pathc;
  for (; iter != end; ++iter) assert(*iter),TPPString_Decref(*iter);
- free(linker.l_paths.lp_pathv);
- memcpy(&linker.l_paths,backup,sizeof(struct DCCLibPaths));
+ free(self->lp_pathv);
+ memcpy(self,backup,sizeof(struct DCCLibPaths));
  free(backup);
 }
 
 extern char *fix_filename(char *filename, size_t *pfilename_size); /* From 'tcc.c' */
 
-PRIVATE int
-DCCLinker_DoAddLibPath(char const *__restrict path, size_t pathsize) {
+LOCAL int
+DCCLibPaths_DoAddLibPathNow(struct DCCLibPaths *__restrict self,
+                            char const *__restrict path, size_t pathsize) {
+ struct TPPString **vec,*elem;
+ elem = TPPString_New(path,pathsize);
+ if unlikely(!elem) return 0;
+ vec = self->lp_pathv;
+ if (self->lp_pathc == self->lp_patha) {
+  size_t newalloc = self->lp_patha;
+  if unlikely(!newalloc) newalloc = 1;
+  newalloc *= 2;
+  vec = (struct TPPString **)DCC_Realloc(self->lp_pathv,newalloc*
+                                         sizeof(struct TPPString *),
+                                         DCCLINKER_FLUSHFLAG_LIBPATHS);
+  if unlikely(!vec) { TPPString_Decref(elem); return 0; }
+  self->lp_pathv = vec;
+  self->lp_patha = newalloc;
+ }
+ vec[self->lp_pathc++] = elem; /*< Inherit reference. */
+ return 1;
+}
+LOCAL int
+DCCLibPaths_DoAddLibPath(struct DCCLibPaths *__restrict self,
+                         char const *__restrict path, size_t pathsize) {
  struct TPPString **iter,**end,*elem;
  /* Handle special case: empty path & remove trailing slashes. */
  while (pathsize && path[pathsize-1] == '/') --pathsize;
  if unlikely(!pathsize) path = ".",pathsize = 1;
  /* Make sure that the path doesn't already exists. */
- end = (iter = linker.l_paths.lp_pathv)+
-               linker.l_paths.lp_pathc;
+ end = (iter = self->lp_pathv)+
+               self->lp_pathc;
  for (; iter != end; ++iter) {
   if ((elem = *iter)->s_size == pathsize &&
       !memcmp(elem->s_text,path,pathsize*sizeof(char)))
       return 2; /* Path already exists. */
  }
- elem = TPPString_New(path,pathsize);
- if unlikely(!elem) return 0;
- iter = linker.l_paths.lp_pathv;
- if (linker.l_paths.lp_pathc == linker.l_paths.lp_patha) {
-  size_t newalloc = linker.l_paths.lp_patha;
-  if unlikely(!newalloc) newalloc = 1;
-  newalloc *= 2;
-  iter = (struct TPPString **)DCC_Realloc(linker.l_paths.lp_pathv,newalloc*
-                                          sizeof(struct TPPString *),
-                                          DCCLINKER_FLUSHFLAG_LIBPATHS);
-  if unlikely(!iter) { TPPString_Decref(elem); return 0; }
-  linker.l_paths.lp_pathv = iter;
-  linker.l_paths.lp_patha = newalloc;
- }
- iter[linker.l_paths.lp_pathc++] = elem; /*< Inherit reference. */
- return 1;
+ return DCCLibPaths_DoAddLibPathNow(self,path,pathsize);
 }
-PUBLIC int
-DCCLinker_AddLibPath(char *__restrict path, size_t pathsize) {
+LOCAL int
+DCCLibPaths_AddLibPath(struct DCCLibPaths *__restrict self,
+                       char *__restrict path, size_t pathsize) {
  /* Normalize & fix the given path as best as possible. */
  if (HAS(EXT_CANONICAL_LIB_PATHS)) fix_filename(path,&pathsize);
- return DCCLinker_DoAddLibPath(path,pathsize);
+ return DCCLibPaths_DoAddLibPath(self,path,pathsize);
 }
-PUBLIC int
-DCCLinker_DelLibPath(char *__restrict path, size_t pathsize) {
+LOCAL int
+DCCLibPaths_DelLibPath(struct DCCLibPaths *__restrict self,
+                       char *__restrict path, size_t pathsize) {
  struct TPPString **iter,**end,*elem;
  if (HAS(EXT_CANONICAL_LIB_PATHS)) fix_filename(path,&pathsize);
  while (pathsize && path[-1] == '/') --pathsize;
  if unlikely(!pathsize) path = ".",pathsize = 1;
  /* Make sure that the path doesn't already exists. */
- end = (iter = linker.l_paths.lp_pathv)+
-               linker.l_paths.lp_pathc;
+ end = (iter = self->lp_pathv)+
+               self->lp_pathc;
  for (; iter != end; ++iter) {
   if ((elem = *iter)->s_size == pathsize &&
      !memcmp(elem->s_text,path,pathsize*sizeof(char))) {
    /* Found it! */
    memmove(iter,iter+1,((end-iter)-1)*sizeof(struct TPPString *));
-   --linker.l_paths.lp_pathc;
+   --self->lp_pathc;
    TPPString_Decref(elem);
    return 1;
   }
@@ -170,13 +172,14 @@ DCCLinker_DelLibPath(char *__restrict path, size_t pathsize) {
  return 0;
 }
 
-PUBLIC size_t
-DCCLinker_AddLibPaths(char *__restrict list, size_t listsize) {
+LOCAL size_t
+DCCLibPaths_AddLibPaths(struct DCCLibPaths *__restrict self,
+                        char *__restrict list, size_t listsize) {
  size_t result = 0;
  while (listsize) {
   char *sep = (char *)memchr(list,DCCLINKER_PATHS_SEP,listsize);
   if unlikely(!sep) sep = list+listsize;
-  DCCLinker_AddLibPath(list,(size_t)(sep-list));
+  DCCLibPaths_AddLibPath(self,list,(size_t)(sep-list));
   listsize -= (sep-list);
   if unlikely(!listsize) break;
   --listsize,list = sep+1;
@@ -184,6 +187,27 @@ DCCLinker_AddLibPaths(char *__restrict list, size_t listsize) {
  return result;
 }
 
+
+
+PUBLIC struct DCCLinker DCCLinker_Current = {0};
+PUBLIC void DCCLinker_Init(struct DCCLinker *__restrict self) {
+ assert(self);
+ memset(self,0,sizeof(struct DCCLinker));
+}
+PUBLIC void DCCLinker_Quit(struct DCCLinker *__restrict self) {
+ assert(self);
+ DCCLibPaths_Quit(&self->l_intpaths);
+ DCCLibPaths_Quit(&self->l_paths);
+ DCC_Free(self->l_entry);
+ DCC_Free(self->l_init);
+ DCC_Free(self->l_fini);
+}
+
+PUBLIC void DCCLinker_LibPathPush(void) { DCCLibPaths_Push(&linker.l_paths); }
+PUBLIC void DCCLinker_LibPathPop(void) { DCCLibPaths_Pop(&linker.l_paths); }
+PUBLIC int DCCLinker_AddLibPath(char *__restrict path, size_t pathsize) { return DCCLibPaths_AddLibPath(&linker.l_paths,path,pathsize); }
+PUBLIC int DCCLinker_DelLibPath(char *__restrict path, size_t pathsize) { return DCCLibPaths_DelLibPath(&linker.l_paths,path,pathsize); }
+PUBLIC size_t DCCLinker_AddLibPaths(char *__restrict list, size_t listsize) { return DCCLibPaths_AddLibPaths(&linker.l_paths,list,listsize); }
 
 LOCAL void linker_add_dirof(char const *__restrict filename) {
  size_t dirbase; char *buf,*mbuf;
@@ -219,17 +243,17 @@ LOCAL void linker_add_win32_systemdirectory(void) {
  SYSDIR_FUN get_sysdir;
  LPISWOW64PROCESS iswow64_fun;
  static HMODULE k32 = NULL;
- if unlikely(!k32 && (k32 = LoadLibraryA("Kernel32.dll")) == NULL) goto nowow;
+ if unlikely(!k32 && (k32 = LoadLibraryA("Kernel32.dll")) == NULL) goto no_wow;
  get_sysdir  = (SYSDIR_FUN)GetProcAddress(k32,"GetSystemWow64DirectoryA");
- if unlikely(!get_sysdir) goto nowow;
+ if unlikely(!get_sysdir) goto no_wow;
  iswow64_fun = (LPISWOW64PROCESS)GetProcAddress(k32,"IsWow64Process");
- if unlikely(!iswow64_fun) goto nowow;
+ if unlikely(!iswow64_fun) goto no_wow;
  {
   BOOL iswow = FALSE;
   if (!(*iswow64_fun)(GetCurrentProcess(),&iswow)) iswow = FALSE;
-  if (!iswow) goto nowow;
+  if (!iswow) goto no_wow;
  }
- if (DCC_MACRO_FALSE) { nowow: get_sysdir = &GetSystemDirectoryA; }
+ if (DCC_MACRO_FALSE) { no_wow: get_sysdir = &GetSystemDirectoryA; }
 #else
 #define get_sysdir  GetSystemDirectoryA
 #endif
@@ -263,6 +287,52 @@ again:
  DCCLinker_AddLibPath(p,reqsize);
  if (p != buffer) DCC_Free(p);
 }
+
+#define INTPATH_MAXTRAIL 8
+struct inttrail { char t[INTPATH_MAXTRAIL]; };
+static struct inttrail const int_trails[] = {
+ {{'/','l','i','b','\0'}},
+ {{'/','l','i','b','s','\0'}},
+ {{'\0',42}},
+ {{'\0'}},
+};
+
+
+LOCAL void linker_add_intpath_self(void) {
+ char *mbuf = NULL,buf[1024],*path = buf,*iter,*lastslash;
+ DWORD newbuflen,buflen = sizeof(buf);
+ struct inttrail const *trail_iter;
+ for (;;) {
+  /* XXX: Add support for 'DllMain' */
+  newbuflen  = GetModuleFileNameA(NULL,path,buflen);
+  newbuflen += INTPATH_MAXTRAIL;
+  if (newbuflen < buflen) break;
+  mbuf = path = (char *)realloc(mbuf,(buflen *= 2)*sizeof(char));
+  if unlikely(!mbuf) { TPPLexer_SetErr(); return; }
+ }
+ for (iter = path,lastslash = NULL; *iter; ++iter) {
+  if (*iter == '\\') *iter = '/';
+  if (*iter == '/') lastslash = iter;
+ }
+ if (lastslash) {
+  while (lastslash != path &&
+         lastslash[-1] == '/') --lastslash;
+ } else {
+  lastslash = path+(newbuflen-INTPATH_MAXTRAIL);
+ }
+ if ((lastslash-path) > 4 &&
+    !memcmp(lastslash-4,"/bin",4*sizeof(char))
+     ) lastslash -= 4;
+ buflen = lastslash-path;
+ for (trail_iter = int_trails;
+      trail_iter->t[0] || trail_iter->t[1];
+      ++trail_iter) {
+  memcpy(lastslash,trail_iter->t,sizeof(trail_iter->t));
+  DCCLibPaths_DoAddLibPathNow(&linker.l_intpaths,path,
+                               buflen+strlen(trail_iter->t));
+ }
+ free(mbuf);
+}
 #endif
 
 PUBLIC void
@@ -289,6 +359,8 @@ DCCLinker_AddSysPaths(char const *__restrict outfile_or_basefile) {
     free(pathcopy);
    }
  }
+ /* Setup the default list of internal library paths. */
+ linker_add_intpath_self();
 #else
  /* TODO */
 #endif

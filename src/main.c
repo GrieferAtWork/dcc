@@ -137,6 +137,7 @@ static void save_object(char const *filename) {
  DCCUnit_Export(&def,filename);
 }
 
+
 int main(int argc, char *argv[]) {
  struct DCCSection *sec;
  int result = 0;
@@ -171,6 +172,7 @@ int main(int argc, char *argv[]) {
     case OPT_E: break; /* TODO: Enable preprocessor mode. */
     case OPT_o: outfile_name = c.c_val; break;
     case OPT_c: flags |= F_COMPILEONLY; break;
+     /* TODO: '-B' changes the internal library path. */
 
     default: exec_cmd(&c,1); break;
     }
@@ -181,15 +183,35 @@ int main(int argc, char *argv[]) {
 
  if (!outfile_name) {
   /* TODO: deduce default output name from first source file? */
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
   if (!(flags&F_COMPILEONLY))
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
        outfile_name = "a.exe";
+#else
+       outfile_name = "a.out";
 #endif
-  else outfile_name = "a.out";
+  else outfile_name = "a.o";
  }
 
  //_CrtSetBreakAlloc(130);
  DCCLinker_AddSysPaths(outfile_name);
+
+ if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB)) {
+#define STDLIB(name,f) \
+   {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
+  static struct DCCLibDef default_stdlib[] = {
+   STDLIB("crt1.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+   STDLIB("msvcrt.dll",DCC_LIBDEF_FLAG_NOSEARCHEXT),
+#else
+   STDLIB("libc.so",DCC_LIBDEF_FLAG_NOSEARCHEXT),
+#endif
+   {0,NULL,0,0,0,0,0,NULL},
+  };
+#undef STDLIB
+  /* Load default libraries. */
+  struct DCCLibDef *chain = default_stdlib;
+  for (; chain->ld_name; ++chain) DCCUnit_Import(chain);
+ }
 
  //dump_symbols();
  if (!OK) goto end;
@@ -273,7 +295,7 @@ int main(int argc, char *argv[]) {
 end:
  if (!OK) { fprintf(stderr,"A fatal error caused dcc to abort!\n"); }
  result = OK ? 0 : 1;
- if (!OK) dump_symbols();
+ //if (!OK) dump_symbols();
 
  DCCUnit_Quit(&unit);
  DCCLinker_Quit(&linker);

@@ -245,7 +245,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
     }
    } else {
     if (symaddr.sa_sym->sy_alias) {
-     /* TODO: warn if ELF extensions are disabled. */
+     /* XXX: warn if ELF extensions are disabled. */
      need_symflags = sym->sy_elfid;
     }
     symhdr.st_shndx = SHN_UNDEF;
