@@ -227,6 +227,7 @@ struct DCCSym {
 #define DCCSym_ASSERT(self)   (void)0
 #define DCCSym_XASSERT(self)  (void)0
 #endif
+ 
 #define DCCSym_SECTION(self)    (self)->sy_sec
 #define DCCSym_IMPORT(self)     (self)->sy_import
 

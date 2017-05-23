@@ -650,7 +650,8 @@ DCCSym_ClearDef(struct DCCSym *__restrict self, int warn) {
   if (self->sy_sec_pself) {
    assert(old_sec);
    assert(old_sec->sc_symc);
-   *self->sy_sec_pself = self->sy_sec_next;
+   if ((*self->sy_sec_pself = self->sy_sec_next) != NULL)
+         self->sy_sec_next->sy_sec_pself = self->sy_sec_pself;
    --old_sec->sc_symc;
    self->sy_sec_pself = NULL;
    self->sy_sec_next  = NULL;
@@ -2018,6 +2019,7 @@ void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym) {
   *pbucket          = sym; /* Inherit reference. */
   ++unit.u_symc;
  }
+ DCCSym_ASSERT(sym);
  return;
 seterr: TPPLexer_SetErr();
 }

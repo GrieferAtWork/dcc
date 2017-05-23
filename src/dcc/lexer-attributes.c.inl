@@ -417,6 +417,8 @@ cleanup_text:
  case KWD_always_inline:
  case KWD_gnu_inline:
  case KWD_artificial:
+ case KWD_noalias:
+ case KWD_restrict:
   /* Unsupported, but recognized warnings. */
   WARN(W_ATTRIBUTE_UNSUPPORTED);
   goto skip_attribute;

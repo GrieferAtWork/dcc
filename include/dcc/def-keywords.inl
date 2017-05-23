@@ -291,6 +291,10 @@ DEFINE_ATTRIBUTE(ms_struct)
 DEFINE_ATTRIBUTE(gcc_struct)
 DEFINE_ATTRIBUTE(mode)
 DEFINE_ATTRIBUTE(arithmetic) /* Allow arithmetic operations on structure types. */
+
+/* __declspec-attributes. */
+DEFINE_ATTRIBUTE(noalias)
+/*DEFINE_ATTRIBUTE(restrict)*/
 #undef DEFINE_ATTRIBUTE
 
 DEF_K(QI) /*< An integer that is as wide as the smallest addressable unit, usually 8 bits. */

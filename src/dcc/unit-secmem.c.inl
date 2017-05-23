@@ -27,7 +27,7 @@
 
 #include <string.h>
 
-#if DCC_DEBUG && 1
+#if DCC_DEBUG && 0
 #define REFLOG(x) (printf x,fflush(stdout))
 #include <stdio.h>
 #else
