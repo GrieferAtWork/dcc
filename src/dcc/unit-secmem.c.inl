@@ -27,7 +27,7 @@
 
 #include <string.h>
 
-#if DCC_DEBUG && 1
+#if DCC_DEBUG && 0
 #define REFLOG(x) (printf x,fflush(stdout))
 #include <stdio.h>
 #else
@@ -35,26 +35,6 @@
 #endif
 
 DCC_DECL_BEGIN
-
-/*
-+++ incref('.text',0,120) x1
-+++ incref('.text',0,120) x1
-+++ incref('.bss',0,4) x1
---- decref('.bss',0,4)
-+++ incref('.bss',0x4,4) x1
-+++ incref('.bss',0,4) x1
---- decref('.bss',0x4,4)
-+++ incref('.bss',0x8,4) x1
-+++ incref('.text',0,23) x1
-+++ incref('.text',0x17,93) x1
---- decref('.text',0,23)
-+++ incref('.string',0,21) x1
-+++ incref('.string',0x15,17) x1
-+++ incref('.string',0x1d,9) x1
-+++ incref('.string',0x26,8) x1
-+++ incref('.string',0x2e,2) x1
---- decref('.string',0x1d,9)
-*/
 
 
 LOCAL struct DCCAllocRange *

@@ -438,6 +438,7 @@ unnamed_type:
   }
   assertf(iter->t_type == 0,"As set by 'ty2.t_type = 0' above!");
   *iter = *self; /* Inherit reference. */
+  ty2.t_type |= (self->t_type&(DCCTYPE_FLAGSMASK&~(DCCTYPE_ASTMASK)));
   *self = ty2;   /* Inherit reference. */
  }
  /* Apply mode attributes. */
@@ -700,13 +701,8 @@ begin: DCCParse_Attr(attr);
    /* The type is actually being declared _here_! */
    if (!(decl->d_flag&DCC_DECLFLAG_FORWARD)) {
     WARN(W_TYPE_NOT_FORWARD,decl);
-#if 1
-    decl = DCCDecl_New(decl->d_name);
-    if unlikely(!decl) break;
-#else
     DCCDecl_Clear(decl);
     decl->d_kind = decl_flag;
-#endif
    }
    decl->d_flag &= ~(DCC_DECLFLAG_FORWARD);
    YIELD();

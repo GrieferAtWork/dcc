@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
   goto end;
  }
 
- //_CrtSetBreakAlloc(130);
+ //_CrtSetBreakAlloc(5941);
  DCCLinker_AddSysPaths(outfile_name);
 
  if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB)) {
