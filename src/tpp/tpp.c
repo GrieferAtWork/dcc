@@ -688,11 +688,13 @@ skip_whitespacenolf_and_comments_rev(char *iter, char *begin) {
 }
 
 
-PRIVATE struct {
+struct TPPStringEmpty {
  refcnt_t s_refcnt;
  size_t   s_size;
  char     s_text[1];
-} tpp_empty_string = {0x80000000,0,{'\0'}};
+};
+
+PRIVATE struct TPPStringEmpty tpp_empty_string = {0x80000000,0,{'\0'}};
 #define empty_string  ((struct TPPString *)&tpp_empty_string)
 
 
@@ -862,7 +864,7 @@ PUBLIC struct TPPFile TPPFile_Empty = {
  /* f_textfile.f_cacheinc    */0,
  /* f_textfile.f_rdata       */0,
  /* f_textfile.f_prefixdel   */0,
- /* f_textfile.f_flags       */TPP_TEXTFILE_FLAG_NOGUARD,
+ /* f_textfile.f_flags       */TPP_TEXTFILE_FLAG_NOGUARD|TPP_TEXTFILE_FLAG_INTERNAL,
  /* f_textfile.f_encoding    */TPP_ENCODING_UTF8,
  /* f_textfile.f_padding     */{0},
  /* f_textfile.f_newguard    */NULL}
@@ -8836,12 +8838,33 @@ err:    return 0;
 #pragma warning(disable: 4701)
 #endif
 
+#if TPP_CONFIG_DEBUG && (defined(_WIN32) || defined(WIN32))
+PRIVATE void tpp_warnf(char const *fmt, ...) {
+ char buffer[1024];
+ va_list args;
+ size_t bufsiz;
+ va_start(args,fmt);
+#ifdef _MSC_VER
+ _vsnprintf(buffer,sizeof(buffer),fmt,args);
+#else
+  vsnprintf(buffer,sizeof(buffer),fmt,args);
+#endif
+ va_end(args);
+ bufsiz = strlen(buffer);
+ fwrite(buffer,sizeof(char),bufsiz,stderr);
+ OutputDebugStringA(buffer);
+}
+#define WARNF      tpp_warnf
+#else
 #define WARNF(...) fprintf(stderr,__VA_ARGS__)
+#endif
+
 PUBLIC int TPPLexer_Warn(int wnum, ...) {
  va_list args; char const *used_filename,*true_filename;
  char const *macro_name = NULL; struct TPPKeyword *kwd;
  int macro_name_size,behavior; wgroup_t const *wgroups;
  struct TPPString *temp_string = NULL;
+ struct TPPFile *effective_file;
  unsigned int wid;
 #if 0 /* Don't warn when already in an error-state. */
  if (current.l_flags&TPPLEXER_FLAG_ERROR) return 0;
@@ -8869,14 +8892,17 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
 #define KWDNAME()    (ARG(struct TPPKeyword *)->k_name)
 #define TOK_NAME()   (kwd = TPPLexer_LookupKeywordID(ARG(tok_t)),kwd ? kwd->k_name : "??" "?")
 #define CONST_STR()  (temp_string = TPPConst_ToString(ARG(struct TPPConst *)),temp_string ? temp_string->s_text : NULL)
- used_filename = TPPLexer_FILE(NULL);
+ effective_file = TPPLexer_Textfile();
+ used_filename = TPPFile_Filename(effective_file,NULL);
  if (token.t_file->f_kind == TPPFILE_KIND_MACRO) {
   macro_name = token.t_file->f_name;
   macro_name_size = (int)token.t_file->f_namesize;
-  true_filename = TPPLexer_TRUE_FILE(NULL);
+  effective_file = TPPLexer_Current->l_token.t_file;
+  true_filename = TPPFile_Filename(effective_file,NULL);
  } else {
   true_filename = used_filename;
  }
+ TPP_TEXTFILE_FLAG_INTERNAL;
  switch (wnum) {
   { /* Special case for #if without #endif (display file/line of the #if) */
    struct TPPIfdefStackSlot *ifdef_slot;
@@ -8893,6 +8919,11 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
 
   {
   default:
+   if (effective_file->f_kind == TPPFILE_KIND_TEXT &&
+      (effective_file->f_textfile.f_flags&TPP_TEXTFILE_FLAG_INTERNAL)) {
+    /* Don't display line/col information! */
+    WARNF("%s: ",true_filename);
+   } else
 #if 1
    /* For better compatibility with custom parsers,
     * make sure that the token pointer can be used. */

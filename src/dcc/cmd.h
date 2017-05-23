@@ -24,6 +24,13 @@
 
 DCC_DECL_BEGIN
 
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+#define DCC_OUTFILE_STDEXE "a.exe"
+#else
+#define DCC_OUTFILE_STDEXE "a.out"
+#endif
+#define DCC_OUTFILE_STDOBJ "a.o"
+
 struct option {
  int16_t              o_id;     /*< Unique Option ID emit when it is encountered. */
 #define OPTION_FLAG_NONE   0x0000

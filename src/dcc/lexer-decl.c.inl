@@ -290,13 +290,19 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
      }
     }
    }
+#if 1
+   decl = DCCDecl_New(decl->d_name);
+   if unlikely(!decl) goto no_decl;
+#else
    /* Clear the declaration before re-initialization. */
    DCCDecl_Clear(decl);
+#endif
   }
   decl->d_type = type; /* Inherit object. */
   DCCDecl_SetAttr(decl,&attr);
   real_decl_type = &decl->d_type;
  } else {
+no_decl:
   real_decl_type = &type;
  }
  if (TOK == '=') {

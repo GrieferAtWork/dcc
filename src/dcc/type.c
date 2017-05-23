@@ -36,7 +36,7 @@ struct struct_DCCTypeDecl {
  struct DCCDecl          *d_next;
  struct TPPKeyword const *d_name;
  /*ref*/struct TPPFile   *d_file;
- DCC(line_t)              d_line;
+ line_t                   d_line;
  uint16_t                 d_kind;
  uint16_t                 d_flag;
  struct DCCType           d_type;
@@ -51,7 +51,7 @@ struct struct_DCCTypeDecl {
   /* d_file   */&TPPFile_Empty,\
   /* d_line   */0,\
   /* d_kind   */DCC_DECLKIND_TYPE,\
-  /* d_flag   */DCC_DECLFLAG_NONE,\
+  /* d_flag   */DCC_DECLFLAG_INTERN,\
   /* d_type   */{id,NULL},\
   /* d_attr   */NULL,\
   /* d_tdecl  */{{0},NULL,{0},0}\
@@ -248,7 +248,7 @@ PRIVATE struct struct_DCCTypeDecl t_int_oldfun =
   /* d_file   */&TPPFile_Empty,
   /* d_line   */0,
   /* d_kind   */DCC_DECLKIND_OLDFUNCTION,
-  /* d_flag   */DCC_DECLFLAG_NONE,
+  /* d_flag   */DCC_DECLFLAG_INTERN,
   /* d_type   */{DCCTYPE_INT,NULL},
   /* d_attr   */NULL,
   /* d_tdecl  */{{0},NULL,{0},0}
@@ -260,7 +260,7 @@ PRIVATE struct struct_DCCTypeDecl t_void_oldfun =
   /* d_file   */&TPPFile_Empty,
   /* d_line   */0,
   /* d_kind   */DCC_DECLKIND_OLDFUNCTION,
-  /* d_flag   */DCC_DECLFLAG_NONE,
+  /* d_flag   */DCC_DECLFLAG_INTERN,
   /* d_type   */{DCCTYPE_VOID,NULL},
   /* d_attr   */NULL,
   /* d_tdecl  */{{0},NULL,{0},0}

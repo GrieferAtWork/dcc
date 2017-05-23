@@ -109,6 +109,8 @@ DCCDecl_Clear(struct DCCDecl *__restrict self) {
  uint16_t old_kind;
  assert(self);
  assert(self->d_file);
+ /* Make sure not to clear internal declarations. */
+ if (self->d_flag&DCC_DECLFLAG_INTERN) return;
  tydecl = self->d_type.t_base;
  old_kind = self->d_kind;
  self->d_kind = DCC_DECLKIND_NONE;

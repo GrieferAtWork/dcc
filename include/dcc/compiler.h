@@ -48,6 +48,7 @@ DCC_DECL_BEGIN
 #define DCC_DECLFLAG_NONE         0x0000
 #define DCC_DECLFLAG_VARIADIC     0x0001 /*< Used by 'DCC_DECLKIND_FUNCTION': Additional arguments are variadic. */
 #define DCC_DECLFLAG_FORWARD      0x0002 /*< Used by forward-type declarations (such as structures, unions or enums). */
+#define DCC_DECLFLAG_INTERN       0x1000 /*< Internal declaration symbol (which may not be cleared). */
 struct DCCStructField {
  DCC(target_off_t)      sf_off;    /*< Field offset, or offset from %EBP for function types. */
  /*ref*/struct DCCDecl *sf_decl;   /*< [1..1] Field type+name, or function argument.

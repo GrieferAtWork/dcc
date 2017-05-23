@@ -17,6 +17,14 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 
+#ifndef HELP_BEGIN
+#define CMD_DEF_INL_DEFINES_HELP
+#define HELP_BEGIN
+#define HELP(option)
+#define SHORT_HELP(name,code)
+#define HELP_END
+#endif
+
 #define OPTION_O  OPTION
 #define OPTION_A  OPTION_ALIAS
 #define OPTION_N  OPTION_UNNAMED
@@ -105,8 +113,26 @@ GROUP_BEGIN(grp_main) /* Main options group */
    OPTION_A(OPT_Wl_nostdlib, OPTION_FLAG_NONE,"nostdlib", NULL,NULL) /* -nostdlib */
 GROUP_END
 
+HELP_BEGIN HELP(OPT_o)
+   SHORT_HELP("-o <name>",
+              HELPF("Redirect output to a given file (defauls to '"
+                    DCC_OUTFILE_STDEXE "'/'" DCC_OUTFILE_STDOBJ "')"))
+HELP_END
+
+HELP_BEGIN HELP(OPT_I) SHORT_HELP("-Idir",        HELPF("Adds 'dir' to the list of #include <...> paths")) HELP_END
+HELP_BEGIN HELP(OPT_D) SHORT_HELP("-Dsym[=val=1]",HELPF("Defines macro 'sym' as 'val'")) HELP_END
+HELP_BEGIN HELP(OPT_U) SHORT_HELP("-Usym",        HELPF("Undefine a previously defined macro 'sym'")) HELP_END
+HELP_BEGIN HELP(OPT_A) SHORT_HELP("-Apred=answer",   HELPF("Define an assertion 'pred' as 'answer'"))
+                       SHORT_HELP("-A-pred[=answer]",HELPF("Delete 'answer' or all assertions previously made about 'pred'")) HELP_END
 
 #undef OPTION_N
 #undef OPTION_A
 #undef OPTION_O
 
+#ifdef CMD_DEF_INL_DEFINES_HELP
+#undef CMD_DEF_INL_DEFINES_HELP
+#undef SHORT_HELP
+#undef HELP
+#undef HELP_END
+#undef HELP_BEGIN
+#endif

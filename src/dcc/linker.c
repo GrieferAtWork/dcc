@@ -302,8 +302,8 @@ libint_trails[LIBINT_TRIAL_COUNT+1] = {
 
 static struct inttrail const
 incint_trails[INCINT_TRIAL_COUNT+1] = {
- {{'/','i','n','c','l','u','d','e','\0'}},
  {{'/','f','i','x','i','n','c','l','u','d','e','\0'}},
+ {{'/','i','n','c','l','u','d','e','\0'}},
  {{'\0'}},
 };
 

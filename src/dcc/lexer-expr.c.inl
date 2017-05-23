@@ -1326,7 +1326,7 @@ DCCParse_CExpr2(int one, struct DCCSymExpr *__restrict result) {
 }
 PUBLIC int_t DCC_PARSE_CALL DCCParse_CExpr(int one) {
  struct DCCSymExpr result; DCCParse_CExpr2(one,&result);
- if (result.e_sym) WARN(W_CONSTANT_EXPR_DEPENDS_ON_SYMBOL,result.e_sym);
+ if (result.e_sym) WARN(W_CONSTANT_EXPR_DEPENDS_ON_SYMBOL,result.e_sym->sy_name);
  return result.e_int;
 }
 

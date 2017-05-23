@@ -229,5 +229,8 @@
     <None Include="..\src\dcc\cmd-parse.c.inl">
       <Filter>src\dcc</Filter>
     </None>
+    <None Include="..\src\dcc\unit-secmem.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
   </ItemGroup>
 </Project>

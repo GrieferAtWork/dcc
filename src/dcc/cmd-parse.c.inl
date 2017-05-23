@@ -319,7 +319,7 @@ def_secbase:
    SETFLAGI(TPPLexer_Current->l_flags,TPPLEXER_FLAG_TERMINATE_STRING_LF);
   else {
    enable = TPPLexer_SetExtension(v,enable);
-   if (enable == 2) WARN(W_UNKNOWN_EXTENSION,v);
+   if (!enable) WARN(W_UNKNOWN_EXTENSION,v);
   }
 #undef SETFLAGI
 #undef SETFLAG
@@ -338,6 +338,7 @@ def_secbase:
  case OPT_O: break; /* Current unused. */
 
  default:
+/*unknown:*/
   WARN(W_CMD_UNKNOWN,c->c_val);
   break;
  }

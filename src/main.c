@@ -29,6 +29,8 @@
 
 #include "dcc/cmd.h"
 
+DCC_DECL_BEGIN
+
 void def(char const *name, void *addr) {
  struct DCCSym *sym = DCCUnit_NewSyms(name,DCC_SYMFLAG_NONE);
  if (sym) DCCSym_Define(sym,&DCCSection_Abs,(target_ptr_t)addr,0);
@@ -137,6 +139,34 @@ static void save_object(char const *filename) {
  DCCUnit_Export(&def,filename);
 }
 
+static void tpp_clrfile(void) {
+ struct TPPFile *pop_file;
+ while (TOKEN.t_file != &TPPFile_Empty) {
+  pop_file = TOKEN.t_file;
+  TOKEN.t_file = pop_file->f_prev;
+  TPPFile_Decref(pop_file);
+ }
+ TOKEN.t_begin =
+ TOKEN.t_end   = TOKEN.t_file->f_pos;
+ TOKEN.t_kwd   = NULL;
+ TOKEN.t_id    = TOK_EOF;
+}
+
+
+void test(void) {
+ struct DCCSection *s;
+ s = DCCSection_News("TEST",DCC_SYMFLAG_NONE);
+ DCCSection_DIncref(s,0x0,21);
+ DCCSection_DIncref(s,0x15,17);
+ DCCSection_DIncref(s,0x1d,9);
+ DCCSection_DIncref(s,0x26,8);
+ DCCSection_DIncref(s,0x2e,2);
+ DCCSection_DDecref(s,0x1d,9);
+
+
+ exit(0);
+}
+
 
 int main(int argc, char *argv[]) {
  struct DCCSection *sec;
@@ -162,6 +192,10 @@ int main(int argc, char *argv[]) {
                                );
  if (argc) --argc,++argv;
 
+ TPPLexer_PushFile(&TPPFile_Cmd);
+
+ //test();
+
  /* Parse the commandline. */
  { struct cmd c;
    cmd_init(&c,argc,argv);
@@ -184,12 +218,12 @@ int main(int argc, char *argv[]) {
  if (!outfile_name) {
   /* TODO: deduce default output name from first source file? */
   if (!(flags&F_COMPILEONLY))
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
-       outfile_name = "a.exe";
-#else
-       outfile_name = "a.out";
-#endif
-  else outfile_name = "a.o";
+       outfile_name = DCC_OUTFILE_STDEXE;
+  else outfile_name = DCC_OUTFILE_STDOBJ;
+ }
+ if unlikely(!argc) {
+  /* TODO: Display '--help' */
+  goto end;
  }
 
  //_CrtSetBreakAlloc(130);
@@ -225,6 +259,9 @@ int main(int argc, char *argv[]) {
   ++argv,--argc;
  }
 
+ tpp_clrfile();
+ TPPLexer_PushFile(&TPPFile_Linker);
+
  /* Cleanup unused stuff. */
  DCCUnit_ClearStatic();
 
@@ -243,6 +280,7 @@ int main(int argc, char *argv[]) {
   DCCLinker_Make(s_out); /* Generate the binary. */
   s_close(s_out);
  }
+ tpp_clrfile();
 
 #if 0 /* TODO: Direct execution mode. */
  {
@@ -307,5 +345,5 @@ end:
  return result;
 }
 
-
+DCC_DECL_END
 

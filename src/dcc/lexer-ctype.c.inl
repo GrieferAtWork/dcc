@@ -700,8 +700,13 @@ begin: DCCParse_Attr(attr);
    /* The type is actually being declared _here_! */
    if (!(decl->d_flag&DCC_DECLFLAG_FORWARD)) {
     WARN(W_TYPE_NOT_FORWARD,decl);
+#if 1
+    decl = DCCDecl_New(decl->d_name);
+    if unlikely(!decl) break;
+#else
     DCCDecl_Clear(decl);
     decl->d_kind = decl_flag;
+#endif
    }
    decl->d_flag &= ~(DCC_DECLFLAG_FORWARD);
    YIELD();
@@ -746,10 +751,10 @@ begin: DCCParse_Attr(attr);
   } else {
    /* Enum types don't reference the actual enum symbol.
     * Instead, they simply behave as an alias for 'int'. */
-   DCCDecl_Decref(decl);
    assert(self->t_base == NULL);
    assert((decl->d_type.t_type&DCCTYPE_BASICMASK) ==  DCCTYPE_INT ||
           (decl->d_type.t_type&DCCTYPE_BASICMASK) == (DCCTYPE_INT|DCCTYPE_UNSIGNED));
+   DCCDecl_Decref(decl);
   }
   goto next_noyield;
  } break;

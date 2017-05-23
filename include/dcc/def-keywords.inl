@@ -1043,9 +1043,7 @@ DEF_WARNING(W_DECL_TYPEDEF_WITH_INITIALIZER,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,{
 DEF_WARNING(W_STMT_ASM_EXPECTED_STRING,(WG_SYNTAX),WSTATE_WARN,
             WARNF("Expected string after __asm__, but got " TOK_S,TOK_A))
 DEF_WARNING(W_CONSTANT_EXPR_DEPENDS_ON_SYMBOL,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,{
- DECL_LOAD();
- WARNF("A constant expression here can't depend on a symbol '%s'\n",DECL_NAME());
- DECL_PRINT(NULL);
+ WARNF("A constant expression here can't depend on a symbol '%s'\n",KWDNAME());
 })
 DEF_WARNING(W_EXPECTED_CONSTANT_EXPRESSION,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,WARNF("Expected a constant expression"))
 DEF_WARNING(W_UNEXPECTED_TOKEN_IN_C_EXPRESSION,(WG_SYNTAX),WSTATE_WARN,WARNF("Unexpected token " TOK_S " in c expression",TOK_A))

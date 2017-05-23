@@ -330,6 +330,7 @@ struct TPPTextFile {
                                           *  >> #endif
                                           */
 #define TPP_TEXTFILE_FLAG_SYSHEADER 0x02 /*< This file is a system-header and all non-error warnings are suppressed. */
+#define TPP_TEXTFILE_FLAG_INTERNAL  0x80 /*< This file is internal, meaning it shouldn't ~really~ represent a line/col number. */
  unsigned char            f_flags;       /*< A set of 'TPP_TEXTFILE_FLAG_*' */
  TPP(encoding_t)          f_encoding;    /*< Encoding determined to-be used by this file. */
  char                     f_padding[1];  /*< Padding data... */

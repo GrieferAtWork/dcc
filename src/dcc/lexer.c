@@ -39,6 +39,51 @@
 
 DCC_DECL_BEGIN
 
+struct TPPStringEmpty {
+ refcnt_t s_refcnt;
+ size_t   s_size;
+ char     s_text[1];
+};
+
+extern struct TPPStringEmpty tpp_empty_string;
+#define empty_string  ((struct TPPString *)&tpp_empty_string)
+#define SPECIAL_FILE(name,hash) \
+{\
+ /* f_refcnt                 */0x80000000,\
+ /* f_kind                   */TPPFILE_KIND_TEXT,\
+ /* f_prev                   */NULL,\
+ /* f_name                   */name,\
+ /* f_namesize               */DCC_COMPILER_STRLEN(name),\
+ /* f_namehash               */hash,\
+ /* f_text                   */empty_string,\
+ /* f_begin                  */empty_string->s_text,\
+ /* f_end                    */empty_string->s_text,\
+ /* f_pos                    */empty_string->s_text,{\
+ /* f_textfile.f_cacheentry  */NULL,\
+ /* f_textfile.f_usedname    */NULL,\
+ /* f_textfile.f_lineoff     */0,\
+ /* f_textfile.f_stream      */TPP_STREAM_INVALID,\
+ /* f_textfile.f_ownedstream */TPP_STREAM_INVALID,\
+ /* f_textfile.f_guard       */NULL,\
+ /* f_textfile.f_cacheinc    */0,\
+ /* f_textfile.f_rdata       */0,\
+ /* f_textfile.f_prefixdel   */0,\
+ /* f_textfile.f_flags       */TPP_TEXTFILE_FLAG_NOGUARD|TPP_TEXTFILE_FLAG_INTERNAL,\
+ /* f_textfile.f_encoding    */TPP_ENCODING_UTF8,\
+ /* f_textfile.f_padding     */{0},\
+ /* f_textfile.f_newguard    */NULL}\
+}
+
+PUBLIC struct TPPFile TPPFile_Cmd    = SPECIAL_FILE("CMD",22846089lu);
+#if __SIZEOF_SIZE_T__ == 4
+PUBLIC struct TPPFile TPPFile_Linker = SPECIAL_FILE("LINKER",2160376288lu);
+#elif __SIZEOF_SIZE_T__ == 8
+PUBLIC struct TPPFile TPPFile_Linker = SPECIAL_FILE("LINKER",426909024696800llu);
+#else
+#   error FIXME
+#endif
+
+
 #ifndef __INTELLISENSE__
 PUBLIC struct TPPKeyword_Empty_struct
 TPPKeyword_Empty_data = {
@@ -131,6 +176,9 @@ PUBLIC int DCCParse_Pragma(void) {
  case KWD_weak:
   /* declare a given symbol as weak. */
   YIELD();
+  TPPLexer_Current->l_flags &= ~(TPPLEXER_FLAG_NO_MACROS|
+                                 TPPLEXER_FLAG_NO_DIRECTIVES|
+                                 TPPLEXER_FLAG_NO_BUILTIN_MACROS);
   if (!TPP_ISKEYWORD(TOK)) { WARN(W_PRAGMA_WEAK_EXPECTES_KEYWORD); break; }
   weaksym = DCCUnit_NewSym(TOKEN.t_kwd,DCC_SYMFLAG_NONE);
   if unlikely(!weaksym) break;
@@ -157,6 +205,9 @@ PUBLIC int DCCParse_Pragma(void) {
   { /* Configure library search paths. */
   case KWD_library_path:
    YIELD();
+   TPPLexer_Current->l_flags &= ~(TPPLEXER_FLAG_NO_MACROS|
+                                  TPPLEXER_FLAG_NO_DIRECTIVES|
+                                  TPPLEXER_FLAG_NO_BUILTIN_MACROS);
    if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
    else YIELD();
    while (TOK != ')') {
@@ -216,6 +267,9 @@ PUBLIC int DCCParse_Pragma(void) {
    /* #pragma pack(pop) */
  case KWD_pack:
   YIELD();
+  TPPLexer_Current->l_flags &= ~(TPPLEXER_FLAG_NO_MACROS|
+                                 TPPLEXER_FLAG_NO_DIRECTIVES|
+                                 TPPLEXER_FLAG_NO_BUILTIN_MACROS);
   if (TOK != '(') WARN(W_EXPECTED_LPAREN); else YIELD();
   while (TOK != ')') {
         if (TOK == KWD_push) DCCCompiler_PackPush();
@@ -241,6 +295,9 @@ skip_yield_after_pack:
  case KWD_comment:
   /* Emit a comment for the compiler/linker. */
   YIELD();
+  TPPLexer_Current->l_flags &= ~(TPPLEXER_FLAG_NO_MACROS|
+                                 TPPLEXER_FLAG_NO_DIRECTIVES|
+                                 TPPLEXER_FLAG_NO_BUILTIN_MACROS);
   if (TOK != '(') WARN(W_EXPECTED_LPAREN); else YIELD();
   comment_group = TOK;
   if (!TPP_ISKEYWORD(comment_group)) WARN(W_PRAGMA_COMMENT_EXPECTED_KEYWORD);
@@ -294,6 +351,9 @@ PUBLIC int DCCParse_GCCPragma(void) {
  { /* #pragma GCC visibility push("visibility") */
    /* #pragma GCC visibility pop */
  case KWD_visibility:
+  TPPLexer_Current->l_flags &= ~(TPPLEXER_FLAG_NO_MACROS|
+                                 TPPLEXER_FLAG_NO_DIRECTIVES|
+                                 TPPLEXER_FLAG_NO_BUILTIN_MACROS);
   YIELD();
   if (TOK == KWD_push) {
    struct TPPString *vis_text;
