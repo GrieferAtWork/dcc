@@ -247,7 +247,7 @@ set_text:
    self->a_reach  = text;
    self->a_flags &= ~(DCC_ATTRFLAG_MASK_REACHABLE);
    if (text) self->a_flags |= flag;
-   goto done;
+   goto done_paren;
   } break;
 
   { /* Select a custom section. */
@@ -366,6 +366,7 @@ set_visibility :
   }
 cleanup_text:
   if (text) TPPString_Decref(text);
+done_paren:
   if (has_paren) {
    if (TOK == ')') YIELD();
    else WARN(W_EXPECTED_RPAREN);
@@ -440,7 +441,6 @@ skip_attribute:
   }
   break;
  }
-done:;
 }
 
 PUBLIC void DCC_PARSE_CALL
