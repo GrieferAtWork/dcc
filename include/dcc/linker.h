@@ -26,6 +26,8 @@
 
 DCC_DECL_BEGIN
 
+/* ELF extensions used in DCC object files. */
+
 /* Used for dynamic linking in DCC ELF object files:
  *  - The 'Elf(Shdr)' fields are defined as follows:
  *      'sh_name':      The link-time name of the library hook (offset into the '.shstrtab' section)
@@ -52,6 +54,50 @@ DCC_DECL_BEGIN
  *    will exclude the symbol from being considered as undefined.
  */
 #define SHT_DCC_IMPSEC (SHT_LOUSER+0x0305)
+
+/* Used for symbol aliasing & extended flags in DCC ELF object files:
+ *  - The 'Elf(Shdr)' fields are defined as follows:
+ *      'sh_name':      Offset in '.shstrtab' - ".DCC.symflg"
+ *      'sh_type':      <SHT_DCC_SYMFLG>
+ *      'sh_flags':     <0>
+ *      'sh_addr':      <0>
+ *      'sh_offset':    Absolute file-offset of the symbol flag table.
+ *      'sh_size':      Size of the section's data (in bytes).
+ *      'sh_link':      Index of a '.symtab' section, who's symbols are extended by this section.
+ *      'sh_info':      Undefined
+ *      'sh_addralign': DCC_COMPILER_ALIGNOF(Elf(DCCSymFlg))
+ *      'sh_entsize':   sizeof(Elf(DCCSymFlg))
+ *  - Using this extension, DCC is able to retain dependency tree information
+ *    caused by symbol aliasing, as well as less important symbol flags,
+ *    such as 'DCC_SYMFLAG_USED'
+ */
+#define SHT_DCC_SYMFLG (SHT_LOUSER+0x0306)
+
+typedef struct {
+  Elf32_Word sf_info; /*< Extended symbol information. */
+  Elf32_Addr sf_off;  /*< Offset applied to a symbol alias. */
+} Elf32_DCCSymFlg;
+
+typedef struct {
+  Elf64_Word sf_info; /*< Extended symbol information. */
+  Elf32_Addr sf_off;  /*< Offset applied to a symbol alias. */
+} Elf64_DCCSymFlg;
+
+#define ELF_DCC_SYMFLAG_F_ALIAS  0x01 /*< The symbol is aliasing another symbol retrievable through 'ELF(32|64)_DCC_SYMFLAG_SYM(...)'.
+                                       *  The symbol id being aliased is apart of the same symbol table extended by the associated section. */
+#define ELF_DCC_SYMFLAG_F_USED   0x40 /*< The symbol is used and shall not be removed, even when it appears unused. */
+#define ELF_DCC_SYMFLAG_F_UNUSED 0x80 /*< The symbol is intended to be unused and no warning shall be emit when it is removed. */
+
+/* Helper macros describing how to insert/extract data from 'sf_info' */
+#define ELF32_DCC_SYMFLAG_SYM(info)   ((info) >> 8)
+#define ELF32_DCC_SYMFLAG_FLAGS(info) ((uint8_t)(info))
+#define ELF32_DCC_SYMFLAG(sym,flags)  ((sym) << 8 | (uint8_t)(flags))
+
+#define ELF64_DCC_SYMFLAG_SYM   ELF32_DCC_SYMFLAG_SYM
+#define ELF64_DCC_SYMFLAG_FLAGS ELF32_DCC_SYMFLAG_FLAGS
+#define ELF64_DCC_SYMFLAG       ELF32_DCC_SYMFLAG
+
+
 
 
 struct DCCLibPaths {

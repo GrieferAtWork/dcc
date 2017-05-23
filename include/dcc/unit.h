@@ -555,7 +555,9 @@ do{ DCC_ASSERT(!DCCSection_ISIMPORT(self));\
 }while(DCC_MACRO_FALSE)
 #endif
 
-/* Add a new relocation (NOTE: The given 'relo' is copied)
+/* Add a new relocation
+ * NOTE: The given 'relo' is copied, meaning
+ *       its symbol reference is _NOT_ inherited.
  * @requires: !DCCSection_ISIMPORT(self) */
 DCCFUN void DCCSection_Putrelo(struct DCCSection *__restrict self,
                                struct DCCRel const *__restrict relo);
@@ -735,18 +737,39 @@ DCCSection_DAllocSym(struct DCCSection *__restrict self,
                      DCC(target_siz_t) mem_size, DCC(target_siz_t) size,
                      DCC(target_siz_t) align, DCC(target_siz_t) offset);
 
-/* Increments the reference counter of shared section data.
- * NOTE: Out-of-bounds address ranges will be allocated symbolically,
- *       meaning that it is possible to hold references to unallocated
- *       regions of memory.
- * WARNING: Upon internal failure, a lexer error may be set.
- * NOTE: Simply because this function never modifies the section
- *       text buffer, it is fully legitimate to pass 'unit.u_curr'
- *       as argument for 'self', meaning this function still
- *       behaves properly, even when the passed section is
- *       the one currently selected as text target.
+/* Free a given section address range & clear all relocations inside.
+ * NOTE: This function differs from section incref/decref,
+ *       as associated memory is freed immediately.
  * @requires: !DCCSection_ISIMPORT(self) */
 DCCFUN void
+DCCSection_DFree(struct DCCSection *__restrict self,
+                 DCC(target_ptr_t) addr, DCC(target_siz_t) size);
+
+/* Increments the reference counter of shared section data.
+ * NOTES:
+ *   - Unlike how one might expect, section data allocated through
+ *    'DCCSection_DAlloc*' and friends is initialized to ZERO(0)
+ *     references, meaning that to begin using reference-counted
+ *     section memory, the data must first be incref'd.
+ *   - Though in most cases, the job of adding said reference
+ *     does not fall on the caller, as most uses of section
+ *     data allocators are to later define a symbol, which in
+ *     turn is going to incref() the associated memory itself,
+ *     thereby creating a dependency branch from the symbol being
+ *     used towards the associated section data.
+ *   - Out-of-bounds address ranges will be allocated symbolically,
+ *     meaning that it is possible to hold references to unallocated
+ *     regions of memory.
+ *   - Simply because this function never modifies the section
+ *     text buffer, it is fully legitimate to pass 'unit.u_curr'
+ *     as argument for 'self', meaning this function still
+ *     behaves properly, even when the passed section is
+ *     the one currently selected as text target.
+ * WARNING: Upon internal failure, a lexer error may be set.
+ * @requires: !DCCSection_ISIMPORT(self)
+ * @return: 0: Failed to allocate a dynamic reference-counter range (A lexer error was set).
+ * @return: 1: Successfully modified all affected reference counters. */
+DCCFUN int
 DCCSection_DIncref(struct DCCSection *__restrict self,
                    DCC(target_ptr_t) addr,
                    DCC(target_siz_t) size);
@@ -771,19 +794,13 @@ DCCSection_DIncref(struct DCCSection *__restrict self,
  *       function will automatically flush/restore the section
  *       text buffer in the event that it must be modified
  *       when data is freed during a call to 'DCCSection_DFree'
- * @requires: !DCCSection_ISIMPORT(self) */
-DCCFUN void
+ * @requires: !DCCSection_ISIMPORT(self)
+ * @return: 0: Failed to allocate a dynamic reference-counter range (A lexer error was set).
+ * @return: 1: Successfully modified all affected reference counters. */
+DCCFUN int
 DCCSection_DDecref(struct DCCSection *__restrict self,
                    DCC(target_ptr_t) addr,
                    DCC(target_siz_t) size);
-
-/* Free a given section address range & clear all relocations inside.
- * NOTE: This function differs from section incref/decref,
- *       as associated memory is freed immediately.
- * @requires: !DCCSection_ISIMPORT(self) */
-DCCFUN void
-DCCSection_DFree(struct DCCSection *__restrict self,
-                 DCC(target_ptr_t) addr, DCC(target_siz_t) size);
 
 #define DCCSection_TADDR(self)       DCCTextBuf_ADDR(&(self)->sc_text)
 /* Allocate 'size' bytes of text memory, advancing

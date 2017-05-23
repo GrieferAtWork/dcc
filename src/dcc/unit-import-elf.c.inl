@@ -740,28 +740,6 @@ skip_symdef:
      case STB_WEAK : symflags |= DCC_SYMFLAG_WEAK; break;
      default       : break;
      }
-     /* TODO: What about alias symbols?
-      * ELF doesn't appear to be able to represent these, meaning
-      * that when the times comes for DCC to generate object files,
-      * I'll have to create an extension, or a new format all-together (which I don't want to):
-      * 
-      * source_a.c:
-      * >> int add(int x, int y) {
-      * >>     return x+y;
-      * >> }
-      * 
-      * source_b.c:
-      * >> [[alias("add")]] int my_add(int x, int y);
-      * >> 
-      * >> int _start() {
-      * >>     int z = my_add(10,20);
-      * >>     return z;
-      * >> }
-      * 
-      * $dcc -c source_a.c
-      * $dcc -c source_b.c # GCC fails to compile this, but DCC's supposed to be able to
-      * $dcc -o app source_a.o source_b.o
-      */
      if (*name) {
       sym = DCCUnit_NewSyms(name,symflags);
       if unlikely(!sym) goto skip_symdef;
@@ -784,6 +762,88 @@ done_symvec:
     SEC_SYMVEC(iter) = (struct DCCSym **)symvec;
     SEC_SYMCNT(iter) = symcnt;
    }
+#ifdef SHT_DCC_SYMFLG
+   /* What about alias symbols? - This is what's about that!
+    * ELF doesn't appear to be able to represent these, meaning
+    * that when the times comes for DCC to generate object files,
+    * I'll have to create an extension, or a new format all-together (which I don't want to):
+    * 
+    * source_a.c:
+    * >> int add(int x, int y) {
+    * >>     return x+y;
+    * >> }
+    * 
+    * source_b.c:
+    * >> [[alias("add")]] int my_add(int x, int y);
+    * >> 
+    * >> int _start() {
+    * >>     int z = my_add(10,20);
+    * >>     return z;
+    * >> }
+    * 
+    * $dcc -c source_a.c
+    * $dcc -c source_b.c # GCC fails to compile this, but DCC's supposed to be able to
+    * $dcc -o app source_a.o source_b.o
+    */
+   /* Load all 'SHT_DCC_SYMFLG' extension sections. */
+   for (iter = secv; iter != end; ++iter) {
+    Elf(DCCSymFlg) *flgv,*flg_iter,*flg_end; size_t flgc;
+    struct DCCSym **symv,**sym_iter; size_t symc;
+    if (iter->sh_type != SHT_DCC_SYMFLG) continue;
+    /* Parse extended symbol flags. */
+    if (!iter->sh_entsize) iter->sh_entsize = sizeof(Elf(DCCSymFlg));
+    if unlikely((flgc = iter->sh_size/iter->sh_entsize) == 0) continue;
+    if unlikely((symc = SEC_SYMCNTI(iter->sh_info)) == 0) continue;
+    if unlikely((symv = SEC_SYMVECI(iter->sh_info)) == NULL) continue;
+    if (symc < flgc) flgc = symc;
+    flgv = (Elf(DCCSymFlg) *)DCC_Malloc(flgc*sizeof(Elf(DCCSymFlg)),0);
+    if unlikely(!flgv) continue;
+    if (iter->sh_entsize == sizeof(Elf(DCCSymFlg))) {
+     flgc *= sizeof(Elf(DCCSymFlg));
+     s_seek(fd,iter->sh_offset,SEEK_SET);
+     read_error = s_read(fd,flgv,flgc);
+     if (read_error < 0) read_error = 0;
+     if (flgc > (size_t)read_error)
+         flgc = (size_t)read_error;
+     flgc /= sizeof(Elf(DCCSymFlg));
+    } else {
+     size_t i,common_size = sizeof(Elf(DCCSymFlg));
+     /* Difficult case: Must read each entry individually. */
+     if (iter->sh_entsize < sizeof(Elf(DCCSymFlg))) {
+      memset(flgv,0,flgc*sizeof(Elf(DCCSymFlg)));
+      common_size = iter->sh_entsize;
+     }
+     for (i = 0; i < flgc; ++i) {
+      s_seek(fd,iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
+      if (!s_reada(fd,&flgv[i],common_size)) { flgc = i; break; }
+     }
+    }
+    flg_end = (flg_iter = flgv)+flgc;
+    sym_iter = symv;
+    for (; flg_iter != flg_end; ++flg_iter,++sym_iter) {
+     struct DCCSym *sym = *sym_iter;
+     uint8_t  flags = ELF(DCC_SYMFLAG_FLAGS)(flg_iter->sf_info);
+     if unlikely(!sym) continue;
+#if ELF_DCC_SYMFLAG_F_USED   == DCC_SYMFLAG_USED && \
+    ELF_DCC_SYMFLAG_F_UNUSED == DCC_SYMFLAG_UNUSED
+     sym->sy_flags |= flags&(ELF_DCC_SYMFLAG_F_USED|
+                             ELF_DCC_SYMFLAG_F_UNUSED);
+#else
+     if (flags&ELF_DCC_SYMFLAG_F_USED)   sym->sy_flags |= DCC_SYMFLAG_USED;
+     if (flags&ELF_DCC_SYMFLAG_F_UNUSED) sym->sy_flags |= DCC_SYMFLAG_UNUSED;
+#endif
+     if (flags&ELF_DCC_SYMFLAG_F_ALIAS) {
+      uint32_t symid = ELF(DCC_SYMFLAG_SYM)(flg_iter->sf_info);
+      struct DCCSym *alias_target;
+      if unlikely(symid >= symc) continue;
+      if unlikely((alias_target = symv[symid]) == NULL) continue;
+      /* Define 'sym' as an alias for 'symv[symid]' */
+      DCCSym_Alias(sym,alias_target,flg_iter->sf_off);
+     }
+    }
+    DCC_Free(flgv);
+   }
+#endif /* SHT_DCC_SYMFLG */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
    /* Bind all IAT symbols. */
    for (iter = secv; iter != end; ++iter) {

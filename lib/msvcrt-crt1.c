@@ -43,23 +43,20 @@ typedef struct {
 } _startupinfo;
 
 void __getmainargs(int *pargc, char ***pargv, char ***penv, int globb, _startupinfo*);
+void exit(int exitcode) __attribute__((noreturn));
+
 int main(int argc, char **argv, char **env);
 
-extern void exit(int exitcode) __attribute__((noreturn));
+void __start(void) __attribute__((used,noreturn,alias("_start")));
 
 __attribute__((
 	used, /* Must mark as 'used' to not delete
 	       * this symbol from the object file
-	       * NOTE: Symbol are only being deleted because of
+	       * NOTE: Symbols are only being deleted because of
 	       *       the '--clear-unused-obj' comment above! */
 	noreturn
 ))
-#ifdef __PE__
-void __start(void)
-#else
-void _start(void)
-#endif
-{
+void _start(void) {
 	int argc; char **argv; char **env; int ret;
 	_startupinfo start_info = {0};
 #ifdef _WIN32

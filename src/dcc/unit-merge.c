@@ -84,7 +84,7 @@ found_sec:
 }
 #endif
 
-extern void
+extern int
 DCCSection_DIncrefN_impl(struct DCCSection *__restrict self,
                          target_ptr_t addr, target_siz_t size,
                          unsigned int n_refcnt);
@@ -95,7 +95,7 @@ PRIVATE void DCCSection_InsAlloc(struct DCCSection *__restrict self,
  if unlikely(!range) return; /* nothing to inherit! */
  pinsert = &self->sc_alloc;
  while ((iter = *pinsert) != NULL &&
-         iter->ar_addr+iter->ar_size < ins_base)
+         iter->ar_addr+iter->ar_size <= ins_base)
          pinsert = &iter->ar_next;
  assert(iter == *pinsert);
  if (!iter) {

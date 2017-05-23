@@ -1600,18 +1600,19 @@ DCCAllocRange_New(target_ptr_t addr,
  return result;
 }
 
-LOCAL void
+LOCAL int
 DCCSection_DIncrefN(struct DCCSection *__restrict self,
                     target_ptr_t addr, target_siz_t size,
                     unsigned int n_refcnt) {
  struct DCCAllocRange **prange,*range;
  struct DCCAllocRange *newrange;
  target_ptr_t addr_end,range_end;
+ int result = 1;
  assert(self);
  assert(!DCCSection_ISIMPORT(self));
  assert(n_refcnt);
- if unlikely(!OK) return; /* Don't do anything if an error occurred. */
- if unlikely(!size) return; /* nothing to do here! */
+ if unlikely(!OK) goto err; /* Don't do anything if an error occurred. */
+ if unlikely(!size) goto end; /* nothing to do here! */
  addr_end = addr+size;
  prange = &self->sc_alloc;
  /* TODO: This function (seems) to work, but it could be written _MUCH_ better! */
@@ -1649,7 +1650,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
              prev_range->ar_addr+prev_range->ar_size <=
              prev_range->ar_next->ar_addr);
     }
-    return;
+    goto end;
    }
    if (range->ar_addr >= addr) {
     insbefore_size = range->ar_addr-addr;
@@ -1659,7 +1660,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
      assert(insbefore_size);
      /* Must insert a new range before this one! */
      newrange = DCCAllocRange_New(addr,insbefore_size,n_refcnt);
-     if unlikely(!newrange) return;
+     if unlikely(!newrange) goto err;
      newrange->ar_next = range; /* Inherit object. */
      *prange           = newrange; /* Inherit object. */
      size             -= insbefore_size;
@@ -1668,7 +1669,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
      assert(!range->ar_next ||
              range->ar_addr+range->ar_size <=
              range->ar_next->ar_addr);
-     if unlikely(!size) return;
+     if unlikely(!size) goto end;
      addr += insbefore_size;
      range = newrange;
      range_end = addr;
@@ -1708,7 +1709,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
               newrange->ar_addr+newrange->ar_size <=
               newrange->ar_next->ar_addr);
      }
-     return;
+     goto end;
     }
    }
   }
@@ -1725,7 +1726,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
    if (addr_end == range_end) {
     /* split & Incref at upper memory. */
     newrange = DCCAllocRange_New(addr,size,range->ar_refcnt+n_refcnt);
-    if unlikely(!newrange) return;
+    if unlikely(!newrange) goto err;
     newrange->ar_next = range->ar_next;
     assert(!newrange->ar_next ||
             newrange->ar_addr+newrange->ar_size <=
@@ -1738,10 +1739,10 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
     assert(addr > range->ar_addr);
     assert(addr_end < range_end);
     insrange = DCCAllocRange_New(addr,size,range->ar_refcnt+n_refcnt);
-    if unlikely(!insrange) return;
+    if unlikely(!insrange) goto err;
     newrange = DCCAllocRange_New(addr_end,range_end-addr_end,
                                  range->ar_refcnt);
-    if unlikely(!newrange) { free(insrange); return; }
+    if unlikely(!newrange) { free(insrange); goto err; }
     range->ar_size    = addr-range->ar_addr;
     newrange->ar_next = range->ar_next;
     insrange->ar_next = newrange;
@@ -1757,7 +1758,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
     assert(range->ar_refcnt == insrange->ar_refcnt-n_refcnt);
    }
    assert(!range->ar_next || range->ar_addr+range->ar_size <= range->ar_next->ar_addr);
-   return;
+   goto end;
   }
   assert(addr >= range->ar_addr);
   if (addr < range_end) {
@@ -1765,7 +1766,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
     /* This range is fully covered. */
     range->ar_refcnt += n_refcnt;
     size -= range->ar_size;
-    if unlikely(!size) return;
+    if unlikely(!size) goto end;
     addr += range->ar_size;
    } else {
     /* Must split the range. */
@@ -1774,7 +1775,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
     assert(addr >= range->ar_addr);
     assert(addr <  range_end);
     newrange = DCCAllocRange_New(addr,incsize,range->ar_refcnt+n_refcnt);
-    if unlikely(!newrange) return;
+    if unlikely(!newrange) goto err;
     newrange->ar_next = range->ar_next;
     range->ar_next    = newrange;
     range->ar_size   -= incsize;
@@ -1782,7 +1783,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
     assert(!newrange->ar_next || newrange->ar_addr+newrange->ar_size <= newrange->ar_next->ar_addr);
     assert(range->ar_addr+range->ar_size <= newrange->ar_addr);
     size -= incsize;
-    if (!size) return;
+    if (!size) goto end;
     range_end = addr;
     addr += incsize;
    }
@@ -1804,7 +1805,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
   } else {
    /* Insert a new range after 'range'. */
    newrange = DCCAllocRange_New(addr,bytes_until_next_range,n_refcnt);
-   if unlikely(!newrange) return;
+   if unlikely(!newrange) goto err;
    newrange->ar_next = range->ar_next;
    assert(!newrange->ar_next ||
            newrange->ar_addr+newrange->ar_size <=
@@ -1817,7 +1818,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
           range->ar_addr+range->ar_size <=
           range->ar_next->ar_addr);
   size -= bytes_until_next_range;
-  if unlikely(!size) return;
+  if unlikely(!size) goto end;
   addr += bytes_until_next_range;
 next:
   prange = &range->ar_next;
@@ -1829,19 +1830,22 @@ next:
        ((struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)))->ar_addr+
        ((struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)))->ar_size <= addr);
  range = DCCAllocRange_New(addr,size,n_refcnt);
- if unlikely(!range) return;
+ if unlikely(!range) goto err;
  range->ar_next = NULL;
  *prange = range;
+end: return result;
+err: result = 0; goto end;
 }
 
-PUBLIC void
+PUBLIC int
 DCCSection_DDecref(struct DCCSection *__restrict self,
                    target_ptr_t addr, target_siz_t size) {
  struct DCCAllocRange **prange,*range,*newrange;
  target_ptr_t addr_end,range_end;
+ int result = 1;
  assert(self);
  assert(!DCCSection_ISIMPORT(self));
- if unlikely(!OK) return; /* Don't do anything if an error occurred. */
+ if unlikely(!OK) goto err; /* Don't do anything if an error occurred. */
  prange   = &self->sc_alloc;
  addr_end = addr+size;
  /* Search range and only free reference that dropped to ZERO(0). */
@@ -1884,7 +1888,7 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
      } else {
       /* Must split this range. */
       newrange = DCCAllocRange_New(addr,range_end-addr,range->ar_refcnt);
-      if unlikely(!newrange) return;
+      if unlikely(!newrange) goto err;
       newrange->ar_next = range->ar_next;
       range->ar_next = newrange;
       --range->ar_refcnt;
@@ -1894,7 +1898,7 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
      assert(range->ar_size);
      assert(!range->ar_next || range->ar_addr+range->ar_size <= range->ar_next->ar_addr);
      size -= delsize;
-     if (!size) return;
+     if (!size) goto end;
      addr += delsize;
     }
    } else if ((assert(range->ar_addr < addr),
@@ -1909,7 +1913,7 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
     } else {
      /* Must split this range. */
      newrange = DCCAllocRange_New(addr,delsize,range->ar_refcnt);
-     if unlikely(!newrange) return;
+     if unlikely(!newrange) goto err;
      newrange->ar_next = range->ar_next;
      range->ar_next = newrange;
      --range->ar_refcnt;
@@ -1918,7 +1922,7 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
     assert(range->ar_size);
     assert(!range->ar_next || range->ar_addr+range->ar_size <= range->ar_next->ar_addr);
     size -= delsize;
-    if (!size) return;
+    if (!size) goto end;
     addr += delsize;
    } else {
     /* Decref sub-range: must split this range twice. */
@@ -1929,7 +1933,7 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
      newrange = DCCAllocRange_New(addr_end,
                                  (target_siz_t)(range_end-addr_end),
                                   1);
-     if unlikely(!newrange) return;
+     if unlikely(!newrange) goto err;
      newrange->ar_next = range->ar_next;
      range->ar_next = newrange;
      range->ar_size = (target_siz_t)(addr-range->ar_addr);
@@ -1942,11 +1946,11 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
      struct DCCAllocRange *insrange;
      /* Well... Now we must ~actually~ create two sub-ranges. */
      insrange = DCCAllocRange_New(addr,size,range->ar_refcnt-1);
-     if unlikely(!insrange) return;
+     if unlikely(!insrange) goto err;
      newrange = DCCAllocRange_New(addr_end,
                                  (target_siz_t)(range_end-addr_end),
                                   range->ar_refcnt);
-     if unlikely(!newrange) { free(insrange); return; }
+     if unlikely(!newrange) { free(insrange); goto err; }
      newrange->ar_next = range->ar_next;
      insrange->ar_next = newrange;
      range->ar_next    = insrange;
@@ -1962,23 +1966,25 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
      assert(range->ar_refcnt == newrange->ar_refcnt);
      assert(range->ar_refcnt == insrange->ar_refcnt+1);
     }
-    return;
+    goto end;
    }
   }
   prange = &range->ar_next;
  }
+end: return result;
+err: result = 0; goto end;
 }
 
-PUBLIC void
+PUBLIC int
 DCCSection_DIncref(struct DCCSection *__restrict self,
                    target_ptr_t addr, target_siz_t size) {
- DCCSection_DIncrefN(self,addr,size,1);
+ return DCCSection_DIncrefN(self,addr,size,1);
 }
-INTERN void
+INTERN int
 DCCSection_DIncrefN_impl(struct DCCSection *__restrict self,
                          target_ptr_t addr, target_siz_t size,
                          unsigned int n_refcnt) {
- DCCSection_DIncrefN(self,addr,size,n_refcnt);
+ return DCCSection_DIncrefN(self,addr,size,n_refcnt);
 }
 
 

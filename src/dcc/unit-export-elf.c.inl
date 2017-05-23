@@ -116,6 +116,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
 #define SHDR_SHSTRTAB   (&shdr_intv[0])
 #define SHDR_SYMTAB     (&shdr_intv[1])
 #define SHDR_STRTAB     (&shdr_intv[2])
+#define SHDR_SYMFLG     (&shdr_intv[3])
 
 #define ELF_SYMIDX(sym) ((sym)->sy_elfid) /* Return the symbol's '.strtab' index */
 #define ELF_SHDR_IDX(h) ((Elf(Section))((h)-shdrv))
@@ -124,6 +125,8 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
  DCCUnit_ENUMSEC(sec) if (sec->sc_relc) ++shdr_relc;
  assert(shdr_relc <= shdr_regc);
  shdr_intc = 3; /* '.shstrtab', '.symtab', '.strtab' */
+ if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT)) ++shdr_intc; /* '.DCC.symflg' */
+
  shdr_impc = (def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ? 0 : shdr_impc = unit.u_impc; /* Import section headers. */
  shdrc = 1+shdr_regc+shdr_impc+shdr_relc+shdr_intc;
  shdrv = (struct elf_shdr *)DCC_Calloc(shdrc*sizeof(struct elf_shdr),0);
@@ -200,6 +203,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
 
  {
   uint32_t symid = 1; Elf(Sym) symhdr;
+  uint32_t need_symflags = 0;
   /* Allocate the NULL-symbol at index ZERO. */
   void *null_sym = DCCTextBuf_TAlloc_intern(&SHDR_SYMTAB->s_buf,
                                             sizeof(Elf(Sym)));
@@ -218,7 +222,6 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
    else symhdr.st_name = DCCTextBuf_AllocString(&SHDR_STRTAB->s_buf,
                                                 sym->sy_name->k_name,
                                                 sym->sy_name->k_size);
-   symhdr.st_size  = sym->sy_size;
    symhdr.st_info  = ELF(ST_INFO)(bind,type);
    symhdr.st_other = ELF(ST_VISIBILITY)(elf_vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE]);
    sym->sy_elfid   = symid++;
@@ -227,6 +230,9 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
     symaddr.sa_sym = sym;
    }
    symhdr.st_value = symaddr.sa_off+symaddr.sa_sym->sy_addr;
+   symhdr.st_size  = symaddr.sa_sym->sy_size;
+   if (sym->sy_flags&(DCC_SYMFLAG_USED|DCC_SYMFLAG_UNUSED))
+       need_symflags = sym->sy_elfid;
    if (symaddr.sa_sym->sy_sec) {
     if (symaddr.sa_sym->sy_sec == &DCCSection_Abs)
      symhdr.st_shndx = SHN_ABS;
@@ -238,11 +244,45 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
      symhdr.st_shndx = SHN_UNDEF;
     }
    } else {
-    if (symaddr.sa_sym->sy_alias) { /* TODO: So what do we do about alias symbols now? */ }
+    if (symaddr.sa_sym->sy_alias) {
+     /* TODO: warn if ELF extensions are disabled. */
+     need_symflags = sym->sy_elfid;
+    }
     symhdr.st_shndx = SHN_UNDEF;
    }
    DCCTextBuf_AllocData(&SHDR_SYMTAB->s_buf,&symhdr,sizeof(symhdr));
   }
+#ifdef SHT_DCC_SYMFLG
+  if (need_symflags && !(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT)) {
+   Elf(DCCSymFlg) *buf;
+   SHDR_SYMFLG->s_hdr.sh_name      = DCCTextBuf_AllocString(&SHDR_SHSTRTAB->s_buf,".DCC.symflg",11);
+   SHDR_SYMFLG->s_hdr.sh_type      = SHT_DCC_SYMFLG;
+   SHDR_SYMFLG->s_hdr.sh_link      = ELF_SHDR_IDX(SHDR_SYMTAB);
+   SHDR_SYMFLG->s_hdr.sh_entsize   = sizeof(Elf(DCCSymFlg));
+   SHDR_SYMFLG->s_hdr.sh_addralign = DCC_COMPILER_ALIGNOF(Elf(DCCSymFlg));
+   buf = (Elf(DCCSymFlg) *)DCCTextBuf_TAlloc_intern(&SHDR_SYMFLG->s_buf,need_symflags*
+                                                    sizeof(Elf(DCCSymFlg)));
+   if likely(buf) {
+    memset(buf,0,need_symflags*sizeof(Elf(DCCSymFlg)));
+    DCCUnit_ENUMALLSYM(sym) {
+#if ELF_DCC_SYMFLAG_F_USED   == DCC_SYMFLAG_USED && \
+    ELF_DCC_SYMFLAG_F_UNUSED == DCC_SYMFLAG_UNUSED
+     buf->sf_info = (sym->sy_flags&(DCC_SYMFLAG_USED|DCC_SYMFLAG_UNUSED));
+#else
+     if (flags&DCC_SYMFLAG_USED)   buf->sf_info |= ELF_DCC_SYMFLAG_F_USED;
+     if (flags&DCC_SYMFLAG_UNUSED) buf->sf_info |= ELF_DCC_SYMFLAG_F_UNUSED;
+#endif
+     if (sym->sy_alias) { /* Generate an alias descriptor. */
+      buf->sf_info |= ELF(DCC_SYMFLAG)(sym->sy_alias->sy_elfid,
+                                       ELF_DCC_SYMFLAG_F_ALIAS);
+      buf->sf_off = (Elf(Addr))sym->sy_addr;
+     }
+     if (!--need_symflags) goto done_symflg;
+    }
+   }
+done_symflg:;
+  }
+#endif
  }
 
  /* Generate relocation sections. */
