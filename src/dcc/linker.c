@@ -288,12 +288,22 @@ again:
  if (p != buffer) DCC_Free(p);
 }
 
-#define INTPATH_MAXTRAIL 8
+#define INTPATH_MAXTRAIL 16
+
+#define LIBINT_TRIAL_COUNT 2
+#define INCINT_TRIAL_COUNT 2
 struct inttrail { char t[INTPATH_MAXTRAIL]; };
-static struct inttrail const int_trails[] = {
+static struct inttrail const
+libint_trails[LIBINT_TRIAL_COUNT+1] = {
  {{'/','l','i','b','\0'}},
  {{'/','l','i','b','s','\0'}},
- {{'\0',42}},
+ {{'\0'}},
+};
+
+static struct inttrail const
+incint_trails[INCINT_TRIAL_COUNT+1] = {
+ {{'/','i','n','c','l','u','d','e','\0'}},
+ {{'/','f','i','x','i','n','c','l','u','d','e','\0'}},
  {{'\0'}},
 };
 
@@ -301,14 +311,15 @@ static struct inttrail const int_trails[] = {
 LOCAL void linker_add_intpath_self(void) {
  char *mbuf = NULL,buf[1024],*path = buf,*iter,*lastslash;
  DWORD newbuflen,buflen = sizeof(buf);
- struct inttrail const *trail_iter;
+ struct inttrail const *trail_iter,*inc_trail_iter;
+ struct TPPString **inc_dst;
  for (;;) {
   /* XXX: Add support for 'DllMain' */
   newbuflen  = GetModuleFileNameA(NULL,path,buflen);
-  newbuflen += INTPATH_MAXTRAIL;
+  newbuflen += (INTPATH_MAXTRAIL*2);
   if (newbuflen < buflen) break;
   mbuf = path = (char *)realloc(mbuf,(buflen *= 2)*sizeof(char));
-  if unlikely(!mbuf) { TPPLexer_SetErr(); return; }
+  if unlikely(!mbuf) {nomem: TPPLexer_SetErr(); return; }
  }
  for (iter = path,lastslash = NULL; *iter; ++iter) {
   if (*iter == '\\') *iter = '/';
@@ -318,19 +329,34 @@ LOCAL void linker_add_intpath_self(void) {
   while (lastslash != path &&
          lastslash[-1] == '/') --lastslash;
  } else {
-  lastslash = path+(newbuflen-INTPATH_MAXTRAIL);
+  lastslash = path+(newbuflen-(INTPATH_MAXTRAIL*2));
  }
  if ((lastslash-path) > 4 &&
     !memcmp(lastslash-4,"/bin",4*sizeof(char))
      ) lastslash -= 4;
  buflen = lastslash-path;
- for (trail_iter = int_trails;
-      trail_iter->t[0] || trail_iter->t[1];
-      ++trail_iter) {
+ inc_dst = (struct TPPString **)realloc(TPPLexer_Current->l_syspaths.il_pathv,
+                                       (TPPLexer_Current->l_syspaths.il_pathc+
+                                       (LIBINT_TRIAL_COUNT*INCINT_TRIAL_COUNT))*
+                                        sizeof(struct TPPString *));
+ if unlikely(!inc_dst) goto nomem;
+ TPPLexer_Current->l_syspaths.il_pathv  = inc_dst;
+ inc_dst += TPPLexer_Current->l_syspaths.il_pathc;
+ TPPLexer_Current->l_syspaths.il_pathc += (LIBINT_TRIAL_COUNT*INCINT_TRIAL_COUNT);
+ for (trail_iter = libint_trails; trail_iter->t[0]; ++trail_iter) {
+  size_t path_len = buflen+strlen(trail_iter->t);
   memcpy(lastslash,trail_iter->t,sizeof(trail_iter->t));
-  DCCLibPaths_DoAddLibPathNow(&linker.l_intpaths,path,
-                               buflen+strlen(trail_iter->t));
+  DCCLibPaths_DoAddLibPathNow(&linker.l_intpaths,path,path_len);
+  /* Add internal include paths. */
+  for (inc_trail_iter = incint_trails;
+       inc_trail_iter->t[0]; ++inc_trail_iter,++inc_dst) {
+   memcpy(path+path_len,inc_trail_iter->t,sizeof(inc_trail_iter->t));
+   *inc_dst = TPPString_New(path,path_len+strlen(inc_trail_iter->t));
+   if (!*inc_dst) { *inc_dst = TPPFile_Empty.f_text; TPPString_Incref(TPPFile_Empty.f_text); }
+  }
  }
+ assert(inc_dst == TPPLexer_Current->l_syspaths.il_pathv+
+                   TPPLexer_Current->l_syspaths.il_pathc);
  free(mbuf);
 }
 #endif
