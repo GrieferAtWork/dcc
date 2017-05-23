@@ -153,21 +153,6 @@ static void tpp_clrfile(void) {
 }
 
 
-void test(void) {
- struct DCCSection *s;
- s = DCCSection_News("TEST",DCC_SYMFLAG_NONE);
- DCCSection_DIncref(s,0x0,21);
- DCCSection_DIncref(s,0x15,17);
- DCCSection_DIncref(s,0x1d,9);
- DCCSection_DIncref(s,0x26,8);
- DCCSection_DIncref(s,0x2e,2);
- DCCSection_DDecref(s,0x1d,9);
-
-
- exit(0);
-}
-
-
 int main(int argc, char *argv[]) {
  struct DCCSection *sec;
  int result = 0;
@@ -193,8 +178,6 @@ int main(int argc, char *argv[]) {
  if (argc) --argc,++argv;
 
  TPPLexer_PushFile(&TPPFile_Cmd);
-
- //test();
 
  /* Parse the commandline. */
  { struct cmd c;

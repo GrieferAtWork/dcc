@@ -27,7 +27,7 @@
 
 #include <string.h>
 
-#if DCC_DEBUG && 0
+#if DCC_DEBUG && 1
 #define REFLOG(x) (printf x,fflush(stdout))
 #include <stdio.h>
 #else
@@ -35,7 +35,6 @@
 #endif
 
 DCC_DECL_BEGIN
-
 
 LOCAL struct DCCAllocRange *
 DCCAllocRange_New(target_ptr_t addr,
@@ -127,8 +126,16 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
   if (addr < CURR_RANGE_BEGIN) {
    /* Handle any memory below the current range. */
    underflow = CURR_RANGE_BEGIN-addr;
-   if (underflow > size)
-       underflow = size;
+   if (underflow > size) {
+    /* Special case: The incref() region is completely below the current range.
+     *            >> Must insert a whole, new range below. */
+    assert(addr+size < CURR_RANGE_BEGIN);
+    newrange = DCCAllocRange_New(addr,size,n_refcnt);
+    if unlikely(!newrange) goto err;
+    newrange->ar_next = range;
+    *prange = newrange;
+    goto end;
+   }
    if (CURR_RANGE.ar_refcnt == n_refcnt) {
     /* Can directly extend the current range. */
     CURR_RANGE.ar_addr -= underflow;
@@ -267,7 +274,7 @@ merge_curr_prev:
      *         >> Must skip the current range into 3 parts. */
     cenrange = DCCAllocRange_New(addr,size,CURR_RANGE.ar_refcnt+n_refcnt);
     if unlikely(!cenrange) goto err;
-    newrange = DCCAllocRange_New(addr+size,subsize-size,CURR_RANGE.ar_refcnt);
+    newrange = DCCAllocRange_New(addr+size,(CURR_RANGE_END-addr)-size,CURR_RANGE.ar_refcnt);
     if unlikely(!newrange) { free(cenrange); goto err; }
     newrange->ar_next  = CURR_RANGE.ar_next;
     cenrange->ar_next  = newrange;
