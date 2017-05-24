@@ -82,6 +82,7 @@ PRIVATE void tpp_wall(void) {
   if ((b&B(00001100)) == (WSTATE_DISABLE << 2)) b |= (WSTATE_WARN << 2);
   if ((b&B(00110000)) == (WSTATE_DISABLE << 4)) b |= (WSTATE_WARN << 4);
   if ((b&B(11000000)) == (WSTATE_DISABLE << 6)) b |= (WSTATE_WARN << 6);
+  *iter = b;
  }
  ext_end = (ext_iter = CURRENT.l_warnings.w_curstate->ws_extendedv)+
                        CURRENT.l_warnings.w_curstate->ws_extendeda;
