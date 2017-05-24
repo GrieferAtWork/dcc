@@ -300,7 +300,8 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
    /* Inherit all named symbols (And search for new symbol bindings). */
    assert(src_sym);
    assert(!src_sym->sy_unit_next);
-   do if (src_sym->sy_sec && !DCCSym_ISSECTION(src_sym)) {
+   do if (src_sym->sy_sec && !DCCSym_ISSECTION(src_sym) &&
+          src_sym->sy_sec != &DCCSection_Abs) {
     struct DCCSection *new_section;
     /* Fix section linkage. */
     new_section = DCCUnit_GetSec(src_sym->sy_sec->sc_start.sy_name);
