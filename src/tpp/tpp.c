@@ -3575,7 +3575,8 @@ TPPLexer_LookupKeywordID(tok_t id) {
 
 PRIVATE char *
 do_fix_filename(char *filename, size_t *pfilename_size) {
- char *text_iter,*text_end,*slash; size_t filename_size;
+ char *text_iter,*text_end,*slash,*base;
+ size_t filename_size;
  filename_size = *pfilename_size;
  /* General filename sanitizations. */
  while (tpp_isspace(*filename) && filename_size) ++filename,--filename_size;
@@ -3617,20 +3618,17 @@ do_fix_filename(char *filename, size_t *pfilename_size) {
  }
 
  /* Resolve . and .. references if possible. */
- for (text_iter = filename;;) {
+ for (text_iter = base = filename;;) {
   size_t partsize;
   slash = strchr(text_iter,SEP);
   if (!slash) slash = text_end;
   partsize = (size_t)(slash-text_iter);
   if (partsize >= 1 && *text_iter == '.') switch (partsize) {
-   case 2: if (text_iter[1] == '.' && (text_iter-2) > filename) {
+   case 2: if (text_iter[1] == '.' && (text_iter-2) > base) {
     char *prev_folder_start;
     /* Try to remove a '..' path reference. */
-    prev_folder_start = (char *)memrchr(filename,SEP,(size_t)((text_iter-2)-filename));
-    if (!prev_folder_start) {
-     prev_folder_start = filename;
-     if (slash != text_end) ++slash;
-    }
+    prev_folder_start = (char *)memrchr(base,SEP,(size_t)((text_iter-2)-base));
+    if (!prev_folder_start) { base = slash+1; break; }
     /* Move everything from 'slash' to 'prev_folder_start'. */
     if (text_end == slash) *prev_folder_start = '\0';
     else memmove(prev_folder_start,slash,(size_t)((text_end-slash)+1)*sizeof(char));

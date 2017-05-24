@@ -961,10 +961,12 @@ DCCDisp_StaBinSta(tok_t op,
   filler = 0xffffffff;
 #endif
  }
+ assert(dst_bytes >= common_size);
  common_size = dst_bytes-common_size;
  while (common_size > DCC_TARGET_SIZEOF_POINTER) {
   DCCDisp_BytBinStaWidth(op,filler,dst,DCC_TARGET_SIZEOF_POINTER,&flags);
   *(uintptr_t *)&dst += DCC_TARGET_SIZEOF_POINTER;
+  common_size        -= DCC_TARGET_SIZEOF_POINTER;
  }
 #if DCC_TARGET_SIZEOF_POINTER > 4
  if (common_size&4) {

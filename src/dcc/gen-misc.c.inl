@@ -124,10 +124,11 @@ DCCDisp_BSwapReg(rc_t dst) {
    DCCDisp_RegMovReg(temp,dst,1);
   } else {
    assert(dst&DCC_RC_I8);
+   assert(dst&DCC_RC_I16);
    /* The lo/hi bytes of the 4 basic general-purpose registers can be
     * addressed individually, meaning that if 'dst' is one of them,
     * we can simply use 'xchg' to swap them. */
-   DCCDisp_RegXchReg(dst,DCC_RC_I8|((dst+4)&7));
+   DCCDisp_RegXchReg(dst&~(DCC_RC_I16),DCC_RC_I8|((dst+4)&7));
   }
  }
 }

@@ -282,7 +282,7 @@ incref_section:
     struct TPPKeyword *sec_name;
     if (self->a_section) {
      if (self->a_flags&DCC_ATTRFLAG_SECTION) {
-      WARN(W_ATTRIBUTE_DLL_ALREADY_SET,
+      WARN(W_ATTRIBUTE_LIB_ALREADY_SET,
            self->a_section->sc_start.sy_name);
       self->a_flags &= ~(DCC_ATTRFLAG_SECTION);
      } else WARN(W_ATTRIBUTE_ALIAS_WITH_DLL);
@@ -293,7 +293,7 @@ incref_section:
     self->a_section = sec_name ? DCCUnit_NewSec(sec_name,DCC_SYMFLAG_SEC_ISIMPORT) : NULL;
     if (!self->a_section);
     else if (!DCCSection_ISIMPORT(self->a_section)) {
-     WARN(W_ATTRIBUTE_DLL_IS_A_SECTION,text->s_text);
+     WARN(W_ATTRIBUTE_LIB_IS_A_SECTION,text->s_text);
      self->a_section = NULL;
     } else {
      goto incref_section;
@@ -323,9 +323,9 @@ incref_section:
    if (!text || (function = TPPLexer_LookupKeyword(text->s_text,text->s_size,1)) == NULL)
     self->a_alias = NULL;
    else {
-    struct DCCSym *alias = DCCUnit_NewSym(function,DCC_SYMFLAG_NONE);
-    if (!alias) WARN(W_ATTRIBUTE_ALIAS_UNKNOWN_SYMBOL,function);
-    else        DCCSym_Incref(alias);
+    struct DCCSym *alias;
+    alias = DCCUnit_NewSym(function,DCC_SYMFLAG_NONE);
+    DCCSym_XIncref(alias);
     self->a_alias = alias; /* Inherit reference. */
    }
    assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));

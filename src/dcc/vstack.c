@@ -549,7 +549,8 @@ DCCStackValue_Kill(struct DCCStackValue *__restrict self) {
  memcpy(self,&local_target,sizeof(struct DCCStackValue));
  /* If the variable was already an lvalue, we
   * must add an additional level of indirection. */
- if (was_lvalue) DCCType_MkLValue(&self->sv_ctype);
+ if (was_lvalue)
+     DCCType_MkLValue(&self->sv_ctype);
 }
 
 PUBLIC void DCC_VSTACK_CALL
@@ -1894,6 +1895,7 @@ set_zero:
 default_binary:
 
  DCCStackValue_LoadLValue(self);
+ assert(DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_LVALUE);
  DCCStackValue_LoadLValue(target);
 
  assert(DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_LVALUE);
@@ -2410,36 +2412,41 @@ again:
  /* Special case: Must kill a register by saving it on the stack. */
  iter = compiler.c_vstack.v_bottom;
  for (second_pass = 0; second_pass < 2; ++second_pass) {
-  for (; iter != end; ++iter) {
+  /* NOTE: Must iterate the stack in reverse as not to kill registers of
+   *       close-by stack-values (such as those used by binary operation pairs). */
+  do {
+   assert(iter != end);
+   --end;
    /* Only kill explicit register values on a second pass (aka, when we're forced, to!) */
-   if ((!(iter->sv_flags&DCC_SFLAG_XREGISTER) || second_pass) &&
-       (((rc&DCC_RC_I) && ((iter->sv_reg&DCC_RC_I) ||
-                           (iter->sv_reg2&DCC_RC_I))) ||
-        ((iter->sv_reg&DCC_RC_MASK) == rc) ||
-        ((iter->sv_reg2&DCC_RC_MASK) == rc))) {
+   if ((!(end->sv_flags&DCC_SFLAG_XREGISTER) || second_pass) &&
+       (((rc&DCC_RC_I) && ((end->sv_reg&DCC_RC_I) ||
+                           (end->sv_reg2&DCC_RC_I))) ||
+        ((end->sv_reg&DCC_RC_MASK) == rc) ||
+        ((end->sv_reg2&DCC_RC_MASK) == rc))) {
 #ifdef IA32_PROTECTED_REGISTERS
-    if (iter->sv_reg&(DCC_RC_I16|DCC_RC_I3264)) {
-     if ((iter->sv_reg&4) ||
-         (iter->sv_reg&7) == DCC_ASMREG_BX) continue;
+    if (end->sv_reg&(DCC_RC_I16|DCC_RC_I3264)) {
+     if ((end->sv_reg&4) ||
+         (end->sv_reg&7) == DCC_ASMREG_BX) continue;
     } else {
-     if ((iter->sv_reg&7) == DCC_ASMREG_BL ||
-         (iter->sv_reg&7) == DCC_ASMREG_BH) continue;
+     if ((end->sv_reg&7) == DCC_ASMREG_BL ||
+         (end->sv_reg&7) == DCC_ASMREG_BH) continue;
     }
 #else /* IA32_PROTECTED_REGISTERS */
     /* Make sure to skip pointer registers if those aren't allowed. */
     if (!allow_ptr_regs && (
-       (iter->sv_reg&(DCC_RC_I16|DCC_RC_I3264) && DCC_ASMREG_ISSPTR(iter->sv_reg&7)) ||
-       (iter->sv_reg2&(DCC_RC_I16|DCC_RC_I3264) && DCC_ASMREG_ISSPTR(iter->sv_reg2&7))
+       (end->sv_reg&(DCC_RC_I16|DCC_RC_I3264) && DCC_ASMREG_ISSPTR(end->sv_reg&7)) ||
+       (end->sv_reg2&(DCC_RC_I16|DCC_RC_I3264) && DCC_ASMREG_ISSPTR(end->sv_reg2&7))
        )) continue;
 #endif /* !IA32_PROTECTED_REGISTERS */
     /* Kill the stack value. */
-    DCCStackValue_Kill(iter);
+    DCCStackValue_Kill(end);
     /* Start over.
      * NOTE: Must search again for a case like 'al'+'ah' were
      *       both in use, but we only killed one of them. */
     goto again;
    }
-  }
+  } while (end != iter);
+  end = compiler.c_vstack.v_end;
  }
  assertf(0,"Should never get here!");
  return rc;
@@ -2533,25 +2540,30 @@ again:
  /* Special case: Must kill a register by saving it on the stack. */
  iter = compiler.c_vstack.v_bottom;
  for (second_pass = 0; second_pass < 2; ++second_pass) {
-  for (; iter != end; ++iter) {
+  /* NOTE: Must iterate the stack in reverse as not to kill registers of
+   *       close-by stack-values (such as those used by binary operation pairs). */
+  do {
+   assert(iter != end);
+   --end;
    /* Only kill explicit register values on a second pass (aka, when we're forced, to!) */
-   if ((!(iter->sv_flags&DCC_SFLAG_XREGISTER) || second_pass) &&
-       (((rc&DCC_RC_I) && ((iter->sv_reg&DCC_RC_I) ||
-                           (iter->sv_reg2&DCC_RC_I))) ||
-        ((iter->sv_reg&DCC_RC_MASK) == rc) ||
-        ((iter->sv_reg2&DCC_RC_MASK) == rc))) {
+   if ((!(end->sv_flags&DCC_SFLAG_XREGISTER) || second_pass) &&
+       (((rc&DCC_RC_I) && ((end->sv_reg&DCC_RC_I) ||
+                           (end->sv_reg2&DCC_RC_I))) ||
+        ((end->sv_reg&DCC_RC_MASK) == rc) ||
+        ((end->sv_reg2&DCC_RC_MASK) == rc))) {
     /* Make sure to skip pointer registers if those aren't allowed. */
-    if (!(wanted_set&(1 << (iter->sv_reg&7))) &&
-        !(wanted_set&(1 << (iter->sv_reg2&7)))
+    if (!(wanted_set&(1 << (end->sv_reg&7))) &&
+        !(wanted_set&(1 << (end->sv_reg2&7)))
         ) continue;
     /* Kill the stack value. */
-    DCCStackValue_Kill(iter);
+    DCCStackValue_Kill(end);
     /* Start over.
      * NOTE: Must search again for a case like 'al'+'ah' were
      *       both in use, but we only killed one of them. */
     goto again;
    }
-  }
+  } while (end != iter);
+  end = compiler.c_vstack.v_end;
  }
  assertf(0,"Should never get here!");
  return rc;
