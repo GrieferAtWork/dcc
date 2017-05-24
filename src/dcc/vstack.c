@@ -2293,13 +2293,13 @@ DCCStackValue_Promote(struct DCCStackValue *__restrict self) {
    /* The VLA is actually a pointer offset from EBP. */
    assert(self->sv_flags&DCC_SFLAG_LVALUE);
   } else {
-   self->sv_flags &= ~(DCC_SFLAG_LVALUE|DCC_SFLAG_COPY);
+   self->sv_flags &= ~(DCC_SFLAG_LVALUE/*|DCC_SFLAG_COPY*/);
   }
  } break;
  case DCCTYPE_FUNCTION:
   if (!(self->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(self);
   DCCType_MkPointer(&self->sv_ctype);
-  self->sv_flags &= ~(DCC_SFLAG_LVALUE|DCC_SFLAG_COPY);
+  self->sv_flags &= ~(DCC_SFLAG_LVALUE/*|DCC_SFLAG_COPY*/);
   break;
  {
  case DCCTYPE_LVALUE:
@@ -2708,11 +2708,20 @@ DCCVStack_Bitfldf(sflag_t flags) {
 // 
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Binary(tok_t op) {
+ int is_cmp_op;
  assert(vsize >= 2);
  /* Promote array types. */
  DCCStackValue_Promote(vbottom+1);
  vprom();
- if (op != '?' && !(vbottom[1].sv_flags&DCC_SFLAG_COPY)) {
+ is_cmp_op = (op == '?' ||
+              op == TOK_LOWER ||
+              op == TOK_LOWER_EQUAL ||
+              op == TOK_EQUAL ||
+              op == TOK_NOT_EQUAL ||
+              op == TOK_GREATER ||
+              op == TOK_GREATER_EQUAL);
+
+ if (!is_cmp_op && !(vbottom[1].sv_flags&DCC_SFLAG_COPY)) {
   if (vbottom[1].sv_ctype.t_type&DCCTYPE_CONST)
       WARN(W_BINARY_CONSTANT_TYPE,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
   if (vbottom[1].sv_flags&DCC_SFLAG_RVALUE)
@@ -2792,13 +2801,10 @@ genbinary:
  DCCStackValue_Binary(vbottom,vbottom+1,op);
 end_pop:
  vpop(1);
- if (op != '?' &&
-     op != TOK_LOWER && op != TOK_LOWER_EQUAL &&
-     op != TOK_EQUAL && op != TOK_NOT_EQUAL &&
-     op != TOK_GREATER && op != TOK_GREATER_EQUAL) {
-  vbottom->sv_flags &= ~(DCC_SFLAG_RVALUE);
- } else {
+ if (is_cmp_op) {
   vbottom->sv_flags |=  (DCC_SFLAG_RVALUE);
+ } else {
+  vbottom->sv_flags &= ~(DCC_SFLAG_RVALUE);
  }
 }
 PUBLIC void DCC_VSTACK_CALL
