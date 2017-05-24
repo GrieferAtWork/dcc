@@ -124,6 +124,8 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
   assert(CURR_RANGE.ar_refcnt);
   ASSERT_RELATION();
   if (addr < CURR_RANGE_BEGIN) {
+   assert(!HAS_PREV_RANGE ||
+           PREV_RANGE.ar_addr+PREV_RANGE.ar_size <= addr);
    /* Handle any memory below the current range. */
    underflow = CURR_RANGE_BEGIN-addr;
    if (underflow > size) {
@@ -140,7 +142,8 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
     /* Can directly extend the current range. */
     CURR_RANGE.ar_addr -= underflow;
     CURR_RANGE.ar_size += underflow;
-    ASSERT_RELATION();
+    assert(!HAS_PREV_RANGE ||
+            PREV_RANGE.ar_addr+PREV_RANGE.ar_size <= CURR_RANGE.ar_addr);
     if (HAS_PREV_RANGE &&
         CURR_RANGE.ar_refcnt == PREV_RANGE.ar_refcnt &&
         CURR_RANGE.ar_addr   == PREV_RANGE.ar_addr+PREV_RANGE.ar_size) {
@@ -161,11 +164,12 @@ merge_curr_prev:
     newrange->ar_next = range;
     *prange           = newrange;
     range             = newrange;
+    prange = &newrange->ar_next;
    }
+   ASSERT_RELATION();
    size -= underflow;
    if (!size) goto end;
    addr += underflow;
-   ASSERT_RELATION();
 #if DCC_DEBUG
    assert(!prange || range == *prange);
 #endif
@@ -213,6 +217,7 @@ merge_curr_prev:
    assert(addr <  CURR_RANGE_END);
    assert(range_end == CURR_RANGE.ar_addr+CURR_RANGE.ar_size);
    if (addr == CURR_RANGE_BEGIN) {
+    int must_continue = 0;
 #define overlap  underflow
     /* Either a perfect match, or must split the region. */
     overlap = CURR_RANGE.ar_size;
@@ -224,7 +229,11 @@ merge_curr_prev:
      if (HAS_NEXT_RANGE &&
          CURR_RANGE.ar_refcnt                  == NEXT_RANGE.ar_refcnt &&
          CURR_RANGE.ar_addr+CURR_RANGE.ar_size == NEXT_RANGE.ar_addr) {
-      newrange = &NEXT_RANGE;
+      /* Because of this merge, the current range is
+       * extended, although additional data may have
+       * to be incref'ed. */
+      must_continue = 1;
+      newrange      = range->ar_next;
       CURR_RANGE.ar_size += newrange->ar_size;
       CURR_RANGE.ar_next  = newrange->ar_next;
       free(newrange);
@@ -233,13 +242,15 @@ merge_curr_prev:
      /* Partial match. */
      newrange = DCCAllocRange_New(CURR_RANGE.ar_addr+overlap,
                                   CURR_RANGE.ar_size-overlap,
-                                  CURR_RANGE.ar_refcnt+n_refcnt);
+                                  CURR_RANGE.ar_refcnt);
      if unlikely(!newrange) goto err;
-     newrange->ar_next  = CURR_RANGE.ar_next;
-     CURR_RANGE.ar_size = overlap;
-     CURR_RANGE.ar_next = newrange;
+     newrange->ar_next     = CURR_RANGE.ar_next;
+     CURR_RANGE.ar_size    = overlap;
+     CURR_RANGE.ar_next    = newrange;
+     CURR_RANGE.ar_refcnt += n_refcnt;
     }
     ASSERT_RELATION();
+    assert(addr == CURR_RANGE_BEGIN);
     if (HAS_PREV_RANGE &&
         CURR_RANGE.ar_refcnt == PREV_RANGE.ar_refcnt &&
         CURR_RANGE.ar_addr   == PREV_RANGE.ar_addr+PREV_RANGE.ar_size) {
@@ -250,7 +261,14 @@ merge_curr_prev:
     if (!size) goto end;
     addr += overlap;
 #undef overlap
-    goto next;
+    if (!must_continue) {
+     assert(addr == CURR_RANGE.ar_addr+CURR_RANGE.ar_size);
+     goto next;
+    }
+    /* This can happen when the region was merged with its successor,
+     * even though we'll have to split them again when increfind data
+     * for that successor. */
+    range_end = CURR_RANGE.ar_addr+CURR_RANGE.ar_size;
    }
    assert(addr > CURR_RANGE_BEGIN);
    assert(addr < CURR_RANGE_END);
@@ -266,6 +284,10 @@ merge_curr_prev:
     newrange->ar_next   = CURR_RANGE.ar_next;
     CURR_RANGE.ar_next  = newrange;
     CURR_RANGE.ar_size -= subsize;
+#if DCC_DEBUG
+    prange = &CURR_RANGE.ar_next;
+    range  = newrange;
+#endif
    } else {
     struct DCCAllocRange *cenrange;
     assert(addr+size < CURR_RANGE_END);
@@ -280,11 +302,18 @@ merge_curr_prev:
     cenrange->ar_next  = newrange;
     CURR_RANGE.ar_next = cenrange;
     CURR_RANGE.ar_size = addr-CURR_RANGE.ar_addr;
+#if DCC_DEBUG
+    prange = &cenrange->ar_next;
+    range  = newrange;
+#endif
    }
    ASSERT_RELATION();
    size -= subsize;
    if (!size) goto end;
    addr += subsize;
+#if DCC_DEBUG
+   assert(addr == CURR_RANGE.ar_addr+CURR_RANGE.ar_size);
+#endif
 #undef subsize
   }
 #undef CURR_RANGE_END

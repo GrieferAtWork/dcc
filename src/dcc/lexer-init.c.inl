@@ -206,7 +206,7 @@ parse_field_name:
 parse_field:
     if (field_curr == field_end) {
      target_ptr_t old_offset;
-     WARN(W_STRUCTURE_FULLY_INITIALIZED);
+     WARN(W_STRUCTURE_FULLY_INITIALIZED,type);
      old_offset = compiler.c_hwstack.hws_curoffset;
      DCCParse_Expr1();
      compiler.c_hwstack.hws_curoffset = old_offset;
