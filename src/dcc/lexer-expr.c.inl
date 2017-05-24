@@ -671,7 +671,9 @@ parse_string:
    if ((cast_type.t_type&DCCTYPE_STOREMASK) == DCCTYPE_STATIC ||
        (cast_type.t_type&DCCTYPE_STOREMASK) == DCCTYPE_EXTERN
        ) compiler.c_flags |= (DCC_COMPILER_FLAG_SINIT);
-   DCCParse_Init(&cast_type,&cast_attr,NULL,1);
+   if (TOK == '{')
+        DCCParse_Init(&cast_type,&cast_attr,NULL,1);
+   else DCCParse_ExprUnary();
    DCCParse_FixType(&cast_type);
    vcast(&cast_type,1);
    popf();
