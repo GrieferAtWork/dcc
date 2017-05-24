@@ -225,7 +225,8 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
    symhdr.st_info  = ELF(ST_INFO)(bind,type);
    symhdr.st_other = ELF(ST_VISIBILITY)(elf_vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE]);
    sym->sy_elfid   = symid++;
-   if (!DCCSym_LoadAddr(sym,&symaddr,0)) {
+   if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ||
+       !DCCSym_LoadAddr(sym,&symaddr,0)) {
     symaddr.sa_off = 0;
     symaddr.sa_sym = sym;
    }
@@ -260,10 +261,12 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
    SHDR_SYMFLG->s_hdr.sh_link      = ELF_SHDR_IDX(SHDR_SYMTAB);
    SHDR_SYMFLG->s_hdr.sh_entsize   = sizeof(Elf(DCCSymFlg));
    SHDR_SYMFLG->s_hdr.sh_addralign = DCC_COMPILER_ALIGNOF(Elf(DCCSymFlg));
-   buf = (Elf(DCCSymFlg) *)DCCTextBuf_TAlloc_intern(&SHDR_SYMFLG->s_buf,need_symflags*
+   buf = (Elf(DCCSymFlg) *)DCCTextBuf_TAlloc_intern(&SHDR_SYMFLG->s_buf,
+                                                   (need_symflags+1)*
                                                     sizeof(Elf(DCCSymFlg)));
    if likely(buf) {
     memset(buf,0,need_symflags*sizeof(Elf(DCCSymFlg)));
+    ++buf; /* Skip the first entry, which referrs to the NULL-symbol */
     DCCUnit_ENUMALLSYM(sym) {
 #if ELF_DCC_SYMFLAG_F_USED   == DCC_SYMFLAG_USED && \
     ELF_DCC_SYMFLAG_F_UNUSED == DCC_SYMFLAG_UNUSED
@@ -275,9 +278,9 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
      if (sym->sy_alias) { /* Generate an alias descriptor. */
       buf->sf_info |= ELF(DCC_SYMFLAG)(sym->sy_alias->sy_elfid,
                                        ELF_DCC_SYMFLAG_F_ALIAS);
-      buf->sf_off = (Elf(Addr))sym->sy_addr;
      }
      if (!--need_symflags) goto done_symflg;
+     ++buf;
     }
    }
 done_symflg:;

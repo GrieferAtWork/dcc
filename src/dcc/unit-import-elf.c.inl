@@ -612,6 +612,7 @@ found_shstr:
     case SHT_DYNSYM      :
     case SHT_GROUP       :
     case SHT_SYMTAB_SHNDX:
+    case SHT_DCC_SYMFLG  :
 sec_unused: SEC_DCCSEC(iter) = NULL;
      continue;
     default: break; /* Link any other section. */
@@ -751,6 +752,7 @@ skip_symdef:
      if (sym_iter->st_shndx == SHN_ABS) sec = &DCCSection_Abs;
      else sec = SEC_DCCSECI(sym_iter->st_shndx);
      if (sec) DCCSym_Define(sym,sec,sym_iter->st_value,sym_iter->st_size);
+     else sym->sy_size = sym_iter->st_value; /* Temporary storage for alias offsets. */
      *symdef = sym;
     }
     assert(symdef <= (struct DCCSym **)symvec+symcnt);
@@ -793,8 +795,8 @@ done_symvec:
     /* Parse extended symbol flags. */
     if (!iter->sh_entsize) iter->sh_entsize = sizeof(Elf(DCCSymFlg));
     if unlikely((flgc = iter->sh_size/iter->sh_entsize) == 0) continue;
-    if unlikely((symc = SEC_SYMCNTI(iter->sh_info)) == 0) continue;
-    if unlikely((symv = SEC_SYMVECI(iter->sh_info)) == NULL) continue;
+    if unlikely((symc = SEC_SYMCNTI(iter->sh_link)) == 0) continue;
+    if unlikely((symv = SEC_SYMVECI(iter->sh_link)) == NULL) continue;
     if (symc < flgc) flgc = symc;
     flgv = (Elf(DCCSymFlg) *)DCC_Malloc(flgc*sizeof(Elf(DCCSymFlg)),0);
     if unlikely(!flgv) continue;
@@ -838,7 +840,8 @@ done_symvec:
       if unlikely(symid >= symc) continue;
       if unlikely((alias_target = symv[symid]) == NULL) continue;
       /* Define 'sym' as an alias for 'symv[symid]' */
-      DCCSym_Alias(sym,alias_target,flg_iter->sf_off);
+      DCCSym_Alias(sym,alias_target,sym->sy_size);
+      sym->sy_size = 0;
      }
     }
     DCC_Free(flgv);

@@ -70,17 +70,16 @@ DCC_DECL_BEGIN
  *  - Using this extension, DCC is able to retain dependency tree information
  *    caused by symbol aliasing, as well as less important symbol flags,
  *    such as 'DCC_SYMFLAG_USED'
+ *  - NOTE: The original symbol value acts as an alias offset
  */
 #define SHT_DCC_SYMFLG (SHT_LOUSER+0x0306)
 
 typedef struct {
   Elf32_Word sf_info; /*< Extended symbol information. */
-  Elf32_Addr sf_off;  /*< Offset applied to a symbol alias. */
 } Elf32_DCCSymFlg;
 
 typedef struct {
   Elf64_Word sf_info; /*< Extended symbol information. */
-  Elf32_Addr sf_off;  /*< Offset applied to a symbol alias. */
 } Elf64_DCCSymFlg;
 
 #define ELF_DCC_SYMFLAG_F_ALIAS  0x01 /*< The symbol is aliasing another symbol retrievable through 'ELF(32|64)_DCC_SYMFLAG_SYM(...)'.
