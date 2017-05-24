@@ -72,6 +72,9 @@
     <ClCompile Include="..\src\dcc\cmd.c">
       <Filter>src\dcc</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\dcc\cmd-help.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcc\lexer.h">

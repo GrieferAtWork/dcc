@@ -1258,16 +1258,21 @@ DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTAT
 }
 #endif
 
-/* Switch to the Linker warning namespace. */
-WARNING_NAMESPACE(WN_LINKER,2000)
+WARNING_NAMESPACE(WN_CMD,1900)
 DEF_WARNING(W_CMD_UNKNOWN,(WG_CMD),WSTATE_ERROR,WARNF("Unknown option: '%s'",ARG(char *)))
+DEF_WARNING(W_CMD_ILLEGAL,(WG_CMD),WSTATE_ERROR,WARNF("This command is only legal on the commandline"))
 DEF_WARNING(W_CMD_A_EXPECTED_VALUE,(WG_CMD),WSTATE_ERROR,WARNF("Expected assertion value after '-A'"))
 DEF_WARNING(W_CMD_WL_SECTION_START_UNKNOWN_SECTION,(WG_CMD),WSTATE_ERROR,WARNF("Unknown section '%s' specified for '-Wl,--section-start'",ARG(char *)))
 DEF_WARNING(W_CMD_FVISIBILITY_UNKNOWN_VISIBILITY,(WG_CMD,WG_VALUE),WSTATE_WARN,WARNF("Unknown visibility '%s' for '-fvisibility=...'",ARG(char *)))
+DEF_WARNING(W_CMD_MESSAGE_FORMAT_UNKNOWN,(WG_CMD,WG_VALUE),WSTATE_WARN,WARNF("Unknown format in '--message-format=%s'",ARG(char *)))
+
+/* Switch to the Linker warning namespace. */
+WARNING_NAMESPACE(WN_LINKER,2000)
 DEF_WARNING(W_OUT_OF_MEMORY,(WG_LINKER),WSTATE_ERROR,WARNF("Out of memory when allocating '%lu' bytes",(unsigned long)ARG(size_t)))
+DEF_WARNING(W_LINKER_NO_INPUT_FILES,(WG_USAGE,WG_LINKER),WSTATE_ERROR,WARNF("No input files specified"))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMPLUSSYM,(WG_LINKER),WSTATE_WARN,WARNF("Symbol+Symbol expression cannot be relocated"))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM,(WG_LINKER),WSTATE_WARN,WARNF("Symbol-Symbol expressions can only be relocated when both symbols are declared and exist in the same section"))
-DEF_WARNING(W_MISSING_ENTRY_POINT,(WG_LINKER,WG_USAGE),WSTATE_WARN,WARNF("Missing entry point '%s' (Using start of default .text section)",ARG(char *)))
+DEF_WARNING(W_LINKER_MISSING_ENTRY_POINT,(WG_LINKER,WG_USAGE),WSTATE_WARN,WARNF("Missing entry point '%s' (Using start of default .text section)",ARG(char *)))
 DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_SEC,(WG_LINKER),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined in section '%s'\n",n,ARG(char *)); })
 DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP,(WG_LINKER),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined as import from '%s'\n",n,ARG(char *)); })
 DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_ALIAS,(WG_LINKER),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined as alias for '%s'\n",n,ARG(char *)); })

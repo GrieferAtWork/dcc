@@ -964,7 +964,7 @@ pe_mk_writefile(stream_t fd) {
  /* Figure out the address of the entry point. */
  { struct DCCSymAddr entryaddr;
    if (!DCCSym_LoadAddr(pe.pe_entry,&entryaddr,1)) {
-    WARN(W_MISSING_ENTRY_POINT,pe.pe_entry->sy_name->k_name);
+    WARN(W_LINKER_MISSING_ENTRY_POINT,pe.pe_entry->sy_name->k_name);
     /* TODO: What if the text section is empty? */
     entryaddr.sa_sym = &linker.l_text->sc_start;
     entryaddr.sa_off = 0;
@@ -1035,7 +1035,7 @@ PRIVATE void pe_mk_genrt(void) {
  } else {
   pe.pe_entry = DCCUnit_GetSyms(entry_point);
   if (!pe.pe_entry) {
-   WARN(W_MISSING_ENTRY_POINT,entry_point);
+   WARN(W_LINKER_MISSING_ENTRY_POINT,entry_point);
    pe.pe_entry = &linker.l_text->sc_start;
   }
  }

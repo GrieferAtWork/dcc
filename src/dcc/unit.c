@@ -1660,6 +1660,33 @@ DCCTextBuf_TAlloc_intern(struct DCCTextBuf *__restrict self,
 }
 
 
+struct TPPKeyword_ABS_struct {
+        struct TPPKeyword *k_next;
+ /*ref*/struct TPPFile    *k_macro;
+ struct TPPRareKeyword    *k_rare;
+ TPP(tok_t)                k_id;
+ size_t                    k_size;
+ TPP(hash_t)               k_hash;
+ char                      k_name[5];
+ char                      k_zero;
+};
+PRIVATE struct TPPKeyword_ABS_struct
+TPPKeyword_ABS_data = {
+ /* k_next  */NULL,
+ /* k_macro */NULL,
+ /* k_rare  */NULL,
+ /* k_id    */TOK_EOF,
+ /* k_size  */5,
+#if __SIZEOF_POINTER__ == 8
+ /* k_hash  */1546532262303,
+#elif __SIZEOF_POINTER__ == 4
+ /* k_hash  */344035743,
+#else
+#error FIXME
+#endif
+ /* k_name  */{'<','A','B','S','>'},
+ /* k_zero  */'\0',
+};
 
 
 PUBLIC struct DCCSection DCCSection_Abs = {
@@ -1669,7 +1696,7 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_start.sy_sec_next    */NULL,
  /* sc_start.sy_unit_next   */NULL,
  /* sc_start.sy_unit_before */NULL,
- /* sc_start.sy_name        */&TPPKeyword_Empty,
+ /* sc_start.sy_name        */(struct TPPKeyword *)&TPPKeyword_ABS_data,
  /* sc_start.sy_flags       */DCC_SYMFLAG_STATIC|DCC_SYMFLAG_SEC_FIXED|
                               DCC_SYMFLAG_SEC(1,1,1,0,0,1), /* rwxu */
 #if DCC_TARGET_BIN == DCC_BINARY_PE

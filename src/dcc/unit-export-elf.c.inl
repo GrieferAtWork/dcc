@@ -266,7 +266,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
                                                     sizeof(Elf(DCCSymFlg)));
    if likely(buf) {
     memset(buf,0,need_symflags*sizeof(Elf(DCCSymFlg)));
-    ++buf; /* Skip the first entry, which referrs to the NULL-symbol */
+    ++buf; /* Skip the first entry, which refers to the NULL-symbol */
     DCCUnit_ENUMALLSYM(sym) {
 #if ELF_DCC_SYMFLAG_F_USED   == DCC_SYMFLAG_USED && \
     ELF_DCC_SYMFLAG_F_UNUSED == DCC_SYMFLAG_UNUSED

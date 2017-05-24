@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\dcc\assembler.c" />
+    <ClCompile Include="..\src\dcc\cmd-help.c" />
     <ClCompile Include="..\src\dcc\cmd.c" />
     <ClCompile Include="..\src\dcc\common.c" />
     <ClCompile Include="..\src\dcc\compiler.c" />

@@ -334,7 +334,7 @@ PRIVATE void elf_mk_entry(void) {
  if (elf.elf_type != ET_EXEC) goto use_text;
  elf.elf_entry = DCCUnit_GetSyms("_start");
  if unlikely(!elf.elf_entry) {
-  WARN(W_MISSING_ENTRY_POINT,"_start");
+  WARN(W_LINKER_MISSING_ENTRY_POINT,"_start");
 use_text:
   elf.elf_entry = &linker.l_text->sc_start;
  }
@@ -1383,7 +1383,7 @@ elf_mk_outfile(stream_t fd) {
   struct DCCSymAddr entryaddr;
   assert(elf.elf_entry);
   if (!DCCSym_LoadAddr(elf.elf_entry,&entryaddr,1)) {
-   WARN(W_MISSING_ENTRY_POINT,elf.elf_entry->sy_name->k_name);
+   WARN(W_LINKER_MISSING_ENTRY_POINT,elf.elf_entry->sy_name->k_name);
    /* TODO: What if the text section is empty? */
    entryaddr.sa_sym = &linker.l_text->sc_start;
    entryaddr.sa_off = 0;

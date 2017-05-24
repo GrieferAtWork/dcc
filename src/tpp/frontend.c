@@ -208,12 +208,9 @@ TPP_COMPILER
 "]\n\n";
 
 struct tpp_extension {
+ int         e_flag;
  char const *e_name;
  size_t      e_size;
-#if defined(__TPP_VERSION__) && \
-   (__SIZEOF_POINTER__ == 4 || __SIZEOF_POINTER__ == 8)
- TPP(hash_t) e_hash;
-#endif
 };
 extern struct tpp_extension const tpp_extensions[];
 extern char const *const wgroup_names[TPP(WG_COUNT)+1];
@@ -264,6 +261,8 @@ void usage(char *appname, char *subject) {
                 INDENT "-undef                      Disable all builtin macros.\n"
                 INDENT "--tok                       Outline all tokens using the [...] notation (Default: off).\n"
                 INDENT "--pp                        Enable preprocess-mode, which emits all tokens separated by '\\0'-bytes.\n"
+                INDENT "                            Enabling this option also disabled SPACE and LF tokens, though\n"
+                INDENT "                            they can be re-enabled using the -spc and -lf switches.\n"
                 INDENT "-f[no-]spc                  Configure emission of SPACE tokens (Default: on).\n"
                 INDENT "-f[no-]lf                   Configure emission of LF tokens (Default: on).\n"
                 INDENT "-f[no-]comments             Configure emission of COMMENT tokens (Default: off).\n"
@@ -274,8 +273,6 @@ void usage(char *appname, char *subject) {
                 INDENT "-f[no-]unify-pragma         Unify all unknown pragmas to use the preprocessor-directive syntax before re-emission (Default: on).\n"
                 INDENT "-f[no-]<extension>          Enable/Disable a given 'extension' (s.a.: '--help extensions').\n"
                 INDENT "-W[no-]<warning>            Enable/Disable a given 'warning' group (s.a.: '--help warnings').\n"
-                INDENT "                            Enabling this option also disabled SPACE and LF tokens, though\n"
-                INDENT "                            they can be re-enabled using the -spc and -lf switches.\n"
                 INDENT "--name <name>               Set the name used for __FILE__ by INFILE (Useful when INFILE is stdin).\n"
                 INDENT "--help [subject]            Display this help and exit.\n"
                 INDENT "                            When specified, subject may be one of {extensions|warnings}\n"

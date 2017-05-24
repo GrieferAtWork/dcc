@@ -37,6 +37,10 @@
 
 DCC_DECL_BEGIN
 
+extern DCC_ATTRIBUTE_NORETURN void dcc_help(char const *subject);
+extern DCC_ATTRIBUTE_NORETURN void dcc_version(void);
+
+
 LOCAL int_t strtoint(char const *s) {
  int_t result; int is_neg = 0;
  char *b = TOKEN.t_begin,*e = TOKEN.t_end;
@@ -298,7 +302,8 @@ def_secbase:
 #define SETFLAG(s,f)  (enable?((s)|=(f)):((s)&=~(f)))
 #define SETFLAGI(s,f) (enable?((s)&=~(f)):((s)|=(f)))
        if (!strcmp(v,"pic") || !strcmp(v,"PIC") ||
-           !strcmp(v,"pie") || !strcmp(v,"PIE")) SETFLAG(linker.l_flags,DCC_LINKER_FLAG_PIC);
+           !strcmp(v,"pie") || !strcmp(v,"PIE") &&
+           enable) SETFLAG(linker.l_flags,DCC_LINKER_FLAG_PIC);
   else if (!memcmp(v,"visibility=",DCC_COMPILER_STRLEN("visibility=")*sizeof(char)) && enable) {
    char *val = v+DCC_COMPILER_STRLEN("visibility=");
    symflag_t newvis;
@@ -333,9 +338,24 @@ def_secbase:
   break;
  case OPT_trigraphs: TPPLexer_EnableExtension(EXT_TRIGRAPHS); break;
 
- case OPT_UNUSED: break;
+ case OPT_message_format:
+       if (!strcmp(v,"msvc")) CURRENT.l_flags |= TPPLEXER_FLAG_MSVC_MESSAGEFORMAT;
+  else if (!strcmp(v,"gcc"))  CURRENT.l_flags &= ~(TPPLEXER_FLAG_MSVC_MESSAGEFORMAT);
+  else WARN(W_CMD_MESSAGE_FORMAT_UNKNOWN,v);
+  break;
 
+ case OPT_UNUSED: break;
  case OPT_O: break; /* Current unused. */
+
+  /* NOTE: The 'help' and 'version' callbacks are noreturn,
+   *       so no need to guard against fall-through */
+ case OPT_help:    if (from_cmd) dcc_help(v);
+ case OPT_version: if (from_cmd) dcc_version();
+ case OPT_E:
+ case OPT_o:
+ case OPT_c:
+  WARN(W_CMD_ILLEGAL);
+  break;
 
  default:
 /*unknown:*/

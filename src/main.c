@@ -16,6 +16,8 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
+#ifndef GUARD_MAIN_C
+#define GUARD_MAIN_C 1
 
 #include <dcc/assembler.h>
 #include <dcc/compiler.h>
@@ -31,69 +33,12 @@
 
 DCC_DECL_BEGIN
 
+extern void dcc_dump_symbols(void);
+
 void def(char const *name, void *addr) {
  struct DCCSym *sym = DCCUnit_NewSyms(name,DCC_SYMFLAG_NONE);
  if (sym) DCCSym_Define(sym,&DCCSection_Abs,(target_ptr_t)addr,0);
 }
-
-void dump_symbols(void) {
- struct DCCSym *sym;
- DCCUnit_ENUMSYM(sym) {
-#if DCC_TARGET_BIN == DCC_BINARY_PE
-  if (sym->sy_flags&DCC_SYMFLAG_DLLIMPORT) printf("IMPORT ");
-  if (sym->sy_flags&DCC_SYMFLAG_DLLEXPORT) printf("EXPORT ");
-#endif
-  if (sym->sy_flags&DCC_SYMFLAG_STATIC) printf("static ");
-  if (sym->sy_flags&DCC_SYMFLAG_WEAK) printf("weak ");
-  switch (sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE) {
-   default                   : printf("public "); break;
-   case DCC_SYMFLAG_PROTECTED: printf("protected "); break;
-   case DCC_SYMFLAG_PRIVATE  : printf("private "); break;
-   case DCC_SYMFLAG_INTERNAL : printf("internal "); break;
-  }
-  if (DCCSym_ISSECTION(sym)) {
-   char flags[7],*iter = flags;
-   if (sym->sy_flags&DCC_SYMFLAG_SEC_R) *iter++ = 'R';
-   if (sym->sy_flags&DCC_SYMFLAG_SEC_W) *iter++ = 'W';
-   if (sym->sy_flags&DCC_SYMFLAG_SEC_X) *iter++ = 'X';
-   if (sym->sy_flags&DCC_SYMFLAG_SEC_S) *iter++ = 'S';
-   if (sym->sy_flags&DCC_SYMFLAG_SEC_M) *iter++ = 'M';
-   if (sym->sy_flags&DCC_SYMFLAG_SEC_U) *iter++ = 'U';
-   *iter = '\0';
-   if (DCCSection_ISIMPORT(DCCSym_TOSECTION(sym))) {
-    printf("%s: LIBRARY('%s','%s')\n",
-           sym->sy_name->k_name,
-           sym->sy_name->k_name,flags);
-   } else {
-    printf("%s: SECTION('%s','%s')\n",
-           sym->sy_name->k_name,
-           sym->sy_name->k_name,flags);
-   }
-  } else if (sym->sy_alias) {
-   printf("%s: ALIAS('%s'+%lu)\n",
-          sym->sy_name->k_name,
-          sym->sy_alias->sy_name->k_name,
-         (unsigned long)sym->sy_addr);
-  } else if (sym->sy_sec) {
-   if (sym->sy_sec == &DCCSection_Abs) {
-    printf("%s: ABS(%#lx)\n",sym->sy_name->k_name,
-          (unsigned long)sym->sy_addr);
-   } else if (sym->sy_size) {
-    printf("%s: '%s'+%lu (%lu bytes)\n",sym->sy_name->k_name,
-           sym->sy_sec->sc_start.sy_name->k_name,
-          (unsigned long)sym->sy_addr,
-          (unsigned long)sym->sy_size);
-   } else {
-    printf("%s: '%s'+%lu\n",sym->sy_name->k_name,
-           sym->sy_sec->sc_start.sy_name->k_name,
-          (unsigned long)sym->sy_addr);
-   }
-  } else {
-   printf("%s: UNDEFINED\n",sym->sy_name->k_name);
-  }
- }
-}
-
 
 static void add_import(char const *filename) {
  DCCUnit_Push();
@@ -152,12 +97,12 @@ static void tpp_clrfile(void) {
  TOKEN.t_id    = TOK_EOF;
 }
 
-
 int main(int argc, char *argv[]) {
  struct DCCSection *sec;
  int result = 0;
  char const *outfile_name = NULL;
-#define F_COMPILEONLY 0x00000001
+#define F_COMPILEONLY  0x00000001
+#define F_PREPROCESSOR 0x00000002
  uint32_t flags = 0;
 
  if (!TPP_INITIALIZE()) return 1;
@@ -186,7 +131,7 @@ int main(int argc, char *argv[]) {
     /* True commandline options allow for a few more settings. */
     switch (c.c_id) {
 
-    case OPT_E: break; /* TODO: Enable preprocessor mode. */
+    case OPT_E: flags |= F_PREPROCESSOR; break;
     case OPT_o: outfile_name = c.c_val; break;
     case OPT_c: flags |= F_COMPILEONLY; break;
      /* TODO: '-B' changes the internal library path. */
@@ -198,15 +143,14 @@ int main(int argc, char *argv[]) {
    argv = c.c_argv;
  }
 
+ if unlikely(!argc) WARN(W_LINKER_NO_INPUT_FILES);
+ if (!OK) goto end;
+
  if (!outfile_name) {
   /* TODO: deduce default output name from first source file? */
   if (!(flags&F_COMPILEONLY))
        outfile_name = DCC_OUTFILE_STDEXE;
   else outfile_name = DCC_OUTFILE_STDOBJ;
- }
- if unlikely(!argc) {
-  /* TODO: Display '--help' */
-  goto end;
  }
 
  //_CrtSetBreakAlloc(5941);
@@ -214,6 +158,7 @@ int main(int argc, char *argv[]) {
 
  if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB) &&
      !(flags&F_COMPILEONLY)) {
+  /* Load default libraries. */
 #define STDLIB(name,f) \
    {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
   static struct DCCLibDef default_stdlib[] = {
@@ -226,13 +171,14 @@ int main(int argc, char *argv[]) {
    {0,NULL,0,0,0,0,0,NULL},
   };
 #undef STDLIB
-  /* Load default libraries. */
   struct DCCLibDef *chain = default_stdlib;
   for (; chain->ld_name; ++chain) DCCUnit_Import(chain);
  }
 
- //dump_symbols();
+ //dcc_dump_symbols();
  if (!OK) goto end;
+
+ /* TODO: Preprocessor mode ('-E'). */
 
  while (argc) {
   /* Parse the input code. */
@@ -280,7 +226,7 @@ int main(int argc, char *argv[]) {
   if (!entry_sym) {
    fprintf(stderr,"Entry point not found (Defaulting to start of .text)\n");
    entry_sym = &unit.u_text->sc_start;
-   dump_symbols();
+   dcc_dump_symbols();
   }
 
   DCCSym_Incref(entry_sym);
@@ -299,7 +245,7 @@ int main(int argc, char *argv[]) {
     fprintf(stderr,"Entry point not found (Defaulting to start of .text)\n");
     entryaddr.sa_sym = &unit.u_text->sc_start;
     entryaddr.sa_off = 0;
-    dump_symbols();
+    dcc_dump_symbols();
    }
    if (!OK) goto end;
 
@@ -317,7 +263,7 @@ int main(int argc, char *argv[]) {
 end:
  if (!OK) { fprintf(stderr,"A fatal error caused dcc to abort!\n"); }
  result = OK ? 0 : 1;
- //if (!OK) dump_symbols();
+ //if (!OK) dcc_dump_symbols();
 
  DCCUnit_Quit(&unit);
  DCCLinker_Quit(&linker);
@@ -331,3 +277,4 @@ end:
 
 DCC_DECL_END
 
+#endif /* !GUARD_MAIN_C */

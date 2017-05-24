@@ -52,21 +52,23 @@ case W_UNRESOLVED_REFERENCE: \
 */
   
 
-
 #undef PRIVATE
 #undef PUBLIC
 #undef LOCAL
 #undef likely
 #undef unlikely
-#define PRIVATE /* nothing */
-
-DCC_DECL_BEGIN
-extern uint8_t const chrattr[256];
-extern char *skip_whitespace_and_comments(char *iter, char *end);
-DCC_DECL_END
-
 #undef tpp
 #undef c
+
+#ifdef __ELF__
+#   define PRIVATE  __attribute__((__visibility__("private")))
+#elif defined(_MSC_VER)
+#   define PRIVATE  extern
+#elif 1
+#   define PRIVATE  /* nothing */
+#else
+#   define PRIVATE  static
+#endif
 
 #include DCC_TPP_FILE(tpp.c)
 
