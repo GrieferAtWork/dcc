@@ -31,14 +31,14 @@ DCC_DECL_BEGIN
 struct DCCSymAddr;
 
 /* DCC_ASMOP_R_8: 8-bit registers. */
-#define DCC_ASMREG_AL  (0 << 0)
-#define DCC_ASMREG_CL  (1 << 0)
-#define DCC_ASMREG_DL  (2 << 0)
-#define DCC_ASMREG_BL  (3 << 0)
-#define DCC_ASMREG_AH  (0 << 1)
-#define DCC_ASMREG_CH  (1 << 1)
-#define DCC_ASMREG_DH  (2 << 1)
-#define DCC_ASMREG_BH  (3 << 1)
+#define DCC_ASMREG_AL     (0 << 0)
+#define DCC_ASMREG_CL     (1 << 0)
+#define DCC_ASMREG_DL     (2 << 0)
+#define DCC_ASMREG_BL     (3 << 0)
+#define DCC_ASMREG_AH  (4|(0 << 0))
+#define DCC_ASMREG_CH  (4|(1 << 0))
+#define DCC_ASMREG_DH  (4|(2 << 0))
+#define DCC_ASMREG_BH  (4|(3 << 0))
 
 /* Returns true for SI/DI pointer registers. */
 #define DCC_ASMREG_ISPTR(x)  ((x) >= 6)

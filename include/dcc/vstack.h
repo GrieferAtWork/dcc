@@ -518,6 +518,7 @@ extern struct DCCStackValue *vbottom;
 #define vpushst    DCCVStack_PushSymt
 #define vpushd     DCCVStack_PushDecl
 #define vpushv     DCCVStack_PushVoid
+#define vpushstr   DCCVStack_PushStr
 #define vdup       DCCVStack_Dup
 #define vrcopy     DCCVStack_ReplaceCopy
 #define vrval()   (void)(vbottom->sv_flags |= DCC_SFLAG_RVALUE)
@@ -533,6 +534,7 @@ extern struct DCCStackValue *vbottom;
 #define vjmp       DCCVStack_Jmp
 #define vbitfld    DCCVStack_Bitfld
 #define vbitfldf   DCCVStack_Bitfldf
+#define vsubscript DCCVStack_Subscript
 
 #define vprom()    DCCStackValue_Promote(vbottom)
 

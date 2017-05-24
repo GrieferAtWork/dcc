@@ -38,19 +38,28 @@ DCC_DECL_BEGIN
 
 #if DCC_DEBUG
 #ifdef _WIN32
-PRIVATE void dcc_voutf(char const *fmt, va_list args) {
+INTERN void dcc_voutf(char const *fmt, va_list args) {
  char buffer[4096];
  vsnprintf(buffer,sizeof(buffer),fmt,args);
  OutputDebugStringA(buffer);
  fwrite(buffer,sizeof(char),strlen(buffer),stderr);
 }
-PRIVATE void dcc_outf(char const *fmt, ...) {
+INTERN void dcc_outf(char const *fmt, ...) {
  va_list args;
  va_start(args,fmt);
  dcc_voutf(fmt,args);
  va_end(args);
 }
 #else
+#undef dcc_voutf
+INTERN void dcc_voutf(char const *fmt, va_list args) { vfprintf(stderr,fmt,args); }
+#undef dcc_outf
+INTERN void dcc_outf(char const *fmt, ...) {
+ va_list args;
+ va_start(args,fmt);
+ vfprintf(stderr,fmt,args);
+ va_end(args);
+}
 #define dcc_voutf(fmt,args) vfprintf(stderr,fmt,args)
 #define dcc_outf(...)       fprintf(stderr,__VA_ARGS__)
 #endif

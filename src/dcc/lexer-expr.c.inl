@@ -66,7 +66,7 @@ again:
  case '.':
   YIELD();
   if (TPP_ISKEYWORD(TOK)) {
-   DCCVStack_Subscript(TOKEN.t_kwd);
+   vsubscript(TOKEN.t_kwd);
    YIELD();
   } else {
    WARN(W_EXPECTED_KEYWORD_FOR_SUBSCRIPT);

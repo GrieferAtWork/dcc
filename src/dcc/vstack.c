@@ -42,6 +42,21 @@
 
 DCC_DECL_BEGIN
 
+#if DCC_DEBUG && 0
+INTDEF void dcc_outf(char const *fmt, ...);
+#define HAVE_VLOG 1
+#define VLOG(add,x) \
+ (dcc_outf("%s(%d,%d) : VSTACK(%lu -> %lu) ",\
+           TPPLexer_FILE(NULL),\
+          (int)(TPPLexer_LINE()+1),\
+          (int)(TPPLexer_COLUMN()+1),\
+          (unsigned long)((ptrdiff_t)vsize),\
+          (unsigned long)((ptrdiff_t)vsize+(add))),\
+  dcc_outf x)
+#else
+#define VLOG(add,x) (void)0
+#endif
+
 /* Internal generator functions. */
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Store(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict target, int initial_store); /* mov self, target */
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_BinMem(struct DCCStackValue *__restrict self, tok_t op, struct DCCMemLoc const *__restrict target, size_t n);  /* *op self, target */
@@ -121,69 +136,6 @@ DCC_RC_FORTYPE(struct DCCType const *__restrict t) {
 }
 
 
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_ReplaceCopy(void) {
- assert(vsize >= 1);
- /* Nothing else really needs to take place for this to happen... */
- vbottom->sv_flags |= (DCC_SFLAG_COPY|DCC_SFLAG_RVALUE);
-}
-PUBLIC void DCC_VSTACK_CALL DCCVStack_Dup(int copy) {
- assert(vsize >= 1);
- struct DCCStackValue *dst_slot,*src_slot;
- dst_slot = src_slot = vstack.v_bottom;
- if (dst_slot-- == vstack.v_begin) {
-  size_t new_size,new_slots;
-  /* Must allocate more stack slots below. */
-  new_size = (size_t)(vstack.v_end-vstack.v_begin);
-  new_slots = new_size;
-  new_size = new_size ? new_size*2 : (new_slots = 16);
-  src_slot = (struct DCCStackValue *)realloc(vstack.v_begin,new_size*
-                                              sizeof(struct DCCStackValue));
-  if unlikely(!src_slot) goto seterr;
-  /* Shift existing entries upwards. */
-  memmove(src_slot+new_slots,src_slot,
-         (new_size-new_slots)*sizeof(struct DCCStackValue));
-  vstack.v_begin = src_slot;
-  vstack.v_end   = src_slot+new_size;
-  src_slot += new_slots;
-  dst_slot  = src_slot-1;
- }
- assert(dst_slot >= vstack.v_begin);
- assert(src_slot <  vstack.v_end);
- assert(src_slot == dst_slot+1);
- memcpy(dst_slot,src_slot,sizeof(struct DCCStackValue));
- if (dst_slot->sv_ctype.t_base) DCCDecl_Incref(dst_slot->sv_ctype.t_base);
- if (dst_slot->sv_sym) DCCSym_Incref(dst_slot->sv_sym);
- if (copy) dst_slot->sv_flags |= DCC_SFLAG_COPY;
- vstack.v_bottom = dst_slot;
- return;
-seterr:
- TPPLexer_SetErr();
-}
-
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushInt(tyid_t type, int_t v) {
- struct DCCStackValue slot;
- slot.sv_ctype.t_type = type;
- slot.sv_ctype.t_base = NULL;
- slot.sv_flags        = DCC_SFLAG_RVALUE;
- slot.sv_reg          = DCC_RC_CONST;
- slot.sv_reg2         = DCC_RC_CONST;
- slot.sv_const.it     = v;
- slot.sv_sym          = NULL; /* If set, this would could be used for a relocation added to 'v'. */
- vpush(&slot);
-}
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushCst(struct DCCType const *__restrict type, int_t v) {
- struct DCCStackValue slot;
- slot.sv_ctype    = *type;
- slot.sv_flags    = DCC_SFLAG_RVALUE;
- slot.sv_reg      = DCC_RC_CONST;
- slot.sv_reg2     = DCC_RC_CONST;
- slot.sv_const.it = v;
- slot.sv_sym      = NULL; /* If set, this would could be used for a relocation added to 'v'. */
- vpush(&slot);
-}
 LOCAL void DCC_VSTACK_CALL
 DCCStackValue_SetMemDecl(struct DCCStackValue *__restrict slot,
                          struct DCCMemDecl const *__restrict decl) {
@@ -215,317 +167,6 @@ DCCStackValue_SetMemDecl(struct DCCStackValue *__restrict slot,
   }
  }
 }
-
-
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushSym(struct DCCSym *__restrict sym) {
- struct DCCStackValue slot;
- assert(sym);
- slot.sv_reg          = DCC_RC_CONST;
- slot.sv_const.it     = 0;
- slot.sv_sym          = sym;
- slot.sv_flags        = DCC_SFLAG_LVALUE;
- slot.sv_reg2         = DCC_RC_CONST;
- slot.sv_ctype.t_base = NULL;
- slot.sv_ctype.t_type = DCCTYPE_VOID;
- //DCCType_MkOldFunc(&slot.sv_ctype);
- //assert(slot.sv_ctype.t_base);
- vpush(&slot);
- //DCCDecl_Decref(slot.sv_ctype.t_base);
-}
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushSymt(struct DCCType const *__restrict type,
-                   struct DCCSym *__restrict sym) {
- struct DCCStackValue slot;
- assert(type);
- assert(sym);
- slot.sv_reg      = DCC_RC_CONST;
- slot.sv_const.it = 0;
- slot.sv_sym      = sym;
- slot.sv_flags    = DCC_SFLAG_LVALUE;
- slot.sv_reg2     = DCC_RC_CONST;
- slot.sv_ctype    = *type;
- vpush(&slot);
-}
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushDecl(struct DCCDecl *__restrict decl) {
- struct DCCStackValue slot;
- assert(decl);
- if (decl->d_kind != DCC_DECLKIND_MLOC) {
-  vpushi(DCCTYPE_VOID,0);
-  return;
- }
- if (decl->d_mdecl.md_loc.ml_reg != DCC_RC_CONST) {
-  DCCStackValue_SetMemDecl(&slot,&decl->d_mdecl);
- } else {
-  slot.sv_reg      = decl->d_mdecl.md_loc.ml_reg;
-  slot.sv_const.it = decl->d_mdecl.md_loc.ml_off;
-  slot.sv_sym      = decl->d_mdecl.md_loc.ml_sym;
- }
- slot.sv_flags = DCC_SFLAG_LVALUE;
- slot.sv_reg2  = DCC_RC_CONST;
- slot.sv_ctype = decl->d_type;
- vpush(&slot);
-}
-
-
-
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushSizeof(struct DCCType const *__restrict t) {
- struct DCCStackValue slot;
- assert(t);
- slot.sv_reg2         = DCC_RC_CONST;
- slot.sv_ctype.t_type = DCCTYPE_SIZE|DCCTYPE_UNSIGNED;
- slot.sv_ctype.t_base = NULL;
- slot.sv_sym          = NULL;
- if (DCCType_ISVLA(t)) {
-  struct DCCMemDecl offset;
-  /* Special case: VLA offset. */
-  slot.sv_flags        = DCC_SFLAG_LVALUE|DCC_SFLAG_RVALUE;
-  offset.md_loc.ml_reg = DCC_RR_XBP;
-  offset.md_loc.ml_off = t->t_base->d_tdecl.td_vlaoff;
-  offset.md_loc.ml_sym = NULL;
-  offset.md_scope      = t->t_base->d_tdecl.td_vlascope;
-  DCCStackValue_SetMemDecl(&slot,&offset);
- } else {
-  slot.sv_reg      = DCC_RC_CONST;
-  slot.sv_flags    = DCC_SFLAG_RVALUE;
-  slot.sv_const.it = (int_t)DCCType_Sizeof(t,NULL,1);
- }
- vpush(&slot);
-}
-
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushReturn(struct DCCType const *funtype) {
- struct DCCStackValue slot;
- slot.sv_ctype.t_type = DCCTYPE_INT;
- slot.sv_ctype.t_base = NULL;
- slot.sv_flags        = DCC_SFLAG_NONE;
- slot.sv_const.it     = 0;
- slot.sv_sym          = NULL;
- slot.sv_reg2         = DCC_RC_CONST;
- if (!funtype || DCCTYPE_GROUP(funtype->t_type) != DCCTYPE_FUNCTION) {
-push_default:
-  slot.sv_reg = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
- } else {
-  assert(funtype->t_base);
-  slot.sv_ctype = funtype->t_base->d_type;
-  if (DCCTYPE_GROUP(slot.sv_ctype.t_type) == DCCTYPE_BUILTIN) {
-   /* TODO: floating-point registers. */
-   if (DCCTYPE_ISSIGNLESSBASIC(slot.sv_ctype.t_type,DCCTYPE_INT64)) {
-#ifdef DCC_RC_I64
-    slot.sv_reg  = DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
-#else
-    slot.sv_reg  = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
-    slot.sv_reg2 = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EDX;
-#endif
-   } else {
-    slot.sv_reg = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
-   }
-  } else if (DCCTYPE_GROUP(slot.sv_ctype.t_type) == DCCTYPE_POINTER ||
-             DCCTYPE_GROUP(slot.sv_ctype.t_type) == DCCTYPE_LVALUE) {
-   slot.sv_reg = DCC_RC_PTRX|DCC_ASMREG_EAX;
-  } else {
-   /* TODO: structure types. */
-   goto push_default;
-  }
- }
- vpush(&slot);
-}
-
-
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushStr(char const *__restrict p, size_t s) {
- struct DCCStackValue slot;
- struct DCCSym *str_sym;
- /* Place a data symbol for the string. */
- str_sym = DCCSection_DAllocSym(unit.u_str,p,s*sizeof(char),
-                               (s+1)*sizeof(char),1,0);
- if unlikely(!str_sym) { vpushi(DCCTYPE_INT,0); return; }
- slot.sv_ctype.t_base = NULL;
- /* TODO: 'DCCTYPE_CONST' should somehow be configurable. */
- slot.sv_ctype.t_type = DCCTYPE_BUILTIN|DCCTYPE_BYTE|DCCTYPE_CONST;
- if (TPPLexer_Current->l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
-  slot.sv_ctype.t_type |= DCCTYPE_UNSIGNED;
- /* Use a character array as typing for the string. */
- DCCType_MkArray(&slot.sv_ctype,s);
- assert(slot.sv_ctype.t_base);
- slot.sv_flags    = DCC_SFLAG_LVALUE|DCC_SFLAG_RVALUE;
- slot.sv_reg      = DCC_RC_CONST;
- slot.sv_reg2     = DCC_RC_CONST;
- slot.sv_const.it = 0;
- slot.sv_sym      = str_sym;
- vpush(&slot);
- assert(slot.sv_ctype.t_base);
- DCCDecl_Decref(slot.sv_ctype.t_base);
-}
-
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushReg(rc_t reg) {
- struct DCCStackValue slot;
- slot.sv_ctype.t_type = DCC_RC_GETTYPE(reg);
- slot.sv_ctype.t_base = NULL;
- slot.sv_flags        = DCC_SFLAG_NONE;
- slot.sv_reg          = reg;
- slot.sv_reg2         = DCC_RC_CONST;
- slot.sv_const.it     = 0;
- slot.sv_sym          = NULL;
- vpush(&slot);
-}
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushRegs(rc_t reg, rc_t reg2) {
- struct DCCStackValue slot;
- if (reg2 != DCC_RC_CONST) {
-  slot.sv_ctype.t_type = DCCTYPE_INT64;
- } else {
-  slot.sv_ctype.t_type = DCC_RC_GETTYPE(reg);
- }
- slot.sv_ctype.t_base = NULL;
- slot.sv_flags        = DCC_SFLAG_NONE;
- slot.sv_reg          = reg;
- slot.sv_reg2         = reg2;
- slot.sv_const.it     = 0;
- slot.sv_sym          = NULL;
- vpush(&slot);
-}
-
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushXReg(rc_t reg) {
- struct DCCStackValue slot;
- slot.sv_ctype.t_type = DCC_RC_GETTYPE(reg);
- slot.sv_ctype.t_base = NULL;
- slot.sv_flags        = DCC_SFLAG_XREGISTER;
- slot.sv_reg          = reg;
- slot.sv_reg2         = DCC_RC_CONST;
- slot.sv_const.it     = 0;
- slot.sv_sym          = NULL;
- vpush(&slot);
-}
-
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushAddr(struct DCCSection *__restrict sec,
-                   target_ptr_t addr) {
- struct DCCStackValue slot;
- assert(sec);
- slot.sv_ctype.t_type = DCCTYPE_VOID;
- slot.sv_ctype.t_base = NULL;
- slot.sv_flags        = DCC_SFLAG_LVALUE;
- slot.sv_reg          = DCC_RC_CONST;
- slot.sv_reg2         = DCC_RC_CONST;
- slot.sv_const.it     = (int_t)addr;
- slot.sv_sym          = &sec->sc_start;
- vpush(&slot);
-}
-
-
-
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_Push(struct DCCStackValue const *__restrict sval) {
- struct DCCStackValue *dst_slot;
- assert(sval);
- /* Make sure that the given stack value is in a consistent state. */
- assertf((sval->sv_reg&DCC_RC_I16) ? ((sval->sv_reg&DCC_RC_I8) || (sval->sv_reg&4)) : 1,
-         "16-bit registers AX, CX, DX and BX must imply 8-bit");
- assertf((sval->sv_reg2&DCC_RC_I16) ? ((sval->sv_reg2&DCC_RC_I8) || (sval->sv_reg2&4)) : 1,
-         "16-bit registers AX, CX, DX and BX must imply 8-bit");
-
- assert((sval->sv_reg&DCC_RC_I32) ? (sval->sv_reg&DCC_RC_I16) : 1);
- assert((sval->sv_reg2&DCC_RC_I32) ? (sval->sv_reg2&DCC_RC_I16) : 1);
-#ifdef DCC_RC_I64
- assert((sval->sv_reg&DCC_RC_I64) ? (sval->sv_reg&DCC_RC_I32) : 1);
- assert((sval->sv_reg2&DCC_RC_I64) ? (sval->sv_reg2&DCC_RC_I32) : 1);
-#endif
-
- dst_slot = vstack.v_bottom;
- if (dst_slot-- == vstack.v_begin) {
-  size_t new_size,new_slots;
-  /* Must allocate more stack slots below. */
-  new_size = (size_t)(vstack.v_end-vstack.v_begin);
-  new_slots = new_size;
-  new_size = new_size ? new_size*2 : (new_slots = 16);
-  dst_slot = (struct DCCStackValue *)realloc(vstack.v_begin,new_size*
-                                             sizeof(struct DCCStackValue));
-  if unlikely(!dst_slot) goto seterr;
-  /* Shift existing entries upwards. */
-  memmove(dst_slot+new_slots,dst_slot,
-         (new_size-new_slots)*sizeof(struct DCCStackValue));
-  vstack.v_begin = dst_slot;
-  vstack.v_end   = dst_slot+new_size;
-  dst_slot += (new_slots-1);
- }
- assert(dst_slot >= vstack.v_begin);
- assert(dst_slot <  vstack.v_end);
- memcpy(dst_slot,sval,sizeof(struct DCCStackValue));
- if (dst_slot->sv_ctype.t_base) DCCDecl_Incref(dst_slot->sv_ctype.t_base);
- if (dst_slot->sv_sym) {
-  if (DCCSym_SECTION(dst_slot->sv_sym) == &DCCSection_Abs &&
-    !(dst_slot->sv_sym->sy_flags&DCC_SYMFLAG_WEAK)) {
-   /* Special case: The symbol is part of the global section.
-    *               To simplify optimization code, we convert it to a constant value here. 
-    * NOTE: We have to make sure not to do so for weak symbols, as those may be overwritten again! */
-   dst_slot->sv_const.it += dst_slot->sv_sym->sy_addr;
-   dst_slot->sv_sym       = NULL;
-  } else {
-   DCCSym_Incref(dst_slot->sv_sym);
-  }
- }
- vstack.v_bottom = dst_slot;
- return;
-seterr:
- TPPLexer_SetErr();
-}
-PUBLIC void DCC_VSTACK_CALL DCCVStack_Pop(int del) {
- assert(vsize != 0);
- if (!del);
- else if (/* Only perform destruction if we're supposed to. */
-         (vbottom->sv_flags&(DCC_SFLAG_XOFFSET|DCC_SFLAG_LVALUE|DCC_SFLAG_COPY)) == DCC_SFLAG_XOFFSET &&
-         (vbottom->sv_reg != DCC_RC_CONST) && (vbottom->sv_const.it != 0)) {
-  struct DCCSymAddr rhs_val;
-  rhs_val.sa_sym = vbottom->sv_sym;
-  rhs_val.sa_off = (target_off_t)vbottom->sv_const.offset;
-  /* Need to add the offset, as it was explicitly stated!
-   * This can happen if the user wrote something like '%eax += 42;' */
-  if (vbottom->sv_reg2 != DCC_RC_CONST) {
-   /* Always to use 'add', as 'inc' don't set the carry flag. */
-   DCCDisp_CstBinReg('+',&rhs_val,vbottom->sv_reg,0);
-   /* Add more data to the second operand (NOTE: with carry). */
-   rhs_val.sa_off = (target_off_t)(vbottom->sv_const.it >> 32);
-   DCCDisp_CstBinReg(TOK_INC,&rhs_val,vbottom->sv_reg,0);
-  } else {
-   /* Use optimized add. */
-   DCCDisp_AddReg(&rhs_val,vbottom->sv_reg);
-  }
- }
- DCCType_Quit(&vbottom->sv_ctype);
- DCCSym_XDecref(vbottom->sv_sym);
- ++vbottom;
-}
-PUBLIC void DCC_VSTACK_CALL DCCVStack_Swap(void) {
- struct DCCStackValue temp;
- assert(vsize >= 2);
- temp = vbottom[0];
- vbottom[0] = vbottom[1];
- vbottom[1] = temp;
-}
-
-PUBLIC void DCC_VSTACK_CALL DCCVStack_LRot(size_t n) {
- struct DCCStackValue temp;
- assert(n),--n;
- assert(vsize >= n);
- memcpy(&temp,vbottom,sizeof(struct DCCStackValue));
- memmove(vbottom,vbottom+1,n*sizeof(struct DCCStackValue));
- memcpy(vbottom+n,&temp,sizeof(struct DCCStackValue));
-}
-
-PUBLIC void DCC_VSTACK_CALL DCCVStack_RRot(size_t n) {
- struct DCCStackValue temp;
- assert(n),--n;
- assert(vsize >= n);
- memcpy(&temp,vbottom+n,sizeof(struct DCCStackValue));
- memmove(vbottom+1,vbottom,n*sizeof(struct DCCStackValue));
- memcpy(vbottom,&temp,sizeof(struct DCCStackValue));
-}
-
 PUBLIC void DCC_VSTACK_CALL
 DCCStackValue_Kill(struct DCCStackValue *__restrict self) {
  target_ptr_t s,a; int was_lvalue;
@@ -1984,8 +1625,7 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
    */
   DCCStackValue_Promote(self);
   DCCStackValue_LoadLValue(self);
- } else if (group == DCCTYPE_ARRAY ||
-            group == DCCTYPE_VARRAY) {
+ } else if (DCCTYPE_ISARRAY(type->t_type)) {
   /* Cast to array/vararray type. */
   if (!(self->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(self);
   goto done;
@@ -2677,6 +2317,654 @@ DCCVStack_KillTst(void) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////
+// 
+//  PUSH HELPERS
+// 
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushInt(tyid_t type, int_t v) {
+ struct DCCStackValue slot;
+ slot.sv_ctype.t_type = type;
+ slot.sv_ctype.t_base = NULL;
+ slot.sv_flags        = DCC_SFLAG_RVALUE;
+ slot.sv_reg          = DCC_RC_CONST;
+ slot.sv_reg2         = DCC_RC_CONST;
+ slot.sv_const.it     = v;
+ slot.sv_sym          = NULL; /* If set, this would could be used for a relocation added to 'v'. */
+ vpush(&slot);
+}
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushCst(struct DCCType const *__restrict type, int_t v) {
+ struct DCCStackValue slot;
+ slot.sv_ctype    = *type;
+ slot.sv_flags    = DCC_SFLAG_RVALUE;
+ slot.sv_reg      = DCC_RC_CONST;
+ slot.sv_reg2     = DCC_RC_CONST;
+ slot.sv_const.it = v;
+ slot.sv_sym      = NULL; /* If set, this would could be used for a relocation added to 'v'. */
+ vpush(&slot);
+}
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushSym(struct DCCSym *__restrict sym) {
+ struct DCCStackValue slot;
+ assert(sym);
+ slot.sv_reg          = DCC_RC_CONST;
+ slot.sv_const.it     = 0;
+ slot.sv_sym          = sym;
+ slot.sv_flags        = DCC_SFLAG_LVALUE;
+ slot.sv_reg2         = DCC_RC_CONST;
+ slot.sv_ctype.t_base = NULL;
+ slot.sv_ctype.t_type = DCCTYPE_VOID;
+ //DCCType_MkOldFunc(&slot.sv_ctype);
+ //assert(slot.sv_ctype.t_base);
+ vpush(&slot);
+ //DCCDecl_Decref(slot.sv_ctype.t_base);
+}
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushSymt(struct DCCType const *__restrict type,
+                   struct DCCSym *__restrict sym) {
+ struct DCCStackValue slot;
+ assert(type);
+ assert(sym);
+ slot.sv_reg      = DCC_RC_CONST;
+ slot.sv_const.it = 0;
+ slot.sv_sym      = sym;
+ slot.sv_flags    = DCC_SFLAG_LVALUE;
+ slot.sv_reg2     = DCC_RC_CONST;
+ slot.sv_ctype    = *type;
+ vpush(&slot);
+}
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushDecl(struct DCCDecl *__restrict decl) {
+ struct DCCStackValue slot;
+ assert(decl);
+ if (decl->d_kind != DCC_DECLKIND_MLOC) {
+  vpushi(DCCTYPE_VOID,0);
+  return;
+ }
+ if (decl->d_mdecl.md_loc.ml_reg != DCC_RC_CONST) {
+  DCCStackValue_SetMemDecl(&slot,&decl->d_mdecl);
+ } else {
+  slot.sv_reg      = decl->d_mdecl.md_loc.ml_reg;
+  slot.sv_const.it = decl->d_mdecl.md_loc.ml_off;
+  slot.sv_sym      = decl->d_mdecl.md_loc.ml_sym;
+ }
+ slot.sv_flags = DCC_SFLAG_LVALUE;
+ slot.sv_reg2  = DCC_RC_CONST;
+ slot.sv_ctype = decl->d_type;
+ vpush(&slot);
+}
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushSizeof(struct DCCType const *__restrict t) {
+ struct DCCStackValue slot;
+ assert(t);
+ slot.sv_reg2         = DCC_RC_CONST;
+ slot.sv_ctype.t_type = DCCTYPE_SIZE|DCCTYPE_UNSIGNED;
+ slot.sv_ctype.t_base = NULL;
+ slot.sv_sym          = NULL;
+ if (DCCType_ISVLA(t)) {
+  struct DCCMemDecl offset;
+  /* Special case: VLA offset. */
+  slot.sv_flags        = DCC_SFLAG_LVALUE|DCC_SFLAG_RVALUE;
+  offset.md_loc.ml_reg = DCC_RR_XBP;
+  offset.md_loc.ml_off = t->t_base->d_tdecl.td_vlaoff;
+  offset.md_loc.ml_sym = NULL;
+  offset.md_scope      = t->t_base->d_tdecl.td_vlascope;
+  DCCStackValue_SetMemDecl(&slot,&offset);
+ } else {
+  slot.sv_reg      = DCC_RC_CONST;
+  slot.sv_flags    = DCC_SFLAG_RVALUE;
+  slot.sv_const.it = (int_t)DCCType_Sizeof(t,NULL,1);
+ }
+ vpush(&slot);
+}
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushReturn(struct DCCType const *funtype) {
+ struct DCCStackValue slot;
+ slot.sv_ctype.t_type = DCCTYPE_INT;
+ slot.sv_ctype.t_base = NULL;
+ slot.sv_flags        = DCC_SFLAG_NONE;
+ slot.sv_const.it     = 0;
+ slot.sv_sym          = NULL;
+ slot.sv_reg2         = DCC_RC_CONST;
+ if (!funtype || DCCTYPE_GROUP(funtype->t_type) != DCCTYPE_FUNCTION) {
+push_default:
+  slot.sv_reg = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
+ } else {
+  assert(funtype->t_base);
+  slot.sv_ctype = funtype->t_base->d_type;
+  if (DCCTYPE_GROUP(slot.sv_ctype.t_type) == DCCTYPE_BUILTIN) {
+   /* TODO: floating-point registers. */
+   if (DCCTYPE_ISSIGNLESSBASIC(slot.sv_ctype.t_type,DCCTYPE_INT64)) {
+#ifdef DCC_RC_I64
+    slot.sv_reg  = DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
+#else
+    slot.sv_reg  = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
+    slot.sv_reg2 = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EDX;
+#endif
+   } else {
+    slot.sv_reg = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
+   }
+  } else if (DCCTYPE_GROUP(slot.sv_ctype.t_type) == DCCTYPE_POINTER ||
+             DCCTYPE_GROUP(slot.sv_ctype.t_type) == DCCTYPE_LVALUE) {
+   slot.sv_reg = DCC_RC_PTRX|DCC_ASMREG_EAX;
+  } else {
+   /* TODO: structure types. */
+   goto push_default;
+  }
+ }
+ vpush(&slot);
+}
+
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushStr(char const *__restrict p, size_t s) {
+ struct DCCStackValue slot;
+ struct DCCSym *str_sym;
+ /* Place a data symbol for the string. */
+ str_sym = DCCSection_DAllocSym(unit.u_str,p,s*sizeof(char),
+                               (s+1)*sizeof(char),1,0);
+ if unlikely(!str_sym) { vpushi(DCCTYPE_INT,0); return; }
+ slot.sv_ctype.t_base = NULL;
+ /* TODO: 'DCCTYPE_CONST' should somehow be configurable. */
+ slot.sv_ctype.t_type = DCCTYPE_BUILTIN|DCCTYPE_BYTE|DCCTYPE_CONST;
+ if (TPPLexer_Current->l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
+  slot.sv_ctype.t_type |= DCCTYPE_UNSIGNED;
+ /* Use a character array as typing for the string. */
+ DCCType_MkArray(&slot.sv_ctype,s);
+ assert(slot.sv_ctype.t_base);
+ slot.sv_flags    = DCC_SFLAG_LVALUE|DCC_SFLAG_RVALUE;
+ slot.sv_reg      = DCC_RC_CONST;
+ slot.sv_reg2     = DCC_RC_CONST;
+ slot.sv_const.it = 0;
+ slot.sv_sym      = str_sym;
+ vpush(&slot);
+ assert(slot.sv_ctype.t_base);
+ DCCDecl_Decref(slot.sv_ctype.t_base);
+}
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushReg(rc_t reg) {
+ struct DCCStackValue slot;
+ slot.sv_ctype.t_type = DCC_RC_GETTYPE(reg);
+ slot.sv_ctype.t_base = NULL;
+ slot.sv_flags        = DCC_SFLAG_NONE;
+ slot.sv_reg          = reg;
+ slot.sv_reg2         = DCC_RC_CONST;
+ slot.sv_const.it     = 0;
+ slot.sv_sym          = NULL;
+ vpush(&slot);
+}
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushRegs(rc_t reg, rc_t reg2) {
+ struct DCCStackValue slot;
+ if (reg2 != DCC_RC_CONST) {
+  slot.sv_ctype.t_type = DCCTYPE_INT64;
+ } else {
+  slot.sv_ctype.t_type = DCC_RC_GETTYPE(reg);
+ }
+ slot.sv_ctype.t_base = NULL;
+ slot.sv_flags        = DCC_SFLAG_NONE;
+ slot.sv_reg          = reg;
+ slot.sv_reg2         = reg2;
+ slot.sv_const.it     = 0;
+ slot.sv_sym          = NULL;
+ vpush(&slot);
+}
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushXReg(rc_t reg) {
+ struct DCCStackValue slot;
+ slot.sv_ctype.t_type = DCC_RC_GETTYPE(reg);
+ slot.sv_ctype.t_base = NULL;
+ slot.sv_flags        = DCC_SFLAG_XREGISTER;
+ slot.sv_reg          = reg;
+ slot.sv_reg2         = DCC_RC_CONST;
+ slot.sv_const.it     = 0;
+ slot.sv_sym          = NULL;
+ vpush(&slot);
+}
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushAddr(struct DCCSection *__restrict sec,
+                   target_ptr_t addr) {
+ struct DCCStackValue slot;
+ assert(sec);
+ slot.sv_ctype.t_type = DCCTYPE_VOID;
+ slot.sv_ctype.t_base = NULL;
+ slot.sv_flags        = DCC_SFLAG_LVALUE;
+ slot.sv_reg          = DCC_RC_CONST;
+ slot.sv_reg2         = DCC_RC_CONST;
+ slot.sv_const.it     = (int_t)addr;
+ slot.sv_sym          = &sec->sc_start;
+ vpush(&slot);
+}
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////
+// 
+//  PUSH
+// 
+#ifdef HAVE_VLOG
+PRIVATE void vlog_regnam(rc_t r) {
+ dcc_outf("%");
+#ifdef DCC_RC_I64
+      if (r&DCC_RC_I64) dcc_outf("r");
+ else
+#endif
+      if (r&DCC_RC_I32) dcc_outf("e");
+ else if (r&DCC_RC_I16);
+ else if (r&DCC_RC_I8) {
+  switch (r&7) {
+   case DCC_ASMREG_AL: dcc_outf("al"); break;
+   case DCC_ASMREG_CL: dcc_outf("cl"); break;
+   case DCC_ASMREG_DL: dcc_outf("dl"); break;
+   case DCC_ASMREG_BL: dcc_outf("bl"); break;
+   case DCC_ASMREG_AH: dcc_outf("ah"); break;
+   case DCC_ASMREG_CH: dcc_outf("ch"); break;
+   case DCC_ASMREG_DH: dcc_outf("dh"); break;
+   case DCC_ASMREG_BH: dcc_outf("bh"); break;
+  }
+  return;
+ }
+ switch (r&7) {
+  case DCC_ASMREG_AX: dcc_outf("ax"); break;
+  case DCC_ASMREG_CX: dcc_outf("cx"); break;
+  case DCC_ASMREG_DX: dcc_outf("dx"); break;
+  case DCC_ASMREG_BX: dcc_outf("bx"); break;
+  case DCC_ASMREG_SP: dcc_outf("sp"); break;
+  case DCC_ASMREG_BP: dcc_outf("bp"); break;
+  case DCC_ASMREG_SI: dcc_outf("si"); break;
+  case DCC_ASMREG_DI: dcc_outf("di"); break;
+ }
+}
+#endif
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_Push(struct DCCStackValue const *__restrict sval) {
+ struct DCCStackValue *dst_slot;
+ assert(sval);
+ /* Make sure that the given stack value is in a consistent state. */
+ assertf((sval->sv_reg&DCC_RC_I16) ? ((sval->sv_reg&DCC_RC_I8) || (sval->sv_reg&4)) : 1,
+         "16-bit registers AX, CX, DX and BX must imply 8-bit");
+ assertf((sval->sv_reg2&DCC_RC_I16) ? ((sval->sv_reg2&DCC_RC_I8) || (sval->sv_reg2&4)) : 1,
+         "16-bit registers AX, CX, DX and BX must imply 8-bit");
+
+ assert((sval->sv_reg&DCC_RC_I32) ? (sval->sv_reg&DCC_RC_I16) : 1);
+ assert((sval->sv_reg2&DCC_RC_I32) ? (sval->sv_reg2&DCC_RC_I16) : 1);
+#ifdef DCC_RC_I64
+ assert((sval->sv_reg&DCC_RC_I64) ? (sval->sv_reg&DCC_RC_I32) : 1);
+ assert((sval->sv_reg2&DCC_RC_I64) ? (sval->sv_reg2&DCC_RC_I32) : 1);
+#endif
+ assert((sval->sv_flags&(DCC_SFLAG_TEST|DCC_SFLAG_LVALUE)) != (DCC_SFLAG_TEST|DCC_SFLAG_LVALUE));
+ assert((sval->sv_flags&(DCC_SFLAG_BITFLD|DCC_SFLAG_LVALUE)) != (DCC_SFLAG_BITFLD|DCC_SFLAG_LVALUE));
+ DCCSym_XASSERT(sval->sv_sym);
+ DCCType_ASSERT(&sval->sv_ctype);
+#ifdef HAVE_VLOG
+ if DCC_MACRO_COND(HAVE_VLOG) {
+  struct TPPString *tynam;
+  if (sval->sv_flags&(DCC_SFLAG_XOFFSET|DCC_SFLAG_XREGISTER|
+                      DCC_SFLAG_TEST|DCC_SFLAG_BITFLD))
+      goto default_vlog;
+  if (DCCTYPE_ISBASIC(sval->sv_ctype.t_type,DCCTYPE_VOID)) {
+   if (!(sval->sv_flags&DCC_SFLAG_LVALUE)) { VLOG(1,("vpushv()\n")); goto done_vlog; }
+   if (sval->sv_sym) { VLOG(1,("vpushs(*(")); goto vlog_sym; }
+  }
+  if (sval->sv_flags == DCC_SFLAG_RVALUE && !sval->sv_sym) {
+   VLOG(1,("vpush%c(",sval->sv_ctype.t_base ? 'c' : 'i'));
+   if (sval->sv_ctype.t_type != DCCTYPE_INT) {
+    tynam = DCCType_ToTPPString(&sval->sv_ctype,NULL);
+    dcc_outf("[%s],",tynam->s_text);
+    TPPString_Decref(tynam);
+   }
+   goto vlog_cst;
+  }
+  if (sval->sv_reg == DCC_RC_CONST && sval->sv_sym) {
+   if (sval->sv_flags&DCC_SFLAG_LVALUE) {
+    if (DCCTYPE_ISARRAY(sval->sv_ctype.t_type)) {
+     assert(sval->sv_ctype.t_base);
+     if (sval->sv_ctype.t_base->d_kind == DCC_DECLKIND_ARRAY &&
+        (DCCTYPE_ISBASIC(sval->sv_ctype.t_base->d_type.t_type,DCCTYPE_CHAR) ||
+         DCCTYPE_ISBASIC(sval->sv_ctype.t_base->d_type.t_type,DCCTYPE_CHAR|DCCTYPE_UNSIGNED))) {
+      struct DCCMemLoc ml; char *data;
+      size_t size = sval->sv_ctype.t_base->d_tdecl.td_size*DCC_TARGET_SIZEOF_CHAR;
+      ml.ml_off = (target_off_t)sval->sv_const.it;
+      ml.ml_reg = DCC_RC_CONST;
+      ml.ml_sym = sval->sv_sym;
+      data = (char *)DCCMemLoc_CompilerData(&ml,size);
+      if (data) {
+       char *buf; size_t bufsize;
+       bufsize = TPP_SizeofEscape(data,size);
+       buf = (char *)malloc((bufsize+1)*sizeof(char));
+       if (buf) {
+        *TPP_Escape(buf,data,size) = '\0';
+        VLOG(1,("vpushstr(\"%s\")\n",buf));
+        free(buf);
+        goto done_vlog;
+       }
+      }
+     }
+    }
+   } else {
+    VLOG(1,("vpushst("));
+    tynam = DCCType_ToTPPString(&sval->sv_ctype,NULL);
+    dcc_outf("[%s],",tynam->s_text);
+    TPPString_Decref(tynam);
+    goto vlog_sym;
+   }
+  }
+  if (sval->sv_reg != DCC_RC_CONST &&
+     !sval->sv_ctype.t_base &&
+      sval->sv_ctype.t_type == DCC_RC_GETTYPE(sval->sv_reg)) {
+   VLOG(1,("vpushr("));
+   goto vlog_reg;
+  }
+default_vlog:
+  VLOG(1,("vpush("));
+  tynam = DCCType_ToTPPString(&sval->sv_ctype,NULL);
+  dcc_outf("[%s],",tynam->s_text);
+  TPPString_Decref(tynam);
+  if (sval->sv_flags&DCC_SFLAG_COPY) dcc_outf("copy");
+  if (sval->sv_flags&DCC_SFLAG_RVALUE) dcc_outf("%srvalue",(sval->sv_flags&DCC_SFLAG_COPY)?"|":"");
+  if (sval->sv_flags&DCC_SFLAG_XOFFSET) dcc_outf("%sxoffset",(sval->sv_flags&(DCC_SFLAG_COPY|DCC_SFLAG_RVALUE))?"|":"");
+  if (sval->sv_flags&DCC_SFLAG_XREGISTER) dcc_outf("%sxregister",(sval->sv_flags&(DCC_SFLAG_COPY|DCC_SFLAG_RVALUE|DCC_SFLAG_XOFFSET))?"|":"");
+  if (sval->sv_flags&(DCC_SFLAG_COPY|DCC_SFLAG_RVALUE|DCC_SFLAG_XOFFSET|DCC_SFLAG_XREGISTER)) dcc_outf(",");
+  if (sval->sv_flags&DCC_SFLAG_TEST) {
+   dcc_outf("test(");
+   switch ((sval->sv_flags&DCC_SFLAG_TEST_MASK) >> DCC_SFLAG_TEST_SHIFT) {
+    case DCC_TEST_O : dcc_outf("OF=1"); break;       /* test: overflow (OF=1). */
+    case DCC_TEST_NO: dcc_outf("OF=0"); break;       /* test: not overflow (OF=0). */
+    case DCC_TEST_B : dcc_outf("CF=1"); break;       /* test: below (CF=1). */
+    case DCC_TEST_AE: dcc_outf("CF=0"); break;       /* test: above or equal (CF=0). */
+    case DCC_TEST_E : dcc_outf("=="); break;         /* test: equal (ZF=1). */
+    case DCC_TEST_NE: dcc_outf("!="); break;         /* test: not equal (ZF=0). */
+    case DCC_TEST_BE: dcc_outf("CF=1||ZF=1"); break; /* test: below or equal (CF=1 or ZF=1). */
+    case DCC_TEST_A : dcc_outf("CF=0&&ZF=0"); break; /* test: above (CF=0 and ZF=0). */
+    case DCC_TEST_S : dcc_outf("SF=1"); break;       /* test: sign (SF=1). */
+    case DCC_TEST_NS: dcc_outf("SF=0"); break;       /* test: not sign (SF=0). */
+    case DCC_TEST_PE: dcc_outf("PF=1"); break;       /* test: parity even (PF=1). */
+    case DCC_TEST_PO: dcc_outf("PF=0"); break;       /* test: parity odd (PF=0). */
+    case DCC_TEST_L : dcc_outf("<"); break;          /* test: less (SF<>OF). */
+    case DCC_TEST_GE: dcc_outf(">="); break;         /* test: greater or equal (SF=OF). */
+    case DCC_TEST_LE: dcc_outf("<="); break;         /* test: less or equal (ZF=1 or SF<>OF). */
+    case DCC_TEST_G : dcc_outf(">"); break;          /* test: greater (ZF=0 and SF=OF). */
+    default: break;
+   }
+   dcc_outf(")");
+  }
+  if (sval->sv_flags&DCC_SFLAG_BITFLD) {
+   dcc_outf("bitfld(%d,%d),",
+           (int)DCC_SFLAG_GTBITOFF(sval->sv_flags),
+           (int)DCC_SFLAG_GTBITSIZ(sval->sv_flags));
+  }
+  if (sval->sv_flags&DCC_SFLAG_LVALUE) dcc_outf("*(");
+  if (sval->sv_reg != DCC_RC_CONST) {
+vlog_reg:
+   dcc_outf("%%");
+   vlog_regnam(sval->sv_reg);
+   if (sval->sv_reg2 != DCC_RC_CONST) {
+    dcc_outf(":%%");
+    vlog_regnam(sval->sv_reg2);
+   }
+   if (sval->sv_const.it ||
+       sval->sv_sym) dcc_outf("+");
+  }
+  if (sval->sv_sym) {
+vlog_sym:
+   if (sval->sv_sym->sy_name != &TPPKeyword_Empty) {
+    dcc_outf("%s",sval->sv_sym->sy_name->k_name);
+   } else if (sval->sv_sym->sy_alias) {
+    char const *alias_name = sval->sv_sym->sy_alias->sy_name->k_name;
+    if (!*alias_name) alias_name = "<UNNAMED>";
+    if (sval->sv_sym->sy_addr)
+         dcc_outf("ALIAS(%s+%#lx)",alias_name,(unsigned long)sval->sv_sym->sy_addr);
+    else dcc_outf("ALIAS(%s)",alias_name);
+   } else if (sval->sv_sym->sy_sec) {
+    if (sval->sv_sym->sy_addr)
+         dcc_outf("%s+%#lx",sval->sv_sym->sy_sec->sc_start.sy_name->k_name,
+                           (unsigned long)sval->sv_sym->sy_addr);
+    else dcc_outf("%s",     sval->sv_sym->sy_sec->sc_start.sy_name->k_name);
+   } else {
+    dcc_outf("UNDEFINED");
+   }
+   if (sval->sv_const.it) dcc_outf("+");
+  }
+  if (sval->sv_const.it ||
+     (!sval->sv_sym && sval->sv_reg == DCC_RC_CONST)) {
+vlog_cst:
+   if (sval->sv_const.it&15) {
+#if TPP_HAVE_LONGLONG
+    dcc_outf("%#lld",(long long)sval->sv_const.it);
+#else
+    dcc_outf("%#ld",(long)sval->sv_const.it);
+#endif
+   } else {
+#if TPP_HAVE_LONGLONG
+    dcc_outf("%#llx",(unsigned long long)sval->sv_const.it);
+#else
+    dcc_outf("%#lx",(unsigned long)sval->sv_const.it);
+#endif
+   }
+  }
+  if (sval->sv_flags&DCC_SFLAG_LVALUE) dcc_outf(")");
+  dcc_outf(")\n");
+ }
+done_vlog:
+#endif
+
+ dst_slot = vstack.v_bottom;
+ if (dst_slot-- == vstack.v_begin) {
+  size_t new_size,new_slots;
+  /* Must allocate more stack slots below. */
+  new_size = (size_t)(vstack.v_end-vstack.v_begin);
+  new_slots = new_size;
+  new_size = new_size ? new_size*2 : (new_slots = 16);
+  dst_slot = (struct DCCStackValue *)realloc(vstack.v_begin,new_size*
+                                             sizeof(struct DCCStackValue));
+  if unlikely(!dst_slot) goto seterr;
+  /* Shift existing entries upwards. */
+  memmove(dst_slot+new_slots,dst_slot,
+         (new_size-new_slots)*sizeof(struct DCCStackValue));
+  vstack.v_begin = dst_slot;
+  vstack.v_end   = dst_slot+new_size;
+  dst_slot += (new_slots-1);
+ }
+ assert(dst_slot >= vstack.v_begin);
+ assert(dst_slot <  vstack.v_end);
+ memcpy(dst_slot,sval,sizeof(struct DCCStackValue));
+ if (dst_slot->sv_ctype.t_base) DCCDecl_Incref(dst_slot->sv_ctype.t_base);
+ if (dst_slot->sv_sym) {
+  if (DCCSym_SECTION(dst_slot->sv_sym) == &DCCSection_Abs &&
+    !(dst_slot->sv_sym->sy_flags&DCC_SYMFLAG_WEAK)) {
+   /* Special case: The symbol is part of the global section.
+    *               To simplify optimization code, we convert it to a constant value here. 
+    * NOTE: We have to make sure not to do so for weak symbols, as those may be overwritten again! */
+   dst_slot->sv_const.it += dst_slot->sv_sym->sy_addr;
+   dst_slot->sv_sym       = NULL;
+  } else {
+   DCCSym_Incref(dst_slot->sv_sym);
+  }
+ }
+ vstack.v_bottom = dst_slot;
+ return;
+seterr:
+ TPPLexer_SetErr();
+}
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////
+// 
+//  DUP
+// 
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_ReplaceCopy(void) {
+ assert(vsize >= 1);
+ VLOG(0,("vrcopy()\n"));
+ /* Nothing else really needs to take place for this to happen... */
+ vbottom->sv_flags |= (DCC_SFLAG_COPY|DCC_SFLAG_RVALUE);
+}
+PUBLIC void DCC_VSTACK_CALL DCCVStack_Dup(int copy) {
+ assert(vsize >= 1);
+ struct DCCStackValue *dst_slot,*src_slot;
+ VLOG(1,("vdup(%s)\n",copy ? "copy" : ""));
+ dst_slot = src_slot = vstack.v_bottom;
+ if (dst_slot-- == vstack.v_begin) {
+  size_t new_size,new_slots;
+  /* Must allocate more stack slots below. */
+  new_size = (size_t)(vstack.v_end-vstack.v_begin);
+  new_slots = new_size;
+  new_size = new_size ? new_size*2 : (new_slots = 16);
+  src_slot = (struct DCCStackValue *)realloc(vstack.v_begin,new_size*
+                                              sizeof(struct DCCStackValue));
+  if unlikely(!src_slot) goto seterr;
+  /* Shift existing entries upwards. */
+  memmove(src_slot+new_slots,src_slot,
+         (new_size-new_slots)*sizeof(struct DCCStackValue));
+  vstack.v_begin = src_slot;
+  vstack.v_end   = src_slot+new_size;
+  src_slot += new_slots;
+  dst_slot  = src_slot-1;
+ }
+ assert(dst_slot >= vstack.v_begin);
+ assert(src_slot <  vstack.v_end);
+ assert(src_slot == dst_slot+1);
+ memcpy(dst_slot,src_slot,sizeof(struct DCCStackValue));
+ if (dst_slot->sv_ctype.t_base) DCCDecl_Incref(dst_slot->sv_ctype.t_base);
+ if (dst_slot->sv_sym) DCCSym_Incref(dst_slot->sv_sym);
+ if (copy) dst_slot->sv_flags |= DCC_SFLAG_COPY;
+ vstack.v_bottom = dst_slot;
+ return;
+seterr:
+ TPPLexer_SetErr();
+}
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////
+// 
+//  POP
+// 
+PUBLIC void DCC_VSTACK_CALL DCCVStack_Pop(int del) {
+ VLOG(-1,("vpop(%s)\n",del ? "delete" : ""));
+ assert(vsize != 0);
+ if (!del);
+ else if (/* Only perform destruction if we're supposed to. */
+         (vbottom->sv_flags&(DCC_SFLAG_XOFFSET|DCC_SFLAG_LVALUE|DCC_SFLAG_COPY)) == DCC_SFLAG_XOFFSET &&
+         (vbottom->sv_reg != DCC_RC_CONST) && (vbottom->sv_const.it != 0)) {
+  struct DCCSymAddr rhs_val;
+  rhs_val.sa_sym = vbottom->sv_sym;
+  rhs_val.sa_off = (target_off_t)vbottom->sv_const.offset;
+  /* Need to add the offset, as it was explicitly stated!
+   * This can happen if the user wrote something like '%eax += 42;' */
+  if (vbottom->sv_reg2 != DCC_RC_CONST) {
+   /* Always to use 'add', as 'inc' don't set the carry flag. */
+   DCCDisp_CstBinReg('+',&rhs_val,vbottom->sv_reg,0);
+   /* Add more data to the second operand (NOTE: with carry). */
+   rhs_val.sa_off = (target_off_t)(vbottom->sv_const.it >> 32);
+   DCCDisp_CstBinReg(TOK_INC,&rhs_val,vbottom->sv_reg,0);
+  } else {
+   /* Use optimized add. */
+   DCCDisp_AddReg(&rhs_val,vbottom->sv_reg);
+  }
+ }
+ DCCType_Quit(&vbottom->sv_ctype);
+ DCCSym_XDecref(vbottom->sv_sym);
+ ++vbottom;
+}
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////
+// 
+//  ROTATE
+// 
+PUBLIC void DCC_VSTACK_CALL DCCVStack_Swap(void) {
+ struct DCCStackValue temp;
+ assert(vsize >= 2);
+ VLOG(0,("vswap()\n"));
+ temp = vbottom[0];
+ vbottom[0] = vbottom[1];
+ vbottom[1] = temp;
+}
+
+PUBLIC void DCC_VSTACK_CALL DCCVStack_LRot(size_t n) {
+ struct DCCStackValue temp;
+ VLOG(0,("vlrot(%lu)\n",(unsigned long)n));
+ assert(n),--n;
+ assert(vsize >= n);
+ memcpy(&temp,vbottom,sizeof(struct DCCStackValue));
+ memmove(vbottom,vbottom+1,n*sizeof(struct DCCStackValue));
+ memcpy(vbottom+n,&temp,sizeof(struct DCCStackValue));
+}
+
+PUBLIC void DCC_VSTACK_CALL DCCVStack_RRot(size_t n) {
+ struct DCCStackValue temp;
+ VLOG(0,("vrrot(%lu)\n",(unsigned long)n));
+ assert(n),--n;
+ assert(vsize >= n);
+ memcpy(&temp,vbottom+n,sizeof(struct DCCStackValue));
+ memmove(vbottom+1,vbottom,n*sizeof(struct DCCStackValue));
+ memcpy(vbottom,&temp,sizeof(struct DCCStackValue));
+}
+
+
+
+
+
+
+
+
 //////////////////////////////////////////////////////////////////////////
 // 
 //  UNARY
@@ -2684,6 +2972,18 @@ DCCVStack_KillTst(void) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Unary(tok_t op) {
  assert(vsize >= 1);
+#ifdef HAVE_VLOG
+ if DCC_MACRO_COND(HAVE_VLOG) {
+  char buf[2] = {(char)op,'\0'};
+  char const *name = buf;
+  switch (op) {
+  case TOK_INC: name = "++"; break;
+  case TOK_DEC: name = "--"; break;
+  default: break;
+  }
+  VLOG(0,("vgen1('%s')\n",name));
+ }
+#endif
  if (op != '!' && op != '*' &&
    !(vbottom->sv_flags&DCC_SFLAG_COPY)) {
   if (vbottom->sv_ctype.t_type&DCCTYPE_CONST)
@@ -2723,6 +3023,9 @@ gen_unary:
 }
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Bitfldf(sflag_t flags) {
+ VLOG(0,("vbitfld(%d,%d)\n",
+        (int)DCC_SFLAG_GTBITOFF(flags),
+        (int)DCC_SFLAG_GTBITSIZ(flags)));
  assert(vsize >= 1);
  DCCStackValue_FixTest(vbottom);
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE))
@@ -2745,6 +3048,23 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Binary(tok_t op) {
  int is_cmp_op;
  assert(vsize >= 2);
+#ifdef HAVE_VLOG
+ if DCC_MACRO_COND(HAVE_VLOG) {
+  char buf[2] = {(char)op,'\0'};
+  char const *name = buf;
+  switch (op) {
+  case TOK_LOWER_EQUAL:   name = "<="; break;
+  case TOK_EQUAL:         name = "=="; break;
+  case TOK_NOT_EQUAL:     name = "!="; break;
+  case TOK_GREATER_EQUAL: name = ">="; break;
+  case TOK_SHL:           name = "<<"; break;
+  case TOK_SHR:           name = ">>"; break;
+  case TOK_RANGLE3:       name = ">>>"; break;
+  default: break;
+  }
+  VLOG(-1,("vgen2('%s')\n",name));
+ }
+#endif
  /* Promote array types. */
  DCCStackValue_Promote(vbottom+1);
  vprom();
@@ -2848,6 +3168,7 @@ DCCVStack_Store(int initial_store) {
  struct DCCType const *target_type;
  int wid;
  assert(vsize >= 2);
+ VLOG(-1,("vstore(%s)\n",initial_store ? "initial" : ""));
  if (!initial_store ||
     (!DCCTYPE_ISARRAY(vbottom[1].sv_ctype.t_type) &&
       DCCTYPE_GROUP(vbottom[1].sv_ctype.t_type) != DCCTYPE_LVALUE) ||
@@ -3211,6 +3532,15 @@ DCCVStack_Cast(struct DCCType const *__restrict t,
                int explicit_case) {
  int wid;
  assert(vsize >= 1);
+#if HAVE_VLOG
+ if DCC_MACRO_COND(HAVE_VLOG)
+ { struct TPPString *tyname;
+   tyname = DCCType_ToTPPString(t,NULL);
+   VLOG(0,("vcast(%s",explicit_case ? "X:'" : "'"));
+   if (tyname) { dcc_outf("%s",tyname->s_text); TPPString_Decref(tyname); }
+   dcc_outf("')\n");
+ }
+#endif
 
  /* Special case: Explicit cast to void. */
  if (DCCTYPE_ISBASIC(t->t_type,DCCTYPE_VOID)) {
@@ -3306,6 +3636,7 @@ DCCVStack_Call(size_t n_args) {
  struct DCCType *pfunction_type,function_type;
  target_siz_t arg_size; uint32_t cc;
  assert(vsize >= (1+n_args));
+ VLOG(-(ptrdiff_t)n_args,("vcall(%lu)\n",(unsigned long)n_args));
  /* Kill all tests. */
  DCCVStack_KillTst();
 
@@ -3404,12 +3735,14 @@ after_typefix:
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Jcc(int invert) {
  assert(vsize >= 2);
+ VLOG(-1,("vjcc(%s)\n",invert ? "~" : ""));
  DCCStackValue_Jcc(vbottom+1,vbottom,invert);
  vpop(1);
  vpop(1);
 }
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Jmp(void) {
+ VLOG(-1,("vjmp()\n"));
  assert(vsize >= 1);
  DCCStackValue_Jmp(vbottom);
  vpop(1);
@@ -3426,6 +3759,7 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Subscript(struct TPPKeyword const *__restrict name) {
  assert(vsize >= 1);
  assert(name);
+ VLOG(0,("vsubscript('%s')\n",name->k_name));
  DCCStackValue_FixBitfield(vbottom);
  DCCStackValue_FixTest(vbottom);
  DCCStackValue_Subscript(vbottom,name);
