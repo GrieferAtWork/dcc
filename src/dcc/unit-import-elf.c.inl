@@ -616,7 +616,13 @@ found_shstr:
     case SHT_DCC_SYMFLG  :
 sec_unused: SEC_DCCSEC(iter) = NULL;
      continue;
-    default: break; /* Link any other section. */
+    default:
+     /* Ignore all unrecognized, user-defined section types. */
+     if (iter->sh_type >= SHT_LOUSER &&
+         iter->sh_type <= SHT_HIUSER)
+         continue;
+    case SHT_DCC_IMPSEC:
+     break; /* Link any other section. */
     }
     name = SHSTR(iter->sh_name);
     if unlikely(!name) {
