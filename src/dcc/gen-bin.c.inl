@@ -126,6 +126,7 @@ DCCDisp_RegsBinMems(tok_t op, rc_t src, rc_t src2,
                     struct DCCMemLoc const *__restrict dst,
                     target_siz_t dst_bytes, int src_unsigned) {
  struct DCCMemLoc dst2;
+ if unlikely(!dst_bytes) return;
  if (dst_bytes > DCC_TARGET_SIZEOF_POINTER && IS_LARGE_OP(op)) {
   DCCDisp_LargeRegsBinMems(op,src,src2,dst,dst_bytes,src_unsigned);
   return;
@@ -530,8 +531,7 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
    if ((dst&7) == DCC_ASMREG_CL) {
     /* The destination register overlaps with CL.
      * With that in mind, we need to move it elsewhere. */
-    used_dst = dst&DCC_RI_MASK;
-    used_dst = DCCVStack_GetRegOf(used_dst,
+    used_dst = DCCVStack_GetRegOf(dst&DCC_RC_MASK,
                                 ~((1 << DCC_ASMREG_CL)|
                                   (1 << (src&7))));
     DCCDisp_RegMovReg(dst,used_dst,1);
@@ -1709,7 +1709,7 @@ DCCDisp_AddProtReg(struct DCCSymAddr const *__restrict val, rc_t dst) {
  struct DCCMemLoc src;
  rc_t result = dst;
  if ((dst&(DCC_RC_I3264|DCC_RC_I16))&&
-     DCC_ASMREG_ISSPTR(dst&DCC_RI_MASK)) {
+      DCC_ASMREG_ISSPTR(dst&DCC_RI_MASK)) {
   /* Protected register. */
   result = DCCVStack_GetReg(result&DCC_RC_MASK,1);
  }

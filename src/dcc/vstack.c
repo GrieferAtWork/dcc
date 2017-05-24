@@ -2337,7 +2337,6 @@ DCCVStack_GetReg(rc_t rc, int allow_ptr_regs) {
  struct DCCStackValue *iter,*end;
  uint8_t r,in_use,pref; /* Bitset of registers already in use. */
  int second_pass;
- assertf(!(rc&DCC_RI_MASK),"The register part of RC must be ZERO");
 #ifdef DCC_RC_I64
  if (rc&DCC_RC_I64) rc |= DCC_RC_I32;
 #endif
