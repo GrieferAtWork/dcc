@@ -928,8 +928,12 @@ DCCLinker_PEIndImport(struct DCCStackValue *__restrict self) {
  self->sv_sym = iat_sym; /* Inherit reference. */
  /* Do something similar to what 'DCCStackValue_Unary(self,'*')' would do! */
  DCCStackValue_Promote(self);
+ DCCStackValue_FixBitfield(self);
+ DCCStackValue_FixTest(self);
  if (self->sv_flags&DCC_SFLAG_LVALUE) DCCStackValue_Load(self);
  self->sv_flags |= DCC_SFLAG_LVALUE;
+ assert(!(self->sv_flags&DCC_SFLAG_TEST));
+ assert(!(self->sv_flags&DCC_SFLAG_BITFLD));
 }
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
 
@@ -945,6 +949,8 @@ DCCStackValue_LoadLValue(struct DCCStackValue *__restrict self) {
   DCCStackValue_FixTest(self);
   if (self->sv_flags&DCC_SFLAG_LVALUE) {
    struct DCCMemLoc addr; rc_t new_register;
+   assert(!(self->sv_flags&DCC_SFLAG_TEST));
+   assert(!(self->sv_flags&DCC_SFLAG_BITFLD));
    addr.ml_reg = new_register = self->sv_reg;
    addr.ml_off = self->sv_const.offset;
    addr.ml_sym = self->sv_sym;
@@ -960,7 +966,11 @@ DCCStackValue_LoadLValue(struct DCCStackValue *__restrict self) {
    DCCDisp_MemMovReg(&addr,new_register);
    self->sv_reg = new_register;
   } else {
+   DCCStackValue_FixTest(self);
+   DCCStackValue_FixBitfield(self);
    self->sv_flags |= DCC_SFLAG_LVALUE;
+   assert(!(self->sv_flags&DCC_SFLAG_TEST));
+   assert(!(self->sv_flags&DCC_SFLAG_BITFLD));
   }
   DCCType_MkBase(&self->sv_ctype);
  }
@@ -1181,12 +1191,16 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
 
  case '*':
   /* Indirection/Dereference. */
+  DCCStackValue_FixTest(self);
+  DCCStackValue_FixBitfield(self);
   DCCStackValue_Promote(self);
   if (self->sv_flags&DCC_SFLAG_LVALUE) DCCStackValue_Load(self);
   if (!(self->sv_ctype.t_type&DCCTYPE_POINTER))
    WARN(W_EXPECTED_POINTER_FOR_DEREF,&self->sv_ctype);
   else DCCType_MkBase(&self->sv_ctype);
   self->sv_flags |= DCC_SFLAG_LVALUE;
+  assert(!(self->sv_flags&DCC_SFLAG_TEST));
+  assert(!(self->sv_flags&DCC_SFLAG_BITFLD));
   return;
 
  case '&':
@@ -2020,11 +2034,20 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
   };
   rc_t new_class;
   int to,tn,was_unsigned;
-  if (group == DCCTYPE_POINTER || group == DCCTYPE_FUNCTION) to = DCCTYPE_SIZE,was_unsigned = 1;
-  else to = DCCTYPE_BASIC(self->sv_ctype.t_type)&~(DCCTYPE_UNSIGNED),
+  if (group == DCCTYPE_POINTER || group == DCCTYPE_FUNCTION)
+       to = DCCTYPE_SIZE,was_unsigned = 1;
+  else to = DCCTYPE_BASIC(self->sv_ctype.t_type),
        was_unsigned = DCCTYPE_ISUNSIGNED(type->t_type);
   if (DCCTYPE_GROUP(type->t_type) == DCCTYPE_POINTER) tn = DCCTYPE_SIZE;
-  else tn = DCCTYPE_BASIC(type->t_type)&~(DCCTYPE_UNSIGNED);
+  else tn = DCCTYPE_BASIC(type->t_type);
+  if (DCCTYPE_ISFLOAT(to) || DCCTYPE_ISFLOAT(tn)) {
+   /* TODO: Cast to/from/between floating point types. */
+  }
+  /* Handle any other types (such as 'void' or 'auto') as int. */
+  if (to > DCCTYPE_UNSIGNED) to = DCCTYPE_INT;
+  if (tn > DCCTYPE_UNSIGNED) tn = DCCTYPE_INT;
+  to &= ~(DCCTYPE_UNSIGNED);
+  tn &= ~(DCCTYPE_UNSIGNED);
   /* Special case: No change in size. */
   if (to == tn) goto done;
   /* Fix tests. */

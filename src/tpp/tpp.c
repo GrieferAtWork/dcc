@@ -8858,7 +8858,7 @@ PRIVATE void tpp_warnf(char const *fmt, ...) {
 #endif
 
 PUBLIC int TPPLexer_Warn(int wnum, ...) {
- va_list args; char const *used_filename,*true_filename;
+ va_list args; char const *true_filename;
  char const *macro_name = NULL; struct TPPKeyword *kwd;
  int macro_name_size,behavior; wgroup_t const *wgroups;
  struct TPPString *temp_string = NULL;
@@ -8891,15 +8891,12 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
 #define TOK_NAME()   (kwd = TPPLexer_LookupKeywordID(ARG(tok_t)),kwd ? kwd->k_name : "??" "?")
 #define CONST_STR()  (temp_string = TPPConst_ToString(ARG(struct TPPConst *)),temp_string ? temp_string->s_text : NULL)
  effective_file = TPPLexer_Textfile();
- used_filename = TPPFile_Filename(effective_file,NULL);
  if (token.t_file->f_kind == TPPFILE_KIND_MACRO) {
   macro_name = token.t_file->f_name;
   macro_name_size = (int)token.t_file->f_namesize;
   effective_file = TPPLexer_Current->l_token.t_file;
-  true_filename = TPPFile_Filename(effective_file,NULL);
- } else {
-  true_filename = used_filename;
  }
+ true_filename = TPPFile_Filename(effective_file,NULL);
  TPP_TEXTFILE_FLAG_INTERNAL;
  switch (wnum) {
   { /* Special case for #if without #endif (display file/line of the #if) */
@@ -8973,7 +8970,8 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
  if (macro_name) {
   WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
         ? "%s(%d,%d) : " : "%s:%d:%d: ",
-        used_filename,TPPLexer_LINE()+1,TPPLexer_COLUMN()+1);
+        TPPLexer_FILE(NULL),TPPLexer_LINE()+1,
+        TPPLexer_COLUMN()+1);
   WARNF("See reference to effective code location\n");
  }
  fflush(stderr);
