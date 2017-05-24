@@ -62,6 +62,7 @@ PUBLIC
 #endif
 void dcc_assertion_failed(char const *expr, char const *file,
                           int line, char const *fmt, ...) {
+ static int in_assert = 0;
 #ifdef _MSC_VER
  int msvc_mode = !TPPLexer_Current || !!(TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT);
 #else
@@ -75,6 +76,12 @@ void dcc_assertion_failed(char const *expr, char const *file,
   dcc_voutf(fmt,args);
   va_end(args);
   dcc_outf("\n");
+ }
+ if (!in_assert) {
+  in_assert = 1;
+  /* Here, so we print some text indicating where the error happened. */
+  WARN(W_OUT_OF_MEMORY,0);
+  in_assert = 0;
  }
 #ifdef DCC_NO_BREAKPOINT
  _exit(1);

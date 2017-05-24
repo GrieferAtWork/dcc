@@ -1199,6 +1199,37 @@ DEF_WARNING(W_DECL_EXPECTED_FUNCTION_TYPE_FOR_CODE_INITIALIZER,(WG_TYPE),WSTATE_
 {
  char const *format;
  struct TPPString *ra,*rb;
+emit_typdecl_warning:
+ DECL_LOAD();
+ ra = DCCType_ToTPPString(ARG(struct DCCType *),DECL_KWD());
+ rb = DCCType_ToTPPString(ARG(struct DCCType *),DECL_KWD());
+ WARNF(format,ra->s_text,rb->s_text,DECL_NAME());
+ TPPString_Decref(rb);
+ TPPString_Decref(ra);
+ DECL_PRINT("See reference to previous declaration");
+ break;
+#endif
+DEF_WARNING(W_INCOMPATIBLE_IMPLEMENTATION_TYPES,(WG_TYPE),WSTATE_WARN,{
+ format = "Imcompatible declaration type '%s' and implementation type '%s' for '%s'\n";
+ goto emit_typdecl_warning;
+})
+DEF_WARNING(W_INCOMPATIBLE_TYPEDEF_TYPES,(WG_TYPE),WSTATE_WARN,{
+ format = "Old typedef type '%s' is incompatible with new type '%s' for '%s'\n";
+ goto emit_typdecl_warning;
+})
+DEF_WARNING(W_INCOMPATIBLE_CANNOT_REDEFINE,(WG_TYPE),WSTATE_WARN,{
+ format = "Cannot redefine complex/public type '%s' with new type '%s' for '%s'\n";
+ goto emit_typdecl_warning;
+})
+
+#ifdef DECLARE_WARNING_MESSAGES
+}
+#endif
+
+#ifdef DECLARE_WARNING_MESSAGES
+{
+ char const *format;
+ struct TPPString *ra,*rb;
 emit_typ_warning:
  ra = DCCType_ToTPPString(ARG(struct DCCType *),NULL);
  rb = DCCType_ToTPPString(ARG(struct DCCType *),NULL);
@@ -1208,17 +1239,6 @@ emit_typ_warning:
  break;
 #endif
 #define TYPE_WARNING(msg) { format = msg; goto emit_typ_warning; }
-DEF_WARNING(W_INCOMPATIBLE_IMPLEMENTATION_TYPES,(WG_TYPE),WSTATE_WARN,{
- DECL_LOAD();
- ra = DCCType_ToTPPString(ARG(struct DCCType *),NULL);
- rb = DCCType_ToTPPString(ARG(struct DCCType *),NULL);
- WARNF("Imcompatible declaration type '%s' and implementation type '%s' for '%s'\n",
-       ra->s_text,rb->s_text,DECL_NAME());
- TPPString_Decref(rb);
- TPPString_Decref(ra);
- DECL_PRINT("See reference to previous declaration");
-})
-
 DEF_WARNING(W_POINTER_ARITHMETIC_INCOMPATIBLE_DIFF,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Incompatible pointer types '%s' and '%s' used in pointer arithmetic"))
 DEF_WARNING(W_ASSIGN_CONSTANT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assignment of '%s' to constant type '%s'"))
 DEF_WARNING(W_ASSIGN_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assignment of '%s' to r-value of type '%s'"))

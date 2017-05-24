@@ -105,6 +105,11 @@ struct DCCDecl {
 #endif
  uint16_t                 d_kind;   /*< Definition type (One of 'DCC_DECLKIND_*'). */
  uint16_t                 d_flag;   /*< Definition flags (Set of 'DCC_SYMFLAG_*'). */
+#ifdef DCC_PRIVATE_API
+ scopedepth_t             d_depth;  /*< Scope depth used for tracking how deep declarations should be cleared when the scope ends. */
+#else
+ DCC(scopedepth_t)        d_depth;  /*< Scope depth used for tracking how deep declarations should be cleared when the scope ends. */
+#endif
  struct DCCType           d_type;   /*< The C-style type of this declaration (Default to 'int', as created by zero-initializing this field). */
  struct DCCAttrDecl      *d_attr;   /*< [0..1] Optional __attribute__((...)) properties. */
  union{
@@ -123,13 +128,14 @@ DCCFUN void _DCCDecl_Delete(struct DCCDecl *__restrict self);
 #define DCCDecl_ISEMPTY(self) ((self)->d_kind == DCC_DECLKIND_NONE)
 
 /* Allocate a new, empty C-declaration 'name' and return a reference to it.
- * NOTE: file and line will be initialized to the current effective TPP file/line positions. */
+ * NOTE: file and line will be initialized to the current effective TPP file/line positions.
+ *       'd_depth' is filled according to the depth of the current scope. */
 DCCFUN /*ref*/struct DCCDecl *
 DCCDecl_New(struct TPPKeyword const *__restrict name);
 
 /* Recursively clears a given declaration, resolving any recursive reference pointers.
  * >> This function is called for every entry when the associated declaration tab is destroyed. */
-DCCFUN void DCCDecl_Clear(struct DCCDecl *__restrict self);
+DCCFUN void DCCDecl_Clear(struct DCCDecl *__restrict self, DCC(scopedepth_t) min_depth);
 
 /* Returns non-ZERO(0) if the given declarations 'a' and 'b' describe the same thing.
  * @param: same_type: When ZERO(0), only require identical storage
@@ -195,7 +201,7 @@ struct DCCDecltab {
 };
 
 #define DCCDecltab_Init(self) memset(self,0,sizeof(struct DCCDecltab))
-DCCFUN void DCCDecltab_Quit(struct DCCDecltab *__restrict self);
+DCCFUN void DCCDecltab_Quit(struct DCCDecltab *__restrict self, DCC(scopedepth_t) depth);
 
 /* Lookup/Create a new C-declaration 'name'.
  * NOTE: None of these functions return a reference to the symbol!
@@ -224,15 +230,17 @@ struct DCCScope {
  struct DCCDecltab s_tabs[DCC_NS_COUNT]; /*< Declaration tables (Index is one of 'DCC_NS_*'). */
  uint16_t          s_kind;               /*< The kind of this scope (One of 'DCC_SCOPEKIND_*') */
 #ifdef DCC_PRIVATE_API
+ scopedepth_t      s_depth;              /*< Scope depth (Always unique for every existing scope; amount of ~actual~ scopes surrounding this one) */
  scopeid_t         s_id;                 /*< Scope id (aka. amount of other function scopes reachable through 's_prev->...') */
 #else
+ DCC(scopedepth_t) s_depth;              /*< Scope depth (Always unique for every existing scope; amount of ~actual~ scopes surrounding this one) */
  DCC(scopeid_t)    s_id;                 /*< Scope id (aka. amount of other function scopes reachable through 's_prev->...') */
 #endif
 };
 #define DCCScope_Quit(self) \
- (DCCDecltab_Quit((self)->s_tabs+0),\
-  DCCDecltab_Quit((self)->s_tabs+1),\
-  DCCDecltab_Quit((self)->s_tabs+2))
+ (DCCDecltab_Quit((self)->s_tabs+0,(self)->s_depth),\
+  DCCDecltab_Quit((self)->s_tabs+1,(self)->s_depth),\
+  DCCDecltab_Quit((self)->s_tabs+2,(self)->s_depth))
 
 
 struct DCCHWStack {
@@ -374,9 +382,10 @@ do{ struct DCCSym *const _old_bsym = DCCCompiler_Current.c_bsym;\
 do{ struct DCCScope _old_fun_scope; \
     memcpy(&_old_fun_scope,&DCCCompiler_Current.c_scope,sizeof(struct DCCScope)); \
     memset(&DCCCompiler_Current.c_scope,0,sizeof(struct DCCScope)); \
-    DCCCompiler_Current.c_scope.s_prev = &_old_fun_scope; \
-    DCCCompiler_Current.c_scope.s_id   = _old_fun_scope.s_id+1;\
-    DCCCompiler_Current.c_scope.s_kind = DCC_SCOPEKIND_FUNC;\
+    DCCCompiler_Current.c_scope.s_prev  = &_old_fun_scope; \
+    DCCCompiler_Current.c_scope.s_depth = _old_fun_scope.s_depth+1;\
+    DCCCompiler_Current.c_scope.s_id    = _old_fun_scope.s_id+1;\
+    DCCCompiler_Current.c_scope.s_kind  = DCC_SCOPEKIND_FUNC;\
     DCCHWStack_PushNew(&DCCCompiler_Current.c_hwstack)
 #define DCCCompiler_PopFunctionScope() \
     DCCHWStack_PopNew(&DCCCompiler_Current.c_hwstack);\
@@ -389,9 +398,10 @@ do{ struct DCCScope _old_fun_scope; \
 do{ struct DCCScope _old_loc_scope; \
     memcpy(&_old_loc_scope,&DCCCompiler_Current.c_scope,sizeof(struct DCCScope)); \
     memset(&DCCCompiler_Current.c_scope,0,sizeof(struct DCCScope)); \
-    DCCCompiler_Current.c_scope.s_prev = &_old_loc_scope; \
-    DCCCompiler_Current.c_scope.s_id   = _old_loc_scope.s_id;\
-    DCCCompiler_Current.c_scope.s_kind = DCC_SCOPEKIND_LOCAL;\
+    DCCCompiler_Current.c_scope.s_prev  = &_old_loc_scope; \
+    DCCCompiler_Current.c_scope.s_depth = _old_loc_scope.s_depth+1;\
+    DCCCompiler_Current.c_scope.s_id    = _old_loc_scope.s_id;\
+    DCCCompiler_Current.c_scope.s_kind  = DCC_SCOPEKIND_LOCAL;\
     DCCHWStack_Push(&DCCCompiler_Current.c_hwstack)
 #define DCCCompiler_PopLocalScope() \
     DCCHWStack_Pop(&DCCCompiler_Current.c_hwstack);\

@@ -815,6 +815,7 @@ LEXPRIV int DCC_PARSE_CALL DCCParse_GlobalDecl(void) {
  struct DCCType base; int error;
  struct DCCAttrDecl attr = DCCATTRDECL_INIT;
  error = DCCParse_CTypePrefix(&base,&attr);
+ DCCType_ASSERT(&base);
  /* 'base' already defaults to 'int'. */
  if (!error) WARN(W_EXPECTED_TYPE_FOR_DECLARATION);
  error = DCCParse_DeclWithBase(&base,&attr);

@@ -28,10 +28,11 @@
 
 DCC_DECL_BEGIN
 
+typedef uint32_t DCC(scopedepth_t);
 typedef uint16_t DCC(scopeid_t);
 
 struct TPPFile;
-struct DCCSym;
+struct DCCDecl;
 
 /* Basic type IDs. */
 #define DCCTYPE_INT                 0x00000000 /* 32-bit integer 'int' (Must always be '0') */
@@ -139,6 +140,10 @@ struct DCCType {
                                  *   - array types use this to describe the base type.
                                  *   - struct/union types use this to describe the struct declaration. */
 };
+#define DCCType_ASSERT(self) \
+ assert(!(self)->t_base || ((self)->t_base->d_kind&DCC_DECLKIND_TYPE))
+
+
 #define DCCType_Quit(self) (void)(!(self)->t_base || (DCCDecl_Decref((self)->t_base),0))
 #define DCCType_InitCopy(self,right) \
  (void)(*(self) = *(right),(!(self)->t_base || (DCCDecl_Incref((self)->t_base),0)))

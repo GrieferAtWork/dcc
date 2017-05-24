@@ -39,6 +39,7 @@ struct struct_DCCTypeDecl {
  line_t                   d_line;
  uint16_t                 d_kind;
  uint16_t                 d_flag;
+ scopedepth_t             d_depth;
  struct DCCType           d_type;
  struct DCCAttrDecl      *d_attr;
  struct DCCTypeDef        d_tdecl;
@@ -52,6 +53,7 @@ struct struct_DCCTypeDecl {
   /* d_line   */0,\
   /* d_kind   */DCC_DECLKIND_TYPE,\
   /* d_flag   */DCC_DECLFLAG_INTERN,\
+  /* d_depth  */0,\
   /* d_type   */{id,NULL},\
   /* d_attr   */NULL,\
   /* d_tdecl  */{{0},NULL,{0},0}\
@@ -128,6 +130,7 @@ PUBLIC void
 DCCType_MkPointer(struct DCCType *__restrict self) {
  assert(self);
  assert(!t_builtin(self));
+ DCCType_ASSERT(self);
  if (DCCTYPE_GROUP(self->t_type) == DCCTYPE_BUILTIN) {
   assert(!self->t_base);
   if (!(self->t_type&DCCTYPE_FLAGSMASK)) {
@@ -153,12 +156,14 @@ default_ptr:
   self->t_type |= DCCTYPE_POINTER;
   self->t_base  = ptr_base; /* Inherit reference. */
  }
+ DCCType_ASSERT(self);
 }
 PUBLIC void
 DCCType_MkLValue(struct DCCType *__restrict self) {
  struct DCCDecl *lv_base;
  assert(self);
  assert(!t_builtin(self));
+ DCCType_ASSERT(self);
  /* Fallback: Must allocate a new symbol. */
  lv_base = DCCDecl_New(&TPPKeyword_Empty);
  if unlikely(!lv_base) return;
@@ -168,11 +173,13 @@ DCCType_MkLValue(struct DCCType *__restrict self) {
  self->t_type &= DCCTYPE_STOREMASK;
  self->t_type |= DCCTYPE_LVALUE;
  self->t_base  = lv_base; /* Inherit reference. */
+ DCCType_ASSERT(self);
 }
 PUBLIC void
 DCCType_MkBase(struct DCCType *__restrict self) {
  struct DCCDecl *basesym;
  assert(self);
+ DCCType_ASSERT(self);
  basesym = self->t_base;
  assert(basesym);
  assert(basesym->d_kind&DCC_DECLKIND_TYPE);
@@ -184,6 +191,7 @@ DCCType_MkBase(struct DCCType *__restrict self) {
  if (basesym) DCCDecl_Incref(basesym);
  DCCDecl_Decref(self->t_base);
  self->t_base = basesym; /* Inherit reference. */
+ DCCType_ASSERT(self);
 }
 PUBLIC void
 DCCType_MkArray(struct DCCType *__restrict self,
@@ -191,6 +199,7 @@ DCCType_MkArray(struct DCCType *__restrict self,
  struct DCCDecl *array_base;
  assert(self);
  assert(!t_builtin(self));
+ DCCType_ASSERT(self);
  /* Fallback: Must allocate a new symbol. */
  array_base = DCCDecl_New(&TPPKeyword_Empty);
  if unlikely(!array_base) return;
@@ -202,12 +211,14 @@ DCCType_MkArray(struct DCCType *__restrict self,
  self->t_type &= (DCCTYPE_STOREMASK|DCCTYPE_QUAL);
  self->t_type |=  DCCTYPE_ARRAY;
  self->t_base  =  array_base; /* Inherit reference. */
+ DCCType_ASSERT(self);
 }
 PUBLIC void
 DCCType_MkVArray(struct DCCType *__restrict self) {
  struct DCCDecl *array_base;
  assert(self);
  assert(!t_builtin(self));
+ DCCType_ASSERT(self);
  /* Fallback: Must allocate a new symbol. */
  array_base = DCCDecl_New(&TPPKeyword_Empty);
  if unlikely(!array_base) return;
@@ -218,6 +229,7 @@ DCCType_MkVArray(struct DCCType *__restrict self) {
  self->t_type &= (DCCTYPE_STOREMASK|DCCTYPE_QUAL);
  self->t_type |=  DCCTYPE_VARRAY;
  self->t_base  =  array_base; /* Inherit reference. */
+ DCCType_ASSERT(self);
 }
 PUBLIC void
 DCCType_MkVLA(struct DCCType *__restrict self,
@@ -226,6 +238,7 @@ DCCType_MkVLA(struct DCCType *__restrict self,
  struct DCCDecl *array_base;
  assert(self);
  assert(!t_builtin(self));
+ DCCType_ASSERT(self);
  assert(scope <= compiler.c_scope.s_id);
  /* Fallback: Must allocate a new symbol. */
  array_base = DCCDecl_New(&TPPKeyword_Empty);
@@ -238,6 +251,7 @@ DCCType_MkVLA(struct DCCType *__restrict self,
  self->t_type &= DCCTYPE_STOREMASK;
  self->t_type |= DCCTYPE_ARRAY;
  self->t_base  = array_base; /* Inherit reference. */
+ DCCType_ASSERT(self);
 }
 
 /* old-style function declaration returning an int. */
@@ -249,6 +263,7 @@ PRIVATE struct struct_DCCTypeDecl t_int_oldfun =
   /* d_line   */0,
   /* d_kind   */DCC_DECLKIND_OLDFUNCTION,
   /* d_flag   */DCC_DECLFLAG_INTERN,
+  /* d_depth  */0,
   /* d_type   */{DCCTYPE_INT,NULL},
   /* d_attr   */NULL,
   /* d_tdecl  */{{0},NULL,{0},0}
@@ -261,6 +276,7 @@ PRIVATE struct struct_DCCTypeDecl t_void_oldfun =
   /* d_line   */0,
   /* d_kind   */DCC_DECLKIND_OLDFUNCTION,
   /* d_flag   */DCC_DECLFLAG_INTERN,
+  /* d_depth  */0,
   /* d_type   */{DCCTYPE_VOID,NULL},
   /* d_attr   */NULL,
   /* d_tdecl  */{{0},NULL,{0},0}
@@ -271,6 +287,7 @@ DCCType_MkOldFunc(struct DCCType *__restrict self) {
  struct DCCDecl *funbase;
  assert(self);
  assert(!t_builtin(self));
+ DCCType_ASSERT(self);
  switch ((self->t_type&(DCCTYPE_BASICMASK|DCCTYPE_GROUPMASK|
                        (DCCTYPE_FLAGSMASK&~(DCCTYPE_STOREMASK))))) {
   if (DCC_MACRO_FALSE) { case DCCTYPE_INT: self->t_base = (struct DCCDecl *)&t_int_oldfun; }
@@ -292,6 +309,7 @@ DCCType_MkOldFunc(struct DCCType *__restrict self) {
  /* Update the type ID. */
  self->t_type &= DCCTYPE_STOREMASK;
  self->t_type |= DCCTYPE_FUNCTION;
+ DCCType_ASSERT(self);
 }
 
 PUBLIC void

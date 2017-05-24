@@ -97,13 +97,15 @@ DCCDecl_New(struct TPPKeyword const *__restrict name) {
  TPPFile_Incref(result->d_file);
  result->d_line   = TPPFile_LineAt(result->d_file,
                                    result->d_file->f_pos);
+ result->d_depth  = compiler.c_scope.s_depth;
  return result;
 seterr: TPPLexer_SetErr();
  return NULL;
 }
 
 PUBLIC void
-DCCDecl_Clear(struct DCCDecl *__restrict self) {
+DCCDecl_Clear(struct DCCDecl *__restrict self,
+              scopedepth_t min_depth) {
  struct DCCDecl *tydecl;
  struct DCCAttrDecl *dattr;
  uint16_t old_kind;
@@ -111,6 +113,7 @@ DCCDecl_Clear(struct DCCDecl *__restrict self) {
  assert(self->d_file);
  /* Make sure not to clear internal declarations. */
  if (self->d_flag&DCC_DECLFLAG_INTERN) return;
+ if (self->d_depth < min_depth) return;
  tydecl = self->d_type.t_base;
  old_kind = self->d_kind;
  self->d_kind = DCC_DECLKIND_NONE;
@@ -135,12 +138,12 @@ DCCDecl_Clear(struct DCCDecl *__restrict self) {
    self->d_tdecl.td_size   = 0;
    for (; iter != end; ++iter) {
     assert(iter->sf_decl);
-    DCCDecl_Clear(iter->sf_decl);
+    DCCDecl_Clear(iter->sf_decl,min_depth);
     DCCDecl_Decref(iter->sf_decl);
    }
    free(begin);
   }
-  if (tydecl) DCCDecl_Clear(tydecl);
+  if (tydecl) DCCDecl_Clear(tydecl,min_depth);
   memset(&self->d_tdecl,0,sizeof(struct DCCTypeDef));
  }
  DCCDecl_XDecref(tydecl);
@@ -459,7 +462,8 @@ DCCDecl_SetAttr(struct DCCDecl *__restrict self,
 /* ******* */
 
 PUBLIC void
-DCCDecltab_Quit(struct DCCDecltab *__restrict self) {
+DCCDecltab_Quit(struct DCCDecltab *__restrict self,
+                scopedepth_t depth) {
  struct DCCDecl **biter,**bend,*iter,*next;
  assert(self);
  bend = (biter = self->dt_declv)+self->dt_decla;
@@ -468,7 +472,7 @@ DCCDecltab_Quit(struct DCCDecltab *__restrict self) {
   while (iter) {
    next = iter->d_next;
    iter->d_next = NULL;
-   DCCDecl_Clear(iter);
+   DCCDecl_Clear(iter,depth);
    DCCDecl_Decref(iter);
    iter = next;
   }

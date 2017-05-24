@@ -352,6 +352,7 @@ DCCParse_CTypeSuffix(struct DCCType *__restrict self,
  assert(self);
  assert(attr);
 next_prefix:
+ DCCType_ASSERT(self);
  DCCParse_Attr(attr);
  switch (TOK) {
 
@@ -705,7 +706,15 @@ begin: DCCParse_Attr(attr);
    /* The type is actually being declared _here_! */
    if (!(decl->d_flag&DCC_DECLFLAG_FORWARD)) {
     WARN(W_TYPE_NOT_FORWARD,decl);
-    DCCDecl_Clear(decl);
+    if (decl->d_depth >= compiler.c_scope.s_depth) {
+     DCCDecl_Clear(decl,compiler.c_scope.s_depth);
+    } else {
+     struct DCCDecl *newdecl;
+     newdecl = DCCDecl_New(decl->d_name);
+     DCCDecl_Decref(decl);
+     if unlikely(!newdecl) break;
+     decl = newdecl;
+    }
     decl->d_kind = decl_flag;
    }
    decl->d_flag &= ~(DCC_DECLFLAG_FORWARD);
@@ -743,6 +752,7 @@ begin: DCCParse_Attr(attr);
       decl_flag == DCC_DECLKIND_UNION) {
    self->t_base  = decl; /* Inherit reference. */
    self->t_type |= DCCTYPE_STRUCTURE;
+   DCCType_ASSERT(self);
    if (flags&FLAG_FOUND_SIGN && (!decl->d_attr ||
      !(decl->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC))) {
     WARN(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,self);
@@ -790,6 +800,7 @@ begin: DCCParse_Attr(attr);
   if (has_paren) { if (TOK != ')') WARN(W_EXPECTED_RPAREN); else YIELD(); }
   *self = vbottom->sv_ctype;
   if (self->t_base) DCCDecl_Incref(self->t_base);
+  DCCType_ASSERT(self);
   vpop(1);
  } break;
 
@@ -814,10 +825,12 @@ begin: DCCParse_Attr(attr);
       self->t_type &= ~(DCCTYPE_UNSIGNED);
      }
     }
+    DCCType_ASSERT(&decl->d_type);
     self->t_type |= decl->d_type.t_type;
     self->t_base  = decl->d_type.t_base;
     if (decl->d_attr) DCCAttrDecl_Merge(attr,decl->d_attr);
     if (self->t_base) DCCDecl_Incref(self->t_base);
+    DCCType_ASSERT(self);
     goto next;
    }
   }

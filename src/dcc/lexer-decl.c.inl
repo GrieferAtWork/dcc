@@ -213,9 +213,11 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
  struct DCCAttrDecl attr;
  struct DCCDecl *decl;
  int result = 1;
+ DCCType_ASSERT(base_type);
  DCCType_InitCopy(&type,base_type);
  DCCAttrDecl_InitCopy(&attr,base_attr);
  decl_name = DCCParse_CTypeSuffix(&type,&attr);
+ DCCType_ASSERT(&type);
  if (TOK == KWD_asm ||
      TOK == KWD___asm ||
      TOK == KWD___asm__) {
@@ -224,8 +226,8 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
   YIELD();
   DCCParse_ParPairBegin();
   if (TPP_ISSTRING(TOK)) {
-#if 0 /*< Don't do this... (If we did it here, we'd need to add more exceptions
-       *  for attribute parsing: __attribute__((alias("alt_" __FUNCTION__))))
+#if 0 /*< Don't do this... If we did it here, we'd need to add more exceptions
+       *  for attribute parsing: __attribute__((alias("alt_" __FUNCTION__)))
        *  And that would just get too messy:
        *  >> void foo() __attribute__((alias("alt_" __FUNCTION__))); // Doable (could be written to expand to "alt_foo")
        *  >> __attribute__((alias("alt_" __FUNCTION__))) void foo(); // Impossible (At the time of the attribute, the declaration name is unknown!)
@@ -270,33 +272,58 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
  /* Check if the declaration already exists */
  if (decl) {
   if (decl->d_kind != DCC_DECLKIND_NONE) {
-   /* Warn if the types changed between the declaration and here! */
-   if (!DCCType_IsCompatible(&decl->d_type,&type,0)) {
-    WARN(W_INCOMPATIBLE_IMPLEMENTATION_TYPES,decl,&decl->d_type,&type);
-   }
+   int declaration_did_change = 0;
    if (decl->d_kind == DCC_DECLKIND_MLOC) {
     /* Warn about re-declarations. */
     if (decl->d_mdecl.md_loc.ml_reg != DCC_RC_CONST) {
      WARN(W_DECL_ALREADY_DEFINED,decl);
+     declaration_did_change = 1;
     } else if (decl->d_mdecl.md_loc.ml_sym) {
      if (!DCCSym_ISFORWARD(decl->d_mdecl.md_loc.ml_sym) &&
          (TOK == '=' || TOK == '{')) {
       WARN(W_DECL_ALREADY_DEFINED,decl);
+      declaration_did_change = 1;
      }
      if (!asmname) asmname = decl->d_mdecl.md_loc.ml_sym->sy_name;
      else if (decl->d_mdecl.md_loc.ml_sym->sy_name != asmname) {
       WARN(W_INCOMPATIBLE_ASM_NAMES,decl,
            decl->d_mdecl.md_loc.ml_sym->sy_name,asmname);
+      declaration_did_change = 1;
      }
     }
    }
+   /* Warn if the types changed between the declaration and here! */
+   if (!DCCType_IsCompatible(&decl->d_type,&type,0)) {
+    WARN((type.t_type&DCCTYPE_STOREBASE) == DCCTYPE_TYPEDEF
+         ? W_INCOMPATIBLE_TYPEDEF_TYPES
+         : W_INCOMPATIBLE_IMPLEMENTATION_TYPES,
+         decl,&decl->d_type,&type);
+    declaration_did_change = 1;
+   }
    /* Clear the declaration before re-initialization. */
-   DCCDecl_Clear(decl);
+   if (decl->d_depth < compiler.c_scope.s_depth ||
+       decl->d_type.t_base) {
+    struct DCCDecl *newdecl;
+    if (declaration_did_change) {
+     WARN(W_INCOMPATIBLE_CANNOT_REDEFINE,
+          decl,&decl->d_type,&type);
+    }
+    newdecl = DCCDecl_New(&TPPKeyword_Empty);
+    if (decl_name == &TPPKeyword_Empty)
+        DCCDecl_Decref(decl);
+    if unlikely(!newdecl) goto no_decl;
+    decl      = newdecl;
+    decl_name = &TPPKeyword_Empty;
+   } else {
+    DCCDecl_Clear(decl,compiler.c_scope.s_depth);
+   }
   }
+  DCCType_ASSERT(&type);
   decl->d_type = type; /* Inherit object. */
   DCCDecl_SetAttr(decl,&attr);
   real_decl_type = &decl->d_type;
  } else {
+no_decl:
   real_decl_type = &type;
  }
  if (TOK == '=') {
@@ -385,8 +412,11 @@ LEXPRIV int DCC_PARSE_CALL
 DCCParse_DeclWithBase(struct DCCType const *__restrict base_type,
                       struct DCCAttrDecl const *__restrict base_attr) {
  int result;
+ assert(base_type);
  for (;;) {
+  DCCType_ASSERT(base_type);
   result = DCCParse_OneDeclWithBase(base_type,base_attr);
+  DCCType_ASSERT(base_type);
   if (TOK != ',') break;
   vpop(1); /* Pop this declaration. */
   YIELD();
