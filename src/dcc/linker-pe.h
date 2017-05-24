@@ -23,6 +23,7 @@
 #include <dcc/common.h>
 #include <dcc/target.h>
 #include <dcc/lexer.h>
+#include <dcc/stream.h>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -103,7 +104,7 @@ typedef struct {
 #if DCC_LIBFORMAT_PE_DYNAMIC || DCC_LIBFORMAT_PE_STATIC
 
 /* Utilities for parsing PE binaries. */
-INTERN LONG  pe_readhdr(stream_t s);
+INTERN LONG  pe_readhdr(stream_t s, soff_t start);
 INTERN char *pe_readzstring(stream_t fd, size_t *s);
 
 #endif /* ... */

@@ -62,6 +62,9 @@ INTERN struct LibLoaderDef const dcc_libloaders[] = {
  LOADDEF(1,0,&DCCUnit_DynLoadDEF2,7,{'L','I','B','R','A','R','Y'}),
  LOADDEF(1,0,&DCCUnit_DynLoadDEF,0,{0}),
 #endif /* DCC_LIBFORMAT_DEF_DYNAMIC */
+#if DCC_LIBFORMAT_ARCH
+ LOADDEF(1,1,&DCCUnit_LoadARCH,8,{'!','<','a','r','c','h','>','\n'}),
+#endif /* DCC_LIBFORMAT_ARCH */
  {NULL,0,{0}},
 };
 
@@ -151,7 +154,8 @@ srcloader_exec(struct SrcLoaderDef const *__restrict loader,
                  TPPLEXER_RESET_KWDFLAGS|TPPLEXER_RESET_COUNTER|
                  TPPLEXER_RESET_FONCE);
  }
- CURRENT.l_flags    = old_tpp_flags;
+ CURRENT.l_flags   &= TPPLEXER_FLAG_MERGEMASK;
+ CURRENT.l_flags   |= old_tpp_flags;
  CURRENT.l_extokens = old_tpp_extokens;
  /* XXX: Shouldn't we update all symbols according
   *      to 'def->ld_expsymfa' and 'def->ld_expsymfo', as well
@@ -165,10 +169,8 @@ end:
 PRIVATE int DCCUNIT_IMPORTCALL
 DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
                        char const *__restrict filename,
-                       stream_t fd) {
- uint8_t magic[LIBLOADER_MAXMAGIC];
- ptrdiff_t max_magic; int result = 0;
- struct LibLoaderDef const *iter;
+                       stream_t fd, soff_t start) {
+ int result = 0;
  uint32_t reqflags;
  assert(def);
  /* Do some initial assertions about the unit state during static import. */
@@ -182,6 +184,9 @@ DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
  if (def->ld_flags&DCC_LIBDEF_FLAG_NODYN)
      reqflags &= ~(LIBLOADER_FLAG_DYN);
  if (!(def->ld_flags&DCC_LIBDEF_FLAG_ONLY_SOURCE)) {
+  uint8_t magic[LIBLOADER_MAXMAGIC];
+  struct LibLoaderDef const *iter;
+  ptrdiff_t max_magic;
   max_magic = s_read(fd,magic,LIBLOADER_MAXMAGIC);
   if (max_magic < 0) max_magic = 0;
   if (max_magic) s_seek(fd,-max_magic,SEEK_CUR);
@@ -192,7 +197,7 @@ DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
        !memcmp(iter->lld_magic,magic,
               (iter->lld_flags&LIBLOADER_MASK_MSIZE))) {
     /* Got a magic match. */
-    result = (*iter->lld_func)(def,filename,fd);
+    result = (*iter->lld_func)(def,filename,fd,start);
     if (result || !OK) goto done;
    }
   }
@@ -200,7 +205,7 @@ DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
   for (iter = dcc_libloaders; iter->lld_func; ++iter) {
    if ((iter->lld_flags&reqflags) &&
       !(iter->lld_flags&LIBLOADER_MASK_MSIZE)) {
-    result = (*iter->lld_func)(def,filename,fd);
+    result = (*iter->lld_func)(def,filename,fd,start);
     if (result || !OK) goto done;
    }
   }
@@ -242,7 +247,7 @@ DCCUnit_ImportWithFilename(struct DCCLibDef *__restrict def,
 #endif
   return NULL;
  }
- result = DCCUnit_DoImportStream(def,filename,s);
+ result = DCCUnit_DoImportStream(def,filename,s,0);
  s_close(s);
  return result;
 }
@@ -255,6 +260,8 @@ static struct path_extension const
 search_extensions[] = {
  {{0}},
  {{'.','o'}},
+ {{'.','a'}},
+ {{'.','l','i','b'}},
 #if DCC_HOST_OS == DCC_OS_WINDOWS
  {{'.','d','l','l'}},
  {{'.','e','x','e'}},
@@ -353,8 +360,8 @@ end:
 PUBLIC int DCCUNIT_IMPORTCALL
 DCCUnit_ImportStream(struct DCCLibDef *__restrict def,
                      char const *__restrict filename,
-                     stream_t fd) {
- int result = DCCUnit_DoImportStream(def,filename,fd);
+                     stream_t fd, soff_t start) {
+ int result = DCCUnit_DoImportStream(def,filename,fd,start);
  if (!result && !(def->ld_flags&DCC_LIBDEF_FLAG_NOWARNMISSING))
       WARN(W_LIB_NOT_FOUND,filename,(size_t)strlen(filename));
  return result;
@@ -364,6 +371,7 @@ DCCUnit_ImportStream(struct DCCLibDef *__restrict def,
 DCC_DECL_END
 
 #ifndef __INTELLISENSE__
+#include "unit-import-arch.c.inl"
 #include "unit-import-def-dynamic.c.inl"
 #include "unit-import-elf.c.inl"
 #include "unit-import-pe-dynamic.c.inl"

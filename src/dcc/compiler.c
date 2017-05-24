@@ -308,7 +308,10 @@ forward_decl:
    DCCSym_Incref(forward_sym); /* Create reference. */
    if (attr && DCCATTRDECL_HASIMPORT(attr)) {
     /* Special case: Define an explicit lib-import symbol. */
+    uint32_t oldf = linker.l_flags;
+    linker.l_flags |= DCC_LINKER_FLAG_LIBSYMREDEF;
     DCCSym_Define(forward_sym,attr->a_section,0,0);
+    linker.l_flags = oldf;
 #if DCC_TARGET_BIN == DCC_BINARY_PE
     forward_sym->sy_flags |= DCC_SYMFLAG_PE_ITA_IND;
 #endif
@@ -378,7 +381,10 @@ reload_size:
    assert(storage_section);
    if (DCCSection_ISIMPORT(storage_section)) {
     /* Special case: Define an explicit dll-import symbol. */
+    uint32_t oldf = linker.l_flags;
+    linker.l_flags |= DCC_LINKER_FLAG_LIBSYMREDEF;
     DCCSym_Define(decl_sym,storage_section,0,0);
+    linker.l_flags = oldf;
 #if DCC_TARGET_BIN == DCC_BINARY_PE
     decl_sym->sy_flags |= DCC_SYMFLAG_PE_ITA_IND;
 #endif

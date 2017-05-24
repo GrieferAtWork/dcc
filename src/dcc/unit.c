@@ -23,6 +23,7 @@
 
 #include <dcc/common.h>
 #include <dcc/unit.h>
+#include <dcc/linker.h>
 #include <dcc/compiler.h>
 #include <dcc/target.h>
 #include <dcc/vstack.h>
@@ -47,11 +48,11 @@ DCC_DECL_BEGIN
 
 LOCAL struct DCCFreeRange *DCCFreeRange_New(target_ptr_t addr, target_siz_t size);
 LOCAL void DCCSection_Destroy(struct DCCSection *__restrict self);
-extern void DCCSection_InsSym(struct DCCSection *__restrict self, struct DCCSym *__restrict sym);
+INTDEF void DCCSection_InsSym(struct DCCSection *__restrict self, struct DCCSym *__restrict sym);
 LOCAL void DCCSection_CheckRehash(struct DCCSection *__restrict self);
 LOCAL void DCCSection_RehashSymbols(struct DCCSection *__restrict self, size_t newsize);
 
-extern void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym);
+INTDEF void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym);
 LOCAL void DCCUnit_CheckRehash(void);
 LOCAL void DCCUnit_RehashSymbols(size_t newsize);
 LOCAL void DCCUnit_RehashSymbols2(struct DCCUnit *__restrict self, size_t newsize);
@@ -681,9 +682,21 @@ DCCSym_Define(struct DCCSym *__restrict self,
  assert(section);
  /*  Don't warn when re-declared at the same location
   * (Can happen for multiple lib-import declarations). */
- if (self->sy_sec == section &&
-     self->sy_addr == addr &&
-     self->sy_size == size) return;
+ if (self->sy_sec) {
+  if (self->sy_sec == section &&
+      self->sy_addr == addr &&
+      self->sy_size == size) return;
+  if (DCCSection_ISIMPORT(self->sy_sec) &&
+      DCCSection_ISIMPORT(section)) {
+   WARN((linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)
+        ? W_SYMBOL_ALREADY_DEFINED_IMP_IMP
+        : W_SYMBOL_ALREADY_DEFINED_IMP_IMP_NOT,
+        self->sy_name->k_name,
+        self->sy_sec->sc_start.sy_name->k_name,
+        section->sc_start.sy_name->k_name);
+   if (!(linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)) return;
+  }
+ }
  DCCSym_ClearDef(self,1);
  self->sy_addr = addr;
  self->sy_size = size;

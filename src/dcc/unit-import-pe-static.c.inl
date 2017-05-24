@@ -50,7 +50,8 @@ PRIVATE void *get_vaddr(target_ptr_t rva, size_t minsize, size_t *maxsize);
 
 PRIVATE int load_pe_sections(PIMAGE_SECTION_HEADER secv,
                              size_t                secc,
-                             stream_t              fd) {
+                             stream_t              fd,
+                             soff_t                start) {
  PIMAGE_SECTION_HEADER iter,end;
  struct DCCSection *section;
  struct TPPKeyword *section_name;
@@ -97,7 +98,7 @@ PRIVATE int load_pe_sections(PIMAGE_SECTION_HEADER secv,
   sec_addr = DCCSection_DAlloc(section,iter->Misc.VirtualSize,sec_align,0);
   sec_data = (uint8_t *)DCCSection_GetText(section,sec_addr,iter->SizeOfRawData);
   if unlikely(!sec_data) return 0;
-  s_seek(fd,iter->PointerToRawData,SEEK_SET);
+  s_seek(fd,start+iter->PointerToRawData,SEEK_SET);
   readsiz = s_read(fd,sec_data,iter->SizeOfRawData);
   if (readsiz < 0) return 0;
   /* Fill everything that shouldn't be read with ZEROes (shouldn't happen...) */
@@ -135,7 +136,8 @@ PRIVATE void *get_vaddr(target_ptr_t rva, size_t minsize, size_t *maxsize) {
 
 INTERN int DCCUNIT_IMPORTCALL
 DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def,
-                  char const *__restrict file, stream_t fd) {
+                  char const *__restrict file,
+                  stream_t fd, soff_t start) {
  LONG header_offset;
  size_t section_count,hdr_size;
  ptrdiff_t read_error;
@@ -148,7 +150,7 @@ DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def,
  assert(!unit.u_nsymc);
  assert(!unit.u_secc);
  assert(!unit.u_impc);
- header_offset = (size_t)pe_readhdr(fd);
+ header_offset = (size_t)pe_readhdr(fd,start);
  if (!header_offset) goto end;
 #define HAS_FIELD(f) ((size_t)((&((NT_HEADER *)0)->f)+1) <= hdr_size)
 #define HAS_DIR(id)  \
@@ -182,12 +184,12 @@ DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def,
   sections = (PIMAGE_SECTION_HEADER)DCC_Malloc(section_count*
                                                sizeof(IMAGE_SECTION_HEADER),0);
   if unlikely(!sections) goto end;
-  s_seek(fd,header_offset,SEEK_SET);
+  s_seek(fd,start+header_offset,SEEK_SET);
   read_error = s_read(fd,sections,section_count*
                       sizeof(IMAGE_SECTION_HEADER));
   if (read_error < 0) goto end;
   section_count = read_error/sizeof(IMAGE_SECTION_HEADER);
-  result = section_count && load_pe_sections(sections,section_count,fd);
+  result = section_count && load_pe_sections(sections,section_count,fd,start);
   free(sections);
   if (!result) goto end;
   def->ld_dynlib = NULL; /* This is a static loader. */

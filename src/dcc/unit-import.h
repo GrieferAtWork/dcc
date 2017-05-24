@@ -33,7 +33,8 @@ DCC_DECL_BEGIN
  *             A critical error occurred while parsing the given stream 'fd'. (A lexer error was set)
  * @return: 1: Successfully loaded a binary into the current unit (either statically, or dynamically) */
 typedef int (DCCUNIT_IMPORTCALL *p_libloader)(struct DCCLibDef *__restrict def,
-                                              char const *__restrict file, stream_t fd);
+                                              char const *__restrict file,
+                                              stream_t fd, soff_t start);
 typedef void (DCCUNIT_IMPORTCALL *p_srcloader)(struct DCCLibDef *__restrict def);
 
 #define LIBLOADER_MAXMAGIC  8
@@ -97,26 +98,29 @@ struct SrcLoaderDef {
 };
 
 
-extern struct SrcLoaderDef const dcc_srcloaders[];
+INTDEF struct SrcLoaderDef const dcc_srcloaders[];
 
 
 #if DCC_LIBFORMAT_PE_DYNAMIC
-INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
+INTDEF int DCCUNIT_IMPORTCALL DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd, soff_t start);
 #endif /* DCC_LIBFORMAT_PE_DYNAMIC */
 #if DCC_LIBFORMAT_PE_STATIC
-INTERN int DCCUNIT_IMPORTCALL DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
+INTDEF int DCCUNIT_IMPORTCALL DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd, soff_t start);
 #endif /* DCC_LIBFORMAT_PE_STATIC */
 #if DCC_LIBFORMAT_DEF_DYNAMIC
-INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynLoadDEF(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
-INTERN int DCCUNIT_IMPORTCALL DCCUnit_DynLoadDEF2(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
+INTDEF int DCCUNIT_IMPORTCALL DCCUnit_DynLoadDEF(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd, soff_t start);
+INTDEF int DCCUNIT_IMPORTCALL DCCUnit_DynLoadDEF2(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd, soff_t start);
 #endif /* DCC_LIBFORMAT_DEF_DYNAMIC */
 #if DCC_LIBFORMAT_ELF
-INTERN int DCCUNIT_IMPORTCALL DCCUnit_LoadELF(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd);
+INTDEF int DCCUNIT_IMPORTCALL DCCUnit_LoadELF(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd, soff_t start);
 #endif /* DCC_LIBFORMAT_ELF */
+#if DCC_LIBFORMAT_ARCH
+INTDEF int DCCUNIT_IMPORTCALL DCCUnit_LoadARCH(struct DCCLibDef *__restrict def, char const *__restrict file, stream_t fd, soff_t start);
+#endif /* DCC_LIBFORMAT_ARCH */
 
 /* Source code loaders. */
-INTERN void DCCUNIT_IMPORTCALL DCCUnit_LoadSrc_C(struct DCCLibDef *__restrict def);
-INTERN void DCCUNIT_IMPORTCALL DCCUnit_LoadSrc_ASM(struct DCCLibDef *__restrict def);
+INTDEF void DCCUNIT_IMPORTCALL DCCUnit_LoadSrc_C(struct DCCLibDef *__restrict def);
+INTDEF void DCCUNIT_IMPORTCALL DCCUnit_LoadSrc_ASM(struct DCCLibDef *__restrict def);
 
 
 

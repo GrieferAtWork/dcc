@@ -31,6 +31,8 @@
 
 DCC_DECL_BEGIN
 
+typedef uint32_t DCC(soff_t); /* File offset. */
+
 #ifdef _WIN32
 #define DCC_STREAM_OPEN_R(filename) \
  CreateFileA(filename,GENERIC_READ,\
@@ -41,7 +43,7 @@ DCC_DECL_BEGIN
              FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,\
              NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL)
 #define DCC_STREAM_CLOSE(fd) CloseHandle(fd)
-#define DCC_STREAM_SEEK(fd,off,whence) (ptrdiff_t)SetFilePointer(fd,off,NULL,whence)
+#define DCC_STREAM_SEEK(fd,off,whence) (DCC(ptrdiff_t))SetFilePointer(fd,off,NULL,whence)
 DCC_LOCAL ptrdiff_t dcc_win32_stream_read(DCC(stream_t) fd, void *p, size_t s) {
  DWORD result;
  if (!ReadFile(fd,p,s,&result,NULL)) return -1;

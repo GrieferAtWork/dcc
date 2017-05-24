@@ -26,7 +26,7 @@
 
 DCC_DECL_BEGIN
 
-extern void DCCUNIT_EXPORTCALL
+INTDEF void DCCUNIT_EXPORTCALL
 DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
                   DCC(stream_t) fd);
 

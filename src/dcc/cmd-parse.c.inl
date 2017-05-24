@@ -37,8 +37,8 @@
 
 DCC_DECL_BEGIN
 
-extern DCC_ATTRIBUTE_NORETURN void dcc_help(char const *subject);
-extern DCC_ATTRIBUTE_NORETURN void dcc_version(void);
+INTDEF DCC_ATTRIBUTE_NORETURN void dcc_help(char const *subject);
+INTDEF DCC_ATTRIBUTE_NORETURN void dcc_version(void);
 
 
 LOCAL int_t strtoint(char const *s) {
@@ -367,7 +367,7 @@ seterr:
  TPPLexer_SetErr();
 }
 
-extern struct option const *const dcc_cmd_groups[];
+INTDEF struct option const *const dcc_cmd_groups[];
 INTERN void DCCCmd_Exec(int grp, int *argc, char ***argv) {
  struct cmd c;
  cmd_init(&c,*argc,*argv);

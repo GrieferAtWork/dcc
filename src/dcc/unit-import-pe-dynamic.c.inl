@@ -52,11 +52,11 @@ DCC_DECL_BEGIN
 #endif
 
 /* Read a PE header and navigate the file pointer to the 32-bit header. */
-INTERN LONG pe_readhdr(stream_t s) {
+INTERN LONG pe_readhdr(stream_t s, soff_t start) {
  IMAGE_DOS_HEADER hdr;
  if (!s_reada(s,&hdr,sizeof(IMAGE_DOS_HEADER))) return 0;
  if (hdr.e_magic != IMAGE_DOS_SIGNATURE) return 0;
- s_seek(s,hdr.e_lfanew,SEEK_SET);
+ s_seek(s,start+hdr.e_lfanew,SEEK_SET);
  return hdr.e_lfanew;
 }
 
@@ -104,7 +104,8 @@ ret_null:
 #if DCC_LIBFORMAT_PE_DYNAMIC
 INTERN int DCCUNIT_IMPORTCALL
 DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def,
-                  char const *__restrict file, stream_t fd) {
+                  char const *__restrict file,
+                  stream_t fd, soff_t start) {
  NT_HEADER hdr;
  size_t hdr_size;
  size_t section_header_offset;
@@ -116,7 +117,7 @@ DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def,
  PIMAGE_SECTION_HEADER sec,sec_end;
  assert(def);
  assert(file);
- section_header_offset = (size_t)pe_readhdr(fd);
+ section_header_offset = (size_t)pe_readhdr(fd,start);
  if (!section_header_offset) goto end;
 #define HAS_FIELD(f) ((size_t)((&((NT_HEADER *)0)->f)+1) <= hdr_size)
 #define HAS_DIR(id)  \
@@ -197,7 +198,7 @@ found_section:
 #if PE_PROCESS_HINTS
   WORD hint; DWORD hintptr;
 #endif /* PE_PROCESS_HINTS */
-  s_seek(fd,exptab_addr-export_file_base,SEEK_SET);
+  s_seek(fd,start+(exptab_addr-export_file_base),SEEK_SET);
   read_error = s_read(fd,&export_dir,sizeof(IMAGE_EXPORT_DIRECTORY));
   if (read_error < 0) goto end;
   exptab_size = (DWORD)read_error;
@@ -230,13 +231,13 @@ found_section:
   for (i = 0; i < export_dir.NumberOfNames; ++i) {
    char *symname; size_t symsize;
    if (!OK) break;
-   s_seek(fd,namepptr,SEEK_SET),namepptr += sizeof(nameptr);
+   s_seek(fd,start+namepptr,SEEK_SET),namepptr += sizeof(nameptr);
    if (!s_reada(fd,&nameptr,sizeof(nameptr))) continue;
 #if PE_PROCESS_HINTS
-   s_seek(fd,hintptr,SEEK_SET),hintptr += sizeof(hint);
+   s_seek(fd,start+hintptr,SEEK_SET),hintptr += sizeof(hint);
    if (!s_reada(fd,&hint,sizeof(hint))) continue;
 #endif /* PE_PROCESS_HINTS */
-   s_seek(fd,nameptr-export_file_base,SEEK_SET);
+   s_seek(fd,start+(nameptr-export_file_base),SEEK_SET);
    symname = pe_readzstring(fd,&symsize);
    if (symname && symsize) {
     struct DCCSym *sym;

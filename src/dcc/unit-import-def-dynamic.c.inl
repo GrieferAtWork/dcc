@@ -27,6 +27,7 @@
 #if DCC_LIBFORMAT_DEF_DYNAMIC
 #include <dcc/unit.h>
 #include <dcc/lexer.h>
+#include <dcc/stream.h>
 
 #include "lexer-priv.h"
 
@@ -65,10 +66,12 @@ PRIVATE char *getline(struct TPPFile *__restrict f) {
 
 INTERN int DCCUNIT_IMPORTCALL
 DCCUnit_DynLoadDEF2(struct DCCLibDef *__restrict def,
-                      char const *__restrict file, stream_t fd) {
+                    char const *__restrict file,
+                    stream_t fd, soff_t start) {
  struct DCCSection *ressec = NULL;
  assert(def);
  assert(file);
+ (void)start;
  { /* Open the file and begin parsing it. */
    char *line; int state = 0;
    struct TPPFile *f = TPPFile_OpenStream(fd,file);
@@ -150,7 +153,8 @@ end:
 
 INTERN int DCCUNIT_IMPORTCALL
 DCCUnit_DynLoadDEF(struct DCCLibDef *__restrict def,
-                     char const *__restrict file, stream_t fd) {
+                   char const *__restrict file,
+                   stream_t fd, soff_t start) {
  size_t len;
  assert(def);
  assert(file);
@@ -158,7 +162,7 @@ DCCUnit_DynLoadDEF(struct DCCLibDef *__restrict def,
  if ((len = strlen(file)) < 4 ||
      memcmp(file+len-4,".def",4*
      sizeof(char)) != 0) return NULL;
- return DCCUnit_DynLoadDEF2(def,file,fd);
+ return DCCUnit_DynLoadDEF2(def,file,fd,start);
 }
 
 DCC_DECL_END

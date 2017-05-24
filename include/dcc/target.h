@@ -81,6 +81,7 @@ DCC_DECL_BEGIN
                                      * while assuming the presence of relocations required for position-independent
                                      * code (such as generated when '-fPIC' is passed on the commandline). */
 
+#define DCC_LIBFORMAT_ARCH        1 /* Recognize '!<arch>' archives. */
 
 
 

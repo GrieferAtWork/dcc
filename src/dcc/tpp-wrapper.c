@@ -60,15 +60,7 @@ case W_UNRESOLVED_REFERENCE: \
 #undef tpp
 #undef c
 
-#ifdef __ELF__
-#   define PRIVATE  __attribute__((__visibility__("private")))
-#elif defined(_MSC_VER)
-#   define PRIVATE  extern
-#elif 1
-#   define PRIVATE  /* nothing */
-#else
-#   define PRIVATE  static
-#endif
+#define PRIVATE  INTDEF
 
 #include DCC_TPP_FILE(tpp.c)
 

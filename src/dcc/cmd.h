@@ -100,10 +100,10 @@ do{ (self)->c_argc  = (argc);\
 
 /* NOTE: Once all options have been parsed, the portion
  *       of 'cmd' describes all non-command arguments. */
-extern uint16_t cmd_yield(struct cmd *__restrict c);
+INTDEF uint16_t cmd_yield(struct cmd *__restrict c);
 
 
-extern void exec_cmd(struct cmd *__restrict c, int from_cmd);
+INTDEF void exec_cmd(struct cmd *__restrict c, int from_cmd);
 
 /* Execute commandline options from 'grp'.
  * @param: grp: One of 'OPG_*' (e.g.: 'OPG_grp_main')
@@ -111,11 +111,11 @@ extern void exec_cmd(struct cmd *__restrict c, int from_cmd);
  *       vector of non-option arguments (aka. the source files).
  * NOTE: The caller is responsible for popping the
  *       application name from the argument vector. */
-extern void DCCCmd_Exec(int grp, int *argc, char ***argv);
+INTDEF void DCCCmd_Exec(int grp, int *argc, char ***argv);
 
 /* Same as 'DCCCmd_Exec', but the commandline isn't split into argc|argv.
  * NOTE: This function is used for implementing '#pragma comment(compiler|linker,...)' */
-extern void DCCCmd_ExecString(int grp, char const *str, size_t len);
+INTDEF void DCCCmd_ExecString(int grp, char const *str, size_t len);
 
 
 DCC_DECL_END

@@ -46,8 +46,8 @@
 
 DCC_DECL_BEGIN
 
-extern void DCCSection_InsSym(struct DCCSection *__restrict self, struct DCCSym *__restrict sym);
-extern void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym);
+INTDEF void DCCSection_InsSym(struct DCCSection *__restrict self, struct DCCSym *__restrict sym);
+INTDEF void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym);
 
 #if DCC_DEBUG
 PRIVATE void
@@ -84,7 +84,7 @@ found_sec:
 }
 #endif
 
-extern int
+INTDEF int
 DCCSection_DIncrefN_impl(struct DCCSection *__restrict self,
                          target_ptr_t addr, target_siz_t size,
                          unsigned int n_refcnt);

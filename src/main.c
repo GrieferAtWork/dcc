@@ -33,7 +33,7 @@
 
 DCC_DECL_BEGIN
 
-extern void dcc_dump_symbols(void);
+INTDEF void dcc_dump_symbols(void);
 
 void def(char const *name, void *addr) {
  struct DCCSym *sym = DCCUnit_NewSyms(name,DCC_SYMFLAG_NONE);

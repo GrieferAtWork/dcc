@@ -177,10 +177,10 @@ PRIVATE void DCCDisp_LargeCstBinRegs(tok_t op, struct DCCSymExpr const *__restri
 
 #if DCC_CONFIG_NEED_X86_INSTRLEN
 #define INSTRLEN_DEBUG 0
-extern uint8_t const *x86_instrlen(uint8_t const *p);
+INTDEF uint8_t const *x86_instrlen(uint8_t const *p);
 #if INSTRLEN_DEBUG
-extern size_t    instrlen_offset;
-extern uint8_t  *instrlen_base;
+INTDEF size_t    instrlen_offset;
+INTDEF uint8_t  *instrlen_base;
 #endif
 
 /* Reverse engineer disp relocations by decompiling
@@ -191,14 +191,14 @@ extern uint8_t  *instrlen_base;
  *       current unit have a base address assigned that
  *       is equal to the sections runtime address when
  *      'image_base' is added. */
-extern void
+INTDEF void
 x86_mkrel_textdisp(struct DCCSection *__restrict text_section,
                    target_ptr_t image_base);
 
 /* Returns the section containing a given RVA address.
  * Similar to 'dcc_mkrel_textdisp', this function assumes
  * that all sections have been assigned a unique base address. */
-extern struct DCCSection *dcc_getsec(target_ptr_t rva);
+INTDEF struct DCCSection *dcc_getsec(target_ptr_t rva);
 #endif
 
 DCC_DECL_END

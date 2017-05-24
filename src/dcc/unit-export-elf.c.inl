@@ -49,7 +49,7 @@ struct elf_shdr {
                                        *       section must also has a symbol index! */
 };
 
-extern void *
+INTDEF void *
 DCCTextBuf_TAlloc_intern(struct DCCTextBuf *__restrict self,
                          target_siz_t size);
 

@@ -902,7 +902,7 @@ load_reg: /* Make sure we're operating on a register. */
 
 
 #if DCC_TARGET_BIN == DCC_BINARY_PE
-extern struct DCCSym *pe_getitasym(struct DCCSym *__restrict basesym);
+INTDEF struct DCCSym *pe_getitasym(struct DCCSym *__restrict basesym);
 PUBLIC void
 DCCLinker_PEIndImport(struct DCCStackValue *__restrict self) {
  struct DCCSym *pesym,*iat_sym;

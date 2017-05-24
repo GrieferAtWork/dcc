@@ -132,14 +132,14 @@ elf_gnuhash_findmaxsym(size_t *__restrict result,
 PRIVATE void
 elf_loadsection(Elf(Shdr) const *__restrict hdr,
                 struct DCCTextBuf *__restrict text,
-                stream_t fd) {
+                stream_t fd, soff_t start) {
  uint8_t *data;
  ptrdiff_t readsize;
  assert(hdr);
  assert(text);
  data = (uint8_t *)DCC_Malloc(hdr->sh_size,0);
  if unlikely(!data) goto empty;
- s_seek(fd,hdr->sh_offset,SEEK_SET);
+ s_seek(fd,start+hdr->sh_offset,SEEK_SET);
  readsize = s_read(fd,data,hdr->sh_size);
  if (readsize < 0) readsize = 0;
  if (readsize == 0) { DCC_Free(data); goto empty; }
@@ -166,7 +166,8 @@ PRIVATE symflag_t const elfvismap[] = {
 
 INTERN int DCCUNIT_IMPORTCALL
 DCCUnit_LoadELF(struct DCCLibDef *__restrict def,
-                char const *__restrict file, stream_t fd) {
+                char const *__restrict file,
+                stream_t fd, soff_t start) {
  int result = 0;
  int link_statically,not_dynamic = 0;
  Elf(Ehdr) ehdr;
@@ -218,7 +219,7 @@ link_dynamic:
    phdr_data = (Elf(Phdr) *)DCC_Malloc(phdr_size,0);
    if unlikely(!phdr_data) goto fail;
    if likely(ehdr.e_phentsize == sizeof(Elf(Phdr))) {
-    s_seek(fd,ehdr.e_phoff,SEEK_SET);
+    s_seek(fd,start+ehdr.e_phoff,SEEK_SET);
     read_error = s_read(fd,phdr_data,phdr_size);
     if (read_error < 0) goto fail_dyn;
     if (phdr_size > (size_t)read_error)
@@ -235,7 +236,7 @@ link_dynamic:
     assert(common_size);
     phdr_size /= sizeof(Elf(Phdr));
     for (i = 0; i < ehdr.e_phnum; ++i) {
-     s_seek(fd,ehdr.e_phoff+i*ehdr.e_phentsize,SEEK_SET);
+     s_seek(fd,start+ehdr.e_phoff+i*ehdr.e_phentsize,SEEK_SET);
      if (!s_reada(fd,phdr_data+i,common_size)) { phdr_size = i; break; }
     }
    }
@@ -299,7 +300,7 @@ link_dynamic:
      if unlikely(!dynvec) goto fail_dyn;
      /* XXX: Does ELF guaranty that PT_DYNAMIC contains proper offset information?
       *      Or do we have to find a PT_LOAD header containing the PT_DYNAMIC virtual address? */
-     s_seek(fd,iter->p_offset,SEEK_SET);
+     s_seek(fd,start+iter->p_offset,SEEK_SET);
      read_error = s_read(fd,dynvec,dynsiz);
      if unlikely(dynsiz > (size_t)read_error || read_error < 0) {
       if (read_error < 0) dynsiz = 0;
@@ -358,7 +359,7 @@ done_dynhdr1:
          goto no_dynhash;
         }
         if (hash_siz < 8) goto no_dynhash;
-        s_seek(fd,hash_off+4,SEEK_SET);
+        s_seek(fd,start+hash_off+4,SEEK_SET);
         read_error = s_read(fd,&hashcnt,4);
         if (read_error < 4) goto no_dynhash;
         /* Clamp the symbol table size using the value read from the hash table. */
@@ -378,7 +379,7 @@ done_dynhdr1:
              (target_ptr_t)dt_gnu_hash);
          goto no_dynhash;
         }
-        if (!elf_gnuhash_findmaxsym(&symtab_siz,gnuhash_off,gnuhash_siz,fd,
+        if (!elf_gnuhash_findmaxsym(&symtab_siz,start+gnuhash_off,gnuhash_siz,fd,
                                      ehdr.e_ident[EI_CLASS] == ELFCLASS64)
              ) goto no_dynhash;
        } else {
@@ -399,7 +400,7 @@ no_dynhash:
        /* Make sure the string table is ZERO-terminated,
         * so we can safely use strlen on its elements. */
        strtab[strtab_siz] = '\0';
-       s_seek(fd,strtab_off,SEEK_SET);
+       s_seek(fd,start+strtab_off,SEEK_SET);
        read_error = s_read(fd,strtab,strtab_siz);
        if unlikely(read_error < 0) goto end_free_strtab;
        if (strtab_siz > (size_t)read_error)
@@ -411,7 +412,7 @@ no_dynhash:
         if unlikely(!symtab) goto end_free_strtab;
         if likely(dt_syment == sizeof(Elf(Sym))) {
          /* Likely case: We can read the symbol table as-is. */
-         s_seek(fd,symtab_off,SEEK_SET);
+         s_seek(fd,start+symtab_off,SEEK_SET);
          read_error = s_read(fd,symtab,symcnt);
          if (read_error < 0) goto end_free_symtab;
          if (symcnt > (size_t)read_error)
@@ -426,7 +427,7 @@ no_dynhash:
          }
          symcnt /= sizeof(Elf(Sym));
          for (i = 0; i < symcnt; ++i) {
-          s_seek(fd,symtab_off+i*dt_syment,SEEK_SET);
+          s_seek(fd,start+symtab_off+i*dt_syment,SEEK_SET);
           if (!s_reada(fd,&symtab[i],dt_syment)) { symcnt = i; break; }
          }
         }
@@ -552,7 +553,7 @@ nosechdr:
   secv = (Elf(Shdr) *)DCC_Malloc(secc*sizeof(Elf(Shdr)),0);
   if unlikely(!secv) goto fail;
   if (ehdr.e_shentsize == sizeof(Elf(Shdr))) {
-   s_seek(fd,ehdr.e_shoff,SEEK_SET);
+   s_seek(fd,start+ehdr.e_shoff,SEEK_SET);
    read_error = s_read(fd,secv,secc*sizeof(Elf(Shdr)));
    if (read_error < 0) read_error = 0;
    read_error /= sizeof(Elf(Shdr));
@@ -565,7 +566,7 @@ nosechdr:
     common_size = ehdr.e_shentsize;
    }
    for (i = 0; i < secc; ++i) {
-    s_seek(fd,ehdr.e_shoff+i*ehdr.e_shentsize,SEEK_SET);
+    s_seek(fd,start+ehdr.e_shoff+i*ehdr.e_shentsize,SEEK_SET);
     if (!s_reada(fd,&secv[i],common_size)) { secc = i; break; }
    }
   }
@@ -593,7 +594,7 @@ found_shstr:
 #define SEC_DCCSEC(shdr) (*(struct DCCSection **)&(shdr)->sh_addralign)
   {
    struct DCCTextBuf shstr_text;
-   elf_loadsection(&secv[ehdr.e_shstrndx],&shstr_text,fd);
+   elf_loadsection(&secv[ehdr.e_shstrndx],&shstr_text,fd,start);
    /* With the section names loaded, we can generate all the section! */
    end = (iter = secv)+secc;
 #define SHSTR(off) (char *)(shstr_text.tb_begin+(off) >= shstr_text.tb_end ? NULL : shstr_text.tb_begin+(off))
@@ -639,7 +640,7 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
      if (sec->sc_text.tb_begin != sec->sc_text.tb_end)
          WARN(W_LIB_ELF_STATIC_SECNAME_REUSED,file,name);
      free(sec->sc_text.tb_begin);
-     elf_loadsection(iter,&sec->sc_text,fd);
+     elf_loadsection(iter,&sec->sc_text,fd,start);
      sec->sc_align = iter->sh_addralign;
      sec->sc_base  = iter->sh_addr;
     }
@@ -672,7 +673,7 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
     symvec = (Elf(Sym) *)DCC_Malloc(symcnt*sizeof(Elf(Sym)),0);
     if (iter->sh_entsize == sizeof(Elf(Sym))) {
      symcnt *= sizeof(Elf(Sym));
-     s_seek(fd,iter->sh_offset,SEEK_SET);
+     s_seek(fd,start+iter->sh_offset,SEEK_SET);
      read_error = s_read(fd,symvec,symcnt);
      if (read_error < 0) read_error = 0;
      if (symcnt > (size_t)read_error)
@@ -686,7 +687,7 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
       common_size = iter->sh_entsize;
      }
      for (i = 0; i < symcnt; ++i) {
-      s_seek(fd,iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
+      s_seek(fd,start+iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
       if (!s_reada(fd,&symvec[i],common_size)) { symcnt = i; break; }
      }
     }
@@ -697,7 +698,7 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
          (size_t)iter->sh_link,(size_t)(iter-secv),secc);
      goto free_null_symvec;
     }
-    elf_loadsection(&secv[iter->sh_link],&symstr_text,fd);
+    elf_loadsection(&secv[iter->sh_link],&symstr_text,fd,start);
 #define SYMSTR(off) (char *)(symstr_text.tb_begin+(off) >= symstr_text.tb_end ? NULL : symstr_text.tb_begin+(off))
 
     /* All symbols and string have been read. - Time to iterate them! */
@@ -802,7 +803,7 @@ done_symvec:
     if unlikely(!flgv) continue;
     if (iter->sh_entsize == sizeof(Elf(DCCSymFlg))) {
      flgc *= sizeof(Elf(DCCSymFlg));
-     s_seek(fd,iter->sh_offset,SEEK_SET);
+     s_seek(fd,start+iter->sh_offset,SEEK_SET);
      read_error = s_read(fd,flgv,flgc);
      if (read_error < 0) read_error = 0;
      if (flgc > (size_t)read_error)
@@ -816,7 +817,7 @@ done_symvec:
       common_size = iter->sh_entsize;
      }
      for (i = 0; i < flgc; ++i) {
-      s_seek(fd,iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
+      s_seek(fd,start+iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
       if (!s_reada(fd,&flgv[i],common_size)) { flgc = i; break; }
      }
     }
@@ -910,7 +911,7 @@ done_symvec:
     relsymc = SEC_SYMCNT(&secv[iter->sh_link]);
     /* Load the relocation text. */
     if (iter->sh_entsize == sizeof(Elf(Rel))) {
-     elf_loadsection(iter,&relo_text,fd);
+     elf_loadsection(iter,&relo_text,fd,start);
     } else if (!iter->sh_entsize) {
      continue; /* TODO: Warning? */
     } else {
@@ -927,7 +928,7 @@ done_symvec:
       common_size = iter->sh_entsize;
      }
      for (i = 0; i < relcnt; ++i) {
-      s_seek(fd,iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
+      s_seek(fd,start+iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
       if (!s_reada(fd,relo_text.tb_begin+(i*sizeof(Elf(Rel))),common_size)) break;
      }
      if (i != relcnt) {

@@ -102,7 +102,7 @@ DCCLibPaths_Pop(struct DCCLibPaths *__restrict self) {
  free(backup);
 }
 
-extern char *fix_filename(char *filename, size_t *pfilename_size); /* From 'tcc.c' */
+INTDEF char *fix_filename(char *filename, size_t *pfilename_size); /* From 'tcc.c' */
 
 LOCAL int
 DCCLibPaths_DoAddLibPathNow(struct DCCLibPaths *__restrict self,

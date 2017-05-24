@@ -35,6 +35,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\ar.h" />
     <ClInclude Include="..\include\dcc\assembler.h" />
     <ClInclude Include="..\include\dcc\byteorder.h" />
     <ClInclude Include="..\include\dcc\common.h" />
@@ -81,6 +82,7 @@
     <None Include="..\src\dcc\linker-elf.c.inl" />
     <None Include="..\src\dcc\linker-pe.c.inl" />
     <None Include="..\src\dcc\unit-export-elf.c.inl" />
+    <None Include="..\src\dcc\unit-import-arch.c.inl" />
     <None Include="..\src\dcc\unit-import-def-dynamic.c.inl" />
     <None Include="..\src\dcc\unit-import-elf.c.inl" />
     <None Include="..\src\dcc\unit-import-pe-dynamic.c.inl" />

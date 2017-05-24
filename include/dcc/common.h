@@ -142,13 +142,23 @@
 #define DCC_PRIVATE  static
 #define DCC_PUBLIC   /* nothing */
 #define DCC_LOCAL    static __inline
-#define DCC_INTERN   /* nothing */
+#if defined(__ELF__) || __has_attribute(visibility)
+#   define DCC_INTERN  __attribute__((__visibility__("private")))
+#   define DCC_INTDEF  __attribute__((__visibility__("private")))
+#elif defined(_MSC_VER)
+#   define DCC_INTERN  extern
+#   define DCC_INTDEF  extern
+#elif 1
+#   define DCC_INTERN  /* nothing */
+#   define DCC_INTDEF  extern
+#endif
 
 #ifdef DCC_PRIVATE_API
 #define PRIVATE      DCC_PRIVATE
 #define PUBLIC       DCC_PUBLIC
 #define LOCAL        DCC_LOCAL
 #define INTERN       DCC_INTERN
+#define INTDEF       DCC_INTDEF
 #endif
 
 #ifdef _MSC_VER

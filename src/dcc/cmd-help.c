@@ -170,8 +170,8 @@ struct tpp_extension {
  char const *e_name;
  size_t      e_size;
 };
-extern struct tpp_extension const tpp_extensions[];
-extern char const *const wgroup_names[WG_COUNT+1];
+INTDEF struct tpp_extension const tpp_extensions[];
+INTDEF char const *const wgroup_names[WG_COUNT+1];
 
 INTERN void dcc_help(char const *subject) {
  if (subject && !*subject) subject = NULL;

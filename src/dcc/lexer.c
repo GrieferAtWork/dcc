@@ -45,7 +45,7 @@ struct TPPStringEmpty {
  char     s_text[1];
 };
 
-extern struct TPPStringEmpty tpp_empty_string;
+INTDEF struct TPPStringEmpty tpp_empty_string;
 #define empty_string  ((struct TPPString *)&tpp_empty_string)
 #define SPECIAL_FILE(name,hash) \
 {\
@@ -118,7 +118,7 @@ LEXPRIV struct TPPKeyword *DCC_PARSE_CALL tok_without_underscores(void) {
  return result;
 }
 
-extern char *skip_whitespace_and_comments(char *iter, char *end);
+INTDEF char *skip_whitespace_and_comments(char *iter, char *end);
 
 LEXPRIV char *DCC_PARSE_CALL
 peek_next_token(struct TPPFile **tok_file) {

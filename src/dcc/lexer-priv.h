@@ -164,7 +164,7 @@ LEXPRIV /*ref*/struct TPPString *DCC_PARSE_CALL DCCParse_OneStringExt(void);
 #define CH_ISLF        0x40 /*< The character is '\r' or '\n'. */
 #define CH_ISZERO      0x80 /*< The character is '\0'. */
 
-extern uint8_t const chrattr[256];
+INTDEF uint8_t const chrattr[256];
 #define tpp_isalpha(ch)         (chrattr[(uint8_t)(ch)]&CH_ISALPHA)
 #define tpp_isdigit(ch)         (chrattr[(uint8_t)(ch)]&CH_ISDIGIT)
 #define tpp_isalnum(ch)         (chrattr[(uint8_t)(ch)]&(CH_ISALPHA|CH_ISDIGIT))

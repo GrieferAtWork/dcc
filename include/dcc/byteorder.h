@@ -115,7 +115,8 @@ DCC_LOCAL uint64_t dcc_byteswap64_impl(uint64_t x) { return DCC_CONSTANT_BSWAP64
 #   define DCC_T2H16   /* nothing */
 #   define DCC_T2H32   /* nothing */
 #   define DCC_T2H64   /* nothing */
-#else
+#elif (DCC_HOST_BYTEORDER == 1234 && DCC_TARGET_BYTEORDER == 4321) || \
+      (DCC_HOST_BYTEORDER == 4321 && DCC_TARGET_BYTEORDER == 1234)
 #   define DCC_H2T16   DCC_BSWAP16
 #   define DCC_H2T32   DCC_BSWAP32
 #   define DCC_H2T64   DCC_BSWAP64
@@ -124,6 +125,60 @@ DCC_LOCAL uint64_t dcc_byteswap64_impl(uint64_t x) { return DCC_CONSTANT_BSWAP64
 #   define DCC_T2H64   DCC_BSWAP64
 #endif
 
+/* Little-endian/Big-endian --> Host */
+#if DCC_HOST_BYTEORDER == 1234
+#   define DCC_LE2H16  /* nothing */
+#   define DCC_BE2H16  DCC_BSWAP16
+#   define DCC_LE2H32  /* nothing */
+#   define DCC_BE2H32  DCC_BSWAP32
+#   define DCC_LE2H64  /* nothing */
+#   define DCC_BE2H64  DCC_BSWAP64
+#elif DCC_HOST_BYTEORDER == 4321
+#   define DCC_LE2H16  DCC_BSWAP16
+#   define DCC_BE2H16  /* nothing */
+#   define DCC_LE2H32  DCC_BSWAP32
+#   define DCC_BE2H32  /* nothing */
+#   define DCC_LE2H64  DCC_BSWAP64
+#   define DCC_BE2H64  /* nothing */
+#endif
+
+/* Little-endian/Big-endian --> Target */
+#if DCC_TARGET_BYTEORDER == 1234
+#   define DCC_LE2T16  /* nothing */
+#   define DCC_BE2T16  DCC_BSWAP16
+#   define DCC_LE2T32  /* nothing */
+#   define DCC_BE2T32  DCC_BSWAP32
+#   define DCC_LE2T64  /* nothing */
+#   define DCC_BE2T64  DCC_BSWAP64
+#elif DCC_TARGET_BYTEORDER == 4321
+#   define DCC_LE2T16  DCC_BSWAP16
+#   define DCC_BE2T16  /* nothing */
+#   define DCC_LE2T32  DCC_BSWAP32
+#   define DCC_BE2T32  /* nothing */
+#   define DCC_LE2T64  DCC_BSWAP64
+#   define DCC_BE2T64  /* nothing */
+#endif
+
+
+/* Host --> Little-endian/Big-endian */
+#ifdef DCC_LE2H16
+#define DCC_H2LE16  DCC_LE2H16
+#define DCC_H2BE16  DCC_BE2H16
+#define DCC_H2LE32  DCC_LE2H32
+#define DCC_H2BE32  DCC_BE2H32
+#define DCC_H2LE64  DCC_LE2H64
+#define DCC_H2BE64  DCC_BE2H64
+#endif
+
+/* Target --> Little-endian/Big-endian */
+#ifdef DCC_LE2T16
+#define DCC_T2LE16  DCC_LE2T16
+#define DCC_T2BE16  DCC_BE2T16
+#define DCC_T2LE32  DCC_LE2T32
+#define DCC_T2BE32  DCC_BE2T32
+#define DCC_T2LE64  DCC_LE2T64
+#define DCC_T2BE64  DCC_BE2T64
+#endif
 
 
 DCC_DECL_END

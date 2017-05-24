@@ -146,6 +146,9 @@
     <ClInclude Include="..\src\dcc\cmd.h">
       <Filter>src\dcc</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\ar.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\dcc\lexer-attributes.c.inl">
@@ -233,6 +236,9 @@
       <Filter>src\dcc</Filter>
     </None>
     <None Include="..\src\dcc\unit-secmem.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\unit-import-arch.c.inl">
       <Filter>src\dcc</Filter>
     </None>
   </ItemGroup>

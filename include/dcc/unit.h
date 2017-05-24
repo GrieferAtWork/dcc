@@ -22,6 +22,7 @@
 #include "common.h"
 #include "target.h"
 #include "lexer.h"
+#include "stream.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -1125,7 +1126,15 @@ struct DCCLibDef {
  * NOTE: [DCCUnit_Import] The library is search by its name ('def->ld_name|def->ld_size')
  *                        within all library paths specified within the current linker.
  *                        s.a.: 'DCCLinker_AddLibPath()'
- * @param: def: The library definition (s.a.: documentation of 'DCCLibDef')
+ * @param: def:   The library definition (s.a.: documentation of 'DCCLibDef')
+ * @param: fd:    The file stream to load data from.
+ * @param: start: An offset within 'fd', as well as the current seek-position inside.
+ *                This argument is added to any absolute file-pointer inside the
+ *                library, meaning that using this it can be stated that the actual
+ *                contents of a file only start at a specific offset.
+ *                NOTE: This argument is ignored for position-independent formats
+ *                      such as '*.def' files, source files, as well as any text-based
+ *                      library definition for that matter.
  * @return: 0: - Data form the given stream 'fd' does not describe a binary.
  *               >> No lexer error was set & the current unit was not modified.
  *             - A critical error occurred while parsing the given stream 'fd'.
@@ -1134,7 +1143,7 @@ struct DCCLibDef {
 DCCFUN int DCCUNIT_IMPORTCALL DCCUnit_Import(struct DCCLibDef *__restrict def);
 DCCFUN int DCCUNIT_IMPORTCALL DCCUnit_ImportStream(struct DCCLibDef *__restrict def,
                                                    char const *__restrict filename,
-                                                   DCC(stream_t) fd);
+                                                   DCC(stream_t) fd, DCC(soff_t) start);
 
 
 #define DCC_EXPFMT_ELF 0 /* Generate ELF object files. */

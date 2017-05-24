@@ -1295,6 +1295,8 @@ DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM,(WG_LINKER),WSTATE_WARN,WARNF("
 DEF_WARNING(W_LINKER_MISSING_ENTRY_POINT,(WG_LINKER,WG_USAGE),WSTATE_WARN,WARNF("Missing entry point '%s' (Using start of default .text section)",ARG(char *)))
 DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_SEC,(WG_LINKER),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined in section '%s'\n",n,ARG(char *)); })
 DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP,(WG_LINKER),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined as import from '%s'\n",n,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP_IMP,(WG_LINKER),WSTATE_WARN,{ char *n = ARG(char *); char *o = ARG(char *); WARNF("Redefining import symbol '%s' from '%s' to '%s'\n",n,o,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP_IMP_NOT,(WG_LINKER),WSTATE_DISABLE,{ char *n = ARG(char *); char *o = ARG(char *); WARNF("Ignoring second definition of symbol '%s' from '%s' in '%s'\n",n,o,ARG(char *)); })
 DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_ALIAS,(WG_LINKER),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined as alias for '%s'\n",n,ARG(char *)); })
 DEF_WARNING(W_UNRESOLVED_REFERENCE,(WG_LINKER,WG_USAGE),WSTATE_ERROR,{
  char *kwdname = KWDNAME();
@@ -1521,6 +1523,16 @@ DEF_WARNING(W_LIB_ELF_STATIC_INVRELOC,(WG_LIBLOAD),WSTATE_WARN,{
       (unsigned long)p,(unsigned long)ARG(target_ptr_t));
 })
 #endif /* DCC_LIBFORMAT_ELF */
+#if DCC_LIBFORMAT_ARCH
+DEF_WARNING(W_LIB_ARCH_INVALID_MAGIC,(WG_LIBLOAD),WSTATE_WARN,{
+ char *n = ARG(char *);
+ WARNF("Invalid magic in archive header at offset %lu in '%s'",ARG(unsigned long),n);
+})
+DEF_WARNING(W_LIB_ARCH_UNKNOWN_FORMAT,(WG_LIBLOAD),WSTATE_ERROR,{
+ char *n = ARG(char *); unsigned long o = ARG(unsigned long);
+ WARNF("Unknown archive format '%s' at offset %lu in '%s'",n,o,ARG(char *));
+})
+#endif /* DCC_LIBFORMAT_ARCH */
 
 WARNING_NAMESPACE(WN_UNITEXPORT,4000)
 DEF_WARNING(W_EXPORT_CANNOT_OPEN,(WG_LIBLOAD),WSTATE_ERROR,
