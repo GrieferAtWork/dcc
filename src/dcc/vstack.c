@@ -557,7 +557,6 @@ PUBLIC void DCC_VSTACK_CALL
 DCCStackValue_Load(struct DCCStackValue *__restrict self) {
  struct DCCStackValue local_target;
  assert(self);
- assert(!(self->sv_flags&DCC_SFLAG_TEST));
  /* Figure out how much space is required. */
  local_target.sv_ctype = self->sv_ctype;
  local_target.sv_flags = DCC_SFLAG_NONE;
@@ -1971,13 +1970,15 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
    */
   DCCStackValue_Promote(self);
   DCCStackValue_LoadLValue(self);
- } else if (DCCTYPE_ISARRAY(type->t_type)) {
+ } else if (group == DCCTYPE_ARRAY ||
+            group == DCCTYPE_VARRAY) {
   /* Cast to array/vararray type. */
   if (!(self->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(self);
   goto done;
  } else {
   DCCStackValue_Promote(self);
  }
+ group = DCCTYPE_GROUP(self->sv_ctype.t_type);
  if (DCCTYPE_GROUP(type->t_type) == DCCTYPE_LVALUE) {
   assert(type->t_base);
   assert(group != DCCTYPE_LVALUE);

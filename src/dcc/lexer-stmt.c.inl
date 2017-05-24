@@ -59,9 +59,9 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ScopeText(pflag_t f) {
    pflags |=  (DCC_PFLAG_WARNDECL << 1);
   }
 #if DCC_DEBUG
-  assertf(vsize == old_vsize+1,
-          "Invalid v-stack size: %lu too many",
-         (unsigned long)(vsize-(old_vsize+1)));
+  assertf(vsize == old_vsize+1,"Invalid v-stack size: %lu %s",
+         (unsigned long)(vsize <= old_vsize ? (old_vsize+1)-vsize : vsize-(old_vsize+1)),
+                        (vsize <= old_vsize ? "too few" : "too many"));
 #endif
   if (TOK <= 0 || TOK == '}' ||
       tok_num == TOKEN.t_num) break;
@@ -602,8 +602,7 @@ ignore_case_label:
    }
    if (TOK != ':') WARN(W_EXPECTED_COLON_AFTER_CASE); else YIELD();
    popf();
-   label_sym = NULL;
-   goto again_after_dead_label;
+   goto again_after_missing_label;
   }
   /* If the switch statement was dead, ignore this case label! */
   if (compiler.c_flags&DCC_COMPILER_FLAG_SDEAD) goto ignore_case_label;
@@ -696,6 +695,7 @@ ignore_case_label:
   else if (!DCCSym_ISFORWARD(label_sym)) WARN(W_DEFAULT_ALREADY_DEFINED);
   else if (compiler.c_flags&DCC_COMPILER_FLAG_SDEAD) goto again_after_dead_label;
   else goto again_after_label;
+  goto again_after_missing_label;
  } break;
 
  {
@@ -786,6 +786,7 @@ again_after_label:
 again_after_dead_label:
     /* Finally, define the label to jump to. */
     if (label_sym) t_defsym(label_sym);
+again_after_missing_label:
     /* Parse a statement after the label. */
     if (TOK == '}') { WARN(W_LABEL_WITHOUT_STATEMENT); goto pushv; }
     goto again;
