@@ -287,8 +287,8 @@ DCCParse_CTypeTryParenthesis(struct DCCType *__restrict self,
    return 0;
   } else {
    DCCDecl_XDecref(self->t_base);
-   self->t_type &= DCCTYPE_STOREMASK;
-   self->t_type |= DCCTYPE_FUNCTION;
+   self->t_type &= (DCCTYPE_FLAGSMASK&~(DCCTYPE_ASTMASK));
+   self->t_type |= (DCCTYPE_FUNCTION);
    self->t_base  = fun_decl; /* Inherit reference. */
   }
  }
@@ -304,8 +304,8 @@ DCCParse_CTypeSuffix2(struct DCCType *__restrict self,
   if (!DCCType_IsComplete(self)) WARN(W_EXPECTED_COMPLETE_TYPE_FOR_FUNCTION_BASE,self);
   fun_decl->d_type = *self; /* Inherit data. */
   fun_decl->d_type.t_type &= ~(DCCTYPE_STOREMASK);
-  self->t_type &= DCCTYPE_STOREMASK;
-  self->t_type |= DCCTYPE_FUNCTION;
+  self->t_type &= (DCCTYPE_FLAGSMASK&~(DCCTYPE_ASTMASK));
+  self->t_type |= (DCCTYPE_FUNCTION);
   self->t_base  = fun_decl; /* Inherit reference. */
   YIELD();
   if (TOK == ')') {
@@ -530,8 +530,8 @@ begin: DCCParse_Attr(attr);
   if (flags&FLAG_FOUND_LENGTH) {
    if ((self->t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_LONG) {
     /* 'long long' / 'unsigned long long' */
-    self->t_type &= (0x3|DCCTYPE_UNSIGNED);
-    self->t_type |= DCCTYPE_LLONG;
+    self->t_type &= (DCCTYPE_FLAGSMASK|DCCTYPE_UNSIGNED);
+    self->t_type |=  DCCTYPE_LLONG;
     goto next;
    } else if ((self->t_type&DCCTYPE_BASICMASK) == DCCTYPE_DOUBLE) {
     /* long double. */
@@ -621,11 +621,11 @@ begin: DCCParse_Attr(attr);
   if (flags&(FLAG_FOUND_INT|FLAG_FOUND_SIGN)) break;
   if (flags&FLAG_FOUND_LENGTH) {
    if ((self->t_type&~(DCCTYPE_FLAGSMASK)) != DCCTYPE_LONG) break;
-   self->t_type &= DCCTYPE_FLAGSMASK;
-   self->t_type |= DCCTYPE_LDOUBLE;
+   self->t_type &= (DCCTYPE_FLAGSMASK);
+   self->t_type |= (DCCTYPE_LDOUBLE);
   } else {
-   self->t_type &= DCCTYPE_FLAGSMASK;
-   self->t_type |= DCCTYPE_DOUBLE;
+   self->t_type &= (DCCTYPE_FLAGSMASK);
+   self->t_type |= (DCCTYPE_DOUBLE);
   }
   flags |= (FLAG_FOUND_INT|FLAG_FOUND_SIGN|FLAG_FOUND_LENGTH);
   goto next;
