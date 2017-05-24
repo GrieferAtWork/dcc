@@ -699,12 +699,26 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
     * NOTE: Make sure not to allocate the destination register,
     *       or the fixed registers that will be required for the opcode.
     */
-   temp = DCCVStack_GetRegOf(dst&DCC_RC_MASK,
-                           ~((1 << DCC_ASMREG_EAX)|
-                             (1 << DCC_ASMREG_EDX)|
-                             (1 << (dst&7))));
-   DCCDisp_CstMovReg(val,temp);
-   DCCDisp_RegBinReg(op,temp,dst,src_unsigned);
+#ifdef IA32_PROTECTED_REGISTERS
+   if ((dst&7) == DCC_ASMREG_ECX) {
+    /* Since 'EBX' is protected, ECX is the only register we could use.
+     * But as it turns out, that one's already in use by the destination.
+     * >> Now we have to push/pop EBX... */
+    temp = (dst&DCC_RC_MASK)|DCC_ASMREG_EBX;
+    DCCDisp_RegPush(temp);
+    DCCDisp_CstMovReg(val,temp);
+    DCCDisp_RegBinReg(op,temp,dst,src_unsigned);
+    DCCDisp_PopReg(temp);
+   } else
+#endif
+   {
+    temp = DCCVStack_GetRegOf(dst&DCC_RC_MASK,
+                            ~((1 << DCC_ASMREG_EAX)|
+                              (1 << DCC_ASMREG_EDX)|
+                              (1 << (dst&7))));
+    DCCDisp_CstMovReg(val,temp);
+    DCCDisp_RegBinReg(op,temp,dst,src_unsigned);
+   }
    break;
   }
 
@@ -811,13 +825,28 @@ DCCDisp_CstBinMem(tok_t op,
     * NOTE: Make sure not to allocate the destination register,
     *       or the fixed registers that will be required for the opcode.
     */
-   temp = DCCVStack_GetRegOf(DCC_RC_FORSIZE(width),
-                           ~((1 << DCC_ASMREG_EAX)|
-                             (1 << DCC_ASMREG_EDX)|
-                             (dst->ml_reg != DCC_RC_CONST ? (1 << (dst->ml_reg&7)) : 0)
-                            ));
-   DCCDisp_CstMovReg(val,temp);
-   DCCDisp_RegBinMem(op,temp,dst,src_unsigned);
+#ifdef IA32_PROTECTED_REGISTERS
+   if (dst->ml_reg != DCC_RC_CONST &&
+      (dst->ml_reg&7) == DCC_ASMREG_ECX) {
+    /* Since 'EBX' is protected, ECX is the only register we could use.
+     * But as it turns out, that one's already in use by the destination.
+     * >> Now we have to push/pop EBX... */
+    temp = DCC_RC_FORSIZE(width)|DCC_ASMREG_EBX;
+    DCCDisp_RegPush(temp);
+    DCCDisp_CstMovReg(val,temp);
+    DCCDisp_RegBinMem(op,temp,dst,src_unsigned);
+    DCCDisp_PopReg(temp);
+   } else
+#endif
+   {
+    temp = DCCVStack_GetRegOf(DCC_RC_FORSIZE(width),
+                            ~((1 << DCC_ASMREG_EAX)|
+                              (1 << DCC_ASMREG_EDX)|
+                              (dst->ml_reg != DCC_RC_CONST ? (1 << (dst->ml_reg&7)) : 0)
+                             ));
+    DCCDisp_CstMovReg(val,temp);
+    DCCDisp_RegBinMem(op,temp,dst,src_unsigned);
+   }
    break;
   }
 
