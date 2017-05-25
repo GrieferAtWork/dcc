@@ -211,6 +211,11 @@ DCCStackValue_Load(struct DCCStackValue *__restrict self) {
  if (DCCTYPE_ISSIGNLESSBASIC(self->sv_ctype.t_type,DCCTYPE_INT64)) {
   local_target.sv_reg  = DCCVStack_GetReg(DCC_RC_I32|DCC_R64_PREFLO,1);
   local_target.sv_reg2 = DCCVStack_GetReg(DCC_RC_I32|DCC_R64_PREFHI,1);
+  if unlikely(local_target.sv_reg2 == local_target.sv_reg) {
+   /* Make sure not to use the same register twice! */
+   local_target.sv_reg2 = DCCVStack_GetRegOf(DCC_RC_I32,
+                                            (uint8_t)~(1 << (local_target.sv_reg&7)));
+  }
  } else
 #endif
  {
@@ -667,7 +672,8 @@ DCCStackValue_Dup(struct DCCStackValue *__restrict self) {
 #if DCC_TARGET_SIZEOF_POINTER < 8
   if (DCCTYPE_ISSIGNLESSBASIC(source_type->t_type,DCCTYPE_INT64)) {
    /* Need a second 32-bit register for this. */
-   copy.sv_reg2 = DCCVStack_GetReg(DCC_RC_I32,1);
+   copy.sv_reg2 = DCCVStack_GetRegOf(DCC_RC_I32,
+                                    (uint8_t)~(1 << (copy.sv_reg&DCC_RI_MASK)));
   }
 #endif
  }
@@ -1008,8 +1014,8 @@ DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
   src.ml_reg = self->sv_reg;
   src.ml_sym = self->sv_sym;
   src.ml_off = self->sv_const.offset;
-  DCCDisp_MemsBinReg(op,&src,DCCType_Sizeof(&self->sv_ctype,NULL,1),
-                     dst,DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type));
+  DCCDisp_MemsBinRegs(op,&src,DCCType_Sizeof(&self->sv_ctype,NULL,1),
+                      dst,dst2,DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type));
  } else if (source_reg == DCC_RC_CONST) {
 #if DCC_TARGET_SIZEOF_POINTER < 8
   struct DCCSymExpr temp;
