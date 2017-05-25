@@ -3168,7 +3168,13 @@ DCCVStack_Binary(tok_t op) {
          lhs_type = &lhs_type->t_base->d_type;
   /* Emit warnings about incompatibilities between 'vbottom[0]' and 'vbottom[1]'. */
   wid = DCCStackValue_AllowCast(vbottom,lhs_type,0);
-  if (wid) WARN(wid,&vbottom->sv_ctype,lhs_type);
+  if (wid) {
+   if (is_cmp_op &&
+       /* Ignore constant-errors for compare operations. */
+      (wid == W_CAST_CONST_POINTER ||
+       wid == W_CAST_CONST_LVALUE)) goto genbinary;
+   WARN(wid,&vbottom->sv_ctype,lhs_type);
+  }
  }
 genbinary:
  DCCStackValue_Binary(vbottom,vbottom+1,op);

@@ -1052,11 +1052,8 @@ DEF_WARNING(W_DECL_TYPEDEF_WITH_INITIALIZER,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,{
  DECL_PRINT(NULL);
 })
 
-DEF_WARNING(W_STMT_ASM_EXPECTED_STRING,(WG_SYNTAX),WSTATE_WARN,
-            WARNF("Expected string after __asm__, but got " TOK_S,TOK_A))
-DEF_WARNING(W_CONSTANT_EXPR_DEPENDS_ON_SYMBOL,(WG_SYNTAX,WG_VALUE,WG_SYMBOL),WSTATE_WARN,{
- WARNF("A constant expression here can't depend on a symbol '%s'\n",KWDNAME());
-})
+DEF_WARNING(W_STMT_ASM_EXPECTED_STRING,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string after __asm__, but got " TOK_S,TOK_A))
+DEF_WARNING(W_CONSTANT_EXPR_DEPENDS_ON_SYMBOL,(WG_SYNTAX,WG_VALUE,WG_SYMBOL),WSTATE_WARN,{ WARNF("A constant expression here can't depend on a symbol '%s'",KWDNAME()); })
 DEF_WARNING(W_EXPECTED_CONSTANT_EXPRESSION,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,WARNF("Expected a constant expression"))
 DEF_WARNING(W_UNEXPECTED_TOKEN_IN_C_EXPRESSION,(WG_SYNTAX),WSTATE_WARN,WARNF("Unexpected token " TOK_S " in c expression",TOK_A))
 DEF_WARNING(W_GOT_TYPE_IN_EXPRESSION,(WG_SYNTAX),WSTATE_WARN,WARNF("Got type in expression"))
@@ -1293,11 +1290,11 @@ DEF_WARNING(W_LINKER_NO_INPUT_FILES,(WG_USAGE,WG_LINKER),WSTATE_ERROR,WARNF("No 
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMPLUSSYM,(WG_LINKER,WG_SYMBOL),WSTATE_WARN,WARNF("Symbol+Symbol expression cannot be relocated"))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM,(WG_LINKER,WG_SYMBOL),WSTATE_WARN,WARNF("Symbol-Symbol expressions can only be relocated when both symbols are declared and exist in the same section"))
 DEF_WARNING(W_LINKER_MISSING_ENTRY_POINT,(WG_LINKER,WG_USAGE),WSTATE_WARN,WARNF("Missing entry point '%s' (Using start of default .text section)",ARG(char *)))
-DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_SEC,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined in section '%s'\n",n,ARG(char *)); })
-DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined as import from '%s'\n",n,ARG(char *)); })
-DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP_IMP,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); char *o = ARG(char *); WARNF("Redefining import symbol '%s' from '%s' to '%s'\n",n,o,ARG(char *)); })
-DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP_IMP_NOT,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_DISABLE,{ char *n = ARG(char *); char *o = ARG(char *); WARNF("Ignoring second definition of symbol '%s' from '%s' in '%s'\n",n,o,ARG(char *)); })
-DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_ALIAS,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined as alias for '%s'\n",n,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_SEC,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined in section '%s'",n,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined as import from '%s'",n,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP_IMP,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); char *o = ARG(char *); WARNF("Redefining import symbol '%s' from '%s' to '%s'",n,o,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP_IMP_NOT,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_DISABLE,{ char *n = ARG(char *); char *o = ARG(char *); WARNF("Ignoring second definition of symbol '%s' from '%s' in '%s'",n,o,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_ALIAS,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol '%s' was already defined as alias for '%s'",n,ARG(char *)); })
 DEF_WARNING(W_UNRESOLVED_REFERENCE,(WG_LINKER,WG_USAGE,WG_SYMBOL),WSTATE_ERROR,{
  char *kwdname = KWDNAME();
  char *secname = KWDNAME();
