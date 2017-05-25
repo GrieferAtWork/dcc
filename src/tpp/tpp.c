@@ -842,7 +842,7 @@ PUBLIC struct TPPFile TPPFile_Empty = {
  /* f_refcnt                 */0x80000000,
  /* f_kind                   */TPPFILE_KIND_TEXT,
  /* f_prev                   */NULL,
- /* f_name                   */"<NULL>",
+ /* f_name                   */(char *)"<NULL>",
  /* f_namesize               */6,
 #if __SIZEOF_SIZE_T__ == 4
  /* f_namehash               */2699259396lu,

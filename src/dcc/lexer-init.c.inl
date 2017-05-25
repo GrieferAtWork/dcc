@@ -47,12 +47,12 @@ push_target(struct DCCType const *__restrict type,
  vpush(&sval);
 }
 
-
 PUBLIC void DCC_PARSE_CALL
 DCCParse_Init(struct DCCType const *__restrict type,
               struct DCCAttrDecl const *attr,
               struct DCCMemLoc const *target,
               int initial_init) {
+ int has_brace;
  assert(type);
  if (TOK == '{') {
 #define KIND_STRUCT  0
@@ -63,9 +63,15 @@ DCCParse_Init(struct DCCType const *__restrict type,
   struct DCCStructField *field_curr,*field_end;
   struct DCCMemLoc base_target,elem_target;
   /* - Current index within an array initializer. */
-  target_ptr_t target_maxindex = 0,target_index = 0;
-  target_ptr_t elem_size = 0;
-  field_curr = field_end = NULL;
+  target_ptr_t target_maxindex,target_index;
+  target_ptr_t elem_size;
+  has_brace       = 1;
+parse_braceblock:
+  target_maxindex = 0;
+  target_index    = 0;
+  elem_size       = 0;
+  field_curr      =
+  field_end       = NULL;
   /* Warn about initializer-assignment to constant target. */
   if (!initial_init && type->t_type&DCCTYPE_CONST)
        WARN(W_ASSIGN_INIT_CONSTANT_TYPE,type);
@@ -87,13 +93,13 @@ DCCParse_Init(struct DCCType const *__restrict type,
    /* VLA array types can't have initializers. */
    if (type->t_base->d_kind == DCC_DECLKIND_VLA) {
     WARN(W_BRACE_INITIALIZER_FOR_VLA_TYPE,type);
-    YIELD();
+    if (has_brace) YIELD();
     pushf();
     compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
     for (;;) {
      DCCParse_Init(type,attr,target,initial_init);
      vpop(1);
-     if (TOK != ',') break;
+     if (TOK != ',' || !has_brace) break;
      YIELD();
     }
     popf();
@@ -108,10 +114,10 @@ DCCParse_Init(struct DCCType const *__restrict type,
 
   default:
    WARN(W_BRACE_INITIALIZER_FOR_DEFAULT_TYPE,type);
-   YIELD();
+   if (has_brace) YIELD();
    for (;;) {
     DCCParse_Init(type,attr,target,initial_init);
-    if (TOK != ',') break;
+    if (TOK != ',' || !has_brace) break;
     vpop(1);
     YIELD();
    }
@@ -157,7 +163,7 @@ stack_target:
     base_target.ml_sym = NULL;
    }
   }
-  YIELD();
+  if (has_brace) YIELD();
   /* Brace initializer. */
   while (TOK > 0 && TOK != '}') {
    switch (kind) {
@@ -377,8 +383,25 @@ update_elem_target_off:
    push_target(type,&base_target);
   }
 end_brace:
-  if (TOK != '}') WARN(W_EXPECTED_RBRACE); else YIELD();
+  if (has_brace) {
+   if (TOK != '}') WARN(W_EXPECTED_RBRACE);
+   else YIELD();
+  }
  } else {
+  /* Special case: handle missing braces around struct/union/array types.
+   * NOTE: Though we must not handle missing braces around arithmetic structure types! */
+  if (type->t_base) {
+   uint16_t base_kind = type->t_base->d_kind;
+   if ((base_kind == DCC_DECLKIND_STRUCT &&
+       (!type->t_base->d_attr || !(type->t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC))) ||
+        base_kind == DCC_DECLKIND_UNION ||
+        base_kind == DCC_DECLKIND_ARRAY ||
+        base_kind == DCC_DECLKIND_VLA) {
+    WARN(W_INITIALIZER_MISSING_BRACE,type);
+    has_brace = 0;
+    goto parse_braceblock;
+   }
+  }
   DCCParse_Expr1();
   if (vbottom->sv_reg != DCC_RC_CONST) {
    if (!compiler.c_fun) WARN(W_NON_CONSTANT_GLOBAL_INITIALIZER,type);

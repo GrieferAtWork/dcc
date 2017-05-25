@@ -101,6 +101,7 @@ int main(int argc, char *argv[]) {
  struct DCCSection *sec;
  int result = 0;
  char const *outfile_name = NULL;
+
 #define F_COMPILEONLY  0x00000001
 #define F_PREPROCESSOR 0x00000002
  uint32_t flags = 0;

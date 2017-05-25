@@ -783,6 +783,8 @@ again_after_label:
       vjmp();
      }
     }
+    /* Don't define the symbol again we've already aliased it! */
+    if (found_alias) goto again_after_missing_label;
 again_after_dead_label:
     /* Finally, define the label to jump to. */
     if (label_sym) t_defsym(label_sym);
