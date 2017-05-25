@@ -394,7 +394,7 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_PushRegs(DCC(rc_t) reg, DCC(rc_t) reg2);  
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushXReg(DCC(rc_t) reg);                             /* +1 (Same as 'DCCVStack_PushReg', but push as explicit, allowing for questionable operations such as '%ebp += 42') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushAddr(struct DCCSection *__restrict sec, DCC(target_ptr_t) addr); /* +1  (Push a section-relative address as a void-pointer) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushSizeof(struct DCCType const *__restrict t);      /* +1 (Also pushes the correct size for VLA types) */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_PushReturn(struct DCCType const *funtype);           /* +1 (Pushes the register/memory location used to store the return type of a function compatible with 'fundecl'. When 'fundecl' is NULL, the default register is pushed as 'int') */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_PushReturn(struct DCCDecl const *funty_decl);        /* +1 (Pushes the register/memory location used to store the return type of a function type 'funty_decl'. When 'fundecl' is NULL or not a function type, the default register is pushed as 'int') */
 #define                     DCCVStack_PushVoid() DCCVStack_PushInt(DCCTYPE_VOID,0)         /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Dup(int copy);                                       /* -1, +2 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_ReplaceCopy(void);                                   /* -1, +1 (Same as calling 'vdup(1),vswap(),vpop(1)') */

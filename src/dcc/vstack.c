@@ -592,10 +592,10 @@ DCCStackValue_LoadLValue(struct DCCStackValue *__restrict self) {
  DCCLinker_PEIndImport(self);
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
  while (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_LVALUE) {
-  DCCStackValue_FixBitfield(self);
-  DCCStackValue_FixTest(self);
   if (self->sv_flags&DCC_SFLAG_LVALUE) {
    struct DCCMemLoc addr; rc_t new_register;
+   DCCStackValue_FixTest(self);
+   DCCStackValue_FixBitfield(self);
    assert(!(self->sv_flags&DCC_SFLAG_TEST));
    assert(!(self->sv_flags&DCC_SFLAG_BITFLD));
    addr.ml_reg = new_register = self->sv_reg;
@@ -613,8 +613,6 @@ DCCStackValue_LoadLValue(struct DCCStackValue *__restrict self) {
    DCCDisp_MemMovReg(&addr,new_register);
    self->sv_reg = new_register;
   } else {
-   DCCStackValue_FixTest(self);
-   DCCStackValue_FixBitfield(self);
    self->sv_flags |= DCC_SFLAG_LVALUE;
    assert(!(self->sv_flags&DCC_SFLAG_TEST));
    assert(!(self->sv_flags&DCC_SFLAG_BITFLD));
@@ -787,6 +785,7 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
    *                 isn't 8-bit (as (E)SP/(E)BP can't be either)
    */
   if (!(self->sv_flags&DCC_SFLAG_LVALUE) &&
+       (DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_LVALUE) &&
        (self->sv_reg&(DCC_RC_I&~(DCC_RC_I8))) &&
       ((self->sv_reg&DCC_RI_MASK) == DCC_ASMREG_ESP ||
        (self->sv_reg&DCC_RI_MASK) == DCC_ASMREG_EBP)) {
@@ -797,6 +796,8 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
    self->sv_sym      = NULL;
    goto end_exclaim;
   }
+  DCCStackValue_LoadLValue(self);
+  assert(DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_LVALUE);
 
   /* Generate a test. */
   if (self->sv_flags&DCC_SFLAG_LVALUE) DCCStackValue_Load(self);
@@ -825,7 +826,8 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
 #if 1
  case TOK_INC:
  case TOK_DEC:
-  if (!(self->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_BITFLD))) {
+  if (!(self->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_BITFLD)) &&
+       (DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_LVALUE)) {
    /* Special case: Add/Sub offset from register. */
    if (op == TOK_INC) self->sv_const.it += 1;
    else               self->sv_const.it -= 1;
@@ -2462,7 +2464,7 @@ DCCVStack_PushSizeof(struct DCCType const *__restrict t) {
 }
 
 PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushReturn(struct DCCType const *funtype) {
+DCCVStack_PushReturn(struct DCCDecl const *funty_decl) {
  struct DCCStackValue slot;
  slot.sv_ctype.t_type = DCCTYPE_INT;
  slot.sv_ctype.t_base = NULL;
@@ -2470,12 +2472,13 @@ DCCVStack_PushReturn(struct DCCType const *funtype) {
  slot.sv_const.it     = 0;
  slot.sv_sym          = NULL;
  slot.sv_reg2         = DCC_RC_CONST;
- if (!funtype || DCCTYPE_GROUP(funtype->t_type) != DCCTYPE_FUNCTION) {
+ if (!funty_decl || (funty_decl->d_kind != DCC_DECLKIND_FUNCTION &&
+                     funty_decl->d_kind != DCC_DECLKIND_OLDFUNCTION)) {
 push_default:
   slot.sv_reg = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
  } else {
-  assert(funtype->t_base);
-  slot.sv_ctype = funtype->t_base->d_type;
+  /* Use the return type of a function type declaration. */
+  slot.sv_ctype = funty_decl->d_type;
   if (DCCTYPE_GROUP(slot.sv_ctype.t_type) == DCCTYPE_BUILTIN) {
    /* TODO: floating-point registers. */
    if (DCCTYPE_ISSIGNLESSBASIC(slot.sv_ctype.t_type,DCCTYPE_INT64)) {
@@ -3001,7 +3004,8 @@ DCCVStack_Unary(tok_t op) {
    !(vbottom->sv_flags&DCC_SFLAG_COPY)) {
   if (vbottom->sv_ctype.t_type&DCCTYPE_CONST)
       WARN(W_UNARY_CONSTANT_TYPE,&vbottom->sv_ctype);
-  if (vbottom->sv_flags&DCC_SFLAG_RVALUE)
+  if ((vbottom->sv_flags&DCC_SFLAG_RVALUE) &&
+      (DCCTYPE_GROUP(vbottom->sv_ctype.t_type) != DCCTYPE_LVALUE))
       WARN(W_UNARY_RVALUE_TYPE,&vbottom->sv_ctype);
  }
  if ((op == TOK_INC || op == TOK_DEC) &&
@@ -3092,7 +3096,8 @@ DCCVStack_Binary(tok_t op) {
  if (!is_cmp_op && !(vbottom[1].sv_flags&DCC_SFLAG_COPY)) {
   if (vbottom[1].sv_ctype.t_type&DCCTYPE_CONST)
       WARN(W_BINARY_CONSTANT_TYPE,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
-  if (vbottom[1].sv_flags&DCC_SFLAG_RVALUE)
+  if ((vbottom[1].sv_flags&DCC_SFLAG_RVALUE) &&
+      (DCCTYPE_GROUP(vbottom[1].sv_ctype.t_type) != DCCTYPE_LVALUE))
       WARN(W_BINARY_RVALUE_TYPE,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
  }
  switch (op) {
@@ -3198,7 +3203,8 @@ DCCVStack_Store(int initial_store) {
  if (!initial_store &&
     (target_type->t_type&DCCTYPE_CONST))
      WARN(W_ASSIGN_CONSTANT_TYPE,&vbottom->sv_ctype,target_type);
- if (target->sv_flags&DCC_SFLAG_RVALUE)
+ if ((target->sv_flags&DCC_SFLAG_RVALUE) &&
+     (DCCTYPE_GROUP(target->sv_ctype.t_type) != DCCTYPE_LVALUE))
      WARN(W_ASSIGN_RVALUE_TYPE,&vbottom->sv_ctype,target_type);
 
  /* Allow unqualified array assignment during an initial
@@ -3230,8 +3236,13 @@ DCCVStack_Store(int initial_store) {
  default: break;
  }
  /* Check if there is something wrong with implicitly casting the assignment. */
+#if 1
+ wid = DCCStackValue_AllowCast(vbottom,&target->sv_ctype,0);
+ if (wid) WARN(wid,&vbottom->sv_ctype,&target->sv_ctype);
+#else
  wid = DCCStackValue_AllowCast(vbottom,target_type,0);
  if (wid) WARN(wid,&vbottom->sv_ctype,target_type);
+#endif
 genstore:
  DCCStackValue_Store(vbottom,target,initial_store);
 donepop:
@@ -3646,7 +3657,7 @@ DCCStackValue_PushProm32(struct DCCStackValue *__restrict self) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Call(size_t n_args) {
  struct DCCStackValue *arg_first,*function;
- struct DCCType *pfunction_type,function_type;
+ struct DCCDecl *funty_decl;
  target_siz_t arg_size; uint32_t cc;
  assert(vsize >= (1+n_args));
  VLOG(-(ptrdiff_t)n_args,("vcall(%lu)\n",(unsigned long)n_args));
@@ -3681,30 +3692,22 @@ DCCVStack_Call(size_t n_args) {
   DCCStackValue_Unary(function,'&');
  }
 after_typefix:
- pfunction_type = &function->sv_ctype;
+ funty_decl = function->sv_ctype.t_base;
  if (DCCTYPE_GROUP(function->sv_ctype.t_type) == DCCTYPE_POINTER) {
-  assert(pfunction_type->t_base);
-  assert(pfunction_type->t_base->d_kind&DCC_DECLKIND_TYPE);
-  pfunction_type = &pfunction_type->t_base->d_type;
+  assert(funty_decl);
+  assert(funty_decl->d_kind&DCC_DECLKIND_TYPE);
+  funty_decl = funty_decl->d_type.t_base;
  }
- if (DCCTYPE_GROUP(pfunction_type->t_type) != DCCTYPE_FUNCTION) {
-  WARN(W_EXPECTED_FUNCTION_TYPE_FOR_CALL,pfunction_type);
-  pfunction_type = NULL;
+ if (funty_decl->d_kind != DCC_DECLKIND_FUNCTION &&
+     funty_decl->d_kind != DCC_DECLKIND_OLDFUNCTION) {
+  WARN(W_EXPECTED_FUNCTION_TYPE_FOR_CALL,&funty_decl->d_type);
+  funty_decl = NULL;
  }
- if (pfunction_type) {
-  function_type = *pfunction_type;
-  DCCDecl_XIncref(function_type.t_base);
-  pfunction_type = &function_type;
- } else {
-  function_type.t_type = 0;
-  function_type.t_base = NULL;
- }
-
+ DCCDecl_XIncref(funty_decl);
  cc = DCC_ATTRFLAG_CDECL;
- if (function_type.t_base &&
-     function_type.t_base->d_attr
-     ) cc = function_type.t_base->d_attr->a_flags&
-            DCC_ATTRFLAG_MASK_CALLCONV;
+ if (funty_decl && funty_decl->d_attr) {
+  cc = (funty_decl->d_attr->a_flags&DCC_ATTRFLAG_MASK_CALLCONV);
+ }
 
  /* TODO: Calling conventions other than cdecl and stdcall! */
  /* TODO: __attribute__((regparm(...))) */
@@ -3731,9 +3734,9 @@ after_typefix:
  }
  /* TODO: What about caller-allocated structure memory? */
 
- DCCVStack_PushReturn(pfunction_type);
+ DCCVStack_PushReturn(funty_decl);
  vbottom->sv_flags |= DCC_SFLAG_RVALUE;
- if (pfunction_type) DCCDecl_XDecref(function_type.t_base);
+ DCCDecl_XDecref(funty_decl);
 }
 #ifdef _MSC_VER
 #pragma warning(pop)

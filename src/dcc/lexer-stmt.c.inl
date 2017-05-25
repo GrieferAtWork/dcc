@@ -501,7 +501,7 @@ pushv:
     * register when generating the return expression. */
    DCCVStack_GetRegExact(DCC_RR_XAX);
    DCCParse_Expr(); /* x */
-   DCCVStack_PushReturn(funty_decl ? &funty_decl->d_type : NULL);
+   DCCVStack_PushReturn(funty_decl);
    vswap();   /* return, x */
    vstore(1); /* return=x */
    vpop(1);
