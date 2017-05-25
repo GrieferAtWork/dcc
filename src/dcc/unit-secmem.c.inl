@@ -43,6 +43,7 @@ DCCAllocRange_New(target_ptr_t addr,
  struct DCCAllocRange *result;
  assert(refcnt);
  assert(size);
+ assert(!(size&0x80000000));
  result = (struct DCCAllocRange *)malloc(sizeof(struct DCCAllocRange));
  if unlikely(!result) TPPLexer_SetErr();
  else {
@@ -142,6 +143,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
     /* Can directly extend the current range. */
     CURR_RANGE.ar_addr -= underflow;
     CURR_RANGE.ar_size += underflow;
+    assert(CURR_RANGE.ar_size);
     assert(!HAS_PREV_RANGE ||
             PREV_RANGE.ar_addr+PREV_RANGE.ar_size <= CURR_RANGE.ar_addr);
     if (HAS_PREV_RANGE &&
@@ -151,12 +153,14 @@ merge_curr_prev:
      /* Must merge the previous range with the current. */
      PREV_RANGE.ar_size += CURR_RANGE.ar_size;
      PREV_RANGE.ar_next  = CURR_RANGE.ar_next;
+     assert(PREV_RANGE.ar_size);
      free(range);
      range = &PREV_RANGE;
 #if DCC_DEBUG
      prange = NULL;
 #endif
     }
+    assert(CURR_RANGE.ar_size);
    } else {
     /* Must insert a new range before the current one. */
     newrange = DCCAllocRange_New(addr,underflow,n_refcnt);
@@ -206,6 +210,7 @@ merge_curr_prev:
      range->ar_next    = newrange;
      range             = newrange;
     }
+    assert(CURR_RANGE.ar_size);
     ASSERT_RELATION();
     size -= overflow;
     if (!size) goto end;
@@ -222,6 +227,7 @@ merge_curr_prev:
     /* Either a perfect match, or must split the region. */
     overlap = CURR_RANGE.ar_size;
     if (overlap > size) overlap = size;
+    assert(overlap);
     if (overlap == CURR_RANGE.ar_size) {
      /* Perfect match! */
      CURR_RANGE.ar_refcnt += n_refcnt;
@@ -240,6 +246,7 @@ merge_curr_prev:
      }
     } else {
      /* Partial match. */
+     assert(CURR_RANGE.ar_size > overlap);
      newrange = DCCAllocRange_New(CURR_RANGE.ar_addr+overlap,
                                   CURR_RANGE.ar_size-overlap,
                                   CURR_RANGE.ar_refcnt);
@@ -249,6 +256,7 @@ merge_curr_prev:
      CURR_RANGE.ar_next    = newrange;
      CURR_RANGE.ar_refcnt += n_refcnt;
     }
+    assert(CURR_RANGE.ar_size);
     ASSERT_RELATION();
     assert(addr == CURR_RANGE_BEGIN);
     if (HAS_PREV_RANGE &&
@@ -284,6 +292,7 @@ merge_curr_prev:
     newrange->ar_next   = CURR_RANGE.ar_next;
     CURR_RANGE.ar_next  = newrange;
     CURR_RANGE.ar_size -= subsize;
+    assert(CURR_RANGE.ar_size);
 #if DCC_DEBUG
     prange = &CURR_RANGE.ar_next;
     range  = newrange;
@@ -296,12 +305,17 @@ merge_curr_prev:
      *         >> Must skip the current range into 3 parts. */
     cenrange = DCCAllocRange_New(addr,size,CURR_RANGE.ar_refcnt+n_refcnt);
     if unlikely(!cenrange) goto err;
-    newrange = DCCAllocRange_New(addr+size,(CURR_RANGE_END-addr)-size,CURR_RANGE.ar_refcnt);
+    assert(CURR_RANGE_END > addr);
+    assert((CURR_RANGE_END-addr) > size);
+    newrange = DCCAllocRange_New(addr+size,
+                                (CURR_RANGE_END-addr)-size,
+                                 CURR_RANGE.ar_refcnt);
     if unlikely(!newrange) { free(cenrange); goto err; }
     newrange->ar_next  = CURR_RANGE.ar_next;
     cenrange->ar_next  = newrange;
     CURR_RANGE.ar_next = cenrange;
     CURR_RANGE.ar_size = addr-CURR_RANGE.ar_addr;
+    assert(CURR_RANGE.ar_size);
 #if DCC_DEBUG
     prange = &cenrange->ar_next;
     range  = newrange;
@@ -579,6 +593,194 @@ err: result = 0; goto end;
 }
 #endif
 
+#if 1
+PUBLIC int
+DCCSection_DDecref(struct DCCSection *__restrict self,
+                   target_ptr_t addr, target_siz_t size) {
+ struct DCCAllocRange **prange,*range,*newrange;
+ target_siz_t overlap;
+ int result = 1;
+ assert(self);
+ assert(!DCCSection_ISIMPORT(self));
+ if unlikely(!OK) goto err; /* Don't do anything if an error occurred. */
+ prange   = &self->sc_alloc;
+ REFLOG(("--- decref('%s',%#lx,%lu)\n",self->sc_start.sy_name->k_name,
+        (unsigned long)addr,(unsigned long)size));
+ /* Search range and only free reference that dropped to ZERO(0). */
+ while(size) {
+#define CURR_RANGE       (*range)
+#define NEXT_RANGE       (*range->ar_next)
+#define PREV_RANGE       (*(struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)))
+#define HAS_NEXT_RANGE   (range->ar_next != NULL)
+#define HAS_PREV_RANGE   (prange != &self->sc_alloc)
+#define CURR_RANGE_BEGIN (CURR_RANGE.ar_addr)
+#if DCC_DEBUG
+#define ASSERT_RELATION() \
+  (assert(!prange || !HAS_PREV_RANGE || (PREV_RANGE.ar_addr+PREV_RANGE.ar_size <= CURR_RANGE.ar_addr)),\
+              assert(!HAS_NEXT_RANGE || (NEXT_RANGE.ar_addr >= CURR_RANGE.ar_addr+CURR_RANGE.ar_size)))
+#else
+#define ASSERT_RELATION() (void)0
+#endif
+  range = *prange;
+  assert(size);
+  assert(CURR_RANGE.ar_size);
+  assert(CURR_RANGE.ar_refcnt);
+  assertf(addr >= CURR_RANGE_BEGIN,
+          "No reference count mapping for address range %#lx...%#lx in '%s'",
+         (unsigned long)addr,(unsigned long)(addr+size),
+          self->sc_start.sy_name->k_name);
+  ASSERT_RELATION();
+  if (addr == CURR_RANGE_BEGIN) {
+again_rangestart:
+   /* Truncate before, split, or delete this range. */
+   overlap = CURR_RANGE.ar_size;
+   if (overlap > size) overlap = size;
+   assert(overlap);
+   if (CURR_RANGE.ar_refcnt == 1) {
+    /* Last reference. - We can modify this range directly. */
+    DCCSection_DSafeFree(self,addr,overlap);
+    assert(CURR_RANGE.ar_size >= overlap);
+    CURR_RANGE.ar_size -= overlap;
+    if (CURR_RANGE.ar_size)
+     CURR_RANGE.ar_addr += overlap;
+    else {
+     /* Delete this range. */
+     *prange = range->ar_next;
+     free(range);
+     range = *prange;
+    }
+    assert(!range || CURR_RANGE.ar_size);
+   } else {
+    if (overlap != CURR_RANGE.ar_size) {
+     /* Must split the range at 'addr+overlap' */
+     assert(CURR_RANGE.ar_size > overlap);
+     newrange = DCCAllocRange_New(addr+overlap,
+                                  CURR_RANGE.ar_size-overlap,
+                                  CURR_RANGE.ar_refcnt);
+     if unlikely(!newrange) goto err;
+     newrange->ar_next  = CURR_RANGE.ar_next;
+     CURR_RANGE.ar_next = newrange;
+     CURR_RANGE.ar_size = overlap;
+    }
+    assert(addr    == CURR_RANGE.ar_addr);
+    assert(overlap == CURR_RANGE.ar_size);
+    /* Drop a reference from the range's remainder. */
+    --CURR_RANGE.ar_refcnt;
+    if (HAS_PREV_RANGE &&
+        PREV_RANGE.ar_refcnt                  == CURR_RANGE.ar_refcnt &&
+        PREV_RANGE.ar_addr+PREV_RANGE.ar_size == CURR_RANGE.ar_addr) {
+     /* Merge this range with its predecessor. */
+     PREV_RANGE.ar_size += CURR_RANGE.ar_size;
+     assert(PREV_RANGE.ar_size > CURR_RANGE.ar_size);
+     PREV_RANGE.ar_next  = CURR_RANGE.ar_next;
+     free(range);
+     range = &PREV_RANGE;
+#if DCC_DEBUG
+     prange = NULL;
+#endif
+    }
+    if (HAS_NEXT_RANGE &&
+        NEXT_RANGE.ar_refcnt == CURR_RANGE.ar_refcnt &&
+        NEXT_RANGE.ar_addr   == CURR_RANGE.ar_addr+CURR_RANGE.ar_size) {
+     newrange = &NEXT_RANGE;
+     /* Merge this range with its successor. */
+     CURR_RANGE.ar_size += newrange->ar_size;
+     assert(CURR_RANGE.ar_size > newrange->ar_size);
+     CURR_RANGE.ar_next  = newrange->ar_next;
+     free(newrange);
+    }
+    assert(CURR_RANGE.ar_size);
+   }
+#if DCC_DEBUG
+   if (range) ASSERT_RELATION();
+#endif
+   /* Update the decref address/size */
+   size -= overlap;
+   if (!size) goto end;
+   addr += overlap;
+   assert(range);
+   /* This can happen when multiple successive ranges must be decref'ed. */
+   if (addr == CURR_RANGE_BEGIN)
+       goto again_rangestart;
+  }
+  assert(addr > CURR_RANGE_BEGIN);
+  {
+   target_ptr_t range_end;
+   range_end = CURR_RANGE.ar_addr+CURR_RANGE.ar_size;
+#define CURR_RANGE_END range_end
+   if (addr >= CURR_RANGE_END) goto next; /* These aren't the ranges you're looking for... */
+   assert(addr > CURR_RANGE_BEGIN);
+   assert(addr < CURR_RANGE_END);
+   overlap = CURR_RANGE_END-addr;
+   if (overlap > size) overlap = size;
+   assert(overlap < CURR_RANGE.ar_size);
+   if (addr+overlap == CURR_RANGE_END) {
+    /* Truncate after 'addr+overlap' or split the current range into 2 parts. */
+    if (CURR_RANGE.ar_refcnt == 1) {
+     DCCSection_DSafeFree(self,addr,overlap);
+    } else {
+     /* Must split the current range after 'addr' */
+     newrange = DCCAllocRange_New(addr,overlap,
+                                  CURR_RANGE.ar_refcnt-1);
+     if unlikely(!newrange) goto err;
+     newrange->ar_next  = CURR_RANGE.ar_next;
+     CURR_RANGE.ar_next = newrange;
+    }
+    assert(overlap < CURR_RANGE.ar_size);
+    CURR_RANGE.ar_size -= overlap;
+   } else {
+    assert(overlap == size);
+    /* Split the current range into 3 parts. */
+    if (CURR_RANGE.ar_refcnt == 1) {
+     /* Can re-use parts of the current range. */
+     assert(CURR_RANGE_END > (addr+overlap));
+     newrange = DCCAllocRange_New(addr+overlap,
+                                  CURR_RANGE_END-(addr+overlap),
+                                  CURR_RANGE.ar_refcnt);
+     if unlikely(!newrange) goto err;
+     DCCSection_DSafeFree(self,addr,overlap);
+     newrange->ar_next  = CURR_RANGE.ar_next;
+     CURR_RANGE.ar_next = newrange;
+     assert(addr > CURR_RANGE_BEGIN);
+     CURR_RANGE.ar_size = addr-CURR_RANGE_BEGIN;
+    } else {
+     struct DCCAllocRange *insrange;
+     /* Must really split the range into 3 parts. */
+     insrange = DCCAllocRange_New(addr,overlap,
+                                  CURR_RANGE.ar_refcnt-1);
+     if unlikely(!insrange) goto err;
+     assert(CURR_RANGE_END > (addr+overlap));
+     newrange = DCCAllocRange_New(addr+overlap,
+                                  CURR_RANGE_END-(addr+overlap),
+                                  CURR_RANGE.ar_refcnt);
+     if unlikely(!newrange) { free(insrange); goto err; }
+     newrange->ar_next  = CURR_RANGE.ar_next;
+     insrange->ar_next  = newrange;
+     CURR_RANGE.ar_next = insrange;
+     assert(addr > CURR_RANGE_BEGIN);
+     CURR_RANGE.ar_size = addr-CURR_RANGE_BEGIN;
+    }
+    ASSERT_RELATION();
+    goto end;
+   }
+   size -= overlap;
+   if (!size) goto end;
+   addr += overlap;
+#undef CURR_RANGE_END
+  }
+next:;
+  prange = &range->ar_next;
+#undef CURR_RANGE_BEGIN
+#undef HAS_PREV_RANGE
+#undef HAS_NEXT_RANGE
+#undef PREV_RANGE
+#undef NEXT_RANGE
+#undef CURR_RANGE
+ }
+end: return result;
+err: result = 0; goto end;
+}
+#else
 PUBLIC int
 DCCSection_DDecref(struct DCCSection *__restrict self,
                    target_ptr_t addr, target_siz_t size) {
@@ -627,19 +829,23 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
      assert(addr_end >= range->ar_addr);
      delsize = (addr_end-range->ar_addr);
      assert(delsize < range->ar_size);
-     DCCSection_DSafeFree(self,range->ar_addr,delsize);
+     assert(addr == range->ar_addr);
+     DCCSection_DSafeFree(self,addr,delsize);
      if (range->ar_refcnt == 1) {
       /* Must shrink this range. */
+      range->ar_addr += delsize;
+      range->ar_size -= delsize;
      } else {
       /* Must split this range. */
-      newrange = DCCAllocRange_New(addr,range_end-addr,range->ar_refcnt);
+      newrange = DCCAllocRange_New(addr+delsize,
+                                   range_end-(addr+delsize),
+                                   range->ar_refcnt);
       if unlikely(!newrange) goto err;
       newrange->ar_next = range->ar_next;
-      range->ar_next = newrange;
+      range->ar_next    = newrange;
+      range->ar_size    = delsize;
       --range->ar_refcnt;
      }
-     range->ar_addr += delsize;
-     range->ar_size -= delsize;
      assert(range->ar_size);
      assert(!range->ar_next || range->ar_addr+range->ar_size <= range->ar_next->ar_addr);
      size -= delsize;
@@ -719,6 +925,7 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
 end: return result;
 err: result = 0; goto end;
 }
+#endif
 
 PUBLIC int
 DCCSection_DIncref(struct DCCSection *__restrict self,

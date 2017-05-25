@@ -410,8 +410,13 @@ DCCFreeData_Release(struct DCCFreeData *__restrict self,
 
 struct DCCAllocRange {
  struct DCCAllocRange *ar_next;   /*< [0..1][->ar_addr > ar_addr+ar_size] Next range (Address range of this must neither overlap, or touch 'ar_addr+ar_size', as well as be greater) */
+#ifdef DCC_PRIVATE_API
+ target_ptr_t          ar_addr;   /*< Start address. */
+ target_siz_t          ar_size;   /*< [!0] Range size. */
+#else
  DCC(target_ptr_t)     ar_addr;   /*< Start address. */
  DCC(target_siz_t)     ar_size;   /*< [!0] Range size. */
+#endif
  unsigned int          ar_refcnt; /*< [!0] Range reference counter (When this hits ZERO, the range is deallocated). */
 };
 

@@ -1324,6 +1324,19 @@ DEF_WARNING(W_FUNCTION_EXIT_IN_DIFFERENT_SECTION,(WG_LINKER),WSTATE_WARN,{
        end->sc_start.sy_name->k_name);
  DECL_PRINT("See reference to function");
 })
+DEF_WARNING(W_FUNCTION_EXIT_BEFORE_ENTRY,(WG_LINKER),WSTATE_WARN,{
+ struct DCCSection *start; target_ptr_t start_addr;
+ struct DCCSection *end;   target_ptr_t end_addr;
+ DECL_LOAD();
+ start = ARG(struct DCCSection *);
+ start_addr = ARG(target_ptr_t);
+ end = ARG(struct DCCSection *);
+ end_addr = ARG(target_ptr_t);
+ WARNF("Function '%s' ends at %s+%#lx before it starts at %s+%#lx",DECL_NAME(),
+       start->sc_start.sy_name->k_name,(unsigned long)start_addr,
+       end->sc_start.sy_name->k_name,(unsigned long)end_addr);
+ DECL_PRINT("See reference to function");
+})
 DEF_WARNING(W_DECL_FUNCTION_SECTION_NOT_EXECUTABLE,(WG_LINKER),WSTATE_WARN,{
  struct DCCSection *sec;
  DECL_LOAD(); sec = ARG(struct DCCSection *);

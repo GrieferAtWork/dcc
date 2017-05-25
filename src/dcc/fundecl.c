@@ -105,6 +105,8 @@ DCCFunctionFrame_Enter(struct DCCFunctionFrame *__restrict self,
  }
  /* Define the location for the function symbol. */
  t_defsym(fun_sym);
+ assert(fun_sym->sy_sec == self->ff_new_section);
+
  if (!(self->ff_flags&DCC_FUNCTIONFRAME_FLAG_NAKED)) {
   DCCDisp_FunProlog(&self->ff_dispinfo);
   /* Allocate a new return symbol. */
@@ -163,9 +165,19 @@ DCCFunctionFrame_Leave(struct DCCFunctionFrame *__restrict self) {
 
  assert(self->ff_funsym);
  if (unit.u_curr == self->ff_new_section) {
-  /* Fill in the actual size of this function.
-   * >> This is required for data association and cleanup of unused functions. */
-  DCCSym_SetSize(self->ff_funsym,(size_t)(t_addr-self->ff_funsym->sy_addr));
+  target_ptr_t funbegin = self->ff_funsym->sy_addr;
+  target_ptr_t funend   = t_addr;
+  if (funend >= funbegin) {
+   /* Fill in the actual size of this function.
+    * >> This is required for data association and cleanup of unused functions. */
+   DCCSym_SetSize(self->ff_funsym,(size_t)(funend-funbegin));
+  } else {
+   /* ??? This could happen if assembly re-positions
+    *     the text point, but seriously: WTF?!? */
+   WARN(W_FUNCTION_EXIT_BEFORE_ENTRY,
+        compiler.c_fun,unit.u_curr,funend,
+        self->ff_new_section,funbegin);
+  }
  }
  
  /* Restore all the things... */
