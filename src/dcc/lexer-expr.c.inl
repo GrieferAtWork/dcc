@@ -1187,6 +1187,10 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
    shared_storage = *vbottom; /* Keep track of how the true-branch was stored (so that the false-branch can mirror it). */
    ++vbottom;                 /* Don't destroy this. */
    assert(!(shared_storage.sv_flags&DCC_SFLAG_COPY));
+   /* Prevent warnings about assignment to r-value.
+    * NOTE: Remember that 'DCC_SFLAG_RVALUE' does not change the semantics of
+    *       operation with stack-values. - It merely controls some warnings. */
+   shared_storage.sv_flags &= ~(DCC_SFLAG_RVALUE);
    ff_label = DCCUnit_AllocSym();
    /* dirty hack! (This is only used to prevent DCC from crashing)
     * >> It has no syntactic meaning! */
