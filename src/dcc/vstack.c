@@ -2552,7 +2552,7 @@ DCCVStack_PushStr(char const *__restrict p, size_t s) {
  if (TPPLexer_Current->l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
   slot.sv_ctype.t_type |= DCCTYPE_UNSIGNED;
  /* Use a character array as typing for the string. */
- DCCType_MkArray(&slot.sv_ctype,s);
+ DCCType_MkArray(&slot.sv_ctype,(s+1));
  assert(slot.sv_ctype.t_base);
  slot.sv_flags    = DCC_SFLAG_LVALUE|DCC_SFLAG_RVALUE;
  slot.sv_reg      = DCC_RC_CONST;

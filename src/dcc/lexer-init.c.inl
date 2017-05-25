@@ -388,6 +388,7 @@ end_brace:
    else YIELD();
   }
  } else {
+#if 0 /* TODO: FIXME: This currently breaks struct/string assignment! */
   /* Special case: handle missing braces around struct/union/array types.
    * NOTE: Though we must not handle missing braces around arithmetic structure types! */
   if (type->t_base) {
@@ -402,6 +403,7 @@ end_brace:
     goto parse_braceblock;
    }
   }
+#endif
   DCCParse_Expr1();
   if (vbottom->sv_reg != DCC_RC_CONST) {
    if (!compiler.c_fun) WARN(W_NON_CONSTANT_GLOBAL_INITIALIZER,type);
