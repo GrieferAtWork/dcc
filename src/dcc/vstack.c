@@ -372,6 +372,7 @@ apply_masks:
    assert(iter->t_base);
    assert(iter->t_base->d_kind&DCC_DECLKIND_TYPE);
    DCCStackValue_Unary(self,'&');
+   assert(iter != &iter->t_base->d_type);
    iter = &iter->t_base->d_type;
   }
  } else {
@@ -2254,10 +2255,14 @@ again:
         ((end->sv_reg2&DCC_RC_MASK) == rc))) {
     /* Make sure to skip pointer registers if those aren't allowed. */
     if (!(wanted_set&(1 << (end->sv_reg&7))) &&
-        !(wanted_set&(1 << (end->sv_reg2&7)))
-        ) continue;
+        (end->sv_reg2 == DCC_RC_CONST ||
+        !(wanted_set&(1 << (end->sv_reg2&7)))))
+        continue;
     /* Kill the stack value. */
     DCCStackValue_Kill(end);
+    assert(end->sv_flags&DCC_SFLAG_LVALUE);
+    assert(end->sv_reg == DCC_RR_XBP);
+    assert(end->sv_reg2 == DCC_RC_CONST);
     /* Start over.
      * NOTE: Must search again for a case like 'al'+'ah' were
      *       both in use, but we only killed one of them. */
@@ -3853,22 +3858,27 @@ warn_argc:
  /* TODO: Calling conventions other than cdecl and stdcall! */
  /* TODO: __attribute__((regparm(...))) */
  arg_size    = 0;
+
+#if DCC_TARGET_STACKDOWN
  while (vbottom != function) {
   assert(vbottom < function);
   if (!untyped) {
    --argv;
    assert(argv->sf_decl);
+   /* Cast arguments to those specified by 'function'
+    * (unless it's an old-style, or variadic function). */
    vcast(&argv->sf_decl->d_type,0);
   } else {
    --untyped;
+   /* Just do regular type promotions on anything else. */
    vprom();
   }
-  /* TODO: Cast arguments to those specified by 'function'
-   *      (unless it's an old-style, or variadic function). */
   arg_size += DCCStackValue_PushAligned(vbottom,stack_align);
   vpop(1);
  }
-
+#else
+#error FIXME
+#endif
 
  DCCVStack_KillAll(); /* Kill all temporary registers still in use. */
  DCCStackValue_Call(function); /* Generate the call instructions. */
