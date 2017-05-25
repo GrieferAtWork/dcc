@@ -96,29 +96,17 @@ DCCDisp_MemsBinRegs(tok_t op, struct DCCMemLoc const *__restrict src,
  if (op == '?') {
   /* TODO: Special handling for compare operations. */
  }
- DCCDisp_MemsBinReg(op,src,src_bytes,dst,src_unsigned);
  if (dst2 != DCC_RC_CONST) {
   target_siz_t s = DCC_RC_SIZE(dst);
+  if (s > src_bytes) s = src_bytes;
+  DCCDisp_MemsBinReg(op,src,s,dst,src_unsigned);
+  new_src = *src,new_src.ml_off += s;
+  src_bytes -= s;
        if (op == '+') op = TOK_INC;
   else if (op == '-') op = TOK_DEC;
-  if (s <= src_bytes) {
-   /* zero-/sign-extend. */
-   if (!src_bytes || src_unsigned) {
-    struct DCCSymAddr cst = {0,NULL};
-    DCCDisp_CstBinReg(op,&cst,dst2,1);
-   } else if (op == '=') {
-     DCCDisp_RegMovReg(dst,dst2,1);
-     DCCDisp_SignExtendReg(dst2);
-   } else {
-    struct DCCMemLoc src_max = *src;
-    src_max.ml_off += (src_bytes-1);
-    DCCDisp_MemSignExtendReg(&src_max,dst2);
-   }
-  } else {
-   src_bytes -= s;
-   new_src = *src,new_src.ml_off += s;
-   DCCDisp_MemsBinReg(op,&new_src,src_bytes,dst2,src_unsigned);
-  }
+  DCCDisp_MemsBinReg(op,&new_src,src_bytes,dst2,src_unsigned);
+ } else {
+  DCCDisp_MemsBinReg(op,src,src_bytes,dst,src_unsigned);
  }
 }
 PUBLIC void
