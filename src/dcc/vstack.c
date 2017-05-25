@@ -2406,18 +2406,25 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_PushDecl(struct DCCDecl *__restrict decl) {
  struct DCCStackValue slot;
  assert(decl);
- if (decl->d_kind != DCC_DECLKIND_MLOC) {
+ if (!(decl->d_kind&DCC_DECLKIND_MLOC)) {
   vpushi(DCCTYPE_VOID,0);
   return;
  }
  if (decl->d_mdecl.md_loc.ml_reg != DCC_RC_CONST) {
   DCCStackValue_SetMemDecl(&slot,&decl->d_mdecl);
  } else {
+  struct DCCSym *sym = decl->d_mdecl.md_loc.ml_sym;
   slot.sv_reg      = decl->d_mdecl.md_loc.ml_reg;
   slot.sv_const.it = decl->d_mdecl.md_loc.ml_off;
-  slot.sv_sym      = decl->d_mdecl.md_loc.ml_sym;
+  if (sym && sym->sy_sec == &DCCSection_Abs &&
+    !(sym->sy_flags&DCC_SYMFLAG_WEAK)) {
+   /* Inline an absolute symbol value. */
+   slot.sv_const.it += sym->sy_addr;
+   sym               = NULL; /* Set NULL for 'sv_sym' below. */
+  }
+  slot.sv_sym = sym;
  }
- slot.sv_flags = DCC_SFLAG_LVALUE;
+ slot.sv_flags = (decl->d_kind&(DCC_DECLKIND_MREF&~(DCC_DECLKIND_MLOC))) ? 0 : DCC_SFLAG_LVALUE;
  slot.sv_reg2  = DCC_RC_CONST;
  slot.sv_ctype = decl->d_type;
  vpush(&slot);

@@ -773,7 +773,7 @@ again_after_label:
     }
     if (label_sym && /* Special case: re-enable code within a dead branch. */
        (compiler.c_flags&(DCC_COMPILER_FLAG_NOCGEN|DCC_COMPILER_FLAG_DEAD)) ==
-                       (DCC_COMPILER_FLAG_NOCGEN|DCC_COMPILER_FLAG_DEAD)) {
+                         (DCC_COMPILER_FLAG_NOCGEN|DCC_COMPILER_FLAG_DEAD)) {
      compiler.c_flags &= ~(DCC_COMPILER_FLAG_NOCGEN|DCC_COMPILER_FLAG_DEAD);
      if (compiler.c_deadjmp) {
       /* Must jump to a given target to skip dead code above. */

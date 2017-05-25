@@ -58,7 +58,7 @@ _DCCDecl_Delete(struct DCCDecl *__restrict self) {
  self->d_type.t_base = NULL;
  dattr = self->d_attr;
  self->d_attr = NULL;
- if (self->d_kind == DCC_DECLKIND_MLOC) {
+ if (self->d_kind&DCC_DECLKIND_MLOC) {
   if (self->d_mdecl.md_loc.ml_sym) {
    struct DCCSym *sym = self->d_mdecl.md_loc.ml_sym;
    self->d_mdecl.md_loc.ml_sym = NULL;
@@ -121,7 +121,7 @@ DCCDecl_Clear(struct DCCDecl *__restrict self,
  self->d_type.t_base = NULL;
  dattr = self->d_attr;
  self->d_attr = NULL;
- if (old_kind == DCC_DECLKIND_MLOC) {
+ if (old_kind&DCC_DECLKIND_MLOC) {
   if (self->d_mdecl.md_loc.ml_sym) {
    struct DCCSym *sym = self->d_mdecl.md_loc.ml_sym;
    self->d_mdecl.md_loc.ml_sym = NULL;
@@ -183,8 +183,7 @@ DCCDecl_Equal(struct DCCDecl const *__restrict a,
   default: break;
   }
   return 1;
- } else if (a->d_kind == DCC_DECLKIND_MLOC &&
-            b->d_kind == DCC_DECLKIND_MLOC) {
+ } else if (a->d_kind == b->d_kind && (a->d_kind&DCC_DECLKIND_MLOC)) {
   if (same_type && !DCCType_IsCompatible(&a->d_type,&b->d_type,0)) return 0;
   return DCCMemLoc_Equal(&a->d_mdecl.md_loc,&b->d_mdecl.md_loc);
  }
@@ -526,7 +525,7 @@ DCCDecltab_GetDecl(struct DCCDecltab *__restrict self,
  result = self->dt_declv[name->k_id % self->dt_decla];
  while (result && result->d_name != name) result = result->d_next;
 #if DCC_DEBUG
- if (result && result->d_kind == DCC_DECLKIND_MLOC)
+ if (result && (result->d_kind&DCC_DECLKIND_MLOC))
   DCCSym_XASSERT(result->d_mdecl.md_loc.ml_sym);
 #endif
  return result;
@@ -540,7 +539,7 @@ DCCDecltab_NewDecl(struct DCCDecltab *__restrict self,
   while (result && result->d_name != name) result = result->d_next;
   if (result) {
 #if DCC_DEBUG
-   if (result->d_kind == DCC_DECLKIND_MLOC)
+   if (result->d_kind&DCC_DECLKIND_MLOC)
     DCCSym_XASSERT(result->d_mdecl.md_loc.ml_sym);
 #endif
    return result;
@@ -555,7 +554,7 @@ DCCDecltab_NewDecl(struct DCCDecltab *__restrict self,
   *pbucket = result; /* Inherit reference. */
  }
 #if DCC_DEBUG
- if (result && result->d_kind == DCC_DECLKIND_MLOC)
+ if (result && (result->d_kind&DCC_DECLKIND_MLOC))
   DCCSym_XASSERT(result->d_mdecl.md_loc.ml_sym);
 #endif
  return result;

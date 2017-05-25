@@ -171,7 +171,7 @@ DCCParse_Function(struct DCCDecl *fun_decl, struct TPPKeyword const *asmname,
   if (fun_decl) {
    if (fun_decl->d_kind == DCC_DECLKIND_NONE)
        fun_decl->d_kind =  DCC_DECLKIND_MLOC;
-   if (fun_decl->d_kind == DCC_DECLKIND_MLOC) {
+   if (fun_decl->d_kind&DCC_DECLKIND_MLOC) {
     fun_sym = fun_decl->d_mdecl.md_loc.ml_sym;
     /* TODO: Shouldn't local function be static+unnamed to prevent symbol re-declaration?
      *       What does GCC do here? (Go figure it out and mirror that behavior!) */
@@ -273,7 +273,7 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
  if (decl) {
   if (decl->d_kind != DCC_DECLKIND_NONE) {
    int declaration_did_change = 0;
-   if (decl->d_kind == DCC_DECLKIND_MLOC) {
+   if (decl->d_kind&DCC_DECLKIND_MLOC) {
     /* Warn about re-declarations. */
     if (decl->d_mdecl.md_loc.ml_reg != DCC_RC_CONST) {
      WARN(W_DECL_ALREADY_DEFINED,decl);

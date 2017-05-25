@@ -33,9 +33,10 @@
 DCC_DECL_BEGIN
 
 #define DCC_DECLKIND_NONE         0x0000 /*< Unused declaration. */
-#define DCC_DECLKIND_MLOC         0x0001 /*< An addressable location in memory (HINT: May also be abused for constants). */
+#define DCC_DECLKIND_MLOC         0x0001 /*< An addressable location in memory. */
+#define DCC_DECLKIND_MREF         0x0003 /*< Same as 'DCC_DECLKIND_MLOC', but the memory location shall not be dereferenced (HINT: May also be abused for constants). */
 
-#define DCC_DECLKIND_TYPE         0x0002 /*< A C type (Used as flag). */
+#define DCC_DECLKIND_TYPE         0x0008 /*< A C type (Used as flag). */
 #define DCC_DECLKIND_DECL        (DCC_DECLKIND_TYPE|0x0000) /*< A regular type declaration (aka. 'typedef int INT;'). */
 #define DCC_DECLKIND_ENUM        (DCC_DECLKIND_TYPE|0x0010) /*< An enum type (aka. 'enum foo { ... };') ('d_type' is an alias for 'int'). */
 #define DCC_DECLKIND_STRUCT      (DCC_DECLKIND_TYPE|0x0020) /*< A struct type (aka. 'struct bar { ... };') ('d_type' is a self-reference). */

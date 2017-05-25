@@ -1070,7 +1070,7 @@ DCCParse_Enum(void) {
      DCCDecl_SetAttr(constant_decl,&attr);
      /* TODO: clamp to int? (Shouldn't always be done; also: enum classes?) */
      assert(constant_decl->d_mdecl.md_loc.ml_reg == DCC_RC_CONST);
-     constant_decl->d_kind                = DCC_DECLKIND_MLOC;
+     constant_decl->d_kind                = DCC_DECLKIND_MREF;
      constant_decl->d_mdecl.md_loc.ml_off = (target_off_t)next_val.e_int;
      constant_decl->d_mdecl.md_loc.ml_sym = next_val.e_sym;
      DCCSym_XIncref(next_val.e_sym); /* Create reference. */
