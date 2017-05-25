@@ -1105,8 +1105,15 @@ advance_src:
    --s.ls_code;
    if (must_align) goto do_align;
    /* Handle the remaining text. */
+   assert(s.ls_src_text <= s.ls_src_file->f_end);
+   arg = (size_t)(s.ls_src_file->f_end-s.ls_src_text);
+   ptroff = (size_t)(text_pointer-s.ls_exp_text);
+   if (arg > ptroff) arg = ptroff;
+   /* Make sure the last text portion is also identical! */
+   if (arg != (size_t)(s.ls_exp_end-s.ls_exp_text) ||
+       memcmp(s.ls_src_text,s.ls_exp_text,arg) != 0) return 0;
    lcinfo_handle(&s.ls_info,s.ls_src_text,
-                (size_t)(text_pointer-s.ls_exp_text));
+                (size_t)(s.ls_src_file->f_end-s.ls_src_text));
    goto done;
   }
  }
