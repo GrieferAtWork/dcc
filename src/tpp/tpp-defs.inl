@@ -537,10 +537,12 @@ WGROUP(WG_DEPRECATED,          "deprecated",          WSTATE_ERROR)
  assert(textfile->f_kind == TPPFILE_KIND_TEXT);
  WARNF("Redefining macro '%s'\n",kwd->k_name); 
  WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
-       ? "%s(%d) : " : "%s:%d: "
+       ? "%s(%d,%d) : " : "%s:%d:%d: "
        , textfile->f_textfile.f_usedname
        ? textfile->f_textfile.f_usedname->s_text
-       : textfile->f_name,kwd->k_macro->f_macro.m_defline+1);
+       : textfile->f_name
+       ,(int)(kwd->k_macro->f_macro.m_defloc.lc_line+1)
+       ,(int)(kwd->k_macro->f_macro.m_defloc.lc_col+1));
  WARNF("See reference to previous definition"); 
 })
 /*26*/DEF_WARNING(W_EXPECTED_KEYWORD_AFTER_UNDEF,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after #undef, but got " TOK_S,TOK_A)) /*< OLD(TPPWarn_ExpectedKeywordAfterUndef). */
@@ -553,7 +555,8 @@ WGROUP(WG_DEPRECATED,          "deprecated",          WSTATE_ERROR)
  ifdef_slot = ARG(struct TPPIfdefStackSlot *);
  WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
        ? "%s(%d) : " : "%s:%d: ",
-       ifdef_slot->iss_file->f_name,ifdef_slot->iss_line+1);
+       ifdef_slot->iss_file->f_name,
+      (int)(ifdef_slot->iss_line+1));
  WARNF("See reference to previous #else");
 })
 /*30*/DEF_WARNING(W_ELIF_WITHOUT_IF,(WG_SYNTAX),WSTATE_WARN,WARNF("#elif without #if")) /*< OLD(TPPWarn_ElifWithoutIfdef). */
@@ -564,7 +567,8 @@ WGROUP(WG_DEPRECATED,          "deprecated",          WSTATE_ERROR)
  ifdef_slot = ARG(struct TPPIfdefStackSlot *);
  WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
        ? "%s(%d) : " : "%s:%d: ",
-       ifdef_slot->iss_file->f_name,ifdef_slot->iss_line+1);
+       ifdef_slot->iss_file->f_name,
+      (int)(ifdef_slot->iss_line+1));
  WARNF("See reference to #else");
 })
 /*32*/DEF_WARNING(W_IF_WITHOUT_ENDIF,(WG_SYNTAX),WSTATE_WARN,WARNF("#if without #endif")) /*< [struct TPPIfdefStackSlot *] OLD(TPPWarn_IfdefWithoutEndif). */

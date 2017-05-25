@@ -370,6 +370,12 @@ struct TPP(arginfo_t) {
 #endif
 };
 
+struct TPPLCInfo {
+ /* TPP Line/Column information. */
+ TPP(line_t) lc_line; /*< zero-based line index in the associated file. */
+ TPP(col_t)  lc_col;  /*< zero-based column index in the associated file (NOTE: Tabs are already expanded in this). */
+};
+
 
 struct TPPMacroFile {
  /* [owned(f_name) = m_flags&TPP_MACROFILE_FLAG_OWNSNAME] */
@@ -394,8 +400,7 @@ struct TPPMacroFile {
 #define TPP_MACROFILE_KIND_EXPANDED        0x00000002 /*< Expanded version of a function macro. */
  uint32_t               m_flags;         /*< [const] Macro flags. */
  /*ref*/struct TPPFile *m_deffile;       /*< [const][0..1][(!= NULL) == (m_textref != NULL)] The file that originally defined this macro (or NULL if predefined, or from the commandline). */
- TPP(line_t)            m_defline;       /*< [const] Line in which this macro was defined (based on first character of the macro's text). */
- TPP(col_t)             m_defcol;        /*< [const] Column at which this macro was defined (based on first character of the macro's text). */
+ struct TPPLCInfo       m_defloc;        /*< [const] Line/col where this macro was defined (based on first character of the macro's text, aka. ':f_begin'). */
  /*ref*/struct TPPFile *m_pushprev;      /*< [0..1] Previous version of a pushed macro. */
  size_t                 m_pushcount;     /*< The amount of times this macro was pushed (used to handle multiple calls to 'push_macro'). */
  /* The following */
@@ -462,18 +467,42 @@ TPPFUN void TPPFile_Destroy(struct TPPFile *__restrict self);
 TPPFUN /*ref*/struct TPPFile *
 TPPFile_NewExplicitInherited(/*ref*/struct TPPString *__restrict inherited_text);
 
+/* Query file/line information a the given text_pointer.
+ * HINT: You can simply pass 'self->f_pos' for
+ *       information in the file's current source location.
+ * NOTE: The caller is responsible for only passing a value
+ *       for 'text_pointer', that is conforming to:
+ *       'self->f_begin <= text_pointer <= self->f_end'
+ *      (Yes: 'self->f_end' is still valid, although
+ *       technically already out-of-bounds, but an exception
+ *       is made to allow for safe calls to this function, even
+ *       when 'text_pointer' was retrieved from an EOF token) */
+TPPFUN void
+TPPFile_LCAt(struct TPPFile const *__restrict self,
+             struct TPPLCInfo *__restrict info,
+             char const *__restrict text_pointer);
+
+
 /* Returns the zero-based line index of a given text pointer.
  * NOTE: The returned line index is always absolute to
  *       the original text file and continues to be valid
  *       even when the given file is a macro defined within. */
-TPPFUN TPP(line_t)
+TPP_LOCAL TPP(line_t)
 TPPFile_LineAt(struct TPPFile const *__restrict self,
-               char const *__restrict text_pointer);
+               char const *__restrict text_pointer) {
+ struct TPPLCInfo info;
+ TPPFile_LCAt(self,&info,text_pointer);
+ return info.lc_line;
+}
 
 /* Similar to 'TPPFile_LineAt', but instead returns the column number. */
-TPPFUN TPP(col_t)
+TPP_LOCAL TPP(col_t)
 TPPFile_ColumnAt(struct TPPFile const *__restrict self,
-                 char const *__restrict text_pointer);
+                 char const *__restrict text_pointer) {
+ struct TPPLCInfo info;
+ TPPFile_LCAt(self,&info,text_pointer);
+ return info.lc_col;
+}
 
 /* Returns the human-readable filename of a given file.
  * NOTE: For macro files, the returned filename continues
@@ -973,6 +1002,7 @@ struct TPPToken {
  *       pointers to figure out what you actually want to know.
  */
 #define TPPLexer_TRUE_FILE(plength) TPPFile_Filename(TPPLexer_Current->l_token.t_file,plength)
+#define TPPLexer_TRUE_LC(info)      TPPFile_LCAt(TPPLexer_Current->l_token.t_file,info,TPPLexer_Current->l_token.t_begin)
 #define TPPLexer_TRUE_LINE()        TPPFile_LineAt(TPPLexer_Current->l_token.t_file,TPPLexer_Current->l_token.t_begin)
 #define TPPLexer_TRUE_COLUMN()      TPPFile_ColumnAt(TPPLexer_Current->l_token.t_file,TPPLexer_Current->l_token.t_begin)
 
@@ -983,6 +1013,7 @@ TPPFUN struct TPPFile *TPPLexer_Basefile(void);
 
 #define TPPLexer_FILE(plength)     TPPFile_Filename(TPPLexer_Textfile(),plength)
 #define TPPLexer_BASEFILE(plength) TPPFile_Filename(TPPLexer_Basefile(),plength)
+TPP_LOCAL void TPPLexer_LC(struct TPPLCInfo *__restrict info) { struct TPPFile *f = TPPLexer_Textfile(); TPPFile_LCAt(f,info,f->f_pos); }
 TPP_LOCAL TPP(line_t) TPPLexer_LINE(void) { struct TPPFile *f = TPPLexer_Textfile(); return TPPFile_LineAt(f,f->f_pos); }
 TPP_LOCAL TPP(col_t) TPPLexer_COLUMN(void) { struct TPPFile *f = TPPLexer_Textfile(); return TPPFile_ColumnAt(f,f->f_pos); }
 
@@ -1061,6 +1092,7 @@ TPP_LOCAL TPP(col_t) TPPLexer_COLUMN(void) { struct TPPFile *f = TPPLexer_Textfi
                                      TPPLEXER_TOKEN_ARROW|TPPLEXER_TOKEN_C_COMMENT|\
                                      TPPLEXER_TOKEN_CPP_COMMENT)
 
+
 struct TPPLexer {
  struct TPPToken       l_token;      /*< The current token. */
  struct TPPFile       *l_eob_file;   /*< [0..1] When non-NULL prevent seek_on_eob when this file is atop the stack.
@@ -1086,6 +1118,11 @@ struct TPPLexer {
 };
 #define TPPLEXER_DEFAULT_LIMIT_MREC 512 /* Even when generated text differs from previous version, don't allow more self-recursion per macro than this. */
 #define TPPLEXER_DEFAULT_LIMIT_INCL 64  /* User attempts to #include a file more often that file will fail with an error message. */
+#ifdef TPP_PLATFORM_WINDOWS
+#define TPPLEXER_DEFAULT_TABSIZE    4   /* Default tab size (used for '__COLUMN__' and in error messages). */
+#else
+#define TPPLEXER_DEFAULT_TABSIZE    8   /* Default tab size (used for '__COLUMN__' and in error messages). */
+#endif
 
 #if TPP_CONFIG_ONELEXER
 #define TPPLexer_Current  (&TPPLexer_Global)

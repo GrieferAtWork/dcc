@@ -446,12 +446,16 @@ do{ tok_t              _old_tok_id    = token.t_id;\
 #if TPP_CONFIG_DEBUG
 #define HAVELOG(level) (0 && ((level)&LOG_LEVEL) == LOG_CALLMACRO) /* Change this to select active logs. */
 LOCAL void tpp_log(char const *fmt, ...) {
+ struct TPPLCInfo info;
  va_list args;
  assert(TPPLexer_Current);
  va_start(args,fmt);
+ TPPLexer_LC(&info);
  fprintf(stderr,current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
-                ? "%s(%d,%d) : " : "%s:%d:%d: "
-               ,TPPLexer_FILE(NULL),TPPLexer_LINE()+1,TPPLexer_COLUMN()+1);
+                ? "%s(%d,%d) : " : "%s:%d:%d: ",
+                TPPLexer_FILE(NULL),
+               (int)(info.lc_line+1),
+               (int)(info.lc_col+1));
  fwrite("DEBUG: ",sizeof(char),7,stderr);
  vfprintf(stderr,fmt,args);
  va_end(args);
@@ -1016,13 +1020,8 @@ err_r:
  return NULL;
 }
 
-struct lc_info {
- line_t lc_line;
- col_t  lc_col;
-};
-
 PRIVATE void
-lcinfo_handle(struct lc_info *__restrict self,
+lcinfo_handle(struct TPPLCInfo *__restrict self,
               char *__restrict text, size_t size) {
  char ch,*end = text+size;
  assert(self);
@@ -1050,7 +1049,7 @@ struct lc_scan {
  struct TPPFile const *ls_exp_file;
  char                 *ls_exp_text;
  char                 *ls_exp_end;
- struct lc_info        ls_info;
+ struct TPPLCInfo      ls_info;
  funop_t              *ls_code;
 };
 
@@ -1135,7 +1134,7 @@ do_align:
 
 PRIVATE int
 TPPMacroFile_LCInfo(struct TPPFile const *__restrict self,
-                    struct lc_info *__restrict info,
+                    struct TPPLCInfo *__restrict info,
                     char *__restrict text_pointer) {
  struct lc_scan scanner;
  int result;
@@ -1160,65 +1159,61 @@ TPPMacroFile_LCInfo(struct TPPFile const *__restrict self,
 }
 
 
-
-PUBLIC line_t
-TPPFile_LineAt(struct TPPFile const *__restrict self,
-               char const *__restrict text_pointer) {
- line_t result;
+PUBLIC void
+TPPFile_LCAt(struct TPPFile const *__restrict self,
+             struct TPPLCInfo *__restrict info,
+             char const *__restrict text_pointer) {
  assert(self);
+ assert(info);
  assert(text_pointer >= self->f_begin && text_pointer <= self->f_end);
- result = (line_t)string_count_lf(self->f_begin,(size_t)(text_pointer-self->f_begin));
  switch (self->f_kind) {
+  {
+   char const *begin,*iter;
+   col_t column_num;
   case TPPFILE_KIND_TEXT:
-   result += self->f_textfile.f_lineoff;
-   break;
+   /* Start out with the base line-offset, as tracked
+    * by the current file-chunk, or #line directives. */
+   info->lc_line = self->f_textfile.f_lineoff;
+fallback_cl:
+   /* Found regular, old line-feeds. */
+   info->lc_line += (line_t)string_count_lf(self->f_begin,
+                                           (size_t)(text_pointer-self->f_begin));
+   /* NOTE: Must accept \0 as linefeed here to correctly
+    *       determine column numbers after a #define directive. */
+   column_num = 0;
+   begin = self->f_text->s_text,iter = text_pointer;
+   for (; iter != begin && !tpp_islforzero(iter[-1]); --iter)
+        column_num += iter[-1] == '\0' ? current.l_tabsize : 1;
+   info->lc_col   = column_num;
+  } break;
   case TPPFILE_KIND_MACRO:
+   *info = self->f_macro.m_defloc;
    if ((self->f_macro.m_flags&TPP_MACROFILE_KIND) == TPP_MACROFILE_KIND_EXPANDED) {
-    struct lc_info info; /* Special handling inside expanded macro files. */
-    info.lc_line = self->f_macro.m_defline;
-    info.lc_col  = self->f_macro.m_defcol;
-    if (TPPMacroFile_LCInfo(self,&info,(char *)text_pointer))
-        return info.lc_line;
+    /* Unless the macro file was constructed manually,
+     * or simply non-conforming to all the minor details
+     * of how TPP creates them, this should never fail...
+     * >> When this does however fail, it means that the expanded
+     *    code from 'self' does not conform to the macro text
+     *    descriptor (The vector of 'TPP_FUNOP_*' commands),
+     *    meaning it is impossible to re-trace the origin of the
+     *    given text point inside the non-expanded base-macro. */
+    if (TPPMacroFile_LCInfo(self,info,(char *)text_pointer)) return;
    }
-   result += self->f_macro.m_defline;
-   break;
+   /* Fallback code for anything that isn't an expanded macro. */
+   goto fallback_cl;
   case TPPFILE_KIND_EXPLICIT:
-   result = (self = self->f_prev) != NULL
-    ? TPPFile_LineAt(self,self->f_pos)
-    : 0;
+   if ((self = self->f_prev) != NULL) {
+    TPPFile_LCAt(self,info,self->f_pos);
+   } else {
+    /* Shouldn't happen, but only the lexer file-chain
+     * is guarantied to terminate with a text file. */
+    info->lc_line = 0;
+    info->lc_col  = 0;
+   }
    break;
   default: break;
  }
- return result;
 }
-
-PUBLIC col_t
-TPPFile_ColumnAt(struct TPPFile const *__restrict self,
-                 char const *__restrict text_pointer) {
- char const *begin,*iter;
- assert(self);
- assert(text_pointer >= self->f_begin &&
-        text_pointer <= self->f_end);
- if (self->f_kind == TPPFILE_KIND_EXPLICIT) {
-  return (self = self->f_prev) != NULL
-   ? TPPFile_ColumnAt(self,self->f_pos)
-   : 0;
- }
- if (self->f_kind == TPPFILE_KIND_MACRO &&
-    (self->f_macro.m_flags&TPP_MACROFILE_KIND) == TPP_MACROFILE_KIND_EXPANDED) {
-  struct lc_info info; /* Special handling inside expanded macro files. */
-  info.lc_line = self->f_macro.m_defline;
-  info.lc_col  = self->f_macro.m_defcol;
-  if (TPPMacroFile_LCInfo(self,&info,(char *)text_pointer))
-      return info.lc_col;
- }
- begin = self->f_text->s_text,iter = text_pointer;
- /* NOTE: Must accept \0 as linefeed here to correctly
-  *       determine column numbers after a #define directive. */
- while (iter != begin && !tpp_islforzero(iter[-1])) --iter;
- return (int)(text_pointer-iter);
-}
-
 
 PUBLIC char const *
 TPPFile_Filename(struct TPPFile const *__restrict self,
@@ -2489,8 +2484,9 @@ skip_argument_name:
  assert(result->f_end >= result->f_begin);
  assert(result->f_end >= curfile->f_begin);
  assert(result->f_end <= curfile->f_end);
- result->f_macro.m_defline =   TPPFile_LineAt(result->f_macro.m_deffile,result->f_begin);
- result->f_macro.m_defcol  = TPPFile_ColumnAt(result->f_macro.m_deffile,result->f_begin);
+ TPPFile_LCAt(result->f_macro.m_deffile,
+             &result->f_macro.m_defloc,
+              result->f_begin);
  if (((*result->f_end == '\r' && result->f_end[1] != '\n') ||
        *result->f_end == '\n')) {
   /* Adjust the file's offset according to the linefeed we're deleting. */
@@ -3217,6 +3213,7 @@ PUBLIC int TPPLexer_Init(struct TPPLexer *__restrict self) {
  self->l_limit_incl        = TPPLEXER_DEFAULT_LIMIT_INCL;
  self->l_eof_paren         = 0;
  self->l_warncount         = 0;
+ self->l_tabsize           = TPPLEXER_DEFAULT_TABSIZE;
  self->l_counter           = 0;
  self->l_ifdef.is_slotc    = 0;
  self->l_ifdef.is_slota    = 0;
@@ -3937,22 +3934,22 @@ TPPLexer_Define(char const *__restrict name, size_t name_size,
  /* Create a macro file inheriting the string. */
  macro_file = (struct TPPFile *)malloc(TPPFILE_SIZEOF_MACRO_KEYWORD);
  if unlikely(!macro_file) goto err_value_string;
- macro_file->f_refcnt            = 1;
- macro_file->f_kind              = TPPFILE_KIND_MACRO;
- macro_file->f_prev              = NULL;
- macro_file->f_name              = keyword->k_name;
- macro_file->f_namesize          = keyword->k_size;
- macro_file->f_namehash          = keyword->k_hash;
- macro_file->f_text              = value_string; /*< Inherit reference. */
- macro_file->f_begin             = value_string->s_text;
- macro_file->f_end               = value_string->s_text+value_string->s_size;
- macro_file->f_pos               = value_string->s_text;
- macro_file->f_macro.m_flags     = TPP_MACROFILE_KIND_KEYWORD;
- macro_file->f_macro.m_deffile   = NULL;
- macro_file->f_macro.m_defline   = 0;
- macro_file->f_macro.m_defcol    = 0;
- macro_file->f_macro.m_pushprev  = NULL;
- macro_file->f_macro.m_pushcount = 0;
+ macro_file->f_refcnt                 = 1;
+ macro_file->f_kind                   = TPPFILE_KIND_MACRO;
+ macro_file->f_prev                   = NULL;
+ macro_file->f_name                   = keyword->k_name;
+ macro_file->f_namesize               = keyword->k_size;
+ macro_file->f_namehash               = keyword->k_hash;
+ macro_file->f_text                   = value_string; /*< Inherit reference. */
+ macro_file->f_begin                  = value_string->s_text;
+ macro_file->f_end                    = value_string->s_text+value_string->s_size;
+ macro_file->f_pos                    = value_string->s_text;
+ macro_file->f_macro.m_flags          = TPP_MACROFILE_KIND_KEYWORD;
+ macro_file->f_macro.m_deffile        = NULL;
+ macro_file->f_macro.m_defloc.lc_line = 0;
+ macro_file->f_macro.m_defloc.lc_col  = 0;
+ macro_file->f_macro.m_pushprev       = NULL;
+ macro_file->f_macro.m_pushcount      = 0;
  oldfile          = keyword->k_macro; /*< Inherit reference. */
  keyword->k_macro = macro_file;       /*< Inherit reference. */
  /* Define keyword flags. */
@@ -5083,14 +5080,13 @@ def_skip_until_lf:
       !((curfile)->f_textfile.f_guard) &&                 /*< The current file doesn't already have a guard. */\
       !((curfile)->f_textfile.f_flags&TPP_TEXTFILE_FLAG_NOGUARD)) /* The current file is allowed to have a guard. */
    {
-    int line,block_mode;
+    int block_mode;
     struct TPPKeyword *ifndef_keyword;
     struct TPPFile *curfile;
     if (FALSE) { case KWD_ifdef:  block_mode = 0; }
     if (FALSE) { case KWD_ifndef: block_mode = 1; }
     assert(block_mode == (TOK == KWD_ifndef));
     ifndef_keyword = NULL;
-    line = TPPLexer_LINE();
     TPPLexer_YieldRaw();
     if (TPP_ISKEYWORD(TOK)) {
      ifndef_keyword = token.t_kwd;
@@ -6621,8 +6617,7 @@ result_common:
  result->f_namehash = macro->f_namehash;
  result->f_macro.m_flags     = TPP_MACROFILE_KIND_EXPANDED; /* NOTE: Don't set the owns-name flag. */
  result->f_macro.m_deffile   = macro->f_macro.m_deffile;
- result->f_macro.m_defline   = macro->f_macro.m_defline;
- result->f_macro.m_defcol    = macro->f_macro.m_defcol;
+ result->f_macro.m_defloc    = macro->f_macro.m_defloc;
  result->f_macro.m_pushprev  = NULL;
  result->f_macro.m_pushcount = 0;
  TPPFile_Incref(result->f_macro.m_deffile);
@@ -8567,10 +8562,13 @@ TPPLexer_ParseBuiltinPragma(void) {
     TPPLexer_Warn(W_EXPECTED_STRING_AFTER_MESSAGE,&message);
    } else {
     if (current.l_flags&TPPLEXER_FLAG_MESSAGE_LOCATION) {
+     struct TPPLCInfo lc_info; TPPLexer_LC(&lc_info);
      fprintf(stderr,current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
              ? "%s(%d,%d) : " : "%s:%d:%d: ",
-             TPPLexer_FILE(NULL),TPPLexer_LINE()+1,TPPLexer_COLUMN()+1);
-     fprintf(stderr,"#pragma message: ",TPPLexer_FILE(NULL),TPPLexer_LINE()+1);
+             TPPLexer_FILE(NULL),
+            (int)(lc_info.lc_line+1),
+            (int)(lc_info.lc_col+1));
+     fprintf(stderr,"#pragma message: ");
      fflush(stderr);
     }
     if (!(current.l_flags&TPPLEXER_FLAG_MESSAGE_NOLINEFEED)) {
@@ -9090,22 +9088,25 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
       (effective_file->f_textfile.f_flags&TPP_TEXTFILE_FLAG_INTERNAL)) {
     /* Don't display line/col information! */
     WARNF("%s: ",true_filename);
-   } else
+   } else {
+    struct TPPLCInfo lc_info;
 #if 1
-   /* For better compatibility with custom parsers,
-    * make sure that the token pointer can be used. */
-   if (current.l_token.t_begin < current.l_token.t_file->f_begin ||
-       current.l_token.t_begin > current.l_token.t_file->f_end) {
-    macro_name = NULL;
-    WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
-          ? "%s(%d) : " : "%s:%d: "
-          ,true_filename,TPPLexer_LINE()+1,TPPLexer_COLUMN()+1);
-   } else
+    /* For better compatibility with custom parsers,
+     * make sure that the token pointer can be used. */
+    if (current.l_token.t_begin < current.l_token.t_file->f_begin ||
+        current.l_token.t_begin > current.l_token.t_file->f_end) {
+     TPPLexer_LC(&lc_info);
+     macro_name = NULL;
+    } else
 #endif
-   {
+    {
+     TPPLexer_TRUE_LC(&lc_info);
+    }
     WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
-          ? "%s(%d,%d) : " : "%s:%d:%d: "
-          ,true_filename,TPPLexer_TRUE_LINE()+1,TPPLexer_TRUE_COLUMN()+1);
+          ? "%s(%d,%d) : " : "%s:%d:%d: ",
+          true_filename,
+          (int)(lc_info.lc_line+1),
+          (int)(lc_info.lc_col+1));
    }
   } break; 
  }
@@ -9140,17 +9141,19 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
  va_end(args);
  WARNF("\n");
  if (macro_name) {
+  struct TPPLCInfo lc_info;
 #if 1
   struct TPPFile *iter = token.t_file;
   for (;;) {
    iter = iter->f_prev;
    assert(iter);
    if (iter->f_kind != TPPFILE_KIND_EXPLICIT) {
+    TPPFile_LCAt(iter,&lc_info,iter->f_pos);
     WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
           ? "%s(%d,%d) : " : "%s:%d:%d: ",
           TPPFile_Filename(iter,NULL),
-          TPPFile_LineAt(iter,iter->f_pos)+1,
-          TPPFile_ColumnAt(iter,iter->f_pos)+1);
+         (int)(lc_info.lc_line+1),
+         (int)(lc_info.lc_col+1));
     /* NOTE: The last file in the #include chain should
      *       always be TPPFile_Empty, which is a text file. */
     if (iter->f_kind == TPPFILE_KIND_TEXT) {
@@ -9162,12 +9165,14 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
     }
    }
   }
-  WARNF("\n");
+  WARNF("\n"); /* Additional line-feed for better readability. */
 #else
+  TPPLexer_LC(&lc_info);
   WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
         ? "%s(%d,%d) : " : "%s:%d:%d: ",
-        TPPLexer_FILE(NULL),TPPLexer_LINE()+1,
-        TPPLexer_COLUMN()+1);
+        TPPLexer_FILE(NULL),
+       (int)(lc_info.lc_line+1),
+       (int)(lc_info.lc_col+1));
   WARNF("See reference to effective code location\n");
 #endif
  }
