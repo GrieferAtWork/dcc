@@ -1118,7 +1118,10 @@ struct TPPLexer {
 };
 #define TPPLEXER_DEFAULT_LIMIT_MREC 512 /* Even when generated text differs from previous version, don't allow more self-recursion per macro than this. */
 #define TPPLEXER_DEFAULT_LIMIT_INCL 64  /* User attempts to #include a file more often that file will fail with an error message. */
-#ifdef TPP_PLATFORM_WINDOWS
+#if defined(_WIN16) || defined(WIN16) || \
+    defined(_WIN32) || defined(WIN32) || \
+    defined(_WIN64) || defined(WIN64) || \
+    defined(__WIN32__) || defined(__TOS_WIN__)
 #define TPPLEXER_DEFAULT_TABSIZE    4   /* Default tab size (used for '__COLUMN__' and in error messages). */
 #else
 #define TPPLEXER_DEFAULT_TABSIZE    8   /* Default tab size (used for '__COLUMN__' and in error messages). */

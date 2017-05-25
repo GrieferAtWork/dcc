@@ -308,6 +308,7 @@ INTERN void dcc_help(char const *subject) {
               //INDENT "--pp                        Enable preprocess-mode, which emits all tokens separated by '\\0'-bytes\n"
                 INDENT "-f(pic|PIC|pie|PIE)         Generate position-independent images (Always enabled for object files)\n"
                 INDENT "-fvisibility=vis            Set the default ELF visibility to one of (default|hidden|protected|internal)\n"
+                INDENT "-ftabstop=width             Set the width of tab characters used by __COLUMN__ and in warning/error messages (Default: " DCC_PP_STR(TPPLEXER_DEFAULT_TABSIZE) ")\n"
                 INDENT "-f[no-]leading-underscore   Enable/Disable leading underscores in symbol on targets that require them\n"
                 INDENT "-f[no-]stack-check          Currently ignored\n"
                 INDENT "-f[no-]spc                  Enable/Disable SPACE tokens (useful in '--pp'-mode)\n"

@@ -1183,7 +1183,7 @@ fallback_cl:
    column_num = 0;
    begin = self->f_text->s_text,iter = text_pointer;
    for (; iter != begin && !tpp_islforzero(iter[-1]); --iter)
-        column_num += iter[-1] == '\0' ? current.l_tabsize : 1;
+        column_num += iter[-1] == '\t' ? current.l_tabsize : 1;
    info->lc_col   = column_num;
   } break;
   case TPPFILE_KIND_MACRO:

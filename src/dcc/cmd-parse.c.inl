@@ -323,6 +323,7 @@ def_secbase:
   else if (!strcmp(v,"comments")) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_WANTCOMMENTS);
   else if (!strcmp(v,"longstring") || !strcmp(v,"longstrings"))
    SETFLAGI(TPPLexer_Current->l_flags,TPPLEXER_FLAG_TERMINATE_STRING_LF);
+  else if (!memcmp(v,"tabstop=",8*sizeof(char))) TPPLexer_Current->l_tabsize = (size_t)atol(v+8);
   else {
    enable = TPPLexer_SetExtension(v,enable);
    if (!enable) WARN(W_UNKNOWN_EXTENSION,v);

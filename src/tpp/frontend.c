@@ -263,6 +263,7 @@ void usage(char *appname, char *subject) {
                 INDENT "--pp                        Enable preprocess-mode, which emits all tokens separated by '\\0'-bytes.\n"
                 INDENT "                            Enabling this option also disabled SPACE and LF tokens, though\n"
                 INDENT "                            they can be re-enabled using the -spc and -lf switches.\n"
+                INDENT "-ftabstop=width             Set the width of tab characters used by __COLUMN__ and in warning/error messages (Default: " STR(TPPLEXER_DEFAULT_TABSIZE) ")\n"
                 INDENT "-f[no-]spc                  Configure emission of SPACE tokens (Default: on).\n"
                 INDENT "-f[no-]lf                   Configure emission of LF tokens (Default: on).\n"
                 INDENT "-f[no-]comments             Configure emission of COMMENT tokens (Default: off).\n"
@@ -626,6 +627,7 @@ int main(int argc, char *argv[]) {
   else if (!strcmp(arg,"fline")) line_directives = 1;
   else if (!strcmp(arg,"fno-line") BACKWARDS(|| !strcmp(arg,"no-line"))) line_directives = 0;
   else if (!strcmp(arg,"fcpp-line")) line_directives = 2;
+  else if (!memcmp(arg,"ftabstop=",9*sizeof(char))) TPPLexer_Current->l_tabsize = (size_t)atol(arg+9);
   else if (!strcmp(arg,"trigraphs")) TPPLexer_EnableExtension(EXT_TRIGRAPHS);
   else if (!strcmp(arg,"Werror")) TPPLexer_Current->l_flags |= TPPLEXER_FLAG_WERROR;
 #if !TPP_CONFIG_MINMACRO
