@@ -3237,8 +3237,10 @@ DCCVStack_Store(int initial_store) {
  }
  /* Check if there is something wrong with implicitly casting the assignment. */
 #if 1
- wid = DCCStackValue_AllowCast(vbottom,&target->sv_ctype,0);
- if (wid) WARN(wid,&vbottom->sv_ctype,&target->sv_ctype);
+ if (DCCTYPE_GROUP(vbottom->sv_ctype.t_type) == DCCTYPE_LVALUE)
+     target_type = &target->sv_ctype;
+ wid = DCCStackValue_AllowCast(vbottom,target_type,0);
+ if (wid) WARN(wid,&vbottom->sv_ctype,target_type);
 #else
  wid = DCCStackValue_AllowCast(vbottom,target_type,0);
  if (wid) WARN(wid,&vbottom->sv_ctype,target_type);

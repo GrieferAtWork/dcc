@@ -552,8 +552,8 @@ funop_putarg(funop_t *piter, size_t arg) {
 PUBLIC hash_t
 TPP_Hashof(void const *data, size_t size) {
  hash_t result = 1;
- char const *iter,*end;
- end = (iter = (char const *)data)+size;
+ unsigned char const *iter,*end;
+ end = (iter = (unsigned char const *)data)+size;
  for (; iter != end; ++iter)
   result = result*263+*iter;
  return result;
