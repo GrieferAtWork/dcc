@@ -417,6 +417,7 @@ again:
  { /* Jump to another label. */
  case KWD_goto:
   YIELD();
+parse_goto:
   if (TOK == '*' && HAS(EXT_GCC_LABEL_EXPR)) {
    /* GCC extension: label-expressions. */
    YIELD();
@@ -782,6 +783,12 @@ again_after_label:
       vgen1('&');
       vjmp();
      }
+    }
+    /* Special case: During forwarding, we parsed the 'goto' keyword. */
+    if (parse_goto_next) {
+     assert(label_sym);
+     if (!found_alias) t_defsym(label_sym);
+     goto parse_goto;
     }
     /* Don't define the symbol again we've already aliased it! */
     if (found_alias) goto again_after_missing_label;
