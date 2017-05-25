@@ -70,6 +70,10 @@ GROUP_BEGIN(grp_Wl)
    OPTION_A(OPT_O,                   OPTION_FLAG_VALUE,"O",NULL,                NULL) /* -Wl,-O3 */
    /* TODO: '-Wl,-rpath=/usr/lib'
     *    >> Add directory that will be added to the ELF runtime search path list. */
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+   /* TODO: '-Wl,--dll-search-prefix,lib' */
+
+#endif
 
    /* Ignored options. */
    OPTION_A(OPT_UNUSED,              OPTION_FLAG_NONE, "qmagic",   NULL,        NULL) /* -Wl,-qmagic */

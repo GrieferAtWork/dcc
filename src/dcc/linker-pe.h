@@ -89,7 +89,7 @@ typedef struct {
 
 
 /* Prefix for ITA wrapper symbols. */
-#define ITA_PREFIX "ITA."
+#define ITA_PREFIX "__imp_"
 
 
 #if DCC_TARGET_IA32(0)

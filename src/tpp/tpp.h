@@ -1137,12 +1137,15 @@ TPPFUN struct TPPLexer *TPPLexer_Current;
 #endif
 
 /* Initialize/Finalize the given TPP Lexer object.
+ * NOTE: These functions can (obviously) be called when
+ *      'TPPLexer_Current' is NULL, or not initialized.
  * @return: 1: Successfully initialized the given lexer.
  * @return: 0: Not enough available memory to setup builtin keywords. */
 TPPFUN int  TPPLexer_Init(struct TPPLexer *__restrict self);
 TPPFUN void TPPLexer_Quit(struct TPPLexer *__restrict self);
 
 /* Reset certain parts of the lexer.
+ * NOTE: This function can be called when 'TPPLexer_Current' is NULL, or not initialized.
  * @param: flags: Set of 'TPPLEXER_RESET_*' */
 TPPFUN void TPPLexer_Reset(struct TPPLexer *__restrict self, uint32_t flags);
 #define TPPLEXER_RESET_NONE       0x00000000
@@ -1451,6 +1454,9 @@ TPPFUN int TPP_PrintToken(TPP(printer_t) printer, void *closure);
 TPPFUN int TPP_PrintComment(TPP(printer_t) printer, void *closure);
 
 
+/* Helper macros to initialize/finalize the global TPP context.
+ * NOTE: These macros can (obviously) be called when
+ *      'TPPLexer_Current' is NULL, or not initialized. */
 #if TPP_CONFIG_ONELEXER
 #define TPP_INITIALIZE() TPPLexer_Init(&TPPLexer_Global)
 #define TPP_FINALIZE()   TPPLexer_Quit(&TPPLexer_Global)

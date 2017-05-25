@@ -442,12 +442,12 @@ merge_symflags:
      /* TODO: Wouldn't it suffice only to relink ITA functions of symbols from 'other'.
       *       >> As in everything symbol from other with 'sy_peind' set? */
      assert(sym);
-     if (sym->sy_name->k_size <= 4) continue;
+     if (sym->sy_name->k_size <= DCC_COMPILER_STRLEN(ITA_PREFIX)) continue;
      if (memcmp(sym->sy_name->k_name,ITA_PREFIX,
                 DCC_COMPILER_STRLEN(ITA_PREFIX)*
                 sizeof(char)) != 0) continue;
      /* This is an IAT symbol. - Try to find the associated base symbol and link them! */
-     basesym = DCCUnit_GetSyms(sym->sy_name->k_name+4);
+     basesym = DCCUnit_GetSyms(sym->sy_name->k_name+DCC_COMPILER_STRLEN(ITA_PREFIX));
      if unlikely(!basesym) continue;
      DCCSym_Incref(sym);
      DCCSym_XDecref(basesym->sy_peind);

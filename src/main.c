@@ -198,6 +198,9 @@ int main(int argc, char *argv[]) {
 
 #ifdef DCC_LINKER_FLAG_PEDYNAMIC
  /* Dynamically export PE symbols. */
+ /* TODO: This flag behaves similar to '--export-all-symbols'.
+  *    >> Add support for that flag:
+  *       https://linux.die.net/man/1/ld */
  linker.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 #endif
 

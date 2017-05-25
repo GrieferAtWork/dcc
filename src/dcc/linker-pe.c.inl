@@ -1062,6 +1062,8 @@ PRIVATE void pe_mk_genrt(void) {
      DCCUnit_NewSecs(".reloc",DCC_SYMFLAG_SEC_NOALLOC);
 
  if (pe.pe_type == PETYPE_DLL) {
+  /* TODO: Add some randomization here, to
+   *       reduce library collisions at runtime. */
   pe.pe_imgbase = 0x10000000; /* Place dlls in high memory. */
  } else {
   pe.pe_imgbase = 0x00400000;
