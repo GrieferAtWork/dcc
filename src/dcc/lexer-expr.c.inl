@@ -102,6 +102,7 @@ gen_call:
                              DCC_COMPILER_FLAG_DEAD);
    }
   }
+  goto again;
  } break;
 
  default: break;
