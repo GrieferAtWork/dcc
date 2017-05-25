@@ -3869,6 +3869,9 @@ check_path_spelling(char *filename, size_t filename_size) {
   next_sep = strchr(part_begin,'\\');
   if (!next_sep) next_sep = end;
   backup = *next_sep,*next_sep = '\0';
+  /* Skip current/parent directory references. */
+  if (part_begin[0] == '.' && (!part_begin[1] ||
+     (part_begin[1] == '.' && !part_begin[2]))) goto next_part;
   find_handle = FindFirstFileA(filename,&filename_data);
   if (find_handle && find_handle != INVALID_HANDLE_VALUE) {
    if (strcmp(filename_data.cFileName,part_begin)) {
@@ -3880,6 +3883,7 @@ check_path_spelling(char *filename, size_t filename_size) {
    }
    FindClose(find_handle);
   }
+next_part:
   *next_sep = backup;
   if unlikely(!error) break;
   if (next_sep == end) break;
