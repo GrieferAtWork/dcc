@@ -224,6 +224,7 @@ DCC_DECL_BEGIN
 #endif
 
 
+#   define DCC_TARGET_STACKDOWN        1 /* 0/1 indicating stack growth direction. */
 #   define DCC_TARGET_BYTEORDER        1234
 #   define DCC_TARGET_FLOAT_WORD_ORDER 1234
 #if DCC_TARGET_CPU == DCC_CPU_X86_64

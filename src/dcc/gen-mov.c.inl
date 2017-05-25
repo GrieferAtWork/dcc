@@ -920,7 +920,8 @@ PUBLIC void
 DCCDisp_CstPush(struct DCCSymAddr const *__restrict val,
                 width_t width) {
  assert(val);
- assert(CHECK_WIDTH(width));
+ assert(width == 1 || width == 2 ||
+        width == 4 || width == 8);
  if (width == 8 && !val->sa_sym) {
   struct DCCSymAddr temp;
   /* Special case: push 64-bit immediate value. */

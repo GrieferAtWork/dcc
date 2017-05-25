@@ -1670,6 +1670,12 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
      DCCTYPE_GROUP(type->t_type) == DCCTYPE_POINTER ||
      DCCTYPE_GROUP(type->t_type) == DCCTYPE_FUNCTION) {
   /* Cast between builtin types. */
+  static rc_t const cls_size[] = {
+   /*[DCCTYPE_INT]   = */DCC_TARGET_SIZEOF_INT,
+   /*[DCCTYPE_BYTE]  = */1,
+   /*[DCCTYPE_WORD]  = */DCC_TARGET_SIZEOF_SHORT,
+   /*[DCCTYPE_INT64] = */8
+  };
   static rc_t const classes[] = {
    /*[DCCTYPE_INT]   = */DCC_RC_I32|DCC_RC_I16|DCC_RC_I8,
    /*[DCCTYPE_BYTE]  = */DCC_RC_I8,
@@ -1700,6 +1706,24 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
   if (to == tn) goto done;
   /* Fix tests. */
   DCCStackValue_FixTest(self);
+  if (self->sv_flags&DCC_SFLAG_LVALUE) {
+   /* Special case: Cast an l-value.
+    * When the type's size increases, we must load the
+    * value into a register, as not to access memory
+    * past the end of the l-value.
+    * Yet if the size is lowered, we can simply re-use
+    * the l-value without having to change anything or
+    * generating code. */
+   if (cls_size[tn] > cls_size[to])
+       DCCStackValue_Load(self); /* Load the value if the size increases. */
+   goto done;
+  }
+  if (self->sv_reg == DCC_RC_CONST) {
+   /* Cast a constant operand.
+    * >> Apply a bit-mask to the constant value in order to truncate it. */
+   self->sv_const.it &= (((int_t)1 << cls_size[tn]*DCC_TARGET_BITPERBYTE)-1);
+   goto done;
+  }
   if (to == DCCTYPE_BYTE && (self->sv_reg&4)) {
    /* High-order 8-bit register (Need to move into the low-order one) */
    DCCVStack_GetRegExact(DCC_RC_I8|(self->sv_reg&3));
@@ -3601,57 +3625,126 @@ DCCVStack_Cast(struct DCCType const *__restrict t,
 }
 
 
-/* Push a given stack value promoted to at least 32-bit onto the stack.
+/* Push a given stack value aligned by 'align' onto the hardware stack.
+ * NOTE: The caller is responsible for casting 'self' to the proper type (if known) beforehand!
  * @return: The actual amount of bytes pushed. */
 PRIVATE target_siz_t DCC_VSTACK_CALL
-DCCStackValue_PushProm32(struct DCCStackValue *__restrict self) {
- static uint8_t const padding[] = {0,0,0};
+DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
+                          target_siz_t align) {
  struct DCCMemLoc symaddr;
- target_siz_t result;
+ target_siz_t result,filler;
  assert(self);
  DCCStackValue_LoadLValue(self);
  DCCStackValue_FixBitfield(self);
+ result = DCCType_Sizeof(&self->sv_ctype,NULL,1);
+ if unlikely(!result) return 0; /* nothing to do here? */
+ filler = (align-result)&(align-1);
  if (self->sv_flags&DCC_SFLAG_LVALUE) {
-  result = DCCType_Sizeof(&self->sv_ctype,NULL,1);
   symaddr.ml_reg = self->sv_reg;
   symaddr.ml_off = self->sv_const.offset;
   symaddr.ml_sym = self->sv_sym;
-#if DCC_TARGET_BYTEORDER == 1234
-  if (result < 4) DCCDisp_VecPush(padding,4-result);
+#if DCC_TARGET_STACKDOWN
+  DCCDisp_NdfPush(filler);
   DCCDisp_MemRevPush(&symaddr,result);
-  if (result < 4) result = 4;
 #else
   DCCDisp_MemPush(&symaddr,result);
-  if (result < 4) { DCCDisp_VecPush(padding,4-result); result = 4; }
+  DCCDisp_NdfPush(filler);
 #endif
- } else if (self->sv_reg != DCC_RC_CONST) {
-  DCCStackValue_FixRegOffset(self);
-  /* Make sure that the register is at least 32-bit wide.
-   * TODO: This operation should be merged with 'PushReg'! */
-  result = 4;
-  if (!(self->sv_reg&(DCC_RC_I3264))) {
-   self->sv_reg = DCCVStack_CastReg(self->sv_reg,
-                                    DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type),
-                                    DCC_RC_I32);
-  }
-  DCCDisp_RegPush(self->sv_reg);
-  if (self->sv_reg2) {
-   if (!(self->sv_reg2&(DCC_RC_I3264))) {
-    self->sv_reg2 = DCCVStack_CastReg(self->sv_reg2,
-                                      DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type),
-                                      DCC_RC_I32);
-   }
-   DCCDisp_RegPush(self->sv_reg2);
-   result = 8;
-  }
- } else {
-  /* TODO: 64-bit push. */
+ } else if (self->sv_reg == DCC_RC_CONST) {
   symaddr.ml_sad.sa_off = self->sv_const.offset;
   symaddr.ml_sad.sa_sym = self->sv_sym;
-  DCCDisp_CstPush(&symaddr.ml_sad,DCC_TARGET_SIZEOF_POINTER);
-  result = DCC_TARGET_SIZEOF_POINTER;
+#if DCC_TARGET_STACKDOWN
+  DCCDisp_NdfPush(filler);
+  DCCDisp_CstPush(&symaddr.ml_sad,result);
+#elif DCC_TARGET_BYTEORDER == 1234
+  DCCDisp_CstPush(&symaddr.ml_sad,result+filler);
+#else
+  DCCDisp_CstPush(&symaddr.ml_sad,result);
+  DCCDisp_NdfPush(filler);
+#endif
+ } else if (self->sv_reg != DCC_RC_CONST) {
+  target_siz_t register_memory,sign_memory;
+  rc_t r1,r2;
+  /* TODO: Floating-point registers? */
+  /* Push register values. */
+  DCCStackValue_FixRegOffset(self);
+  r1 = self->sv_reg,r2 = self->sv_reg2;
+  register_memory = DCC_RC_SIZE(r1);
+  if (r2 != DCC_RC_CONST) register_memory += DCC_RC_SIZE(r2);
+  assert(register_memory <= DCC_TARGET_SIZEOF_POINTER*2);
+  sign_memory = 0;
+  if (register_memory > result) {
+   if (result <= DCC_TARGET_SIZEOF_POINTER) r2 = DCC_RC_CONST;
+#ifdef DCC_RC_I64
+   if (result <= 4) r1 &= ~(DCC_RC_I64);
+#endif
+   if (result <= 2) r1 &= ~(DCC_RC_I32);
+   if (result <= 1) r1 &= ~(DCC_RC_I16);
+  } else if (register_memory < result) {
+   sign_memory = (result-register_memory);
+   result      =  register_memory;
+  }
+#if DCC_TARGET_STACKDOWN
+  DCCDisp_NdfPush(filler);
+#endif
+#if DCC_TARGET_BYTEORDER == 4321
+  if (sign_memory) {
+   rc_t temp = DCCVStack_GetReg(DCC_RC_I8,1);
+   DCCDisp_RegMovReg(r1,temp,0);
+   DCCDisp_ByrPush(temp,sign_memory);
+  }
+#endif
+  if (!(result&(result-1))) {
+   /* Likely case: When the type-size is one of 1,2,4 or 8,
+    *              we can push the register(s) directly! */
+   if (r2 != DCC_RC_CONST) DCCDisp_RegPush(r2);
+   DCCDisp_RegPush(r1);
+  } else {
+   /* Difficult case: Must manually handle special type sizes. */
+#ifdef DCC_RC_I64
+   if (result == 7 || result == 6 || result == 5) {
+    rc_t temp;
+    struct DCCSymAddr cst;
+    assert(r1&DCC_RC_I64);
+    temp = DCCVStack_GetReg(DCC_RC_I64,(result != 5));
+    DCCDisp_RegMovReg(r1,temp,1);
+    cst.sa_off = (result-1)*DCC_TARGET_BITPERBYTE;
+    cst.sa_sym = NULL;
+    DCCDisp_CstBinReg(TOK_RANGLE3,&cst,temp,1);
+         if (result == 7) temp &= ~(DCC_RC_I64),assert(temp&DCC_RC_I32);
+    else if (result == 6) temp &= ~(DCC_RC_I64|DCC_RC_I32),assert(temp&DCC_RC_I16);
+    else                  temp &= ~(DCC_RC_I64|DCC_RC_I32|DCC_RC_I16),assert(temp&DCC_RC_I8);
+    DCCDisp_ByrPush(temp,1);
+    DCCDisp_RegPush(r1&~(DCC_RC_I64));
+   } else
+#endif
+   {
+    rc_t temp;
+    struct DCCSymAddr cst;
+    assert(result == 3);
+    assert(r1&DCC_RC_I16);
+    assert(r1&DCC_RC_I32);
+    temp = DCCVStack_GetReg(DCC_RC_I32,0);
+    assert(temp&DCC_RC_I8);
+    DCCDisp_RegMovReg(r1,temp,1);
+    cst.sa_off = DCC_TARGET_BITPERBYTE*2;
+    cst.sa_sym = NULL;
+    DCCDisp_CstBinReg(TOK_RANGLE3,&cst,temp,1);
+    DCCDisp_RegPush(temp&~(DCC_RC_I32|DCC_RC_I16));
+    DCCDisp_RegPush(r1&~(DCC_RC_I32));
+   }
+  }
+#if DCC_TARGET_BYTEORDER == 1234
+  if (sign_memory) {
+   DCCDisp_SignExtendReg(r1);
+   DCCDisp_ByrPush(r1,sign_memory);
+  }
+#endif
+#if !DCC_TARGET_STACKDOWN
+  DCCDisp_NdfPush(filler);
+#endif
  }
- return result;
+ return result+filler;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3666,7 +3759,9 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Call(size_t n_args) {
  struct DCCStackValue *arg_first,*function;
  struct DCCDecl *funty_decl;
- target_siz_t arg_size; uint32_t cc;
+ target_siz_t arg_size,stack_align;
+ uint32_t cc; size_t argc,untyped;
+ struct DCCStructField *argv;
  assert(vsize >= (1+n_args));
  VLOG(-(ptrdiff_t)n_args,("vcall(%lu)\n",(unsigned long)n_args));
  /* Kill all tests. */
@@ -3713,22 +3808,62 @@ after_typefix:
   funty_decl = NULL;
  }
  DCCDecl_XIncref(funty_decl);
- cc = DCC_ATTRFLAG_CDECL;
- if (funty_decl && funty_decl->d_attr) {
-  cc = (funty_decl->d_attr->a_flags&DCC_ATTRFLAG_MASK_CALLCONV);
+ cc          = DCC_ATTRFLAG_CDECL;
+ stack_align = DCC_TARGET_SIZEOF_INT;
+ argc        = 0;
+ argv        = NULL;
+ untyped     = n_args;
+ if (funty_decl) {
+  int wid;
+  if (funty_decl->d_attr) {
+   cc = (funty_decl->d_attr->a_flags&DCC_ATTRFLAG_MASK_CALLCONV);
+  }
+  if (funty_decl->d_kind != DCC_DECLKIND_OLDFUNCTION) {
+   argc = funty_decl->d_tdecl.td_size;
+   argv = funty_decl->d_tdecl.td_fieldv;
+   if (n_args < argc) {
+    /* Too few arguments */
+    wid = W_CALL_TO_FEW_ARGUMENTS;
+    goto warn_argc;
+   } else if (n_args > argc && !(funty_decl->d_flag&DCC_DECLFLAG_VARIADIC)) {
+    struct DCCType fty;
+    /* Too many arguments */
+    wid = W_CALL_TO_MANY_ARGUMENTS;
+warn_argc:
+    fty.t_type = DCCTYPE_FUNCTION;
+    fty.t_base = funty_decl;
+    WARN(wid,&fty,function->sv_sym
+         ? function->sv_sym->sy_name
+         : NULL,argc,n_args);
+    if (argc > n_args) argc = n_args;
+   }
+   assert(argc <= n_args);
+   argv += argc;
+   untyped = n_args-argc;
+  }
  }
-
+ assert(!argc || argv);
+ assert(argc+untyped == n_args);
  /* TODO: Calling conventions other than cdecl and stdcall! */
  /* TODO: __attribute__((regparm(...))) */
- arg_size = 0;
+ arg_size    = 0;
  while (vbottom != function) {
   assert(vbottom < function);
-  vprom();
+  if (!untyped) {
+   --argv;
+   assert(argv->sf_decl);
+   vcast(&argv->sf_decl->d_type,0);
+  } else {
+   --untyped;
+   vprom();
+  }
   /* TODO: Cast arguments to those specified by 'function'
    *      (unless it's an old-style, or variadic function). */
-  arg_size += DCCStackValue_PushProm32(vbottom);
+  arg_size += DCCStackValue_PushAligned(vbottom,stack_align);
   vpop(1);
  }
+
+
  DCCVStack_KillAll(); /* Kill all temporary registers still in use. */
  DCCStackValue_Call(function); /* Generate the call instructions. */
  vpop(1); /* Pop the function. */

@@ -1275,6 +1275,34 @@ DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTAT
 }
 #endif
 
+#ifdef DECLARE_WARNING_MESSAGES
+{
+ struct TPPString *funty_repr;
+ size_t expected_argc;
+ char const *format;
+emit_call_warning:
+ funty_repr = DCCType_ToTPPString(ARG(struct DCCType *),
+                                  ARG(struct TPPKeyword *));
+ expected_argc = ARG(size_t);
+ WARNF(format,funty_repr->s_text,
+      (unsigned long)expected_argc,
+      (unsigned long)ARG(size_t));
+ TPPString_Decref(funty_repr);
+ break;
+#endif
+
+DEF_WARNING(W_CALL_TO_MANY_ARGUMENTS,(WG_TYPE),WSTATE_WARN,{
+ format = "Too many arguments in call too '%s' expecting %lu, but got %lu";;
+ goto emit_call_warning;
+})
+DEF_WARNING(W_CALL_TO_FEW_ARGUMENTS,(WG_TYPE),WSTATE_WARN,{
+ format = "Too few arguments in call too '%s' expecting %lu, but got %lu";;
+ goto emit_call_warning;
+})
+#ifdef DECLARE_WARNING_MESSAGES
+}
+#endif
+
 WARNING_NAMESPACE(WN_CMD,1900)
 DEF_WARNING(W_CMD_UNKNOWN,(WG_CMD),WSTATE_ERROR,WARNF("Unknown option: '%s'",ARG(char *)))
 DEF_WARNING(W_CMD_ILLEGAL,(WG_CMD),WSTATE_ERROR,WARNF("This command is only legal on the commandline"))
