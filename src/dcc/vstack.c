@@ -3698,9 +3698,10 @@ after_typefix:
   assert(funty_decl->d_kind&DCC_DECLKIND_TYPE);
   funty_decl = funty_decl->d_type.t_base;
  }
- if (funty_decl->d_kind != DCC_DECLKIND_FUNCTION &&
-     funty_decl->d_kind != DCC_DECLKIND_OLDFUNCTION) {
-  WARN(W_EXPECTED_FUNCTION_TYPE_FOR_CALL,&funty_decl->d_type);
+ if (!funty_decl ||
+      funty_decl->d_kind != DCC_DECLKIND_FUNCTION &&
+      funty_decl->d_kind != DCC_DECLKIND_OLDFUNCTION) {
+  WARN(W_EXPECTED_FUNCTION_TYPE_FOR_CALL,&function->sv_ctype);
   funty_decl = NULL;
  }
  DCCDecl_XIncref(funty_decl);
