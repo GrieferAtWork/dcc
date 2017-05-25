@@ -172,6 +172,7 @@ DCCParse_BuiltinBSwap(void) {
  } break;
  }
  DCCParse_ParPairEnd();
+ DCCStackValue_LoadLValue(vbottom);
  DCCStackValue_Cow(vbottom);
  DCCStackValue_FixTest(vbottom);
  DCCStackValue_FixBitfield(vbottom);
@@ -179,10 +180,10 @@ DCCParse_BuiltinBSwap(void) {
  switch (size) {
  {
   struct DCCType arg_type;
-  if (DCC_MACRO_FALSE) { case 1: arg_type.t_type = DCCTYPE_INT8; }
-  if (DCC_MACRO_FALSE) { case 2: arg_type.t_type = DCCTYPE_INT16; }
-  if (DCC_MACRO_FALSE) { case 4: arg_type.t_type = DCCTYPE_INT32; }
-  if (DCC_MACRO_FALSE) { case 8: arg_type.t_type = DCCTYPE_INT64; }
+  if (DCC_MACRO_FALSE) { case 1: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_INT8; }
+  if (DCC_MACRO_FALSE) { case 2: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_INT16; }
+  if (DCC_MACRO_FALSE) { case 4: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_INT32; }
+  if (DCC_MACRO_FALSE) { case 8: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_INT64; }
   arg_type.t_base = NULL;
   vcast(&arg_type,0);
  } break;

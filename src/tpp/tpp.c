@@ -854,7 +854,7 @@ PUBLIC struct TPPFile TPPFile_Empty = {
  /* f_text                   */empty_string,
  /* f_begin                  */empty_string->s_text,
  /* f_end                    */empty_string->s_text,
- /* f_pos                    */empty_string->s_text,{
+ /* f_pos                    */empty_string->s_text,{{
  /* f_textfile.f_cacheentry  */NULL,
  /* f_textfile.f_usedname    */NULL,
  /* f_textfile.f_lineoff     */0,
@@ -867,7 +867,7 @@ PUBLIC struct TPPFile TPPFile_Empty = {
  /* f_textfile.f_flags       */TPP_TEXTFILE_FLAG_NOGUARD|TPP_TEXTFILE_FLAG_INTERNAL,
  /* f_textfile.f_encoding    */TPP_ENCODING_UTF8,
  /* f_textfile.f_padding     */{0},
- /* f_textfile.f_newguard    */NULL}
+ /* f_textfile.f_newguard    */NULL}}
 };
 
 
@@ -8894,11 +8894,19 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
 #define KWDNAME()    (ARG(struct TPPKeyword *)->k_name)
 #define TOK_NAME()   (kwd = TPPLexer_LookupKeywordID(ARG(tok_t)),kwd ? kwd->k_name : "??" "?")
 #define CONST_STR()  (temp_string = TPPConst_ToString(ARG(struct TPPConst *)),temp_string ? temp_string->s_text : NULL)
- effective_file = TPPLexer_Textfile();
- if (token.t_file->f_kind == TPPFILE_KIND_MACRO) {
-  macro_name = token.t_file->f_name;
-  macro_name_size = (int)token.t_file->f_namesize;
-  effective_file = TPPLexer_Current->l_token.t_file;
+ {
+  struct TPPFile *macro_file;
+  effective_file = NULL;
+  macro_file = token.t_file;
+  while (macro_file->f_kind == TPPFILE_KIND_EXPLICIT &&
+         macro_file->f_prev) macro_file = macro_file->f_prev;
+  if (macro_file->f_kind == TPPFILE_KIND_MACRO) {
+   macro_name = macro_file->f_name;
+   macro_name_size = (int)macro_file->f_namesize;
+   effective_file = macro_file;
+  } else {
+   effective_file = TPPLexer_Textfile();
+  }
  }
  true_filename = TPPFile_Filename(effective_file,NULL);
  TPP_TEXTFILE_FLAG_INTERNAL;
