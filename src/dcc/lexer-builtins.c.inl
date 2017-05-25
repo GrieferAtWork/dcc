@@ -588,6 +588,7 @@ DCCParse_BuiltinVaStart(void) {
  alignment = VA_SIZE(alignment);
  /* ap = (va_list)(((uintptr_t)&start)+alignment) */
  vgen1('&');
+ vrcopy();
  vcast_t(DCCTYPE_UNSIGNED|DCCTYPE_INTPTR,1);
  vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,alignment);
  vgen2('+');
