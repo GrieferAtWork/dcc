@@ -35,6 +35,7 @@ typedef __SIZE_TYPE__ size_t;
 #define memcpy(dst,src,size)  __builtin_memcpy((dst),(src),(size))
 #define memmove(dst,src,size) __builtin_memmove((dst),(src),(size))
 #define memset(dst,byt,size)  __builtin_memset((dst),(byt),(size))
+#define memcmp(a,b,size)      __builtin_memcmp((a),(b),(size))
 #define strlen(str)           __builtin_strlen((str))
 
 
