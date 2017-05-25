@@ -799,7 +799,28 @@ fix_zero_signal:
 }
 
 
-
+PRIVATE void 
+push_vpfun_sym(struct DCCSym *__restrict sym) {
+ struct DCCType type = {DCCTYPE_VOID,NULL};
+ DCCType_MkPointer(&type);
+ DCCType_MkOldFunc(&type);
+ vpushst(&type,sym);
+ DCCType_Quit(&type);
+}
+PRIVATE void 
+push_ifun_sym(struct DCCSym *__restrict sym) {
+ struct DCCType type = {DCCTYPE_INT,NULL};
+ DCCType_MkOldFunc(&type);
+ vpushst(&type,sym);
+ DCCType_Quit(&type);
+}
+PRIVATE void 
+push_szfun_sym(struct DCCSym *__restrict sym) {
+ struct DCCType type = {DCCTYPE_SIZE|DCCTYPE_UNSIGNED,NULL};
+ DCCType_MkOldFunc(&type);
+ vpushst(&type,sym);
+ DCCType_Quit(&type);
+}
 
 
 /*  __builtin_memcpy, __builtin_memmove  */
@@ -873,9 +894,10 @@ fix_stack:
   struct DCCSym *funsym;
 call_extern:
   funsym = DCCUnit_NewSyms(may_overlap ? "memmove" : "memcpy",DCC_SYMFLAG_NONE);
-  funsym ? vpushs(funsym) : vpushv(); /* dst, src, size, memcpy */
-  vlrot(4);                           /* memcpy, dst, src, size */
-  vcall(3);                           /* ret */
+  if (funsym) push_vpfun_sym(funsym);
+  else vpushv(); /* dst, src, size, memcpy */
+  vlrot(4);      /* memcpy, dst, src, size */
+  vcall(3);      /* ret */
  }
 }
 
@@ -934,9 +956,10 @@ DCCParse_BuiltinMemset(void) {
  } else {
   struct DCCSym *funsym;
   funsym = DCCUnit_NewSyms("memset",DCC_SYMFLAG_NONE);
-  funsym ? vpushs(funsym) : vpushv(); /* dst, byte, size, memset */
-  vlrot(4);                           /* memset, dst, byte, size */
-  vcall(3);                           /* ret */
+  if (funsym) push_vpfun_sym(funsym);
+  else vpushv(); /* dst, byte, size, memset */
+  vlrot(4);      /* memset, dst, byte, size */
+  vcall(3);      /* ret */
  }
 }
 
@@ -1031,9 +1054,10 @@ fix_stack:
  } else {
   struct DCCSym *funsym;
   funsym = DCCUnit_NewSyms("memcmp",DCC_SYMFLAG_NONE);
-  funsym ? vpushs(funsym) : vpushv(); /* a, b, size, memcmp */
-  vlrot(4);                           /* memcmp, a, b, size */
-  vcall(3);                           /* ret */
+  if (funsym) push_ifun_sym(funsym);
+  else vpushv(); /* a, b, size, memcmp */
+  vlrot(4);      /* memcmp, a, b, size */
+  vcall(3);      /* ret */
  }
 }
 
@@ -1073,9 +1097,10 @@ DCCParse_BuiltinStrlen(void) {
  } else {
   struct DCCSym *funsym;
   funsym = DCCUnit_NewSyms("strlen",DCC_SYMFLAG_NONE);
-  funsym ? vpushs(funsym) : vpushv(); /* str, strlen */
-  vswap();                            /* strlen, str */
-  vcall(1);                           /* ret */
+  if (funsym) push_szfun_sym(funsym);
+  else vpushv(); /* str, strlen */
+  vswap();       /* strlen, str */
+  vcall(1);      /* ret */
  }
 }
 
