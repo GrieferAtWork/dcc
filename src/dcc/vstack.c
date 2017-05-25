@@ -3625,7 +3625,8 @@ DCCVStack_Cast(struct DCCType const *__restrict t,
 
  /* Warn if there are problems with this cast. */
  wid = DCCStackValue_AllowCast(vbottom,t,explicit_case);
- if (wid) WARN(wid,&vbottom->sv_ctype,t);
+ if (wid)
+     WARN(wid,&vbottom->sv_ctype,t);
 
  DCCStackValue_Cast(vbottom,t);
  if (DCCTYPE_GROUP(t->t_type) == DCCTYPE_LVALUE) {

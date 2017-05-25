@@ -394,7 +394,8 @@ struct TPPMacroFile {
 #define TPP_MACROFILE_KIND_EXPANDED        0x00000002 /*< Expanded version of a function macro. */
  uint32_t               m_flags;         /*< [const] Macro flags. */
  /*ref*/struct TPPFile *m_deffile;       /*< [const][0..1][(!= NULL) == (m_textref != NULL)] The file that originally defined this macro (or NULL if predefined, or from the commandline). */
- TPP(line_t)            m_defline;       /*< [const] Line in which this macro was defined (based on first character of the macro's name). */
+ TPP(line_t)            m_defline;       /*< [const] Line in which this macro was defined (based on first character of the macro's text). */
+ TPP(col_t)             m_defcol;        /*< [const] Column at which this macro was defined (based on first character of the macro's text). */
  /*ref*/struct TPPFile *m_pushprev;      /*< [0..1] Previous version of a pushed macro. */
  size_t                 m_pushcount;     /*< The amount of times this macro was pushed (used to handle multiple calls to 'push_macro'). */
  /* The following */
@@ -1076,6 +1077,7 @@ struct TPPLexer {
  size_t                l_limit_incl; /*< Limit for how often the same text file may exist on the #include stack. */
  size_t                l_eof_paren;  /*< Recursion counter used by the 'TPPLEXER_FLAG_EOF_ON_PAREN' flag. */
  size_t                l_warncount;  /*< Amount of warnings that were invoked (including those that were dismissed). */
+ size_t                l_tabsize;    /*< Size of '\t' tab characters (used for __COLUMN__ and in error messages). */
  TPP(tok_t)            l_noerror;    /*< Old token ID before 'TPPLEXER_FLAG_ERROR' was set. */
  TPP(int_t)            l_counter;    /*< Value returned the next time '__COUNTER__' is expanded (Initialized to ZERO(0)). */
  struct TPPIfdefStack  l_ifdef;      /*< #ifdef stack. */
