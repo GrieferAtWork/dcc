@@ -1059,9 +1059,12 @@ TPPMacroFile_LCScan(struct lc_scan *__restrict scan,
  char candy;
  struct lc_scan s;
  size_t arg,ptroff;
- int must_align = 0;
+ int must_align;
  assert(scan);
  s = *scan;
+ /* Simple case: Already found! */
+ if (s.ls_exp_text >= text_pointer) return 1;
+ must_align = 0;
  while (text_pointer > s.ls_exp_text) {
   funop_t cmd = *s.ls_code++;
 //exec_cmd:
@@ -1071,7 +1074,8 @@ TPPMacroFile_LCScan(struct lc_scan *__restrict scan,
    /* Simplest case: Shared text. */
    arg = funop_getarg(s.ls_code);
    /* Make sure the text is identical. - If it isn't, something went wrong. */
-   if (memcmp(s.ls_src_text,s.ls_exp_text,arg) != 0) return 0;
+   if (memcmp(s.ls_src_text,s.ls_exp_text,arg) != 0)
+       return 0;
    ptroff = (size_t)(text_pointer-s.ls_exp_text);
    if (arg > ptroff) arg = ptroff;
    lcinfo_handle(&s.ls_info,s.ls_src_text,arg);
@@ -1113,8 +1117,9 @@ do_align:
   * >> For this part, all we can really do is guess... */
  candy = *s.ls_src_text;
  for (;;) {
+  /* NOTE: Must include the text-pointer itself in searches! */
   s.ls_exp_text = (char *)memchr(s.ls_exp_text,candy,
-                                (size_t)(text_pointer-s.ls_exp_text));
+                                (size_t)((text_pointer+1)-s.ls_exp_text));
   if unlikely(!s.ls_exp_text) return 0;
   if (TPPMacroFile_LCScan(&s,text_pointer)) goto done;
   ++s.ls_exp_text; /* Continue scanning after this candidate. */
