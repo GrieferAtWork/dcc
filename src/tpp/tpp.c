@@ -1049,6 +1049,7 @@ struct lc_scan {
  char                 *ls_src_text;
  struct TPPFile const *ls_exp_file;
  char                 *ls_exp_text;
+ char                 *ls_exp_end;
  struct lc_info        ls_info;
  funop_t              *ls_code;
 };
@@ -1117,9 +1118,8 @@ do_align:
   * >> For this part, all we can really do is guess... */
  candy = *s.ls_src_text;
  for (;;) {
-  /* NOTE: Must include the text-pointer itself in searches! */
   s.ls_exp_text = (char *)memchr(s.ls_exp_text,candy,
-                                (size_t)((text_pointer+1)-s.ls_exp_text));
+                                (size_t)(s.ls_exp_end-s.ls_exp_text));
   if unlikely(!s.ls_exp_text) return 0;
   if (TPPMacroFile_LCScan(&s,text_pointer)) goto done;
   ++s.ls_exp_text; /* Continue scanning after this candidate. */
@@ -1145,6 +1145,7 @@ TPPMacroFile_LCInfo(struct TPPFile const *__restrict self,
  scanner.ls_code     = scanner.ls_src_file->f_macro.m_function.f_expand;
  scanner.ls_src_text = scanner.ls_src_file->f_begin;
  scanner.ls_exp_text = self->f_begin;
+ scanner.ls_exp_end  = self->f_end;
  scanner.ls_info = *info;
  result = TPPMacroFile_LCScan(&scanner,text_pointer);
  *info = scanner.ls_info;
@@ -6272,7 +6273,7 @@ err_substr:  TPPString_Decref(basestring);
 { static struct { refcnt_t a; size_t b; char c[COMPILER_STRLEN0(value)]; }\
   text##name = {0x80000000,COMPILER_STRLEN(value),value};\
   static struct TPPExplicitFile predef##name = {\
-   0x80000000,TPPFILE_KIND_EXPLICIT,NULL,"",0,EMPTY_STRING_HASH,\
+   0x80000000,TPPFILE_KIND_EXPLICIT,NULL,(char *)"",0,EMPTY_STRING_HASH,\
    (struct TPPString *)&text##name,text##name.c,text##name.c+COMPILER_STRLEN(value),NULL};\
   predefined_macro = &predef##name;\
   goto predef_macro;\
