@@ -172,10 +172,21 @@ DCCStackValue_Kill(struct DCCStackValue *__restrict self) {
  target_ptr_t s,a; int was_lvalue;
  struct DCCStackValue local_target;
  assert(self);
- /* Figure out how much space is required. */
- s = DCCType_Sizeof(&self->sv_ctype,&a,1);
+ was_lvalue = !!(self->sv_flags&DCC_SFLAG_LVALUE);
  /* Allocate local stack-space. */
- local_target.sv_ctype        = self->sv_ctype;
+ if (was_lvalue) {
+  /* To kill an l-value, we must generate a additional
+   * indirection by saving to an l-value typed local. */
+  s = a = DCC_TARGET_SIZEOF_POINTER;
+  local_target.sv_ctype = self->sv_ctype;
+  DCCDecl_XIncref(local_target.sv_ctype.t_base);
+  DCCType_MkLValue(&local_target.sv_ctype);
+  //self->sv_flags &= ~(DCC_SFLAG_LVALUE);
+ } else {
+  /* Figure out how much space is required. */
+  s = DCCType_Sizeof(&self->sv_ctype,&a,1);
+  local_target.sv_ctype = self->sv_ctype;
+ }
  local_target.sv_flags        = DCC_SFLAG_LVALUE;
  local_target.sv_reg          = DCC_RR_XBP;
  local_target.sv_reg2         = DCC_RC_CONST;
@@ -183,15 +194,10 @@ DCCStackValue_Kill(struct DCCStackValue *__restrict self) {
  local_target.sv_const.offset = DCCCompiler_HWStackAlloc(s,a,0);
  local_target.sv_sym          = NULL;
  /* Generate the store. */
- was_lvalue = !!(self->sv_flags&DCC_SFLAG_LVALUE);
- self->sv_flags &= ~(DCC_SFLAG_LVALUE);
  DCCStackValue_Store(self,&local_target,1);
- if (self->sv_sym) DCCSym_Decref(self->sv_sym);
- memcpy(self,&local_target,sizeof(struct DCCStackValue));
- /* If the variable was already an lvalue, we
-  * must add an additional level of indirection. */
- if (was_lvalue)
-     DCCType_MkLValue(&self->sv_ctype);
+ if (was_lvalue) DCCDecl_XDecref(self->sv_ctype.t_base);
+ DCCSym_XDecref(self->sv_sym);
+ *self = local_target;
 }
 
 PUBLIC void DCC_VSTACK_CALL

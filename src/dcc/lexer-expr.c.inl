@@ -1117,6 +1117,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
    if (is_true) vpop(1); /* Pop the false-branch if it's unwanted. */
   } else
 #endif
+#define PROM_CONDVAL 1
    /* TODO: Cast to common type? */
   {
    struct DCCSym *tt_label,*ff_label;
@@ -1143,6 +1144,9 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
    }
    /* At this point, we have parsed the true-branch,
     * who's value is not in 'vbottom'. */
+#if PROM_CONDVAL
+   vprom();
+#endif
    if ((vbottom->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_COPY)) ||
        (vbottom->sv_reg == DCC_RC_CONST) ||
         /* Always copy protected registers. This can happen if the user writes something like:
@@ -1171,7 +1175,8 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
      * WARNING: Since not everything can fit into register storage,
      *          sadly we must sometimes allocate a copy on the stack.
      */
-    if (DCCType_Sizeof(&vbottom->sv_ctype,NULL,1) <= DCC_TARGET_SIZEOF_POINTER) {
+    if ((vbottom->sv_flags&DCC_SFLAG_LVALUE) ||
+        (DCCType_Sizeof(&vbottom->sv_ctype,NULL,1) <= DCC_TARGET_SIZEOF_POINTER)) {
      DCCStackValue_Load(vbottom);
     } else {
      /* Use the stack for shared storage.
@@ -1180,7 +1185,8 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
     }
    }
    shared_storage = *vbottom; /* Keep track of how the true-branch was stored (so that the false-branch can mirror it). */
-   ++vbottom;               /* Don't destroy this. */
+   ++vbottom;                 /* Don't destroy this. */
+   assert(!(shared_storage.sv_flags&DCC_SFLAG_COPY));
    ff_label = DCCUnit_AllocSym();
    /* dirty hack! (This is only used to prevent DCC from crashing)
     * >> It has no syntactic meaning! */
@@ -1203,6 +1209,9 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
     if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD) is_dead |= 2;
     popf();
    }
+#if PROM_CONDVAL
+   vprom();
+#endif
 
    if (is_dead == (1|2)) {
     /* When both branches are dead, we know that the entire expression is, too. */
@@ -1216,6 +1225,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
    vrrot(3);  /* ..., shared, shared, rhs */
    vstore(1); /* ..., shared, shared */
    vpop(0);   /* ..., shared */
+   vrval();   /* ..., rshared */
 
    /* This is where we jump to skip the false-branch. */
    t_defsym(ff_label);
