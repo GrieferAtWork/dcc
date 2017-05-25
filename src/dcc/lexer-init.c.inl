@@ -66,7 +66,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
   target_ptr_t target_maxindex,target_index;
   target_ptr_t elem_size;
   has_brace       = 1;
-parse_braceblock:
+//parse_braceblock:
   target_maxindex = 0;
   target_index    = 0;
   elem_size       = 0;

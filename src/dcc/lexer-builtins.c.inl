@@ -59,6 +59,7 @@ DCCParse_BuiltinTypeStr(void) {
                                  name_sym ? name_sym->sy_name : NULL);
   vpop(1);
  }
+ DCCType_Quit(&query_type);
  assert(type_str),
  DCCVStack_PushStr(type_str->s_text,type_str->s_size);
  TPPString_Decref(type_str);
