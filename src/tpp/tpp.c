@@ -2387,7 +2387,7 @@ add_macro_argument:
     new_arginfo_v->ai_id = argument_name;
 #if TPP_CONFIG_DEBUG
     if (argument_name == KWD___VA_ARGS__) {
-     new_arginfo_v->ai_name     = "__VA_ARGS__";
+     new_arginfo_v->ai_name     = (char *)"__VA_ARGS__";
      new_arginfo_v->ai_namesize = 11;
     } else {
      assert(token.t_kwd);

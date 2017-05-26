@@ -278,6 +278,14 @@ union DCCConstValue {
 #define DCC_SFLAG_GTBITSIZ(f) (((f)&DCC_SFLAG_BITSIZ_MASK) >> DCC_SFLAG_BITSIZ_SHIFT)
 #define DCC_SFLAG_GTBITOFF(f) (((f)&DCC_SFLAG_BITOFF_MASK) >> DCC_SFLAG_BITOFF_SHIFT)
 
+#define DCC_SFLAG_NO_WSIGN       0x00000040 /*< Don't emit warnings about loss of sign in a constant during signed->unsigned casts.
+                                             *  Normally, a warning is emit when the sign-bit of a constant is set, yet consider
+                                             *  the following case:
+                                             *  >> unsigned int x = ~(0x1|0x2); // This constant has the sign bit set, but it wouldn't make sense to warn here...
+                                             *  >> unsigned int y = -4;         // Now here, we should warn about the assignment.
+                                             *  NOTE: You should realize that 'x' and 'y' are assigned the same value...
+                                             */
+
 typedef uint32_t DCC(sflag_t); /*< Stack value flag (Set of 'DCC_SFLAG_*'). */
 
 struct DCCStackValue {

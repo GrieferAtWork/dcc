@@ -751,6 +751,9 @@ DCCStackValue_ConstUnary(struct DCCStackValue *__restrict self, tok_t op) {
   self->sv_sym = NULL;
   break;
  case '~':
+  /* While there are other means of accidentally setting the sign-bit, this
+   * is the only way accepted that will prevent warnings from being emit. */
+  self->sv_flags |= DCC_SFLAG_NO_WSIGN;
  case '-':
   if (self->sv_sym) return 0;
   if (op == '~') iv = ~iv;
@@ -1591,6 +1594,8 @@ default_binary:
       target->sv_reg == DCC_RC_CONST) {
   struct DCCMemLoc dest;
   if (!(target->sv_flags&DCC_SFLAG_LVALUE)) {
+   /* Propagate the no-sign warnings flag. */
+   target->sv_flags |= (self->sv_flags&DCC_SFLAG_NO_WSIGN);
    if (self->sv_reg == DCC_RC_CONST &&
        self->sv_reg2 == DCC_RC_CONST &&
      !(target->sv_flags&DCC_SFLAG_LVALUE)) {
@@ -3536,7 +3541,10 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
      req_bits += is_signed;
      /* If more bits are required that available, emit a warning. */
      if (req_bits > tweight) return W_CAST_INTEGRAL_OVERFLOW;
-     if ((tid&DCCTYPE_UNSIGNED) && is_signed) return W_CAST_INTEGRAL_SIGNLOSS;
+     if ((tid&DCCTYPE_UNSIGNED) && is_signed &&
+         /* NOTE: Don't emit this warning if the sign-bit is set intentionally. */
+        !(value->sv_flags&DCC_SFLAG_NO_WSIGN))
+          return W_CAST_INTEGRAL_SIGNLOSS;
      return 0;
     }
     if (vid < 8) {

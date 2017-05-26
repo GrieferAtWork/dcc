@@ -506,7 +506,6 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
  case TOK_CHAR:
   int_kind = TPP_Atoi(&intval);
   if unlikely(!int_kind) goto push_int0;
-  YIELD();
   tyid = 0;
   if (int_kind&TPP_ATOI_UNSIGNED) tyid |= DCCTYPE_UNSIGNED;
   switch (int_kind&TPP_ATOI_TYPE_MASK) {
@@ -516,9 +515,17 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
    case TPP_ATOI_TYPE_INT16   : tyid |= DCCTYPE_INT16; break;
    case TPP_ATOI_TYPE_INT32   : tyid |= DCCTYPE_INT32; break;
    case TPP_ATOI_TYPE_INT64   : tyid |= DCCTYPE_INT64; break;
-   default: break;
+   default:
+    if (TOK == TOK_CHAR) {
+     /* Character constant. */
+     tyid |= DCCTYPE_CHAR;
+     if (CURRENT.l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
+         tyid |= DCCTYPE_UNSIGNED;
+    }
+    break;
   }
   vpushi(tyid,intval);
+  YIELD();
  } break;
 
  { /* Allocate and push a string. */
