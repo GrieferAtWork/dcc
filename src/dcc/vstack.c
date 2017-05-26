@@ -1417,7 +1417,6 @@ end_cmp:
     if (!iv) {
      /* '0-foo()' --> '-foo()' */
      DCCStackValue_Swap(self,target);
-     self->sv_ctype.t_type;
      DCCStackValue_Unary(self,'-');
      return;
     }
@@ -3018,6 +3017,7 @@ PUBLIC void DCC_VSTACK_CALL DCCVStack_RRot(size_t n) {
 // 
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Unary(tok_t op) {
+ struct DCCType *target_type;
  assert(vsize >= 1);
 #ifdef HAVE_VLOG
  if DCC_MACRO_COND(HAVE_VLOG) {
@@ -3031,9 +3031,10 @@ DCCVStack_Unary(tok_t op) {
   VLOG(0,("vgen1('%s')\n",name));
  }
 #endif
- if (op != '!' && op != '*' &&
-   !(vbottom->sv_flags&DCC_SFLAG_COPY)) {
-  if (op != '&' && (vbottom->sv_ctype.t_type&DCCTYPE_CONST))
+ target_type = NULL;
+ if (op != '!' && op != '*') {
+  target_type = DCCType_Effective(&vbottom->sv_ctype);
+  if (op != '&' && (target_type->t_type&DCCTYPE_CONST))
       WARN(W_UNARY_CONSTANT_TYPE,&vbottom->sv_ctype);
   if ((vbottom->sv_flags&DCC_SFLAG_RVALUE) &&
       (DCCTYPE_GROUP(vbottom->sv_ctype.t_type) != DCCTYPE_LVALUE))
@@ -3041,18 +3042,20 @@ DCCVStack_Unary(tok_t op) {
  }
  switch (op) {
  case '-':
-  if (DCCTYPE_ISUNSIGNED(vbottom->sv_ctype.t_type)) {
+  if (!target_type) target_type = DCCType_Effective(&vbottom->sv_ctype);
+  if (DCCTYPE_ISUNSIGNED(target_type->t_type)) {
    WARN(W_UNARY_NEG_ON_UNSIGNED_TYPE,&vbottom->sv_ctype);
   }
   break;
  case TOK_INC:
  case TOK_DEC:
-  if ((vbottom->sv_ctype.t_type&DCCTYPE_POINTER)) {
+  if (!target_type) target_type = DCCType_Effective(&vbottom->sv_ctype);
+  if ((target_type->t_type&DCCTYPE_POINTER)) {
    struct DCCStackValue multiplier;
    /* Pointer arithmetic: Add/Sub the size of the pointer base. */
-   assert(vbottom->sv_ctype.t_base);
-   assert(vbottom->sv_ctype.t_base->d_kind&DCC_DECLKIND_TYPE);
-   multiplier.sv_const.ptr = DCCType_Sizeof(&vbottom->sv_ctype.t_base->d_type,NULL,0);
+   assert(target_type->t_base);
+   assert(target_type->t_base->d_kind&DCC_DECLKIND_TYPE);
+   multiplier.sv_const.ptr = DCCType_Sizeof(&target_type->t_base->d_type,NULL,0);
    if (!multiplier.sv_const.ptr) {
     if (HAS(EXT_VOID_ARITHMETIC)) multiplier.sv_const.ptr = 1;
     else { WARN(W_POINTER_ARITHMETIC_VOID,&vbottom->sv_ctype.t_base->d_type); return; }
@@ -3065,7 +3068,10 @@ DCCVStack_Unary(tok_t op) {
    multiplier.sv_reg2         = DCC_RC_CONST;
    multiplier.sv_const.it     = 0;
    multiplier.sv_sym          = NULL;
-   DCCStackValue_Binary(vbottom,&multiplier,op == TOK_INC ? '+' : '-');
+   DCCStackValue_Binary(&multiplier,vbottom,op == TOK_INC ? '+' : '-');
+   /* Make sure 'gen2' didn't swap the operands (which it shouldn't) */
+   assert(!multiplier.sv_sym);
+   assert(!multiplier.sv_ctype.t_base);
    return;
   }
   break;
@@ -3349,7 +3355,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
  assert(type);
  /* Most generic case: If the types are compatible,
   *                    we're allowed to cast as-is. */
- vtyp = &value->sv_ctype;
+ vtyp = DCCType_Effective(&value->sv_ctype);
  if (DCCType_IsCompatible(vtyp,type,1))
   return 0;
  is_const = value->sv_reg == DCC_RC_CONST &&
@@ -3485,15 +3491,12 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
 
  { /* Compare the bases of the given l-value. */
  case DCCTYPE_LVALUE:
-  /* Always OK for explicit casts.
+  /* Always OK for explicit l-value casts.
    * NOTE: r-values are converted to l-values. */
   if (explicit_cast) return 0;
   if (!(value->sv_flags&DCC_SFLAG_LVALUE) &&
-        DCCTYPE_GROUP(vid) != DCCTYPE_LVALUE
-      ) return W_CAST_RVALUE_TO_LVALUE;
-  if (DCCTYPE_GROUP(vid) == DCCTYPE_LVALUE)
-      assert(vtyp->t_base),
-      vtyp = &vtyp->t_base->d_type;
+       (DCCTYPE_GROUP(value->sv_ctype.t_type) != DCCTYPE_LVALUE)
+        ) return W_CAST_RVALUE_TO_LVALUE;
   assert(type->t_base);
   type = &type->t_base->d_type;
   if (!DCCType_IsCompatible(vtyp,type,1) &&
