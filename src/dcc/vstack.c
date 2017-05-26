@@ -1628,6 +1628,21 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
  struct DCCDecl *base_decl; int group;
  assert(self);
  assert(type);
+ /* Special case: Explicit cast to void. */
+ if (DCCTYPE_ISBASIC(type->t_type,DCCTYPE_VOID)) {
+  /* Anything can be cast to void. */
+  assert(!type->t_base);
+  DCCSym_XDecref(vbottom->sv_sym);
+  DCCType_Quit(&vbottom->sv_ctype);
+  vbottom->sv_reg      = DCC_RC_CONST;
+  vbottom->sv_reg2     = DCC_RC_CONST;
+  vbottom->sv_flags    = DCC_SFLAG_RVALUE;
+  vbottom->sv_const.it = 0;
+  vbottom->sv_sym      = NULL;
+  vbottom->sv_ctype    = *type;
+  return;
+ }
+
  group = DCCTYPE_GROUP(self->sv_ctype.t_type);
  if (group == DCCTYPE_LVALUE) {
   /* Special case: lvalue --> lvalue cast. (is simply allowed) */
@@ -3448,6 +3463,10 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
  vid = vtyp->t_type&~(DCCTYPE_QUAL);
  switch (DCCTYPE_GROUP(tid)) {
  case DCCTYPE_BUILTIN:
+  if ((tid&DCCTYPE_BASICMASK) == DCCTYPE_VOID) {
+   /* Anything can be (explicitly) cast to void. */
+   return explicit_cast ? 0 : W_CAST_TO_VOID;
+  }
   if (DCCTYPE_GROUP(vid) == DCCTYPE_BUILTIN) {
    target_ptr_t tweight;
    if (explicit_cast) return 0; /* Always OK for explicit casts. */
@@ -3758,20 +3777,6 @@ DCCVStack_Cast(struct DCCType const *__restrict t,
    dcc_outf("')\n");
  }
 #endif
-
- /* Special case: Explicit cast to void. */
- if (DCCTYPE_ISBASIC(t->t_type,DCCTYPE_VOID)) {
-  /* Anything can be cast to void. */
-  vbottom->sv_reg          = DCC_RC_CONST;
-  vbottom->sv_reg2         = DCC_RC_CONST;
-  vbottom->sv_flags        = DCC_SFLAG_RVALUE;
-  vbottom->sv_const.it     = 0;
-  vbottom->sv_sym          = NULL;
-  DCCType_Quit(&vbottom->sv_ctype);
-  vbottom->sv_ctype.t_type = t->t_type;
-  vbottom->sv_ctype.t_base = NULL;
-  return;
- }
 
  /* Warn if there are problems with this cast. */
  wid = DCCStackValue_AllowCast(vbottom,t,explicit_case);

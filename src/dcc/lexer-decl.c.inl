@@ -400,10 +400,10 @@ push_void:
  else {
   vpushd(decl);
   /* Drop a reference from an unnamed decl (created as reference above!) */
-  if (decl_name == &TPPKeyword_Empty)
-      DCCDecl_Decref(decl);
- }
 end_nopush:
+  if (decl_name == &TPPKeyword_Empty)
+      DCCDecl_XDecref(decl);
+ }
  DCCAttrDecl_Quit(&attr);
  return result;
 }

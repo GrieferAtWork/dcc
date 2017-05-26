@@ -1246,6 +1246,7 @@ DEF_WARNING(W_ASSIGN_CONSTANT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assignmen
 DEF_WARNING(W_ASSIGN_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assignment of '%s' to r-value of type '%s'"))
 DEF_WARNING(W_BINARY_CONSTANT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Binary operation with '%s' on constant type '%s'"))
 DEF_WARNING(W_BINARY_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Binary operation with '%s' on r-value of type '%s'"))
+DEF_WARNING(W_CAST_TO_VOID,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Inplicit cast from '%s' to void-type '%s'"))
 DEF_WARNING(W_CAST_INCOMPATIBLE_TYPES,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Cast between incompatible types '%s' and '%s'"))
 DEF_WARNING(W_CAST_INTEGRAL_OVERFLOW,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from '%s' to '%s' causes an overflow"))
 DEF_WARNING(W_CAST_INTEGRAL_MAYOVERFLOW,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from '%s' to '%s' may cause an overflow"))

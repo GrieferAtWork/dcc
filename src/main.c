@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
   else outfile_name = DCC_OUTFILE_STDOBJ;
  }
 
- /*_CrtSetBreakAlloc(6062);*/
+ /*_CrtSetBreakAlloc(51375);*/
  DCCLinker_AddSysPaths(outfile_name);
 
  if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB) &&

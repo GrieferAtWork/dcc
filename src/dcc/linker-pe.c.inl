@@ -233,7 +233,7 @@ secty_of(struct DCCSection const *__restrict section) {
    if (CHECK_NAME(".rsrc"))  return SECTY_RSRC;
    if (CHECK_NAME(".iedat")) return SECTY_IDATA;
    if (CHECK_NAME(".pdata")) return SECTY_PDATA;
-   return (section->sc_start.sy_flags&DCC_SYMFLAG_SEC_W) ? SECTY_DATA : SECTY_OTHER;
+   return (section->sc_start.sy_flags&DCC_SYMFLAG_SEC_R) ? SECTY_DATA : SECTY_OTHER;
   } else if ((section->sc_start.sy_flags&DCC_SYMFLAG_SEC_W) &&
              (section->sc_text.tb_max != section->sc_text.tb_begin)) {
    /* non-empty, writable section. */
@@ -685,11 +685,8 @@ PRIVATE void pe_mk_secvec(void) {
  struct DCCSection **sec_order,**iter,**end,*section;
  struct secinfo *info; secty_t section_type;
  target_ptr_t addr;
- /* Search for a default thunk-section (If not found,
-  * the first '.data' section will be used below). */
- pe.pe_thunk = DCCUnit_GetSecs(".thunk");
- if (pe.pe_thunk && (pe.pe_thunk->sc_start.sy_flags&DCC_SYMFLAG_SEC_ISIMPORT)) pe.pe_thunk = NULL;
-
+ /* Create a fallback section for thunk data. */
+ DCCUnit_NewSecs(".thunk",DCC_SYMFLAG_SEC(1,0,0,0,0,0));
  if unlikely(!unit.u_secc) {
   /* Shouldn't happen, but better be careful. */
   pe.pe_secc = 0;
@@ -1096,8 +1093,7 @@ pe_getitasym(struct DCCSym *__restrict basesym) {
   buf[DCC_COMPILER_STRLEN(ITA_PREFIX)+namelen] = '\0';
   memcpy(buf+DCC_COMPILER_STRLEN(ITA_PREFIX),
          basesym->sy_name->k_name,namelen*sizeof(char));
-  /* Declare as weak to use only keep one copy of the symbol. */
-  return DCCUnit_NewSyms(buf,DCC_SYMFLAG_PRIVATE|DCC_SYMFLAG_WEAK);
+  return DCCUnit_NewSyms(buf,DCC_SYMFLAG_PRIVATE);
  }
 #else
  return DCCUnit_AllocSym();
