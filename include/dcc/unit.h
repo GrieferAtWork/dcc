@@ -214,11 +214,15 @@ struct DCCSym {
  * that were never reference or defined, simple created and never used.
  * NOTE: The symbol may still be defined as a library import, but will
  *       still be considered as obsolete when not used otherwise. */
+#if DCC_TARGET_BIN == DCC_BINARY_PE
 #define DCCSym_ISOBSOLETE(self) \
- ((self)->sy_refcnt == 1 && !(self)->sy_alias/* && \
- (!((self)->sy_flags&(DCC_SYMFLAG_VISIBILITYBASE|DCC_SYMFLAG_WEAK)) || \
-   ((self)->sy_flags&DCC_SYMFLAG_STATIC))*/ &&\
+ ((self)->sy_refcnt == 1 && !(self)->sy_alias && !(self)->sy_peind &&\
  (!(self)->sy_sec || DCCSection_ISIMPORT((self)->sy_sec)))
+#else
+#define DCCSym_ISOBSOLETE(self) \
+ ((self)->sy_refcnt == 1 && !(self)->sy_alias &&\
+ (!(self)->sy_sec || DCCSection_ISIMPORT((self)->sy_sec)))
+#endif
 
 
 
