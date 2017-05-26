@@ -4883,7 +4883,7 @@ PRIVATE int parse_include_string(char **begin, char **end) {
   if (!*end) *end = token.t_end;
   else {
    token.t_file->f_pos = *end;
-   *--end;
+   --end;
   }
   assert(*end > *begin);
  } else {

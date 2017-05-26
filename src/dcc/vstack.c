@@ -3036,7 +3036,7 @@ DCCVStack_Unary(tok_t op) {
   target_type = DCCType_Effective(&vbottom->sv_ctype);
   if (op != '&' && (target_type->t_type&DCCTYPE_CONST))
       WARN(W_UNARY_CONSTANT_TYPE,&vbottom->sv_ctype);
-  if ((vbottom->sv_flags&DCC_SFLAG_RVALUE) &&
+  if ((vbottom->sv_flags&(DCC_SFLAG_RVALUE|DCC_SFLAG_COPY)) == DCC_SFLAG_RVALUE &&
       (DCCTYPE_GROUP(vbottom->sv_ctype.t_type) != DCCTYPE_LVALUE))
       WARN(W_UNARY_RVALUE_TYPE,&vbottom->sv_ctype);
  }
@@ -3144,7 +3144,7 @@ DCCVStack_Binary(tok_t op) {
  if (!is_cmp_op && !(vbottom[1].sv_flags&DCC_SFLAG_COPY)) {
   if (target_type->t_type&DCCTYPE_CONST)
       WARN(W_BINARY_CONSTANT_TYPE,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
-  if ((vbottom[1].sv_flags&DCC_SFLAG_RVALUE) &&
+  if ((vbottom[1].sv_flags&(DCC_SFLAG_RVALUE|DCC_SFLAG_COPY)) == DCC_SFLAG_RVALUE &&
       (DCCTYPE_GROUP(vbottom[1].sv_ctype.t_type) != DCCTYPE_LVALUE))
       WARN(W_BINARY_RVALUE_TYPE,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
  }
