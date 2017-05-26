@@ -505,7 +505,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
  case TOK_INT:
  case TOK_CHAR:
   int_kind = TPP_Atoi(&intval);
-  if unlikely(!int_kind) goto push_int0;
+  if unlikely(!int_kind) goto yield_push_int0;
   tyid = 0;
   if (int_kind&TPP_ATOI_UNSIGNED) tyid |= DCCTYPE_UNSIGNED;
   switch (int_kind&TPP_ATOI_TYPE_MASK) {
@@ -527,6 +527,24 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
   vpushi(tyid,intval);
   YIELD();
  } break;
+
+#if 1
+ {
+  float_t fltval;
+  int flt_kind;
+  tyid_t tyid;
+ case TOK_FLOAT:
+  flt_kind = TPP_Atof(&fltval);
+  if unlikely(!flt_kind) goto yield_push_int0;
+  switch (flt_kind&TPP_ATOF_TYPE_MASK) {
+  case TPP_ATOF_TYPE_FLOAT:      tyid = DCCTYPE_FLOAT; break;
+  case TPP_ATOF_TYPE_LONGDOUBLE: tyid = DCCTYPE_LDOUBLE; break;
+  default:                       tyid = DCCTYPE_DOUBLE; break;
+  }
+  vpushf(tyid,fltval);
+  YIELD();
+ } break;
+#endif
 
  { /* Allocate and push a string. */
   struct TPPString *str;
@@ -877,6 +895,8 @@ outside_function:
  }
  DCCParse_ExprUnarySuffix();
  return;
+yield_push_int0: /* fallback... */
+ YIELD();
 push_int0: /* fallback... */
  vpushi(DCCTYPE_INT,0);
 }

@@ -50,14 +50,15 @@ struct DCCDecl;
 #define DCCTYPE_AUTO                0x0000000e /* Builtin type: '__auto_type' (NOTE: May _not_ be merged with qualifiers!) */
 #define DCCTYPE_VOID                0x0000000f /* Builtin type: 'void' */
 
-#define DCCTYPE_ISINT(t)            (!((t)&~(DCCTYPE_BUILTIN|7)))
-#define DCCTYPE_ISFLOATT(t)         ((0x0700 >>              (t))&1)
-#define DCCTYPE_ISFLOAT(t)          ((0x0700 >> DCCTYPE_BASIC(t))&1)
-#define DCCTYPE_ISFLOAT_OR_VOIDT(t) ((0x8700 >>              (t))&1)
-#define DCCTYPE_ISFLOAT_OR_VOID(t)  ((0x8700 >> DCCTYPE_BASIC(t))&1)
-#define DCCTYPE_ISDECIMAL(t)        (DCCTYPE_BASIC(t) < DCCTYPE_BOOL)
+#define DCCTYPE_ISINT(t)             (!((t)&~(DCCTYPE_BUILTIN|DCCTYPE_FLAGSMASK|7)))
+#define DCCTYPE_ISFLOATT(t)          ((0x0700 >>              (t))&1)
+#define DCCTYPE_ISFLOAT(t)           ((0x0700 >> DCCTYPE_BASIC(t))&1)
+#define DCCTYPE_ISFLOAT_OR_VOIDT(t)  ((0x8700 >>              (t))&1)
+#define DCCTYPE_ISFLOAT_OR_VOID(t)   ((0x8700 >> DCCTYPE_BASIC(t))&1)
+#define DCCTYPE_ISDECIMAL(t)         (DCCTYPE_BASIC(t) < DCCTYPE_BOOL)
 /* 0x00000efc == (DCCTYPE_GROUPMASK|DCCTYPE_BASICMASK)&~(DCCTYPE_STRUCTURE|DCCTYPE_UNSIGNED) */
-#define DCCTYPE_ISUNSIGNED(t)       (((t)&0x00000efc) == DCCTYPE_UNSIGNED || DCCTYPE_ISBASIC(t,DCCTYPE_BOOL))
+#define DCCTYPE_ISUNSIGNED(t)        (((t)&0x00000efc) == DCCTYPE_UNSIGNED || DCCTYPE_ISBASIC(t,DCCTYPE_BOOL))
+#define DCCTYPE_ISUNSIGNED_OR_PTR(t) (DCCTYPE_ISUNSIGNED(t) || (t)&DCCTYPE_POINTER)
 
 /* Fixed-length names. */
 #if DCC_TARGET_BITPERBYTE == 8

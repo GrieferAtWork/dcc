@@ -426,7 +426,7 @@ DCCStackValue_FixRegister(struct DCCStackValue *__restrict self) {
   if (!self->sv_const.offset) {
    /* mov %self->sv_reg, %new_register */
    DCCDisp_RegMovReg(self->sv_reg,new_register,
-                     DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type));
+                     DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
   } else {
    /* lea self->sv_const.it(%self->sv_reg), %new_register */
    struct DCCMemLoc src;
@@ -546,7 +546,8 @@ load_reg: /* Make sure we're operating on a register. */
    val.sv_const.it     = bits-(off+siz);
    DCCStackValue_Binary(&val,self,TOK_SHL);
    val.sv_const.it     = bits-siz;
-   DCCStackValue_Binary(&val,self,DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type)
+   DCCStackValue_Binary(&val,self,
+                        DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type)
                         ? TOK_RANGLE3 : TOK_SHR);
   }
  }
@@ -976,7 +977,7 @@ DCCStackValue_BinMem(struct DCCStackValue *__restrict self, tok_t op,
   src.ml_off = self->sv_const.offset;
   src.ml_sym = self->sv_sym;
   DCCDisp_MemBinMem(op,&src,DCCType_Sizeof(&self->sv_ctype,NULL,1),
-                    target,n,DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type));
+                    target,n,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
   return;
  }
 
@@ -987,13 +988,13 @@ DCCStackValue_BinMem(struct DCCStackValue *__restrict self, tok_t op,
   case 1: temp.sa_off = (target_off_t)self->sv_const.u8; goto integral_common;
   case 2: temp.sa_off = (target_off_t)DCC_H2T16(self->sv_const.u16); goto integral_common;
   case 4: temp.sa_off = (target_off_t)DCC_H2T32(self->sv_const.u32);
-integral_common: DCCDisp_CstBinMem(op,&temp,target,n,DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type)); break;
+integral_common: DCCDisp_CstBinMem(op,&temp,target,n,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type)); break;
 #ifdef DCC_RC_I64
   case 8: temp.sa_off = (target_off_t)DCC_H2T64(self->sv_const.u64); goto integral_common;
 #endif
   default:
    DCCDisp_VecBinMem(op,&self->sv_const,sizeof(self->sv_const),
-                     target,n,DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type));
+                     target,n,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
    break;
   }
   return;
@@ -1001,7 +1002,7 @@ integral_common: DCCDisp_CstBinMem(op,&temp,target,n,DCCTYPE_ISUNSIGNED(self->sv
  /* mov %reg, symaddr */
  DCCStackValue_FixRegOffset(self);
  DCCDisp_RegsBinMems(op,self->sv_reg,self->sv_reg2,target,n,
-                     DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type));
+                     DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
 }
 PRIVATE void DCC_VSTACK_CALL
 DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
@@ -1016,26 +1017,26 @@ DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
   src.ml_sym = self->sv_sym;
   src.ml_off = self->sv_const.offset;
   DCCDisp_MemsBinRegs(op,&src,DCCType_Sizeof(&self->sv_ctype,NULL,1),
-                      dst,dst2,DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type));
+                      dst,dst2,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
  } else if (source_reg == DCC_RC_CONST) {
 #if DCC_TARGET_SIZEOF_POINTER < 8
   struct DCCSymExpr temp;
   temp.e_int = self->sv_const.it;
   temp.e_sym = self->sv_sym;
   DCCDisp_CstBinRegs(op,&temp,dst,dst2,
-                     DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type));
+                     DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
 #else
   struct DCCSymAddr temp;
   temp.sa_off = self->sv_const.it;
   temp.sa_sym = self->sv_sym;
-  DCCDisp_CstBinReg(op,&temp,dst,DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type));
+  DCCDisp_CstBinReg(op,&temp,dst,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
   if (dst2 != DCC_RC_CONST) DCCDisp_RegBinReg('^',dst2,dst2,1);
 #endif
  } else {
   /* *op %source_reg, target */
   DCCStackValue_FixRegOffset(self);
   DCCDisp_RegsBinRegs(op,self->sv_reg,self->sv_reg2,
-                      dst,dst2,DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type));
+                      dst,dst2,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
  }
 }
 
@@ -1502,7 +1503,7 @@ set_zero:
       * ...
       */
      self->sv_const.it = (int_t)shift;
-     op = DCCTYPE_ISUNSIGNED(target->sv_ctype.t_type) ? TOK_RANGLE3 : TOK_SHR;
+     op = DCCTYPE_ISUNSIGNED_OR_PTR(target->sv_ctype.t_type) ? TOK_RANGLE3 : TOK_SHR;
     }
    } break;
 
@@ -1752,7 +1753,7 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
    assert(DCCTYPE_GROUP(type->t_type) != DCCTYPE_POINTER &&
           DCCTYPE_GROUP(type->t_type) != DCCTYPE_FUNCTION);
    self->sv_reg2 = DCCVStack_GetReg(DCC_RC_I32,1);
-   if (!DCCTYPE_ISUNSIGNED(type->t_type)) {
+   if (!DCCTYPE_ISUNSIGNED_OR_PTR(type->t_type)) {
     /* sign-extend 'self->sv_reg' into 'self->sv_reg2' */
     DCCDisp_RegMovReg(self->sv_reg2,self->sv_reg2,1);
     DCCDisp_SignExtendReg(self->sv_reg2);
@@ -2441,6 +2442,18 @@ DCCVStack_PushInt(tyid_t type, int_t v) {
  slot.sv_sym          = NULL; /* If set, this would could be used for a relocation added to 'v'. */
  vpush(&slot);
 }
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushFlt(tyid_t type, float_t v) {
+ struct DCCStackValue slot;
+ slot.sv_ctype.t_type = type;
+ slot.sv_ctype.t_base = NULL;
+ slot.sv_flags        = DCC_SFLAG_RVALUE;
+ slot.sv_reg          = DCC_RC_CONST;
+ slot.sv_reg2         = DCC_RC_CONST;
+ slot.sv_const.flt    = v;
+ slot.sv_sym          = NULL; /* If set, this would could be used for a relocation added to 'v'. */
+ vpush(&slot);
+}
 
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_PushCst(struct DCCType const *__restrict type, int_t v) {
@@ -3089,7 +3102,9 @@ DCCVStack_Unary(tok_t op) {
  switch (op) {
  case '-':
   if (!target_type) target_type = DCCType_Effective(&vbottom->sv_ctype);
-  if (DCCTYPE_ISUNSIGNED(target_type->t_type)) {
+  if (target_type->t_type&DCCTYPE_POINTER) {
+   WARN(W_UNARY_NEG_ON_POINTER_TYPE,&vbottom->sv_ctype);
+  } else if (DCCTYPE_ISUNSIGNED(target_type->t_type)) {
    WARN(W_UNARY_NEG_ON_UNSIGNED_TYPE,&vbottom->sv_ctype);
   }
   break;
@@ -3248,11 +3263,28 @@ DCCVStack_Binary(tok_t op) {
   }
   break;
 
+ case '&':
+ case '|':
+ case '^':
+  /* Warn about use on pointer types. */
+  if (target_type->t_type&DCCTYPE_POINTER)
+      WARN(W_BITWISE_OPERATOR_ON_POINTER_TYPE,&vbottom[0].sv_ctype);
+  if (DCCType_Effective(&vbottom[1].sv_ctype)->t_type&DCCTYPE_POINTER)
+      WARN(W_BITWISE_OPERATOR_WITH_POINTER_TYPE,&vbottom[0].sv_ctype);
+  break;
+
  case TOK_SHL:
  case TOK_SHR:
+  if (target_type->t_type&DCCTYPE_POINTER) {
+   WARN(W_SHIFT_OPERATOR_ON_POINTER_TYPE,&vbottom[0].sv_ctype);
+   goto unsigned_shift;
+  }
   if (DCCTYPE_ISUNSIGNED(target_type->t_type)) {
+unsigned_shift:
    if (op == TOK_SHR) op = TOK_RANGLE3; /* Use the unsigned opcode. */
   }
+  if (DCCType_Effective(&vbottom[1].sv_ctype)->t_type&DCCTYPE_POINTER)
+      WARN(W_SHIFT_OPERATOR_WITH_POINTER_TYPE,&vbottom[0].sv_ctype);
   break;
  default: break;
  }
@@ -3263,7 +3295,9 @@ DCCVStack_Binary(tok_t op) {
   /* Emit warnings about incompatibilities between 'vbottom[0]' and 'vbottom[1]'. */
   wid = DCCStackValue_AllowCast(vbottom,lhs_type,0);
   if (wid) {
-   if (is_cmp_op &&
+   /* NOTE: This certain set of warnings is also ignored in shift/binary operations. */
+   if ((is_cmp_op || op == TOK_SHL || op == TOK_SHR || op == TOK_RANGLE3 ||
+                     op == '&' || op == '|' || op == '^') &&
        /* Ignore constant/volatile/sign/overflow warnings for compare operations. */
       (wid == W_CAST_CONST_POINTER || wid == W_CAST_CONST_LVALUE ||
        wid == W_CAST_RVALUE_TO_LVALUE || wid == W_CAST_VOLATILE_POINTER ||

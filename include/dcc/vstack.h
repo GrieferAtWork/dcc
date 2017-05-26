@@ -238,10 +238,12 @@ union DCCConstValue {
  void *p;
 #ifdef __INTELLISENSE__
  int_t it;
+ float_t flt;
  target_off_t offset; /* Used As offset by symbols. */
  target_ptr_t ptr;
 #else
  DCC(int_t) it;
+ DCC(float_t) flt;
  DCC(target_off_t) offset; /* Used As offset by symbols. */
  DCC(target_ptr_t) ptr;
 #endif
@@ -402,6 +404,7 @@ struct DCCVStack {
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Pop(int del);                                        /* -1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Push(struct DCCStackValue const *__restrict sval);   /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushInt(DCC(tyid_t) type, DCC(int_t) v);             /* +1 ('type': 'DCCTYPE_*') */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_PushFlt(DCC(tyid_t) type, DCC(float_t) v);           /* +1 ('type': 'DCCTYPE_*') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushCst(struct DCCType const *__restrict type, DCC(int_t) v); /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushSym(struct DCCSym *__restrict sym);              /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushSymt(struct DCCType const *__restrict type, struct DCCSym *__restrict sym); /* +1 */
@@ -530,6 +533,7 @@ extern struct DCCStackValue *vbottom;
 #define vpop       DCCVStack_Pop
 #define vpush      DCCVStack_Push
 #define vpushi     DCCVStack_PushInt
+#define vpushf     DCCVStack_PushFlt
 #define vpushc     DCCVStack_PushCst
 #define vpushr     DCCVStack_PushReg
 #define vpushxr    DCCVStack_PushXReg

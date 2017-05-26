@@ -96,11 +96,16 @@
 #if defined(__CYGWIN__) || defined(__MINGW32__)
 #include <Windows.h>
 #endif
-#include <alloca.h>
 #include <endian.h>
 #include <fcntl.h>
 #include <unistd.h>
 #define stream_close(fd) close(fd)
+#endif
+
+#ifdef _MSC_VER
+#include <malloc.h>
+#else
+#include <alloca.h>
 #endif
 
 #ifdef _MSC_VER
@@ -3049,7 +3054,7 @@ PRIVATE int set_wstate(int wid, wstate_t state) {
  while (iter != end && iter->wse_wid < wid) ++iter;
  assert(iter == end || iter->wse_wid >= wid);
  bitset_byte = &curstate->ws_state[wid/(8/TPP_WARNING_BITS)];
- byte_shift  = (wid%(8/TPP_WARNING_BITS))*TPP_WARNING_BITS;
+ byte_shift  = (uint8_t)((wid%(8/TPP_WARNING_BITS))*TPP_WARNING_BITS);
  assert(byte_shift == 0 || byte_shift == 2 ||
         byte_shift == 4 || byte_shift == 6);
  if (state == WSTATE_SUPPRESS) {
@@ -3126,7 +3131,7 @@ PUBLIC wstate_t TPPLexer_GetWarning(int wnum) {
  assert((curstate == &current.l_warnings.w_basestate) ==
         (curstate->ws_prev == NULL));
  bitset_byte = curstate->ws_state[wid/(8/TPP_WARNING_BITS)];
- byte_shift  = (wid%(8/TPP_WARNING_BITS))*TPP_WARNING_BITS;
+ byte_shift  = (uint8_t)((wid%(8/TPP_WARNING_BITS))*TPP_WARNING_BITS);
  return (wstate_t)((bitset_byte >> byte_shift)&3);
 }
 PUBLIC int TPPLexer_SetWarning(int wnum, wstate_t state) {
@@ -3154,7 +3159,7 @@ PRIVATE wstate_t do_invoke_wid(int wid) {
         (curstate->ws_prev == NULL));
  assert(wid < TPP_WARNING_TOTAL);
  bitset_byte = &curstate->ws_state[wid/(8/TPP_WARNING_BITS)];
- byte_shift  = (wid%(8/TPP_WARNING_BITS))*TPP_WARNING_BITS;
+ byte_shift  = (uint8_t)((wid%(8/TPP_WARNING_BITS))*TPP_WARNING_BITS);
  assert(byte_shift == 0 || byte_shift == 2 ||
         byte_shift == 4 || byte_shift == 6);
  state = (wstate_t)((*bitset_byte >> byte_shift) & 3);
@@ -3522,7 +3527,7 @@ PRIVATE struct tpp_extension const tpp_extensions[] = {
 #ifdef tolower
 #undef tolower
 #endif
-#define tolower(c) ((c) >= 'A' && (c) <= 'Z' ? ((c)+('a'-'A')) : (c))
+#define tolower(c) (char)((c) >= 'A' && (c) <= 'Z' ? ((c)+('a'-'A')) : (c))
 
 #if 0
 /* Fuzzy match two strings */
@@ -6215,7 +6220,7 @@ err_substr:  TPPString_Decref(basestring);
      subindex = (size_t)val.c_data.c_int;
     }
     if (TOK != ',') {
-     sublen = basestring->s_size ? 1 : 0;
+     sublen = basestring->s_size ? 1u : 0u;
     } else {
      yield_fetch();
      if unlikely(!TPPLexer_Eval(&val)) goto err_substrf;
@@ -7358,7 +7363,7 @@ PUBLIC int TPP_Atoi(int_t *__restrict pint) {
    while (TPP_SizeofUnescape(begin,size) > sizeof(int_t));
   }
   *pint = 0;
-  size = TPP_Unescape((char *)pint,begin,size)-(char *)pint;
+  size = (size_t)(TPP_Unescape((char *)pint,begin,size)-(char *)pint);
 #if TPP_BYTEORDER == 4321
   /* Adjust for big endian. */
   *pint >>= (sizeof(int_t)-size)*8;
@@ -9050,7 +9055,7 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
 #define ARG(T)        va_arg(args,T)
 #define FILENAME()   (ARG(struct TPPFile *)->f_name)
 #define KWDNAME()    (ARG(struct TPPKeyword *)->k_name)
-#define TOK_NAME()   (kwd = TPPLexer_LookupKeywordID(ARG(tok_t)),kwd ? kwd->k_name : "??" "?")
+#define TOK_NAME()   (kwd = TPPLexer_LookupKeywordID(ARG(tok_t)),kwd ? kwd->k_name : (char *)"??" "?")
 #define CONST_STR()  (temp_string = TPPConst_ToString(ARG(struct TPPConst *)),temp_string ? temp_string->s_text : NULL)
  {
   struct TPPFile *macro_file;
