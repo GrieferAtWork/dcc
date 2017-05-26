@@ -204,9 +204,12 @@ int main(int argc, char *argv[]) {
  linker.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 #endif
 
- if (flags&F_COMPILEONLY)
-     save_object(outfile_name);
- else {
+ if (flags&F_COMPILEONLY) {
+  /* NOTE: Only clear obsolete here, as they'd otherwise be
+   *       cleared again by 'DCCLinker_Make' (which is unnecessary) */
+  DCCUnit_ClearObsolete();
+  save_object(outfile_name);
+ } else {
   stream_t s_out;
   /* Prepare generated code for output to file. */
   DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);

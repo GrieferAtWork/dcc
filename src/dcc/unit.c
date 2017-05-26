@@ -2042,6 +2042,28 @@ PUBLIC size_t DCCUnit_ClearStatic(void) {
 }
 
 PUBLIC size_t
+DCCUnit_ClearObsolete(void) {
+ size_t result = 0;
+ struct DCCSym **piter,*iter;
+ struct DCCSym **sym_iter,**sym_end;
+ sym_end = (sym_iter = unit.u_symv)+unit.u_syma;
+ for (; sym_iter != sym_end; ++sym_iter) {
+  piter = sym_iter;
+  while ((iter = *piter) != NULL) {
+   if (DCCSym_ISOBSOLETE(iter)) {
+    *piter = iter->sy_unit_next; /* Inherit reference. */
+    iter->sy_unit_next = NULL;   /* Inherit reference. */
+    DCCSym_Decref(iter);         /* Drop reference. */
+    ++result;
+   } else {
+    piter = &iter->sy_unit_next;
+   }
+  }
+ }
+ return result;
+}
+
+PUBLIC size_t
 DCCUnit_ClearUnusedLibs(void) {
  struct DCCSection *iter,*next;
  struct DCCSym **psec,*sec;

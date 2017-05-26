@@ -204,11 +204,23 @@ struct DCCSym {
      * be removed when they're imported from libraries. */\
   (((self)->sy_flags&(DCC_SYMFLAG_VISIBILITYBASE|DCC_SYMFLAG_STATIC)) != DCC_SYMFLAG_NONE || \
     (DCCSym_ISDEFINED(self) && DCCSection_ISIMPORT(DCCSym_SECTION(self)))))
-#else /* DCC_TARGET_BIN == DCC_BINARY_PE */
+#else /* ... */
 #define DCCSym_ISUNUSED(self) \
   ((self)->sy_refcnt == 1 && !DCCSym_ISSECTION(self) && \
  !((self)->sy_flags&DCC_SYMFLAG_USED))
-#endif /* DCC_TARGET_BIN != DCC_BINARY_PE */
+#endif /* !... */
+
+/* Similar to 'DCCSym_ISUNUSED', but only returns TRUE for symbols
+ * that were never reference or defined, simple created and never used.
+ * NOTE: The symbol may still be defined as a library import, but will
+ *       still be considered as obsolete when not used otherwise. */
+#define DCCSym_ISOBSOLETE(self) \
+ ((self)->sy_refcnt == 1 && !(self)->sy_alias/* && \
+ (!((self)->sy_flags&(DCC_SYMFLAG_VISIBILITYBASE|DCC_SYMFLAG_WEAK)) || \
+   ((self)->sy_flags&DCC_SYMFLAG_STATIC))*/ &&\
+ (!(self)->sy_sec || DCCSection_ISIMPORT((self)->sy_sec)))
+
+
 
 /* Assert various assumptions that can always be made about valid symbols. */
 #if DCC_DEBUG
@@ -1012,6 +1024,39 @@ DCCFUN size_t DCCUnit_ClearUnused(void);
 /* Clear all unused symbols that were defined as static,
  * essentially removing all unused static declaration. */
 DCCFUN size_t DCCUnit_ClearStatic(void);
+
+/* Clear all obsolete symbols and sections.
+ * While this function falls under the same restrictions
+ * as 'DCCUnit_ClearUnused', it is still less powerful in
+ * that it will only clear symbols that are considered obsolete,
+ * where obsolete is defined as a symbol that is never used in any
+ * way, shape or form, as well as never defined as anything, with
+ * the exception that library import symbol must only be never used.
+ * -> By default, this function is usually called before an object
+ *    file is generated in an attempt not to include symbols from
+ *    declarations in headers that aren't actually used by the
+ *    compilation unit:
+ *    >> // Pull in symbol definitions from <stdio.h>
+ *    >> #include <stdio.h>
+ *    >>
+ *    >> // When generating an object file, we only need
+ *    >> // 2 symbols 'my_log' and 'printf'.
+ *    >>
+ *    >> // And even though many more symbols have been defined,
+ *    >> // such as 'puts' and 'fopen', they can all be considered
+ *    >> // obsolete and are removed before the object file is created.
+ *    >>
+ *    >> int my_log(char const *msg) {
+ *    >>     return printf("LOG: %s\n",msg);
+ *    >> }
+ * WARNING: The USED flag does not affect whether or not a symbol
+ *          is considered obsolete, as it is only designed for
+ *          being used on actual symbol implementations.
+ * HINT: Clearing obsolete symbols should never emit warnings about them being unused!
+ * NOTE: This function must not be called when 'DCCUnit_ClearUnused' is
+ *       invoked as well. - All that this function can ever do is also
+ *       performed by 'DCCUnit_ClearUnused'! */
+DCCFUN size_t DCCUnit_ClearObsolete(void);
 
 /* Clear all libraries without any used functions. */
 DCCFUN size_t DCCUnit_ClearUnusedLibs(void);
