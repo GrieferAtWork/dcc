@@ -1415,7 +1415,7 @@ DCCSection_DAllocBack(struct DCCSection *__restrict self,
 }
 
 
-PUBLIC int
+PUBLIC target_ptr_t
 DCCSection_DAllocAt(struct DCCSection *__restrict self,
                     target_ptr_t addr, target_siz_t size) {
  assert(self);
@@ -1425,9 +1425,9 @@ DCCSection_DAllocAt(struct DCCSection *__restrict self,
                             self->sc_text.tb_begin)) {
   /* Yes: Allocate past the end. */
   self->sc_text.tb_max = self->sc_text.tb_begin+addr+size;
-  return 1;
+  return addr;
  }
- return DCCFreeData_AcquireAt(&self->sc_free,addr,size) != DCC_FREEDATA_INVPTR;
+ return DCCFreeData_AcquireAt(&self->sc_free,addr,size);
 }
 
 PUBLIC target_ptr_t
@@ -1475,9 +1475,8 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
   }
  } else if (new_size > old_size) {
   target_siz_t more_mem = new_size-old_size;
-  /* Allocate more memory. */
-  result = DCCSection_DAllocAt(self,old_addr+old_size,more_mem);
-  if (result == DCC_FREEDATA_INVPTR) {
+  /* Try to allocate more memory directly after the vector end. */
+  if (DCCSection_DAllocAt(self,old_addr+old_size,more_mem) == DCC_FREEDATA_INVPTR) {
    uint8_t *oldvec,*newvec;
    int old_new_overlap = 1;
    /* Can't allocate immediately after! (Try immediately before) */

@@ -708,9 +708,11 @@ DCCSection_DAllocBack(struct DCCSection *__restrict self,
 
 /* Tries to allocate 'size' bytes of zero-initialized memory at the given 'addr'.
  * @requires: !DCCSection_ISIMPORT(self)
- * @return: 0: The specified memory location is already in use. */
-DCCFUN int DCCSection_DAllocAt(struct DCCSection *__restrict self,
-                               DCC(target_ptr_t) addr, DCC(target_siz_t) size);
+ * @return: addr:                Successfully allocated memory at the given address.
+ * @return: DCC_FREEDATA_INVPTR: The specified memory location is already in use. */
+DCCFUN DCC(target_ptr_t)
+DCCSection_DAllocAt(struct DCCSection *__restrict self,
+                    DCC(target_ptr_t) addr, DCC(target_siz_t) size);
 
 /* Re-allocate section memory, attempting to do so in-place, but allocating
  * a new vector of data if the space that the caller tried to re-allocate into
