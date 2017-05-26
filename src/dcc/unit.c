@@ -250,9 +250,11 @@ DCCFreeData_Acquire(struct DCCFreeData *__restrict self,
   if (iter->fr_size >= size) {
    target_siz_t upper_overflow;
    upper_overflow = (iter->fr_size-size);
-   result  = iter->fr_addr+upper_overflow;
+   result  =   iter->fr_addr;
+   result +=   upper_overflow;
+   result +=  (align-1);
    result &= ~(align-1);
-   result += offset;
+   result +=   offset;
    if (result      >= iter->fr_addr &&
        result+size <= iter->fr_addr+iter->fr_size) {
     upper_overflow = (iter->fr_addr+iter->fr_size)-(result+size);

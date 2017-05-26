@@ -64,12 +64,13 @@ DCCParse_Init(struct DCCType const *__restrict type,
   struct DCCMemLoc base_target,elem_target;
   /* - Current index within an array initializer. */
   target_ptr_t target_maxindex,target_index;
-  target_ptr_t elem_size;
+  target_ptr_t elem_size,elem_align;
   has_brace       = 1;
 //parse_braceblock:
   target_maxindex = 0;
   target_index    = 0;
   elem_size       = 0;
+  elem_align      = 0;
   field_curr      =
   field_end       = NULL;
   /* Warn about initializer-assignment to constant target. */
@@ -109,7 +110,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
    kind            = KIND_ARRAY;
    target_maxindex = type->t_base->d_tdecl.td_size;
    if (DCC_MACRO_FALSE) { case DCCTYPE_VARRAY: kind = KIND_VARRAY; }
-   elem_size       = DCCType_Sizeof(&type->t_base->d_type,NULL,1);
+   elem_size       = DCCType_Sizeof(&type->t_base->d_type,&elem_align,1);
    break;
 
   default:
@@ -137,9 +138,9 @@ DCCParse_Init(struct DCCType const *__restrict type,
     /* Global storage duration. */
     target_section = DCCATTRDECL_GETSECTION_OR_IMPORT(attr);
     if (!target_section || DCCSection_ISIMPORT(target_section)) {
-     target_section = type->t_type&DCCTYPE_CONST
-      ? unit.u_data : unit.u_bss;
+     target_section = type->t_type&DCCTYPE_CONST ? unit.u_data : unit.u_bss;
     }
+    assert(target_section && !DCCSection_ISIMPORT(target_section));
     if (!type_a) type_a = 1;
     DCCSection_TBEGIN(target_section);
     DCCSection_TAlign(target_section,type_a,0);
@@ -152,7 +153,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
     }
     DCCSection_TEND(target_section);
    } else if (kind == KIND_VARRAY) {
-    /* Because the work-around for this, as found below is _so_ inefficient, warn about it. */
+    /* Because the work-around for this, as found below is _so_ inefficient, warn about its use. */
     WARN(W_LOCAL_VARRAY_VERY_INEFFICIENT,type);
     base_target.ml_off = -(target_off_t)compiler.c_hwstack.hws_curoffset;
     goto stack_target;
@@ -272,9 +273,10 @@ parse_field:
      WARN(W_ARRAY_FULLY_INITIALIZED,type);
      repeat = 0; /* Don't repeat! */
     }
-    /* alignment? */
     elem_target         = base_target;
     elem_target.ml_off += target_index*elem_size;
+    elem_target.ml_off +=  (elem_align-1); /* alignment */
+    elem_target.ml_off &= ~(elem_align-1); /* *ditto* */
     if (kind == KIND_VARRAY) {
      /* Figure out where this target will end. */
      target_ptr_t after_target = target_index+repeat;
@@ -289,7 +291,7 @@ parse_field:
         base_target.ml_off = DCCSection_DRealloc(target_section,base_target.ml_off,
                                                  target_maxindex*elem_size,
                                                  after_target*elem_size,
-                                                 1/* TODO: Alignment? */,0);
+                                                 elem_align,0);
         DCCSection_TEND(target_section);
         goto update_elem_target_off;
        }
@@ -366,21 +368,52 @@ update_elem_target_off:
    YIELD();
   }
   /* Push the final target & fix variadic array types. */
-  if (kind == KIND_VARRAY) {
-   struct DCCType array_type;
-   /* Set the finalized array length. */
-   assert(type->t_base);
-   assert(type->t_base->d_kind == DCC_DECLKIND_ARRAY);
-   array_type.t_type = type->t_base->d_type.t_type;
-   array_type.t_base = type->t_base->d_type.t_base;
-   if (array_type.t_base) DCCDecl_Incref(array_type.t_base);
-   DCCType_MkArray(&array_type,target_maxindex);
-   /* Push the fully initialized value. */
-   push_target(&array_type,&base_target);
-   DCCType_Quit(&array_type);
-  } else {
-   /* Push the fully initialized value. */
-   push_target(type,&base_target);
+  {
+   struct DCCType final_type = *type;
+   if (kind == KIND_VARRAY) {
+    /* Set the finalized array length. */
+    assert(final_type.t_base);
+    assert(final_type.t_base->d_kind == DCC_DECLKIND_ARRAY);
+    final_type.t_type = final_type.t_base->d_type.t_type;
+    final_type.t_base = final_type.t_base->d_type.t_base;
+    DCCDecl_XIncref(final_type.t_base);
+    DCCType_MkArray(&final_type,target_maxindex);
+   }
+   if (!target && base_target.ml_reg == DCC_RC_CONST) {
+    target_siz_t final_size;
+    struct DCCSection *target_section;
+    if (kind == KIND_ARRAY || kind == KIND_VARRAY)
+         final_size = target_maxindex*elem_size;
+    else final_size = DCCType_Sizeof(type,&elem_align,1);
+    /* Since we've auto-generated the target, let's
+     * allocate a reference-counted symbol and merge
+     * it within the target section. */
+    DCCSym_ASSERT(base_target.ml_sym);
+    assert(DCCSym_ISSECTION(base_target.ml_sym));
+    target_section = DCCSym_TOSECTION(base_target.ml_sym);
+    /* Merge section data (This is a no-op if the section doesn't allow merging). */
+    base_target.ml_off = (target_off_t)DCCSection_DMerge(target_section,
+                                                        (target_ptr_t)base_target.ml_off,
+                                                         final_size,elem_align);
+    /* Allocate a data symbol within the section.
+     * >> Allocating the symbol here is not ~really~ required, but if
+     *    we fail to do so, the section data associated with this initializer
+     *    will become danging as it will be impossible to trace data association. */
+    base_target.ml_sym = DCCUnit_AllocSym();
+    if unlikely(!base_target.ml_sym)
+       base_target.ml_sym = &target_section->sc_start;
+    else {
+     /* This symbol inherits all section data from the initializer. */
+     DCCSym_Define(base_target.ml_sym,target_section,
+                  (target_ptr_t)base_target.ml_off,
+                   final_size);
+     base_target.ml_off = 0; /* Now stored in the symbol. */
+    }
+   }
+   /* Actually push the finalized type & target. */
+   push_target(&final_type,&base_target);
+   if (kind == KIND_VARRAY)
+       DCCType_Quit(&final_type);
   }
 end_brace:
   if (has_brace) {
