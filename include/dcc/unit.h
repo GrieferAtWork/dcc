@@ -294,6 +294,11 @@ DCCFUN void DCCSym_Alias(struct DCCSym *__restrict self,
                          struct DCCSym *__restrict alias_sym,
                          DCC(target_ptr_t) offset);
 
+/* Same as 'DCCSym_Define', but no redefinition warnings are emit. */
+DCCFUN void DCCSym_Redefine(struct DCCSym *__restrict self,
+                            struct DCCSection *__restrict section,
+                            DCC(target_ptr_t) addr, DCC(target_siz_t) size);
+
 /* Set the size of a given symbol to 'size', updating
  * the reference counter of potentially mapped data.
  * Note though, that while setting the size of an undefined symbol

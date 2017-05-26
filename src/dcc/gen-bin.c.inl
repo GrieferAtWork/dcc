@@ -1482,7 +1482,7 @@ DCCDisp_VecBinMem(tok_t op,   void const *__restrict src, target_siz_t src_bytes
  struct DCCMemLoc dst_iter;
  target_siz_t common_size;
  /* Special case: Static, compile-time operation. */
- if ((cdst = DCCMemLoc_CompilerAddr(dst,dst_bytes)) != NULL) {
+ if ((cdst = DCCMemLoc_CompilerAddrUpdate(dst,(void **)&src,dst_bytes)) != NULL) {
   DCCDisp_StaBinSta(op,src,src_bytes,cdst,dst_bytes,src_unsigned);
   return;
  }

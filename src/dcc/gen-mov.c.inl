@@ -661,7 +661,8 @@ DCCDisp_VecMovMem(void             const *__restrict src, target_siz_t src_bytes
  if (!dst_bytes) return; /* Do nothing for empty destination. */
  common_size = dst_bytes < src_bytes ? dst_bytes : src_bytes;
  /* Special case: Move at compile-time. */
- if ((cdst = DCCMemLoc_CompilerAddr(dst,dst_bytes)) != NULL) {
+ /* TODO: This fails when 'src' is memory from the same section! */
+ if ((cdst = DCCMemLoc_CompilerAddrUpdate(dst,(void **)&src,dst_bytes)) != NULL) {
   memmove(cdst,src,common_size);
   if (!src_unsigned && ((uint8_t *)src)[src_bytes-1]&0x80) filler = 0xff; /* sign-extend. */
   *(uintptr_t *)&cdst += common_size;

@@ -46,6 +46,14 @@ DCCFUN void DCCDisp_SymDisp(struct DCCSymAddr const *__restrict expr, DCC(width_
 DCCFUN void       *DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l, size_t n_bytes);
 DCCFUN void const *DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l, size_t n_bytes);
 
+/* Same as the two function above, but accept an additional argument 'update_ptr' that describes
+ * any kind of compile-time pointer (doesn't even have to be part of a section), that will be
+ * updated in the even that in order to access section data, the section buffer must be re-allocated.
+ * >> This is a very crude work-around for such cases, but required for
+ *    compile-time implementation of something like 'DCCDisp_VecMovMem()'. */
+DCCFUN void       *DCCMemLoc_CompilerAddrUpdate(struct DCCMemLoc const *__restrict l, void **__restrict update_ptr, size_t n_bytes);
+DCCFUN void const *DCCMemLoc_CompilerDataUpdate(struct DCCMemLoc const *__restrict l, void **__restrict update_ptr, size_t n_bytes);
+
 struct DCCCompilerText {
  struct DCCSection *ct_sec;  /*< [0..1] Section that the text is located inside of. */
  DCC(target_ptr_t)  ct_base; /*< Text base address (The offset of the text in 'ct_sec' and start of relocations). */

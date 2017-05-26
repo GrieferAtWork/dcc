@@ -1017,7 +1017,7 @@ fix_stack:
   { /* Compile-time memcmp. */
    void const *data_a,*data_b;
    if ((data_a = DCCMemLoc_CompilerData(&a_loc,cmp_size)) != NULL &&
-       (data_b = DCCMemLoc_CompilerData(&b_loc,cmp_size)) != NULL) {
+       (data_b = DCCMemLoc_CompilerDataUpdate(&b_loc,(void **)&data_a,cmp_size)) != NULL) {
     int result = memcmp(data_a,data_b,cmp_size);
     /* Clamp the result to -1, 0 or 1 */
          if (result < 0) result = -1;

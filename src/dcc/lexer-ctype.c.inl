@@ -213,7 +213,7 @@ DCCParse_CTypeArrayExt(struct DCCType *__restrict self,
  if (visconst_xval()) {
   array_size = vgtconst_int();
 compiletime_array:
-  if (vbottom->sv_sym) WARN(W_ARRAY_SIZE_DEPENDS_ON_SYMBOL,vbottom->sv_sym);
+  if (vbottom->sv_sym) WARN(W_ARRAY_SIZE_DEPENDS_ON_SYMBOL,vbottom->sv_sym->sy_name);
   if (array_size < 0) { WARN(W_ARRAY_SIZE_NEGATIVE,self); array_size = 0; }
   DCCType_MkArray(self,(target_ptr_t)array_size);
   if (!array_size) WARN(W_ARRAY_SIZE_ZERO,self);

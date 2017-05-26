@@ -345,9 +345,6 @@ no_decl:
    WARN(W_DECL_TYPEDEF_WITH_INITIALIZER,decl);
    goto declare_typedef;
   }
-  /* TODO: If the type must not be fixed, it is much faster
-   *       to pre-allocate declaration storage and simply
-   *       point the initialization parser at it as target. */
   DCCParse_Init(real_decl_type,&attr,NULL,1);
   DCCParse_FixType(real_decl_type);
   if (decl) {
@@ -359,6 +356,30 @@ no_decl:
     vpop(1);
    } else {
     vstore(1);
+   }
+   assert(decl->d_kind == DCC_DECLKIND_MLOC);
+   if (decl->d_mdecl.md_loc.ml_reg == DCC_RC_CONST) {
+    struct DCCSym *decl_sym = decl->d_mdecl.md_loc.ml_sym;
+    assert(vbottom->sv_sym == decl_sym);
+    if likely(decl_sym && decl_sym->sy_sec &&
+             !DCCSection_ISIMPORT(decl_sym->sy_sec) &&
+             /* The following check will be repeated later,
+              * but since '.data' and '.bss' (the most likely candidates)
+              * both are not mergeable by default, this is such a rare
+              * case that it is usually faster to skip all the no-ops
+              * function calls below. */
+             (decl_sym->sy_sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_M)) {
+     target_siz_t type_align;
+     target_ptr_t newaddr;
+     /* Try to merge declaration memory in mergeable sections. */
+     DCCType_Sizeof(real_decl_type,&type_align,0);
+     newaddr = DCCSection_DMerge(decl_sym->sy_sec,
+                                 decl_sym->sy_addr,
+                                 decl_sym->sy_size,
+                                 type_align);
+     DCCSym_Redefine(decl_sym,decl_sym->sy_sec,
+                     newaddr,decl_sym->sy_size);
+    }
    }
   }
   popf();

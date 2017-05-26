@@ -31,8 +31,9 @@
 
 DCC_DECL_BEGIN
 
-PUBLIC void *
-DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
+LOCAL void *
+DCCMemLoc_CompilerAddr_impl(struct DCCMemLoc const *__restrict l,
+                            void **update_ptr, size_t n_bytes) {
  if ((compiler.c_flags&DCC_COMPILER_FLAG_SINIT) &&
       DCCMEMLOC_ISMEMOFF_S(l)) {
   struct DCCSymAddr symaddr;
@@ -45,9 +46,18 @@ DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
    /* Directly write to target memory (at compile-time).
     * >> This is used for static initializer of global data. */
    DCCSection_TBEGIN(target_sec);
-   target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off+
-                                               symaddr.sa_sym->sy_addr+
-                                               l->ml_off,n_bytes);
+   if (update_ptr && (*update_ptr >= target_sec->sc_text.tb_begin &&
+                      *update_ptr <= target_sec->sc_text.tb_end)) {
+    *(uintptr_t *)update_ptr -= (uintptr_t)target_sec->sc_text.tb_begin;
+    target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off+
+                                                symaddr.sa_sym->sy_addr+
+                                                l->ml_off,n_bytes);
+    *(uintptr_t *)update_ptr += (uintptr_t)target_sec->sc_text.tb_begin;
+   } else {
+    target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off+
+                                                symaddr.sa_sym->sy_addr+
+                                                l->ml_off,n_bytes);
+   }
    DCCSection_TEND(target_sec);
    return target_data;
   }
@@ -55,8 +65,9 @@ DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
  return NULL;
 }
 
-PUBLIC void const *
-DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
+LOCAL void const *
+DCCMemLoc_CompilerData_impl(struct DCCMemLoc const *__restrict l,
+                            void **update_ptr, size_t n_bytes) {
  if (DCCMEMLOC_ISMEMOFF_S(l)) {
   struct DCCSymAddr symaddr;
   if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0)) {
@@ -79,13 +90,42 @@ DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
    /* Directly write to target memory (at compile-time).
     * >> This is used for static initializer of global data. */
    DCCSection_TBEGIN(target_sec);
-   target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off,n_bytes);
+   if (update_ptr && (*update_ptr >= target_sec->sc_text.tb_begin &&
+                      *update_ptr <= target_sec->sc_text.tb_end)) {
+    *(uintptr_t *)update_ptr -= (uintptr_t)target_sec->sc_text.tb_begin;
+    target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off,n_bytes);
+    *(uintptr_t *)update_ptr += (uintptr_t)target_sec->sc_text.tb_begin;
+   } else {
+    target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off,n_bytes);
+   }
    DCCSection_TEND(target_sec);
    return target_data;
   }
  }
  return NULL;
 }
+
+PUBLIC void *
+DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
+ return DCCMemLoc_CompilerAddr_impl(l,NULL,n_bytes);
+}
+PUBLIC void const *
+DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
+ return DCCMemLoc_CompilerData_impl(l,NULL,n_bytes);
+}
+PUBLIC void *
+DCCMemLoc_CompilerAddrUpdate(struct DCCMemLoc const *__restrict l,
+                             void **__restrict update_ptr, size_t n_bytes) {
+ assert(update_ptr);
+ return DCCMemLoc_CompilerAddr_impl(l,update_ptr,n_bytes);
+}
+PUBLIC void const *
+DCCMemLoc_CompilerDataUpdate(struct DCCMemLoc const *__restrict l,
+                             void **__restrict update_ptr, size_t n_bytes) {
+ assert(update_ptr);
+ return DCCMemLoc_CompilerData_impl(l,update_ptr,n_bytes);
+}
+
 
 PUBLIC void const *
 DCCMemLoc_CompilerText(struct DCCMemLoc const *__restrict l,

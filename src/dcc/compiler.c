@@ -329,7 +329,7 @@ forward_decl:
   self->d_kind                = DCC_DECLKIND_MLOC;
   self->d_mdecl.md_loc.ml_reg = DCC_RR_XBP;
   self->d_mdecl.md_loc.ml_off = DCCCompiler_HWStackAlloc(DCC_TARGET_SIZEOF_POINTER,
-                                                     DCC_TARGET_SIZEOF_POINTER,0);
+                                                         DCC_TARGET_SIZEOF_POINTER,0);
   self->d_mdecl.md_scope      = compiler.c_scope.s_id;
   /* Allocate VLA memory using alloca functionality. */
   DCCVStack_PushSizeof(&self->d_type); /* Load the runtime size of the VLA type. */

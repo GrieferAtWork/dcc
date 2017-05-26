@@ -772,15 +772,41 @@ DCCSym_Define(struct DCCSym *__restrict self,
    if (!(linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)) return;
   }
  }
+ /* Acquire a reference to the pointed-to address range of this symbol. */
+ if (!DCCSection_ISIMPORT(section))
+      DCCSection_DIncref(section,addr,size);
  DCCSym_ClearDef(self,1);
  self->sy_addr = addr;
  self->sy_size = size;
  self->sy_sec  = section; /* Inherit reference. */
  DCCSection_Incref(section); /* Create reference for above. */
  DCCSection_InsSym(section,self);
+}
+PUBLIC void
+DCCSym_Redefine(struct DCCSym *__restrict self,
+                struct DCCSection *__restrict section,
+                target_ptr_t addr, target_siz_t size) {
+ DCCSym_ASSERT(self);
+ assert(section);
+ /*  Don't warn when re-declared at the same location
+  * (Can happen for multiple lib-import declarations). */
+ if (self->sy_sec) {
+  if (self->sy_sec == section &&
+      self->sy_addr == addr &&
+      self->sy_size == size) return;
+  if (DCCSection_ISIMPORT(self->sy_sec) &&
+      DCCSection_ISIMPORT(section) &&
+    !(linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)) return;
+ }
  /* Acquire a reference to the pointed-to address range of this symbol. */
  if (!DCCSection_ISIMPORT(section))
       DCCSection_DIncref(section,addr,size);
+ DCCSym_ClearDef(self,0);
+ self->sy_addr = addr;
+ self->sy_size = size;
+ self->sy_sec  = section; /* Inherit reference. */
+ DCCSection_Incref(section); /* Create reference for above. */
+ DCCSection_InsSym(section,self);
 }
 PUBLIC void
 DCCSym_SetSize(struct DCCSym *__restrict self,
@@ -1557,7 +1583,7 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
   }
   search_end -= size;
   if (search_end > self->sc_text.tb_end) goto check_bss;
-  while (search_iter < search_end) {
+  while (search_iter <= search_end) {
    if (memeq_sized(search_iter,size,addr_data,allocated_size)) {
     /* We've got a match! */
     result = (target_ptr_t)(search_iter-self->sc_text.tb_begin);
