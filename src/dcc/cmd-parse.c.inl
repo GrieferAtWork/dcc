@@ -199,19 +199,21 @@ def_secbase:
  case OPT_Wl_file_alignment: linker.l_secalign = (target_siz_t)strtoint(v); break;
  case OPT_Wl_stack: linker.l_pe_stacksiz = (target_siz_t)strtoint(v); break;
  case OPT_Wl_subsystem:
-#ifdef DCC_TARGET_X86
-       if (!strcmp(v,"windows"));
+  /* OK:   --subsystem which */
+  /* TODO: --subsystem which:major */
+  /* TODO: --subsystem which:major.minor */
+       if (!strcmp(v,"windows")) /* ??? */;
   else if (!strcmp(v,"native"))     linker.l_pe_subsys = IMAGE_SUBSYSTEM_NATIVE;
   else if (!strcmp(v,"console"))    linker.l_pe_subsys = IMAGE_SUBSYSTEM_WINDOWS_CUI;
   else if (!strcmp(v,"gui"))        linker.l_pe_subsys = IMAGE_SUBSYSTEM_WINDOWS_GUI;
+  else if (!strcmp(v,"os/2"))       linker.l_pe_subsys = IMAGE_SUBSYSTEM_OS2_CUI;
   else if (!strcmp(v,"posix"))      linker.l_pe_subsys = IMAGE_SUBSYSTEM_POSIX_CUI;
   else if (!strcmp(v,"efiapp"))     linker.l_pe_subsys = IMAGE_SUBSYSTEM_EFI_APPLICATION;
   else if (!strcmp(v,"efiboot"))    linker.l_pe_subsys = IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER;
   else if (!strcmp(v,"efiruntime")) linker.l_pe_subsys = IMAGE_SUBSYSTEM_EFI_RUNTIME_DRIVER;
   else if (!strcmp(v,"efirom"))     linker.l_pe_subsys = IMAGE_SUBSYSTEM_EFI_ROM;
-  else
-#endif
-       linker.l_pe_subsys = (uint8_t)strtoint(v);
+  else if (!strcmp(v,"xbox"))       linker.l_pe_subsys = IMAGE_SUBSYSTEM_XBOX;
+  else linker.l_pe_subsys = (uint8_t)strtoint(v);
   break;
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
  case OPT_Wl_soname: linker.l_soname = TPPString_New(v,strlen(v)); break;

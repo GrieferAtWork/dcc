@@ -125,6 +125,15 @@ PUBLIC struct DCCType const DCCType_BuiltinConstPointers[16] = {
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_void},
 };
 
+PUBLIC struct DCCType *
+DCCType_Effective(struct DCCType const *__restrict self) {
+ assert(self);
+ while (DCCTYPE_GROUP(self->t_type) == DCCTYPE_LVALUE)
+        assert(self->t_base),
+        self = &self->t_base->d_type;
+ return (struct DCCType *)self;
+}
+
 
 PUBLIC void
 DCCType_MkPointer(struct DCCType *__restrict self) {

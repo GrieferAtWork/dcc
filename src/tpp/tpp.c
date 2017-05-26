@@ -1967,7 +1967,7 @@ TPP_Itos(char *buf, int_t i) {
  char *result;
  if (i < 0) *buf++ = '-',i = -i;
  result = (buf += TPP_SizeofItos(i));
- do *--buf = '0'+(i % 10);
+ do *--buf = '0'+(char)(i % 10);
  while ((i /= 10) != 0);
  return result;
 }
@@ -4268,7 +4268,7 @@ again:
  switch (self->k_id) {
   /* Lookup dynamic flags. */
 #ifndef __INTELLISENSE__
-#define KWD_FLAGS(name,flags)  case name: result = flags; break;
+#define KWD_FLAGS(name,flags)  case name: result = (uint32_t)(flags); break;
 #include "tpp-defs.inl"
 #undef KWD_FLAGS
 #endif

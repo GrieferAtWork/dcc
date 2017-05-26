@@ -157,6 +157,11 @@ struct DCCType {
 DCCDAT struct DCCType const DCCType_BuiltinPointers[16];
 DCCDAT struct DCCType const DCCType_BuiltinConstPointers[16];
 
+/* Returns the effective type of the given, that is
+ * the type after all l-value qualifiers have been stripped.
+ * HINT: Never returns NULL. */
+DCCFUN struct DCCType *DCCType_Effective(struct DCCType const *__restrict self);
+
 /* Turn the given type into its various underlying/base forms.
  * NOTE: All of these functions expect 'self' to already be fully initialized. */
 DCCFUN void DCCType_MkPointer(struct DCCType *__restrict self);

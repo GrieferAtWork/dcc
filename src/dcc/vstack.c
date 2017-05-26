@@ -883,12 +883,6 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
   }
   return;
 
- case '-':
-  if (DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type)) {
-   WARN(W_UNARY_NEG_ON_UNSIGNED_TYPE,&self->sv_ctype);
-  }
-  break;
-
  case '~':
   /* Optimization: '~(%REG - 1)' --> '-%REG' */
   if (!(self->sv_flags&DCC_SFLAG_LVALUE) &&
@@ -1307,10 +1301,8 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
      */
     assert(!(lhs->sv_flags&DCC_SFLAG_LVALUE));
     assert(!(rhs->sv_flags&DCC_SFLAG_LVALUE));
-    assertf(!lhs->sv_sym,"Register offsets can't include symbols");
-    assertf(!rhs->sv_sym,"Register offsets can't include symbols");
     temp.e_int   = rhs->sv_const.it;
-    temp.e_sym   = NULL;
+    temp.e_sym   = rhs->sv_sym;
     lhs->sv_reg  = DCC_RC_CONST;
     lhs->sv_reg2 = DCC_RC_CONST;
     /* The following must always succeed... */
@@ -1425,6 +1417,7 @@ end_cmp:
     if (!iv) {
      /* '0-foo()' --> '-foo()' */
      DCCStackValue_Swap(self,target);
+     self->sv_ctype.t_type;
      DCCStackValue_Unary(self,'-');
      return;
     }
@@ -1686,7 +1679,7 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
    /*[DCCTYPE_WORD]  = */DCC_TARGET_SIZEOF_SHORT,
    /*[DCCTYPE_INT64] = */8
   };
-  static rc_t const classes[] = {
+  static rc_t const cls_regs[] = {
    /*[DCCTYPE_INT]   = */DCC_RC_I32|DCC_RC_I16|DCC_RC_I8,
    /*[DCCTYPE_BYTE]  = */DCC_RC_I8,
    /*[DCCTYPE_WORD]  = */DCC_RC_I16|DCC_RC_I8,
@@ -1739,7 +1732,7 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
    DCCVStack_GetRegExact(DCC_RC_I8|(self->sv_reg&3));
   }
   assert(tn >= 0 && tn <= 3);
-  new_class = classes[tn];
+  new_class = cls_regs[tn];
   if ((self->sv_reg&4) &&
       (new_class&(DCC_RC_I16|DCC_RC_I3264))
       ) new_class &= ~(DCC_RC_I8);
@@ -3040,33 +3033,43 @@ DCCVStack_Unary(tok_t op) {
 #endif
  if (op != '!' && op != '*' &&
    !(vbottom->sv_flags&DCC_SFLAG_COPY)) {
-  if (vbottom->sv_ctype.t_type&DCCTYPE_CONST)
+  if (op != '&' && (vbottom->sv_ctype.t_type&DCCTYPE_CONST))
       WARN(W_UNARY_CONSTANT_TYPE,&vbottom->sv_ctype);
   if ((vbottom->sv_flags&DCC_SFLAG_RVALUE) &&
       (DCCTYPE_GROUP(vbottom->sv_ctype.t_type) != DCCTYPE_LVALUE))
       WARN(W_UNARY_RVALUE_TYPE,&vbottom->sv_ctype);
  }
- if ((op == TOK_INC || op == TOK_DEC) &&
-     (vbottom->sv_ctype.t_type&DCCTYPE_POINTER)) {
-  struct DCCStackValue multiplier;
-  /* Pointer arithmetic: Add/Sub the size of the pointer base. */
-  assert(vbottom->sv_ctype.t_base);
-  assert(vbottom->sv_ctype.t_base->d_kind&DCC_DECLKIND_TYPE);
-  multiplier.sv_const.ptr = DCCType_Sizeof(&vbottom->sv_ctype.t_base->d_type,NULL,0);
-  if (!multiplier.sv_const.ptr) {
-   if (HAS(EXT_VOID_ARITHMETIC)) multiplier.sv_const.ptr = 1;
-   else { WARN(W_POINTER_ARITHMETIC_VOID,&vbottom->sv_ctype.t_base->d_type); return; }
+ switch (op) {
+ case '-':
+  if (DCCTYPE_ISUNSIGNED(vbottom->sv_ctype.t_type)) {
+   WARN(W_UNARY_NEG_ON_UNSIGNED_TYPE,&vbottom->sv_ctype);
   }
-  if (multiplier.sv_const.ptr == 1) goto gen_unary; /* Compile as a regular inc/dec. */
-  multiplier.sv_ctype.t_type = DCCTYPE_SIZE|DCCTYPE_UNSIGNED;
-  multiplier.sv_ctype.t_base = NULL;
-  multiplier.sv_flags        = DCC_SFLAG_NONE;
-  multiplier.sv_reg          = DCC_RC_CONST;
-  multiplier.sv_reg2         = DCC_RC_CONST;
-  multiplier.sv_const.it     = 0;
-  multiplier.sv_sym          = NULL;
-  DCCStackValue_Binary(vbottom,&multiplier,op == TOK_INC ? '+' : '-');
-  return;
+  break;
+ case TOK_INC:
+ case TOK_DEC:
+  if ((vbottom->sv_ctype.t_type&DCCTYPE_POINTER)) {
+   struct DCCStackValue multiplier;
+   /* Pointer arithmetic: Add/Sub the size of the pointer base. */
+   assert(vbottom->sv_ctype.t_base);
+   assert(vbottom->sv_ctype.t_base->d_kind&DCC_DECLKIND_TYPE);
+   multiplier.sv_const.ptr = DCCType_Sizeof(&vbottom->sv_ctype.t_base->d_type,NULL,0);
+   if (!multiplier.sv_const.ptr) {
+    if (HAS(EXT_VOID_ARITHMETIC)) multiplier.sv_const.ptr = 1;
+    else { WARN(W_POINTER_ARITHMETIC_VOID,&vbottom->sv_ctype.t_base->d_type); return; }
+   }
+   if (multiplier.sv_const.ptr == 1) goto gen_unary; /* Compile as a regular inc/dec. */
+   multiplier.sv_ctype.t_type = DCCTYPE_SIZE|DCCTYPE_UNSIGNED;
+   multiplier.sv_ctype.t_base = NULL;
+   multiplier.sv_flags        = DCC_SFLAG_NONE;
+   multiplier.sv_reg          = DCC_RC_CONST;
+   multiplier.sv_reg2         = DCC_RC_CONST;
+   multiplier.sv_const.it     = 0;
+   multiplier.sv_sym          = NULL;
+   DCCStackValue_Binary(vbottom,&multiplier,op == TOK_INC ? '+' : '-');
+   return;
+  }
+  break;
+ default: break;
  }
 gen_unary:
  DCCStackValue_Unary(vbottom,op);
@@ -3102,6 +3105,7 @@ DCCVStack_Bitfldf(sflag_t flags) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Binary(tok_t op) {
  int is_cmp_op;
+ struct DCCType *target_type;
  assert(vsize >= 2);
 #ifdef HAVE_VLOG
  if DCC_MACRO_COND(HAVE_VLOG) {
@@ -3130,9 +3134,9 @@ DCCVStack_Binary(tok_t op) {
               op == TOK_NOT_EQUAL ||
               op == TOK_GREATER ||
               op == TOK_GREATER_EQUAL);
-
+ target_type = DCCType_Effective(&vbottom[1].sv_ctype);
  if (!is_cmp_op && !(vbottom[1].sv_flags&DCC_SFLAG_COPY)) {
-  if (vbottom[1].sv_ctype.t_type&DCCTYPE_CONST)
+  if (target_type->t_type&DCCTYPE_CONST)
       WARN(W_BINARY_CONSTANT_TYPE,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
   if ((vbottom[1].sv_flags&DCC_SFLAG_RVALUE) &&
       (DCCTYPE_GROUP(vbottom[1].sv_ctype.t_type) != DCCTYPE_LVALUE))
@@ -3141,12 +3145,13 @@ DCCVStack_Binary(tok_t op) {
  switch (op) {
  case '+':
  case '-':
-  if (vbottom[1].sv_ctype.t_type&DCCTYPE_POINTER) {
+  if (target_type->t_type&DCCTYPE_POINTER) {
+   struct DCCType *source_type;
    struct DCCType *pointer_base;
    struct DCCStackValue multiplier;
-   assert(vbottom[1].sv_ctype.t_base);
-   assert(vbottom[1].sv_ctype.t_base->d_kind&DCC_DECLKIND_TYPE);
-   pointer_base = &vbottom[1].sv_ctype.t_base->d_type;
+   assert(target_type->t_base);
+   assert(target_type->t_base->d_kind&DCC_DECLKIND_TYPE);
+   pointer_base = &target_type->t_base->d_type;
    /* Pointer arithmetic: Multiply the rhs (vbottom[0]) operand
     *                     by the size of the pointer base. */
    multiplier.sv_ctype.t_type = DCCTYPE_SIZE|DCCTYPE_UNSIGNED;
@@ -3165,10 +3170,12 @@ DCCVStack_Binary(tok_t op) {
      WARN(W_POINTER_ARITHMETIC_INCOMPLETE,pointer_base);
     }
    }
-   if (op == '-' && (vbottom[0].sv_ctype.t_type&DCCTYPE_POINTER)) {
+   source_type = DCCType_Effective(&vbottom[0].sv_ctype);
+   
+   if (op == '-' && (source_type->t_type&DCCTYPE_POINTER)) {
     static struct DCCType const ty_ptrdiff = {DCCTYPE_PTRDIFF,NULL};
     /* Pointer/pointer difference >> (a-b)/sizeof(*a). */
-    int compatible = DCCType_IsCompatible(pointer_base,&vbottom[0].sv_ctype.t_base->d_type,1);
+    int compatible = DCCType_IsCompatible(pointer_base,&source_type->t_base->d_type,1);
     if (!compatible) WARN(W_POINTER_ARITHMETIC_INCOMPATIBLE_DIFF,
                           &vbottom[1].sv_ctype,&vbottom[0].sv_ctype);
     /* Calculate the difference between the operands. */
@@ -3178,9 +3185,9 @@ DCCVStack_Binary(tok_t op) {
     /* Cast the result to 'ptrdiff_t'. */
     DCCStackValue_Cast(vbottom+1,&ty_ptrdiff);
     goto end_pop;
-   } else if (!DCCTYPE_ISINT(vbottom->sv_ctype.t_type)) {
+   } else if (!DCCTYPE_ISINT(source_type->t_type)) {
     /* Check if vbottom is an integral type and warn if it isn't */
-    WARN(W_POINTER_ARITHMETIC_EXPECTED_INTEGRAL,&vbottom->sv_ctype);
+    WARN(W_POINTER_ARITHMETIC_EXPECTED_INTEGRAL,&vbottom[0].sv_ctype);
    }
    /* Mark 'vbottom' for copy-on-write, as we're about to modify it. */
    vbottom->sv_flags |= DCC_SFLAG_COPY;
@@ -3191,7 +3198,7 @@ DCCVStack_Binary(tok_t op) {
 
  case TOK_SHL:
  case TOK_SHR:
-  if (DCCTYPE_ISUNSIGNED(vbottom[1].sv_ctype.t_type)) {
+  if (DCCTYPE_ISUNSIGNED(target_type->t_type)) {
    if (op == TOK_SHR) op = TOK_RANGLE3; /* Use the unsigned opcode. */
   }
   break;
@@ -3200,10 +3207,7 @@ DCCVStack_Binary(tok_t op) {
 
  {
   struct DCCType const *lhs_type; int wid;
-  lhs_type = &vbottom[1].sv_ctype;
-  while (DCCTYPE_GROUP(lhs_type->t_type) == DCCTYPE_LVALUE)
-         assert(lhs_type->t_base),
-         lhs_type = &lhs_type->t_base->d_type;
+  lhs_type = DCCType_Effective(&vbottom[1].sv_ctype);
   /* Emit warnings about incompatibilities between 'vbottom[0]' and 'vbottom[1]'. */
   wid = DCCStackValue_AllowCast(vbottom,lhs_type,0);
   if (wid) {
@@ -3211,7 +3215,7 @@ DCCVStack_Binary(tok_t op) {
        /* Ignore constant-errors for compare operations. */
       (wid == W_CAST_CONST_POINTER ||
        wid == W_CAST_CONST_LVALUE)) goto genbinary;
-   WARN(wid,&vbottom->sv_ctype,lhs_type);
+   WARN(wid,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
   }
  }
 genbinary:
@@ -3628,8 +3632,7 @@ DCCVStack_Cast(struct DCCType const *__restrict t,
 
  /* Warn if there are problems with this cast. */
  wid = DCCStackValue_AllowCast(vbottom,t,explicit_case);
- if (wid)
-     WARN(wid,&vbottom->sv_ctype,t);
+ if (wid) WARN(wid,&vbottom->sv_ctype,t);
 
  DCCStackValue_Cast(vbottom,t);
  if (DCCTYPE_GROUP(t->t_type) == DCCTYPE_LVALUE) {
