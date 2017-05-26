@@ -87,6 +87,39 @@ DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
  return NULL;
 }
 
+PUBLIC void const *
+DCCMemLoc_CompilerText(struct DCCMemLoc const *__restrict l,
+                       struct DCCCompilerText *__restrict text,
+                       size_t n_bytes) {
+ if (DCCMEMLOC_ISMEMOFF_S(l)) {
+  struct DCCSymAddr symaddr;
+  if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0)) {
+   uint8_t *target_data;
+   struct DCCSection *target_sec;
+   assert(symaddr.sa_sym->sy_sec);
+   assert(!symaddr.sa_sym->sy_alias);
+   target_sec = symaddr.sa_sym->sy_sec;
+   if (!(compiler.c_flags&DCC_COMPILER_FLAG_SINIT) &&
+        (target_sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_W)) return NULL;
+   symaddr.sa_off += symaddr.sa_sym->sy_addr;
+   symaddr.sa_off += l->ml_off;
+   text->ct_sec  = target_sec;
+   text->ct_base = symaddr.sa_off;
+   /* Lookup relocations inside the symbol's address range. */
+   text->ct_relv = DCCSection_Getrel(target_sec,symaddr.sa_off,
+                                     n_bytes,&text->ct_relc);
+   /* Directly write to target memory (at compile-time).
+    * >> This is used for static initializer of global data. */
+   DCCSection_TBEGIN(target_sec);
+   target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off,n_bytes);
+   DCCSection_TEND(target_sec);
+   return target_data;
+  }
+ }
+ return NULL;
+}
+
+
 LOCAL target_ptr_t reg_max(rc_t reg) {
  target_ptr_t result;
 #ifdef DCC_RC_I64

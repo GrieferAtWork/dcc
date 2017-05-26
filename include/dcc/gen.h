@@ -36,15 +36,32 @@ struct DCCMemLoc;
 DCCFUN void DCCDisp_SymAddr(struct DCCSymAddr const *__restrict expr, DCC(width_t) width);
 DCCFUN void DCCDisp_SymDisp(struct DCCSymAddr const *__restrict expr, DCC(width_t) width);
 
-
 /* If known, translate the memory location 'l' into its compile-time
  * counterpart, returning a pointer to the section data.
  * @return: NULL: - The section location could not be determined (e.g.: forward-symbols/no symbol)
  *                - Compile-time addressing is disabled (The 'DCC_COMPILER_FLAG_SINIT' flag wasn't set)
+ *                - [DCCMemLoc_CompilerData] Relocations were present inside the text are (use 'DCCMemLoc_CompilerText' instead)
  * 'DCCMemLoc_CompilerData' does the same, but only for constant data that may be used for
  * compile-time optimizations where operands are static constants that are not allowed to be changed. */
 DCCFUN void       *DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l, size_t n_bytes);
 DCCFUN void const *DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l, size_t n_bytes);
+
+struct DCCCompilerText {
+ struct DCCSection *ct_sec;  /*< [0..1] Section that the text is located inside of. */
+ DCC(target_ptr_t)  ct_base; /*< Text base address (The offset of the text in 'ct_sec' and start of relocations). */
+ size_t             ct_relc; /*< Amount of relocations affecting the text. */
+ struct DCCRel     *ct_relv; /*< [?..ct_relc][weak(ct_sec->sc_relv)] Vector of (sorted) relocations affective the text. */
+};
+
+
+/* A function offering extended functionality compared to 'DCCMemLoc_CompilerData',
+ * adding the ability to access compile-time data containing relocations, such as
+ * is required when cloning static initializers containing dynamic relocations.
+ * @return: NULL: Failed to query compile-time information about the given memory location.
+ * @return: * : The compile-time text address of the given memory location. */
+DCCFUN void const *DCCMemLoc_CompilerText(struct DCCMemLoc const *__restrict l,
+                                          struct DCCCompilerText *__restrict text,
+                                          size_t n_bytes);
 
 /* mov !src, %dst (size depends on register) */
 DCCFUN void DCCDisp_MemMovReg(struct DCCMemLoc const *__restrict src, DCC(rc_t) dst);

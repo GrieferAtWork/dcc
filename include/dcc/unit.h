@@ -345,6 +345,7 @@ typedef uint32_t DCC(rel_t); /* One of 'DCC_R_*', or CPU-specific ELF relocation
 #   define DCC_R_JMP_SLOT  R_386_JMP_SLOT
 #   define DCC_R_COPY      R_386_COPY
 #   define DCC_R_RELATIVE  R_386_RELATIVE
+#   define DCC_R_NUM       R_386_NUM
 #elif DCC_TARGET_CPU == DCC_CPU_X86_64
 #   define DCC_R_NONE      R_X86_64_NONE
 #   define DCC_R_DATA_8    R_X86_64_8
@@ -358,10 +359,15 @@ typedef uint32_t DCC(rel_t); /* One of 'DCC_R_*', or CPU-specific ELF relocation
 #   define DCC_R_JMP_SLOT  R_X86_64_JUMP_SLOT
 #   define DCC_R_COPY      R_X86_64_COPY
 #   define DCC_R_RELATIVE  R_X86_64_RELATIVE
+#   define DCC_R_NUM       R_X86_64_NUM
 #else
 #   error FIXME
 #endif
 
+/* The size of memory affected relocations (in bytes).
+ * NOTE: Relocations with unknown affect ranges have this set to ZERO(0). */
+DCCDAT size_t const DCC_relsize[DCC_R_NUM];
+#define DCC_RELSIZE(r) ((size_t)(r) >= DCC_R_NUM ? 0 : DCC_relsize[r])
 
 
 struct DCCRel {
@@ -637,6 +643,16 @@ DCCFUN int
 DCCSection_Hasrel(struct DCCSection *__restrict self,
                   DCC(target_ptr_t) addr,
                   DCC(target_siz_t) size);
+
+/* Retrieve a vector relocations inside the given address range.
+ * WARNING: This function returning NULL does not necessarily
+ *          coincide with '*relc' being set to ZERO.
+ *          To handle no-relocations, the caller must check '*relc'. */
+DCCFUN struct DCCRel *
+DCCSection_Getrel(struct DCCSection *__restrict self,
+                  DCC(target_ptr_t) addr,
+                  DCC(target_siz_t) size,
+                  size_t *__restrict relc);
 
 DCC_LOCAL void
 DCCSection_Putrel(struct DCCSection *__restrict self,

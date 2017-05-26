@@ -345,6 +345,9 @@ no_decl:
    WARN(W_DECL_TYPEDEF_WITH_INITIALIZER,decl);
    goto declare_typedef;
   }
+  /* TODO: If the type must not be fixed, it is much faster
+   *       to pre-allocate declaration storage and simply
+   *       point the initialization parser at it as target. */
   DCCParse_Init(real_decl_type,&attr,NULL,1);
   DCCParse_FixType(real_decl_type);
   if (decl) {

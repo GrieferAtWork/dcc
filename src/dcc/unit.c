@@ -46,6 +46,79 @@
 
 DCC_DECL_BEGIN
 
+
+PUBLIC size_t const DCC_relsize[DCC_R_NUM] = {
+#if DCC_TARGET_IA32(386)
+ /* [R_386_NONE        ] = */0,
+ /* [R_386_32          ] = */4,
+ /* [R_386_PC32        ] = */4,
+ /* [R_386_GOT32       ] = */4,
+ /* [R_386_PLT32       ] = */4,
+ /* [R_386_COPY        ] = */0,
+ /* [R_386_GLOB_DAT    ] = */4,
+ /* [R_386_JMP_SLOT    ] = */4,
+ /* [R_386_RELATIVE    ] = */4,
+ /* [R_386_GOTOFF      ] = */4,
+ /* [R_386_GOTPC       ] = */4,
+ /* [R_386_32PLT       ] = */4,
+ /* [UNUSED(12)        ] = */0,
+ /* [UNUSED(13)        ] = */0,
+ /* [R_386_TLS_TPOFF   ] = */4,
+ /* [R_386_TLS_IE      ] = */4,
+ /* [R_386_TLS_GOTIE   ] = */4,
+ /* [R_386_TLS_LE      ] = */4,
+ /* [R_386_TLS_GD      ] = */4,
+ /* [R_386_TLS_LDM     ] = */4,
+ /* [R_386_16          ] = */2,
+ /* [R_386_PC16        ] = */2,
+ /* [R_386_8           ] = */1,
+ /* [R_386_PC8         ] = */1,
+ /* [R_386_TLS_GD_32   ] = */4,
+ /* [R_386_TLS_GD_PUSH ] = */4,
+ /* [R_386_TLS_GD_CALL ] = */4,
+ /* [R_386_TLS_GD_POP  ] = */4,
+ /* [R_386_TLS_LDM_32  ] = */4,
+ /* [R_386_TLS_LDM_PUSH] = */4,
+ /* [R_386_TLS_LDM_CALL] = */4,
+ /* [R_386_TLS_LDM_POP ] = */4,
+ /* [R_386_TLS_LDO_32  ] = */4,
+ /* [R_386_TLS_IE_32   ] = */4,
+ /* [R_386_TLS_LE_32   ] = */4,
+ /* [R_386_TLS_DTPMOD32] = */4,
+ /* [R_386_TLS_DTPOFF32] = */4,
+ /* [R_386_TLS_TPOFF32 ] = */4,
+#elif DCC_TARGET_CPU == DCC_CPU_X86_64
+ /* [R_X86_64_NONE     ] = */0,
+ /* [R_X86_64_64       ] = */8,
+ /* [R_X86_64_PC32     ] = */4,
+ /* [R_X86_64_GOT32    ] = */4,
+ /* [R_X86_64_PLT32    ] = */4,
+ /* [R_X86_64_COPY     ] = */0,
+ /* [R_X86_64_GLOB_DAT ] = */8,
+ /* [R_X86_64_JUMP_SLOT] = */8,
+ /* [R_X86_64_RELATIVE ] = */8,
+ /* [R_X86_64_GOTPCREL ] = */8,
+ /* [R_X86_64_32       ] = */4,
+ /* [R_X86_64_32S      ] = */4,
+ /* [R_X86_64_16       ] = */2,
+ /* [R_X86_64_PC16     ] = */2,
+ /* [R_X86_64_8        ] = */1,
+ /* [R_X86_64_PC8      ] = */1,
+ /* [R_X86_64_DTPMOD64 ] = */8,
+ /* [R_X86_64_DTPOFF64 ] = */8,
+ /* [R_X86_64_TPOFF64  ] = */8,
+ /* [R_X86_64_TLSGD    ] = */4, 
+ /* [R_X86_64_TLSLD    ] = */4, 
+ /* [R_X86_64_DTPOFF32 ] = */4,
+ /* [R_X86_64_GOTTPOFF ] = */4, 
+ /* [R_X86_64_TPOFF32  ] = */4,
+#else
+#error FIXME
+#endif
+};
+
+
+
 LOCAL struct DCCFreeRange *DCCFreeRange_New(target_ptr_t addr, target_siz_t size);
 LOCAL void DCCSection_Destroy(struct DCCSection *__restrict self);
 INTDEF void DCCSection_InsSym(struct DCCSection *__restrict self, struct DCCSym *__restrict sym);
@@ -1023,6 +1096,24 @@ DCCSection_Hasrel(struct DCCSection *__restrict self,
  }
  return (rel_end[-1].r_addr >= addr);
 }
+
+PUBLIC struct DCCRel *
+DCCSection_Getrel(struct DCCSection *__restrict self,
+                  target_ptr_t addr, target_siz_t size,
+                  size_t *__restrict relc) {
+ struct DCCRel *rel_end,*rel_begin,*begin;
+ target_ptr_t addr_end = addr+size;
+ assert(self);
+ DCCSECTION_ASSERT_NOTANIMPORT(self);
+ rel_end = (begin = self->sc_relv)+self->sc_relc;
+ while (rel_end != begin && rel_end[-1].r_addr >= addr_end) --rel_end;
+ rel_begin = rel_end;
+ while (rel_begin != begin && rel_begin[-1].r_addr >= addr) --rel_begin;
+ *relc = (size_t)(rel_end-rel_begin);
+ if (rel_begin == rel_end) rel_begin = NULL;
+ return rel_begin;
+}
+
 
 
 PUBLIC void

@@ -463,10 +463,70 @@ DCCDisp_DoMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_byt
  }
 }
 
+LOCAL void
+DCCDisp_TextMovMem(struct DCCCompilerText const *__restrict text,
+                               void const *__restrict src, target_siz_t src_bytes,
+                   struct DCCMemLoc const *__restrict dst, target_siz_t dst_bytes,
+                   int src_unsigned){
+ target_ptr_t src_addr;
+ struct DCCMemLoc dst_iter;
+ struct DCCRel *iter,*end;
+ assert(text);
+ assert(src);
+ assert(dst);
+ /* Move text w/ relocations. */
+ src_addr = text->ct_base;
+ dst_iter = *dst;
+ end = (iter = text->ct_relv)+text->ct_relc;
+ for (; iter != end; ++iter) {
+  target_ptr_t jump; width_t relw;
+  struct DCCSymAddr symaddr;
+  assert(iter->r_addr >= src_addr &&
+         iter->r_addr <  src_addr+src_bytes);
+  jump           = (target_ptr_t)(iter->r_addr-src_addr);
+  symaddr.sa_sym = iter->r_sym;
+  switch (iter->r_type) {
+#define SRC(T)       (target_off_t)(*(T *)((uintptr_t)src+jump))
+  case DCC_R_DATA_8:  relw = 1,symaddr.sa_off = SRC(int8_t); break;
+  case DCC_R_DATA_16: relw = 2,symaddr.sa_off = SRC(int16_t); break;
+  case DCC_R_DATA_32: relw = 4,symaddr.sa_off = SRC(int32_t); break;
+#ifdef DCC_R_DATA_64
+  case DCC_R_DATA_64: relw = 8,symaddr.sa_off = SRC(int64_t); break;
+#endif
+#undef SRC
+  default: continue; /* ??? */
+  }
+  if (jump) {
+   /* Copy data from before the relocation. */
+   DCCDisp_VecMovMem(src,jump,&dst_iter,jump,1);
+   dst_iter.ml_off    += jump;
+   src_addr           += jump;
+   *(uintptr_t *)&src += jump;
+   src_bytes          -= jump;
+   dst_bytes          -= jump;
+  }
+  /* Write a constant symbol-based value to the target. */
+  DCCDisp_CstMovMem(&symaddr,&dst_iter,relw);
+  dst_iter.ml_off    += relw;
+  src_addr           += relw;
+  *(uintptr_t *)&src += relw;
+  src_bytes          -= relw;
+  dst_bytes          -= relw;
+ }
+ /* TODO: Handle case: last bytes of 'src' are described by a relocation,
+  *       but 'dst_bytes' is non-ZERO and 'src_unsigned' is FALSE(0).
+  *    >> Unless the sign-bit is already set in the source-text, we must
+  *       generate runtime code to take the sign-bit and extend it once
+  *       the runtime linker has assigned addresses. */
+ /* Move the remainder. */
+ DCCDisp_VecMovMem(src,src_bytes,&dst_iter,dst_bytes,src_unsigned);
+}
+
 PUBLIC void
 DCCDisp_MemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_bytes,
                   struct DCCMemLoc const *__restrict dst, target_siz_t dst_bytes,
                   int src_unsigned) {
+ struct DCCCompilerText text;
  void const *csrc;
  target_siz_t common_size;
  assert(src);
@@ -482,8 +542,8 @@ DCCDisp_MemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_bytes
  if (!dst_bytes) return; /* Do nothing for empty destination. */
  common_size = dst_bytes < src_bytes ? dst_bytes : src_bytes;
  /* Special case: Source is known at compile-time in this context. */
- if ((csrc = DCCMemLoc_CompilerData(src,src_bytes)) != NULL) {
-  DCCDisp_VecMovMem(csrc,src_bytes,dst,dst_bytes,src_unsigned);
+ if ((csrc = DCCMemLoc_CompilerText(src,&text,src_bytes)) != NULL) {
+  DCCDisp_TextMovMem(&text,csrc,src_bytes,dst,dst_bytes,src_unsigned);
   return;
  }
  /* Fallback. */
