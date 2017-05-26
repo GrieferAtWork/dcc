@@ -3264,9 +3264,12 @@ DCCVStack_Binary(tok_t op) {
   wid = DCCStackValue_AllowCast(vbottom,lhs_type,0);
   if (wid) {
    if (is_cmp_op &&
-       /* Ignore constant-errors for compare operations. */
-      (wid == W_CAST_CONST_POINTER ||
-       wid == W_CAST_CONST_LVALUE)) goto genbinary;
+       /* Ignore constant/volatile/sign/overflow warnings for compare operations. */
+      (wid == W_CAST_CONST_POINTER || wid == W_CAST_CONST_LVALUE ||
+       wid == W_CAST_RVALUE_TO_LVALUE || wid == W_CAST_VOLATILE_POINTER ||
+       wid == W_CAST_INTEGRAL_OVERFLOW || wid == W_CAST_INTEGRAL_MAYOVERFLOW ||
+       wid == W_CAST_INTEGRAL_SIGNLOSS || wid == W_CAST_INTEGRAL_MAYSIGNLOSS)
+       ) goto genbinary;
    WARN(wid,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
   }
  }

@@ -638,12 +638,11 @@ ignore_case_label:
    if (!visconst_xval()) WARN(W_EXPECTED_CONSTANT_FOR_CASE);
    if (DCCVStack_IsSame(0)) { double_case = 0; vpop(1); }
   }
-  if (TOK != ':') WARN(W_EXPECTED_COLON_AFTER_CASE); else YIELD();
   /* lower limit is now stored in 'vbottom[1]', and the higher is in 'vbottom[0]' */
   if (!double_case) {
    /* one expression --> Compile as a simple compare. */
    vpush(&compiler.c_sexpr); /* expr, switch */
-   vgen2(TOK_NOT_EQUAL);   /* expr != switch */
+   vgen2(TOK_NOT_EQUAL);     /* expr != switch */
   } else {
    /* This is where it gets a bit more complicated! */
    vswap();                /* hi, lo */
@@ -681,6 +680,7 @@ ignore_case_label:
    /*               we must make sure that the case walks after that jump! */
    if (compiler.c_deadjmp) vpushs(label_sym),vgen1('&'),vjmp();
   }
+  if (TOK != ':') WARN(W_EXPECTED_COLON_AFTER_CASE); else YIELD();
   popf();
   /* Continue parsing afterwards. */
   if (compiler.c_flags&DCC_COMPILER_FLAG_SDEAD)
