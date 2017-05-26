@@ -1795,12 +1795,12 @@ TPP_Unescape(char *buf, char const *data, size_t size) {
       unsigned char partval;
       if (iter == end) goto abort_hex;
       ch = *iter;
-           if (ch >= '0' && ch <= '9') partval = ch-'0';
-      else if (ch >= 'a' && ch <= 'f') partval = ch-'a';
-      else if (ch >= 'A' && ch <= 'F') partval = ch-'A';
+           if (ch >= '0' && ch <= '9') partval = (unsigned char)(ch-'0');
+      else if (ch >= 'a' && ch <= 'f') partval = (unsigned char)(ch-'a');
+      else if (ch >= 'A' && ch <= 'F') partval = (unsigned char)(ch-'A');
       else if (!ith) {abort_hex: iter = start_iter; goto def_putch; }
       else break;
-      val = (val << 4)|partval;
+      val = (unsigned char)((val << 4)|partval);
       ++iter;
      }
      *buf++ = val;
@@ -1814,11 +1814,11 @@ TPP_Unescape(char *buf, char const *data, size_t size) {
     default:
      if (ch >= '0' && ch <= '7') {
       char *maxend;
-      val = ch-'0';
+      val = (unsigned char)(ch-'0');
       if ((maxend = iter+2) > end) maxend = end;
       while (iter != maxend &&
             (ch = *iter,ch >= '0' && ch <= '7')
-             ) val = (val << 3)|(ch-'0'),++iter;
+             ) val = (unsigned char)((val << 3)|(ch-'0')),++iter;
       *buf++ = val;
      } else {
 def_putch:
@@ -1916,15 +1916,15 @@ escape_ch:
    default:
     if (ch < 32) {
      *buf++ = '\\';
-     if (ch >= 010) *buf++ = '0'+(ch/010);
-     *buf++ = '0'+(ch%010);
+     if (ch >= 010) *buf++ = (char)('0'+(ch/010));
+     *buf++ = (char)('0'+(ch%010));
     } else if (ch >= 127) {
      *buf++ = '\\';
      *buf++ = 'x';
-     temp = (ch & 0xf0) >> 4;
-     *buf++ = temp >= 10 ? 'A'+(temp-10) : '0'+temp;
-     temp = (ch & 0x0f);
-     *buf++ = temp >= 10 ? 'A'+(temp-10) : '0'+temp;
+     temp = (unsigned char)((ch & 0xf0) >> 4);
+     *buf++ = (char)(temp >= 10 ? 'A'+(temp-10) : '0'+temp);
+     temp = (unsigned char)(ch & 0x0f);
+     *buf++ = (char)(temp >= 10 ? 'A'+(temp-10) : '0'+temp);
     } else {
      *buf++ = (char)ch;
     }
@@ -1943,7 +1943,7 @@ TPP_SizeofEscape(char const *data, size_t size) {
   ch = *iter;
   switch (ch) {
    case '\033':
-    result += HAVE_EXTENSION_STR_E ? 1 : 2; /* '\e' vs. '\33' */
+    result += HAVE_EXTENSION_STR_E ? 1u : 2u; /* '\e' vs. '\33' */
     break;
    case '\a': case '\b': case '\f':
    case '\n': case '\r': case '\t':
@@ -1952,7 +1952,7 @@ TPP_SizeofEscape(char const *data, size_t size) {
     break;
    default:
     if (ch < 32) {
-     result += ch >= 010 ? 2 : 1;
+     result += ch >= 010 ? 2u : 1u;
     } else if (ch >= 127) {
      result += 3;
     }
@@ -1967,7 +1967,7 @@ TPP_Itos(char *buf, int_t i) {
  char *result;
  if (i < 0) *buf++ = '-',i = -i;
  result = (buf += TPP_SizeofItos(i));
- do *--buf = '0'+(char)(i % 10);
+ do *--buf = (char)('0'+(i % 10));
  while ((i /= 10) != 0);
  return result;
 }

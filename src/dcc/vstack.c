@@ -3448,7 +3448,10 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
     req_bits += is_signed;
     /* If more bits are required that available, emit a warning. */
     if (req_bits > tweight) return W_CAST_INTEGRAL_OVERFLOW;
-    if ((tid&DCCTYPE_UNSIGNED) && is_signed) return W_CAST_INTEGRAL_SIGNLOSS;
+    if ((tid&DCCTYPE_UNSIGNED) && is_signed &&
+         /* NOTE: Don't emit this warning if the sign-bit is set intentionally. */
+       !(value->sv_flags&DCC_SFLAG_NO_WSIGN))
+         return W_CAST_INTEGRAL_SIGNLOSS;
     return 0;
    }
    if (vid < 8) {
@@ -3586,7 +3589,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
      /* If more bits are required that available, emit a warning. */
      if (req_bits > tweight) return W_CAST_INTEGRAL_OVERFLOW;
      if ((tid&DCCTYPE_UNSIGNED) && is_signed &&
-         /* NOTE: Don't emit this warning if the sign-bit is set intentionally. */
+          /* NOTE: Don't emit this warning if the sign-bit is set intentionally. */
         !(value->sv_flags&DCC_SFLAG_NO_WSIGN))
           return W_CAST_INTEGRAL_SIGNLOSS;
      return 0;

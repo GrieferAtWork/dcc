@@ -528,19 +528,20 @@ begin: DCCParse_Attr(attr);
  {
   tyid_t length;
  case KWD_long:
+  self->t_type |= DCCTYPE_ALTLONG;
   if (flags&FLAG_FOUND_LENGTH) {
    if ((self->t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_LONG) {
     /* 'long long' / 'unsigned long long' */
-    self->t_type &= (DCCTYPE_FLAGSMASK|DCCTYPE_UNSIGNED);
+    self->t_type &= (DCCTYPE_FLAGSMASK|DCCTYPE_UNSIGNED)&~(DCCTYPE_ASTMASK);
     self->t_type |=  DCCTYPE_LLONG;
     goto next;
    } else if ((self->t_type&DCCTYPE_BASICMASK) == DCCTYPE_DOUBLE) {
     /* long double. */
-    self->t_type |= DCCTYPE_LDOUBLE;
+    self->t_type &= ~(DCCTYPE_ASTMASK);
+    self->t_type |=   DCCTYPE_LDOUBLE;
     goto next;
    }
   }
-  self->t_type |= DCCTYPE_ALTLONG;
   length = DCCTYPE_LONG;
   /* fallthrough */
   if (DCC_MACRO_FALSE) { case KWD_short: length = DCCTYPE_SHORT; }
@@ -795,13 +796,16 @@ begin: DCCParse_Attr(attr);
    pushf();
    compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
    DCCParse_Expr();
+   *self = vbottom->sv_ctype;
+   if (self->t_base) DCCDecl_Incref(self->t_base);
+   vpop(1);
    popf();
   }
-  if (has_paren) { if (TOK != ')') WARN(W_EXPECTED_RPAREN); else YIELD(); }
-  *self = vbottom->sv_ctype;
-  if (self->t_base) DCCDecl_Incref(self->t_base);
   DCCType_ASSERT(self);
-  vpop(1);
+  if (has_paren) {
+   if (TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
+  }
  } break;
 
  default:
