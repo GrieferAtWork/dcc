@@ -855,7 +855,7 @@ done_symvec:
    }
 #endif /* SHT_DCC_SYMFLG */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
-   /* Bind all IAT symbols. */
+   /* Bind all ITA symbols. */
    for (iter = secv; iter != end; ++iter) {
     struct DCCSym **sym_iter,**sym_end,*sym,*basesym;
     if (iter->sh_type != SHT_SYMTAB) continue;
@@ -866,8 +866,9 @@ done_symvec:
      if (memcmp(sym->sy_name->k_name,ITA_PREFIX,
                 DCC_COMPILER_STRLEN(ITA_PREFIX)*
                 sizeof(char)) != 0) continue;
-     /* This is an IAT symbol. - Try to find the associated base symbol and link them! */
-     basesym = DCCUnit_GetSyms(sym->sy_name->k_name+4);
+     /* This is an ITA symbol. - Try to find the associated base symbol and link them! */
+     basesym = DCCUnit_GetSyms(sym->sy_name->k_name+
+                               DCC_COMPILER_STRLEN(ITA_PREFIX));
      if unlikely(!basesym || basesym->sy_peind) continue;
      DCCSym_Incref(sym);
      basesym->sy_peind = sym; /* Inherit reference. */

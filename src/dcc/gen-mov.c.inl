@@ -468,24 +468,28 @@ DCCDisp_TextMovMem(struct DCCCompilerText const *__restrict text,
                                void const *__restrict src, target_siz_t src_bytes,
                    struct DCCMemLoc const *__restrict dst, target_siz_t dst_bytes,
                    int src_unsigned){
- target_ptr_t src_addr;
+ target_ptr_t src_addr; size_t i;
+ struct DCCSection *src_sec;
  struct DCCMemLoc dst_iter;
- struct DCCRel *iter,*end;
  assert(text);
+ src_sec = text->ct_sec;
+ assert(src_sec);
  assert(src);
  assert(dst);
  /* Move text w/ relocations. */
  src_addr = text->ct_base;
  dst_iter = *dst;
- end = (iter = text->ct_relv)+text->ct_relc;
- for (; iter != end; ++iter) {
+ i = text->ct_relv-src_sec->sc_relv;
+ assert(i+text->ct_relc <= src_sec->sc_relc);
+ for (; i < text->ct_relc; ++i) {
   target_ptr_t jump; width_t relw;
   struct DCCSymAddr symaddr;
-  assert(iter->r_addr >= src_addr &&
-         iter->r_addr <  src_addr+src_bytes);
-  jump           = (target_ptr_t)(iter->r_addr-src_addr);
-  symaddr.sa_sym = iter->r_sym;
-  switch (iter->r_type) {
+  struct DCCRel *rel = &src_sec->sc_relv[i];
+  assert(rel->r_addr >= src_addr &&
+         rel->r_addr <  src_addr+src_bytes);
+  jump           = (target_ptr_t)(rel->r_addr-src_addr);
+  symaddr.sa_sym = rel->r_sym;
+  switch (rel->r_type) {
 #define SRC(T)       (target_off_t)(*(T *)((uintptr_t)src+jump))
   case DCC_R_DATA_8:  relw = 1,symaddr.sa_off = SRC(int8_t); break;
   case DCC_R_DATA_16: relw = 2,symaddr.sa_off = SRC(int16_t); break;

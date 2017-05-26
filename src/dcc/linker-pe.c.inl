@@ -393,11 +393,11 @@ pe_mk_imptab(struct DCCSection *__restrict thunk) {
 
       /* Patch the library symbols to point into the thunk. */
       if likely((iat_sym = sym->sy_peind) != NULL) {
-       /* 'sy_size' contains the address of the IAT wrapper (s.a.: 'pe_mk_buildita()') */
+       /* 'sy_size' contains the address of the ITA wrapper (s.a.: 'pe_mk_buildita()') */
        import_addr = iat_sym->sy_size;
-       DCCSym_Define(iat_sym,thunk,thunk_ptr,0); /* Point the IAT symbol into the thunk table. */
+       DCCSym_Define(iat_sym,thunk,thunk_ptr,0); /* Point the ITA symbol into the thunk table. */
        DCCSym_ClrDef(sym);
-       DCCSym_Define(sym,linker.l_text,import_addr,0); /* Point the library symbol to the IAT code. */
+       DCCSym_Define(sym,linker.l_text,import_addr,0); /* Point the library symbol to the ITA code. */
       } else {
        /* We shouldn't really get here because the only way we could would be if
         * the symbol was never accessed, either through PE:ITA-Indirection,
@@ -1105,7 +1105,7 @@ PRIVATE void pe_mk_buildita(void) {
  struct DCCSym *sym;
  DCCUnit_ENUMIMP(lib) {
   DCCSection_ENUMSYM(sym,lib) {
-   /* Generate an IAT indirection. */
+   /* Generate an ITA indirection. */
    target_ptr_t iat_addr;
    uint8_t *iat_code;
    struct DCCSym *iat_sym;
@@ -1163,7 +1163,7 @@ PRIVATE void pe_mk_buildita(void) {
     sym->sy_peind = iat_sym; /* Inherit reference. */
    }
    /* - Here, 'iat_addr' is the address of the jump-instruction that
-    *   performs the indirection required for dereferencing the IAT
+    *   performs the indirection required for dereferencing the ITA
     *   symbol.
     * - 'iat_sym' will later be defined to point into the import-address-table,
     *   meaning that code will eventually call a library function like this:

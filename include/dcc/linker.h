@@ -141,7 +141,7 @@ struct DCCLinker {
  struct DCCLibPaths    l_intpaths;    /*< List of internal library paths (may be empty). */
  struct DCCLibPaths    l_paths;       /*< List of effective library paths (may be empty). */
  struct TPPString     *l_soname;      /*< [0..1] When non-NULL, a module name included in the binary (if appropriate). */
- struct DCCSection    *l_text;        /*< [0..1] When non-NULL, the section used for wrapper code such as IAT functions.
+ struct DCCSection    *l_text;        /*< [0..1] When non-NULL, the section used for wrapper code such as ITA functions.
                                        *         When not defined, a target-specific default section
                                        *         is used, and when not needed, this field is ignored. */
  char                 *l_entry;       /*< [0..1][owned] Command-line option for '-Wl,entry=...'. */

@@ -144,7 +144,7 @@ struct DCCSym {
  DCC(symflag_t)            sy_flags;       /*< Symbol flags (Set of 'DCC_SYMFLAG_*'). */
 #endif
 #if DCC_TARGET_BIN == DCC_BINARY_PE
- /*ref*/struct DCCSym     *sy_peind;       /*< [0..1] When non-NULL, the IAT pointer for this imports on PE targets. */
+ /*ref*/struct DCCSym     *sy_peind;       /*< [0..1] When non-NULL, the ITA pointer for this imports on PE targets. */
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
  /*ref*/struct DCCSym     *sy_alias;       /*< [0..1] When non-NULL, another label aliased by this one. */
  /*ref*/struct DCCSection *sy_sec;         /*< [0..1][const_if(!= NULL)] Section this symbol is defined inside of (or NULL if unknown).

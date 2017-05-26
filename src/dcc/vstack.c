@@ -565,7 +565,7 @@ DCCLinker_PEIndImport(struct DCCStackValue *__restrict self) {
  //if (!(self->sv_flags&DCC_SFLAG_LVALUE)) return;
  if (self->sv_reg != DCC_RC_CONST) return;
  if ((pesym = self->sv_sym) == NULL) return;
- /* Force IAT indirection on symbols declared as '__attribute__((dllimport))' */
+ /* Force ITA indirection on symbols declared as '__attribute__((dllimport))' */
  if (pesym->sy_flags&DCC_SYMFLAG_DLLIMPORT) goto force_iat;
  if (!(pesym->sy_flags&DCC_SYMFLAG_PE_ITA_IND)) return;
  if ((symsec = pesym->sy_sec) == NULL) return;
@@ -573,7 +573,7 @@ DCCLinker_PEIndImport(struct DCCStackValue *__restrict self) {
  /* Fix this symbol through PE indirection. */
 force_iat:
  if ((iat_sym = pesym->sy_peind) == NULL) {
-  /* Don't generate missing IAT functions when no code should be generated. */
+  /* Don't generate missing ITA functions when no code should be generated. */
   if (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
   /* The symbol must be part of the unnamed symbol list! */
   if unlikely((iat_sym = pe_getitasym(pesym)) == NULL) return;

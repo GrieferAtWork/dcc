@@ -339,31 +339,58 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
     /* This reference is dropped later after relocations are parsed. */
     //DCCSym_Decref(src_sym);
     *sym_iter = NULL; /* This reference is dropped later. */
-   } else if ((src_sym->sy_flags&DCC_SYMFLAG_STATIC) ||
-              (assert(src_sym->sy_name != &TPPKeyword_Empty),
-               dst_sym = DCCUnit_GetSym(src_sym->sy_name)) == NULL) {
-//inherit_sym:
-    /* Load static symbols as though they were unnamed. */
-    DCCSym_Incref(src_sym);
-    DCCUnit_InsSym(src_sym); /* Inherit reference. */
-   } else if (DCCSym_ISFORWARD(src_sym)) {
-    /* Get rid of undefined symbols. (Since these are named,
-     * relocations to the symbol will be fixed later) */
-drop_srcsym:
-    DCCSym_Decref(src_sym);
-    *sym_iter = NULL;
    } else {
-    /* NOTE: Technically, we could exchange 'dst_sym' here if its reference counter was ONE(1). */
-    assert(src_sym->sy_name != &TPPKeyword_Empty);
-    /* At thing point, we know that the symbol is used in
-     * the current unit, meaning we can't just replace an
-     * existing declaration, but must define a new one.
-     * >> Yet at this point, we can already filter symbol re-declaration cases. */
-    if (!DCCSym_ISFORWARD(dst_sym)) {
-     /* Don't override symbol declaration with a weak symbol.
-      * >> Instead, drop the source symbol and let relocations below
-      *    link every use of 'src_sym' against the existing symbol. */
-     if (src_sym->sy_flags&DCC_SYMFLAG_WEAK) goto drop_srcsym;
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+    if (src_sym->sy_peind) {
+     /* Check if the current unit has an ITA symbol with the same name.
+      * >> If it does, re-line the PE-IND reference to point to shared ITA symbol. */
+     assert(src_sym->sy_peind->sy_name != &TPPKeyword_Empty);
+     if ((dst_sym = DCCUnit_GetSym(src_sym->sy_peind->sy_name)) != NULL) {
+      /* There is a new ITA symbol! */
+      DCCSym_Incref(dst_sym); /* Incref before, in case the symbols already match. */
+      DCCSym_Decref(src_sym->sy_peind);
+      src_sym->sy_peind = dst_sym; /* Override reference. */
+     }
+    }
+#endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
+    if ((src_sym->sy_flags&DCC_SYMFLAG_STATIC) ||
+        (assert(src_sym->sy_name != &TPPKeyword_Empty),
+         dst_sym = DCCUnit_GetSym(src_sym->sy_name)) == NULL) {
+     /* Load static symbols as though they were unnamed. */
+     DCCSym_Incref(src_sym);
+     DCCUnit_InsSym(src_sym); /* Inherit reference. */
+    } else {
+     assert(src_sym != dst_sym);
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+     if (src_sym->sy_peind) {
+      assertf(!dst_sym->sy_peind || dst_sym->sy_peind == src_sym->sy_peind,
+              "If this isn't the same IAT symbol, then how come we didn't find it before?");
+      if (!dst_sym->sy_peind) {
+       dst_sym->sy_peind = src_sym->sy_peind;
+       DCCSym_Incref(src_sym->sy_peind);
+      }
+     }
+#endif
+     if (DCCSym_ISFORWARD(src_sym)) {
+      /* Get rid of undefined symbols. (Since these are named,
+       * relocations to the symbol will be fixed later) */
+drop_srcsym:
+      DCCSym_Decref(src_sym);
+      *sym_iter = NULL;
+     } else {
+      /* NOTE: Technically, we could exchange 'dst_sym' here if its reference counter was ONE(1). */
+      assert(src_sym->sy_name != &TPPKeyword_Empty);
+      /* At thing point, we know that the symbol is used in
+       * the current unit, meaning we can't just replace an
+       * existing declaration, but must define a new one.
+       * >> Yet at this point, we can already filter symbol re-declaration cases. */
+      if (!DCCSym_ISFORWARD(dst_sym)) {
+       /* Don't override symbol declaration with a weak symbol.
+        * >> Instead, drop the source symbol and let relocations below
+        *    link every use of 'src_sym' against the existing symbol. */
+       if (src_sym->sy_flags&DCC_SYMFLAG_WEAK) goto drop_srcsym;
+      }
+     }
     }
    }
   }
@@ -435,18 +462,18 @@ merge_symflags:
    * >> None should be remaining and once relocations have been fixed, everything should be OK! */
   free(symv);
 
-#if DCC_TARGET_BIN == DCC_BINARY_PE
+#if DCC_TARGET_BIN == DCC_BINARY_PE && 0
   { struct DCCSym *sym,*basesym;
     /* Must re-link ITA functions. */
     DCCUnit_ENUMSYM(sym) {
-     /* TODO: Wouldn't it suffice only to relink ITA functions of symbols from 'other'.
+     /* ----: Wouldn't it suffice only to relink ITA functions of symbols from 'other'.
       *       >> As in everything symbol from other with 'sy_peind' set? */
      assert(sym);
      if (sym->sy_name->k_size <= DCC_COMPILER_STRLEN(ITA_PREFIX)) continue;
      if (memcmp(sym->sy_name->k_name,ITA_PREFIX,
                 DCC_COMPILER_STRLEN(ITA_PREFIX)*
                 sizeof(char)) != 0) continue;
-     /* This is an IAT symbol. - Try to find the associated base symbol and link them! */
+     /* This is an ITA symbol. - Try to find the associated base symbol and link them! */
      basesym = DCCUnit_GetSyms(sym->sy_name->k_name+DCC_COMPILER_STRLEN(ITA_PREFIX));
      if unlikely(!basesym) continue;
      DCCSym_Incref(sym);
