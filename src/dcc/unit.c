@@ -1539,18 +1539,6 @@ end:
  return result;
 }
 
-PRIVATE int
-memeq_sized(uint8_t const *a, size_t a_size,
-            uint8_t const *b, size_t b_size) {
- uint8_t const *iter,*end;
- assert(a_size >= b_size);
- if (memcmp(a,b,b_size) != 0) return 0;
- end = (iter = a+b_size)+(a_size-b_size);
- /* Check the overflow area for being filled with nothing but ZEROes. */
- for (; iter != end; ++iter) if (*iter != 0) return 0;
- return 1;
-}
-
 PUBLIC target_ptr_t
 DCCSection_DMerge(struct DCCSection *__restrict self,
                   target_ptr_t addr, target_siz_t size,
@@ -1561,7 +1549,6 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
  assertf(!(addr&(min_align-1)),
          "The given addr %lx isn't aligned by %lx",
         (unsigned long)addr,(unsigned long)min_align);
- (void)size;
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_M) {
   uint8_t *addr_data,*search_iter,*search_end;
@@ -1584,7 +1571,7 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
   search_end -= size;
   if (search_end > self->sc_text.tb_end) goto check_bss;
   while (search_iter <= search_end) {
-   if (memeq_sized(search_iter,size,addr_data,allocated_size)) {
+   if (!memcmp(search_iter,addr_data,size)) {
     /* We've got a match! */
     result = (target_ptr_t)(search_iter-self->sc_text.tb_begin);
     goto end;
@@ -1602,6 +1589,18 @@ check_bss:
  }
 end:
  return result;
+}
+
+LOCAL int
+memeq_sized(uint8_t const *a, size_t a_size,
+            uint8_t const *b, size_t b_size) {
+ uint8_t const *iter,*end;
+ assert(a_size >= b_size);
+ if (memcmp(a,b,b_size) != 0) return 0;
+ end = (iter = a+b_size)+(a_size-b_size);
+ /* Check the overflow area for being filled with nothing but ZEROes. */
+ for (; iter != end; ++iter) if (*iter != 0) return 0;
+ return 1;
 }
 
 

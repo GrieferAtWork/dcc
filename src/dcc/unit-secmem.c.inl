@@ -216,11 +216,33 @@ merge_curr_prev:
     if (!size) goto end;
     addr      += overflow;
     range_end += overflow;
+    /* When we're here, that means that we've just inserted
+     * a small cross-over range, or extended to current to
+     * border against the next.
+     * In both cases, we know that the remainder of the
+     * incref address range borders against the end of
+     * the current range, as well as the next range starts
+     * where the current range ends. */
+    assert(addr == range_end);
+    assert(HAS_NEXT_RANGE);
+    if (CURR_RANGE.ar_refcnt == NEXT_RANGE.ar_refcnt) {
+     /* Must merge this range with the next.
+      * This can happen when the current range was extended and
+      * now borders against the next with a matching reference count. */
+     newrange            = &NEXT_RANGE;
+     CURR_RANGE.ar_size += newrange->ar_size;
+     CURR_RANGE.ar_next  = newrange->ar_next;
+     free(newrange);
+    } else {
+     range = range->ar_next;
+     assert(addr == range->ar_addr);
+    }
+    range_end = CURR_RANGE.ar_addr+CURR_RANGE.ar_size;
 #undef overflow
    }
+   assert(range_end == CURR_RANGE.ar_addr+CURR_RANGE.ar_size);
    assert(addr >= CURR_RANGE_BEGIN);
    assert(addr <  CURR_RANGE_END);
-   assert(range_end == CURR_RANGE.ar_addr+CURR_RANGE.ar_size);
    if (addr == CURR_RANGE_BEGIN) {
     int must_continue = 0;
 #define overlap  underflow

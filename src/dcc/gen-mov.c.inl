@@ -480,7 +480,7 @@ DCCDisp_TextMovMem(struct DCCCompilerText const *__restrict text,
  src_addr = text->ct_base;
  dst_iter = *dst;
  i = text->ct_relv-src_sec->sc_relv;
- assert(i+text->ct_relc <= src_sec->sc_relc);
+ assert(!text->ct_relc || i+text->ct_relc <= src_sec->sc_relc);
  for (; i < text->ct_relc; ++i) {
   target_ptr_t jump; width_t relw;
   struct DCCSymAddr symaddr;
