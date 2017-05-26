@@ -202,7 +202,7 @@ struct DCCSym {
  !((self)->sy_flags&DCC_SYMFLAG_USED) && \
     /* Unused symbols with global visibility can only \
      * be removed when they're imported from libraries. */\
-  (((self)->sy_flags&DCC_SYMFLAG_VISIBILITYBASE) != DCC_SYMFLAG_NONE || \
+  (((self)->sy_flags&(DCC_SYMFLAG_VISIBILITYBASE|DCC_SYMFLAG_STATIC)) != DCC_SYMFLAG_NONE || \
     (DCCSym_ISDEFINED(self) && DCCSection_ISIMPORT(DCCSym_SECTION(self)))))
 #else /* DCC_TARGET_BIN == DCC_BINARY_PE */
 #define DCCSym_ISUNUSED(self) \
@@ -1002,7 +1002,7 @@ do{ struct DCCUnit _old_unit; \
  * >> Essentially, this function performs unused symbol elimination */
 DCCFUN size_t DCCUnit_ClearUnused(void);
 
-/* Clear all symbols that were defined as static,
+/* Clear all unused symbols that were defined as static,
  * essentially removing all unused static declaration. */
 DCCFUN size_t DCCUnit_ClearStatic(void);
 
@@ -1186,7 +1186,9 @@ struct DCCExpDef {
 /* Export the current compilation unit into a stream, or a file.
  * The exported file can later be re-imported using
  * 'DCCUnit_Import*', and should always be linked statically.
- * Upon failure, a lexer error is set. */
+ * Upon failure, a lexer error is set.
+ * WARNING: Do not attempt to clear any kind of unused 
+ */
 DCCFUN void DCCUNIT_EXPORTCALL
 DCCUnit_Export(struct DCCExpDef *__restrict def,
                char const *__restrict filename);

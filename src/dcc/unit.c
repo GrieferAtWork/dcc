@@ -2001,8 +2001,8 @@ PUBLIC size_t DCCUnit_ClearStatic(void) {
  for (; sym_iter != sym_end; ++sym_iter) {
   piter = sym_iter;
   while ((iter = *piter) != NULL) {
-   if ((iter->sy_flags&(DCC_SYMFLAG_STATIC|DCC_SYMFLAG_USED)) ==
-                       (DCC_SYMFLAG_STATIC)) {
+   if ((iter->sy_flags&DCC_SYMFLAG_STATIC) &&
+        DCCSym_ISUNUSED(iter)) {
     *piter = iter->sy_unit_next; /* Inherit reference. */
     iter->sy_unit_next = NULL;   /* Inherit reference. */
     DCCSym_Decref(iter);         /* Drop reference. */
