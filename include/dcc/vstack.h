@@ -428,6 +428,7 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Bitfldf(DCC(sflag_t) flags);              
 #define                     DCCVStack_Bitfld(shift,size) DCCVStack_Bitfldf(DCC_SFLAG_MKBITFLD(shift,size)) /* -1, +1 */
 DCCFUN int  DCC_VSTACK_CALL DCCVStack_IsSame(int same_declaration);                        /* -2, +2 (Return non-ZERO if 'vbottom[0]' and 'vbottom[1]' contain the same value) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Subscript(struct TPPKeyword const *__restrict name); /* -1, +1 (Access the a member 'name' in the current structure) */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_PromInt2(void);                                      /* -2, +2 (Promote integer types between the top 2 stack values, conforming to STD-C conventions for binary operations) */
 
 /* Rotate 'n' stack entries left (towards to v_bottom) by 1 slots,
  * placing the previously bottom-most entry at index 'n'
@@ -556,6 +557,7 @@ extern struct DCCStackValue *vbottom;
 
 #define vprom()    DCCStackValue_Promote(vbottom)
 #define vpromi()   DCCStackValue_PromoteInt(vbottom)
+#define vpromi2()  DCCVStack_PromInt2()
 
 #define vcast_pt(id,explicit_cast) \
  vcast((id)&DCCTYPE_CONST ? &DCCType_BuiltinConstPointers[(id)&15]\

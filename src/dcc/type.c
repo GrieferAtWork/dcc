@@ -497,8 +497,12 @@ DCCType_IsCompatible(struct DCCType const *__restrict a,
  assert(!a->t_base || a->t_base->d_kind&DCC_DECLKIND_TYPE);
  assert(!b->t_base || b->t_base->d_kind&DCC_DECLKIND_TYPE);
  if (!result) {
-  tyid_t ta = a->t_type & ~(DCCTYPE_FLAGSMASK&~(DCCTYPE_QUAL|DCCTYPE_ASTMASK));
-  tyid_t tb = b->t_type & ~(DCCTYPE_FLAGSMASK&~(DCCTYPE_QUAL|DCCTYPE_ASTMASK));
+  tyid_t ta,tb;
+  /* Make sure that the alt-name masks of both types match. */
+  if ((a->t_type&DCCTYPE_ASTMASK) !=
+      (b->t_type&DCCTYPE_ASTMASK)) return 0;
+  ta = a->t_type & ~(DCCTYPE_FLAGSMASK&~(DCCTYPE_QUAL|DCCTYPE_ASTMASK));
+  tb = b->t_type & ~(DCCTYPE_FLAGSMASK&~(DCCTYPE_QUAL|DCCTYPE_ASTMASK));
   if (unqualified) {
    ta &= ~(DCCTYPE_QUAL);
    tb &= ~(DCCTYPE_QUAL);
@@ -694,7 +698,11 @@ DCCType_PutPrefix(char *buf, size_t buflen,
  default:
   if (self->t_type&DCCTYPE_CONST) WRITE("const ",6);
   if (self->t_type&DCCTYPE_VOLATILE) WRITE("volatile ",9);
-  switch (DCCTYPE_BASIC(self->t_type)) {
+  if (self->t_type&DCCTYPE_ALTLONG) {
+   assert(DCCTYPE_BASIC(self->t_type) == (DCCTYPE_LONG) ||
+          DCCTYPE_BASIC(self->t_type) == (DCCTYPE_LONG|DCCTYPE_UNSIGNED));
+   basic_name = (self->t_type&DCCTYPE_UNSIGNED) ? "unsigned long" : "long";
+  } else switch (DCCTYPE_BASIC(self->t_type)) {
    default: basic_name = "int"; break;
    case DCCTYPE_UNSIGNED: basic_name = "unsigned int"; break;
    case DCCTYPE_UNSIGNED|DCCTYPE_BYTE: basic_name = "unsigned char"; break;

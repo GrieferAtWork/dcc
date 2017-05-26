@@ -646,11 +646,13 @@ parse_string:
   if (t == '&' || t == '*') {
    /* don't duplicate the value for this operator! */
    vgen1(t); /* x */
-  } else if (t != '+') {
+  } else {
    vpromi(); /* xi */
-   vrcopy(); /* dxi */
-   vgen1(t); /* dnxi */
-   vrval();  /* rdnxi */
+   if (t != '+') {
+    vrcopy(); /* dxi */
+    vgen1(t); /* dnxi */
+    vrval();  /* rdnxi */
+   }
   }
  } break;
 
@@ -885,11 +887,11 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprProd(void) {
  while (TOK == '*' || TOK == '/' || TOK == '%') {
   func = TOK;
   YIELD();
-  vpromi();             /* xi */
-  vrcopy();             /* dxi */
-  DCCParse_ExprUnary(); /* dxi, y */
-  vgen2(func);          /* dxi#y */
-  vrval();              /* rdxi#y */
+  vrcopy();             /* dx */
+  DCCParse_ExprUnary(); /* dx, y */
+  vpromi2();            /* dxi, yi */
+  vgen2(func);          /* dxi#yi */
+  vrval();              /* rdxi#yi */
  }
 }
 
@@ -899,11 +901,11 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprSum(void) {
  while (TOK == '+' || TOK == '-') {
   func = TOK;
   YIELD();
-  vpromi();            /* xi */
-  vrcopy();            /* dxi */
-  DCCParse_ExprProd(); /* dxi, y */
-  vgen2(func);         /* dxi#y */
-  vrval();             /* rdxi#y */
+  vrcopy();            /* dx */
+  DCCParse_ExprProd(); /* dx, y */
+  vpromi2();           /* dxi, yi */
+  vgen2(func);         /* dxi#yi */
+  vrval();             /* rdxi#yi */
  }
 }
 
@@ -913,11 +915,11 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprShift(void) {
  while (TOK == TOK_SHL || TOK == TOK_SHR) {
   func = TOK;
   YIELD();
-  vpromi();           /* xi */
-  vrcopy();           /* dxi */
-  DCCParse_ExprSum(); /* dxi, y */
-  vgen2(func);        /* dxi#y */
-  vrval();            /* rdxi#y */
+  vrcopy();           /* dx */
+  DCCParse_ExprSum(); /* dx, y */
+  vpromi2();          /* dxi, yi */
+  vgen2(func);        /* dxi#yi */
+  vrval();            /* rdxi#yi */
  }
 }
 
@@ -955,22 +957,22 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprAnd(void) {
  DCCParse_ExprCmpEq();
  while (TOK == '&') {
   YIELD();
-  vpromi();             /* xi */
-  vrcopy();             /* dxi */
-  DCCParse_ExprCmpEq(); /* dxi, y */
-  vgen2('&');           /* dxi#y */
-  vrval();              /* rdxi#y */
+  vrcopy();             /* dx */
+  DCCParse_ExprCmpEq(); /* dx, y */
+  vpromi2();            /* dxi, yi */
+  vgen2('&');           /* dxi#yi */
+  vrval();              /* rdxi#yi */
  }
 }
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprXor(void) {
  DCCParse_ExprAnd();
  while (TOK == '^') {
   YIELD();
-  vpromi();           /* xi */
-  vrcopy();           /* dxi */
-  DCCParse_ExprAnd(); /* dxi, y */
-  vgen2('^');         /* dxi#y */
-  vrval();            /* rdxi#y */
+  vrcopy();           /* dx */
+  DCCParse_ExprAnd(); /* dx, y */
+  vpromi2();          /* dxi, yi */
+  vgen2('^');         /* dxi#yi */
+  vrval();            /* rdxi#yi */
  }
 }
 
@@ -978,11 +980,11 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprOr(void) {
  DCCParse_ExprXor();
  while (TOK == '|') {
   YIELD();
-  vpromi();           /* xi */
-  vrcopy();           /* dxi */
-  DCCParse_ExprXor(); /* dxi, y */
-  vgen2('|');         /* dxi#y */
-  vrval();            /* rdxi#y */
+  vrcopy();           /* dx */
+  DCCParse_ExprXor(); /* dx, y */
+  vpromi2();          /* dxi, yi */
+  vgen2('|');         /* dxi#yi */
+  vrval();            /* rdxi#yi */
  }
 }
 
@@ -1128,6 +1130,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
      DCCParse_ExprCond();
     }
    }
+   /* TODO: vpromi2() between the two branches! */
    if (jmp_sym2) t_defsym(jmp_sym2);
    if (is_true) vpop(1); /* Pop the false-branch if it's unwanted. */
   } else
@@ -1240,6 +1243,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
     * we must store its value in the shared storage. */
    --vbottom,*vbottom = shared_storage;
    /* Duplicate the shared storage virtual value, but don't copy it for real */
+   vpromi2(); /* ..., rhs, shared */
    vdup(0);   /* ..., rhs, shared, shared */
    vrrot(3);  /* ..., shared, shared, rhs */
    vstore(1); /* ..., shared, shared */

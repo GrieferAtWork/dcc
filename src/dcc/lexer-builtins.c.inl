@@ -125,7 +125,7 @@ DCCParse_BuiltinTypesCompatibleP(void) {
  if (!DCCParse_CType(&ta,&attr)) WARN(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P);
  DCCParse_ParPairEnd();
  DCCAttrDecl_Quit(&attr);
- vpushi(DCCTYPE_BOOL,DCCType_IsCompatible(&ta,&tb,1));
+ vpushi(DCCTYPE_BOOL,DCCType_IsCompatible(&ta,&tb,0));
  DCCType_Quit(&tb);
  DCCType_Quit(&ta);
 }

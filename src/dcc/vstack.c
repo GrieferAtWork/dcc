@@ -2048,6 +2048,8 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
   assert(!self->sv_ctype.t_base);
   tid &= DCCTYPE_BASICMASK;
   switch (tid) {
+  case DCCTYPE_BOOL:
+  case DCCTYPE_AUTO:
 #if DCC_TARGET_SIZEOF_CHAR < DCC_TARGET_SIZEOF_INT
   case DCCTYPE_BYTE:
   case DCCTYPE_UNSIGNED|DCCTYPE_BYTE:
@@ -2062,7 +2064,7 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
 #endif
    /* Nothing else to do here.
     * The actual effect of this is handled once the value is used! */
-   self->sv_ctype.t_type &= ~(DCCTYPE_BASICMASK);
+   self->sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ASTMASK);
 #if DCCTYPE_INT != 0
    self->sv_ctype.t_type |=   DCCTYPE_INT;
 #endif
@@ -2073,7 +2075,6 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
  }
 }
 #endif
-
 
 PUBLIC rc_t DCC_VSTACK_CALL
 DCCVStack_GetReg(rc_t rc, int allow_ptr_regs) {
@@ -3644,6 +3645,57 @@ DCCVStack_IsSame(int same_declaration) {
  }
  return 1;
 }
+
+
+
+
+//////////////////////////////////////////////////////////////////////////
+// 
+//  PROMOTION
+// 
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PromInt2(void) {
+ assert(vsize >= 2);
+#if HAVE_VLOG
+ VLOG(0,("vpromi2()\n"));
+#endif
+ if (DCCTYPE_GROUP(vbottom[0].sv_ctype.t_type) == DCCTYPE_BUILTIN &&
+     DCCTYPE_GROUP(vbottom[1].sv_ctype.t_type) == DCCTYPE_BUILTIN &&
+     /* Only perform promotions between integral types. */
+    !DCCTYPE_ISFLOAT_OR_VOID(vbottom[0].sv_ctype.t_type) &&
+    !DCCTYPE_ISFLOAT_OR_VOID(vbottom[1].sv_ctype.t_type)) {
+  tyid_t common_type;
+  DCCStackValue_PromoteInt(&vbottom[0]);
+  DCCStackValue_PromoteInt(&vbottom[1]);
+#if DCC_TARGET_SIZEOF_LONG_LONG >= DCC_TARGET_SIZEOF_INT
+  /* propagate long-long integeral width modifiers. */
+  if ((vbottom[0].sv_ctype.t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_LLONG ||
+      (vbottom[1].sv_ctype.t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_LLONG)
+       common_type = DCCTYPE_LLONG;
+  else
+#endif
+#if DCC_TARGET_SIZEOF_LONG >= DCC_TARGET_SIZEOF_INT
+  /* propagate long integeral width modifiers. */
+  if (vbottom[0].sv_ctype.t_type&DCCTYPE_ALTLONG ||
+      vbottom[1].sv_ctype.t_type&DCCTYPE_ALTLONG)
+      common_type = DCCTYPE_LONG|DCCTYPE_ALTLONG;
+  else
+#endif
+  { common_type = DCCTYPE_INT; }
+  /* Propagate the unsigned-flag. */
+  if (vbottom[0].sv_ctype.t_type&DCCTYPE_UNSIGNED ||
+      vbottom[1].sv_ctype.t_type&DCCTYPE_UNSIGNED)
+      common_type |= DCCTYPE_UNSIGNED;
+  /* Apply the common typing to with stack-values. */
+  vbottom[0].sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ASTMASK);
+  vbottom[1].sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ASTMASK);
+  vbottom[0].sv_ctype.t_type |=   common_type;
+  vbottom[1].sv_ctype.t_type |=   common_type;
+ }
+}
+
+
+
 
 
 
