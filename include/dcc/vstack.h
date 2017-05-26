@@ -344,10 +344,20 @@ DCCFUN void DCC_VSTACK_CALL DCCStackValue_FixBitfield(struct DCCStackValue *__re
 /* Load the boolean result of a test, either into a register, or onto the stack. */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_FixTest(struct DCCStackValue *__restrict self);
 
-//////////////////////////////////////////////////////////////////////////
-// Convert an array type to pointer-to-array-base, and function to poitner-to-function
+/* Convert an array type to pointer-to-array-base, and function to pointer-to-function */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_Promote(struct DCCStackValue *__restrict self);
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_PromoteFunction(struct DCCStackValue *__restrict self);
+
+/* Perform integer promotion, as required by the C standard in practically any unary/binary operation.
+ * Note, that v-stack API functions normally will _NOT_ do this, leaving the
+ * task of calling this function on the appropriate stack-entires to the user. */
+#if (DCC_TARGET_SIZEOF_CHAR < DCC_TARGET_SIZEOF_INT) || \
+    (DCC_TARGET_SIZEOF_SHORT < DCC_TARGET_SIZEOF_INT) || \
+    (DCC_TARGET_SIZEOF_LONG_LONG < DCC_TARGET_SIZEOF_INT)
+DCCFUN void DCC_VSTACK_CALL DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self);
+#else
+#define DCCStackValue_PromoteInt(self) (void)0
+#endif
 
 /* Resolve all 'self->sv_ctype' lvalue-style references. */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_LoadLValue(struct DCCStackValue *__restrict self);
@@ -545,6 +555,7 @@ extern struct DCCStackValue *vbottom;
 #define vsubscript DCCVStack_Subscript
 
 #define vprom()    DCCStackValue_Promote(vbottom)
+#define vpromi()   DCCStackValue_PromoteInt(vbottom)
 
 #define vcast_pt(id,explicit_cast) \
  vcast((id)&DCCTYPE_CONST ? &DCCType_BuiltinConstPointers[(id)&15]\

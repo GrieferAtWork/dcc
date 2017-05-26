@@ -647,9 +647,10 @@ parse_string:
    /* don't duplicate the value for this operator! */
    vgen1(t); /* x */
   } else if (t != '+') {
-   vrcopy(); /* dx  */
-   vgen1(t); /* dnx */
-   vrval();  /* rdnx */
+   vpromi(); /* xi */
+   vrcopy(); /* dxi */
+   vgen1(t); /* dnxi */
+   vrval();  /* rdnxi */
   }
  } break;
 
@@ -884,10 +885,11 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprProd(void) {
  while (TOK == '*' || TOK == '/' || TOK == '%') {
   func = TOK;
   YIELD();
-  vrcopy();             /* dx */
-  DCCParse_ExprUnary(); /* dx, y */
-  vgen2(func);          /* dx#y */
-  vrval();              /* rdx#y */
+  vpromi();             /* xi */
+  vrcopy();             /* dxi */
+  DCCParse_ExprUnary(); /* dxi, y */
+  vgen2(func);          /* dxi#y */
+  vrval();              /* rdxi#y */
  }
 }
 
@@ -897,10 +899,11 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprSum(void) {
  while (TOK == '+' || TOK == '-') {
   func = TOK;
   YIELD();
-  vrcopy();            /* dx */
-  DCCParse_ExprProd(); /* dx, y */
-  vgen2(func);         /* dx#y */
-  vrval();             /* rdx#y */
+  vpromi();            /* xi */
+  vrcopy();            /* dxi */
+  DCCParse_ExprProd(); /* dxi, y */
+  vgen2(func);         /* dxi#y */
+  vrval();             /* rdxi#y */
  }
 }
 
@@ -910,10 +913,11 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprShift(void) {
  while (TOK == TOK_SHL || TOK == TOK_SHR) {
   func = TOK;
   YIELD();
-  vrcopy();           /* dx */
-  DCCParse_ExprSum(); /* dx, y */
-  vgen2(func);        /* dx#y */
-  vrval();            /* rdx#y */
+  vpromi();           /* xi */
+  vrcopy();           /* dxi */
+  DCCParse_ExprSum(); /* dxi, y */
+  vgen2(func);        /* dxi#y */
+  vrval();            /* rdxi#y */
  }
 }
 
@@ -951,20 +955,22 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprAnd(void) {
  DCCParse_ExprCmpEq();
  while (TOK == '&') {
   YIELD();
-  vrcopy();             /* dx */
-  DCCParse_ExprCmpEq(); /* dx, y */
-  vgen2('&');           /* dx#y */
-  vrval();              /* rdx#y */
+  vpromi();             /* xi */
+  vrcopy();             /* dxi */
+  DCCParse_ExprCmpEq(); /* dxi, y */
+  vgen2('&');           /* dxi#y */
+  vrval();              /* rdxi#y */
  }
 }
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprXor(void) {
  DCCParse_ExprAnd();
  while (TOK == '^') {
   YIELD();
-  vrcopy();           /* dx */
-  DCCParse_ExprAnd(); /* dx, y */
-  vgen2('^');         /* dx#y */
-  vrval();            /* rdx#y */
+  vpromi();           /* xi */
+  vrcopy();           /* dxi */
+  DCCParse_ExprAnd(); /* dxi, y */
+  vgen2('^');         /* dxi#y */
+  vrval();            /* rdxi#y */
  }
 }
 
@@ -972,10 +978,11 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprOr(void) {
  DCCParse_ExprXor();
  while (TOK == '|') {
   YIELD();
-  vrcopy();           /* dx */
-  DCCParse_ExprXor(); /* dx, y */
-  vgen2('|');         /* dx#y */
-  vrval();            /* rdx#y */
+  vpromi();           /* xi */
+  vrcopy();           /* dxi */
+  DCCParse_ExprXor(); /* dxi, y */
+  vgen2('|');         /* dxi#y */
+  vrval();            /* rdxi#y */
  }
 }
 

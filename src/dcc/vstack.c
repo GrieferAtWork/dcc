@@ -2034,6 +2034,46 @@ DCCStackValue_PromoteFunction(struct DCCStackValue *__restrict self) {
  }
 }
 
+#if (DCC_TARGET_SIZEOF_CHAR < DCC_TARGET_SIZEOF_INT) || \
+    (DCC_TARGET_SIZEOF_SHORT < DCC_TARGET_SIZEOF_INT) || \
+    (DCC_TARGET_SIZEOF_LONG_LONG < DCC_TARGET_SIZEOF_INT)
+PUBLIC void DCC_VSTACK_CALL
+DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
+ tyid_t tid;
+ assert(self);
+ /* Make sure never */
+ if (!(self->sv_flags&DCC_SFLAG_LVALUE) &&
+      (tid = self->sv_ctype.t_type,
+       DCCTYPE_GROUP(tid) == DCCTYPE_BUILTIN)) {
+  assert(!self->sv_ctype.t_base);
+  tid &= DCCTYPE_BASICMASK;
+  switch (tid) {
+#if DCC_TARGET_SIZEOF_CHAR < DCC_TARGET_SIZEOF_INT
+  case DCCTYPE_BYTE:
+  case DCCTYPE_UNSIGNED|DCCTYPE_BYTE:
+#endif
+#if DCC_TARGET_SIZEOF_SHORT < DCC_TARGET_SIZEOF_INT
+  case DCCTYPE_WORD:
+  case DCCTYPE_UNSIGNED|DCCTYPE_WORD:
+#endif
+#if DCC_TARGET_SIZEOF_LONG_LONG < DCC_TARGET_SIZEOF_INT
+  case DCCTYPE_LLONG:
+  case DCCTYPE_UNSIGNED|DCCTYPE_LLONG:
+#endif
+   /* Nothing else to do here.
+    * The actual effect of this is handled once the value is used! */
+   self->sv_ctype.t_type &= ~(DCCTYPE_BASICMASK);
+#if DCCTYPE_INT != 0
+   self->sv_ctype.t_type |=   DCCTYPE_INT;
+#endif
+   break;
+  default:
+   break;
+  }
+ }
+}
+#endif
+
 
 PUBLIC rc_t DCC_VSTACK_CALL
 DCCVStack_GetReg(rc_t rc, int allow_ptr_regs) {
