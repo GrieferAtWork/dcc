@@ -52,7 +52,7 @@ LEXDECL void DCC_PARSE_CALL DCCParse_AttrContent(struct DCCAttrDecl *__restrict 
 LEXDECL void DCC_PARSE_CALL DCCParse_CTypeNewArgumentList(struct DCCDecl *__restrict funtydecl, struct DCCType *opt_firsttype, struct TPPKeyword *opt_firstname, struct DCCAttrDecl *opt_firstattr);
 LEXDECL void DCC_PARSE_CALL DCCParse_CTypeOldArgumentList(struct DCCDecl *__restrict funtydecl, struct TPPKeyword  *opt_firstname, struct DCCAttrDecl *opt_firstattr);
 LEXDECL void DCC_PARSE_CALL DCCParse_CTypeOldArgumentListDefWithBase(struct DCCDecl *__restrict funtydecl, struct DCCType const *__restrict base_type, struct DCCAttrDecl const *__restrict base_attr);
-LEXDECL void DCC_PARSE_CALL DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl);
+LEXDECL void DCC_PARSE_CALL DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl, struct DCCAttrDecl *empty_attr);
 LEXDECL void DCC_PARSE_CALL DCCParse_CTypeOldArgumentListDefWithFirstBase(struct DCCDecl *__restrict funtydecl, struct DCCType *__restrict firstbase_type, struct DCCAttrDecl *__restrict firstbase_attr);
 LEXDECL void DCC_PARSE_CALL DCCParse_CTypeArrayExt(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);
 LEXDECL void DCC_PARSE_CALL DCCParse_CTypeTrail(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);

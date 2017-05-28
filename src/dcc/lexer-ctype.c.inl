@@ -340,7 +340,9 @@ done:
  * NOTE: No-op when no definitions were found.
  */
 LEXPRIV void DCC_PARSE_CALL
-DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl) {
+DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl,
+                                 struct DCCAttrDecl *empty_attr) {
+ int is_first = 1;
  assert(funtydecl);
  assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION ||
         funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
@@ -348,6 +350,7 @@ DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl) {
   struct DCCType type;
   struct DCCAttrDecl attr = DCCATTRDECL_INIT;
   if (!DCCParse_CTypePrefix(&type,&attr)) {
+   if (is_first && empty_attr) DCCAttrDecl_Merge(empty_attr,&attr);
    DCCAttrDecl_Quit(&attr);
    break;
   }
@@ -356,6 +359,7 @@ DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl) {
   DCCType_Quit(&type);
   if (TOK != ';') WARN(W_EXPECTED_SEMICOLON);
   else YIELD();
+  is_first = 0;
  }
 }
 
@@ -376,7 +380,7 @@ DCCParse_CTypeOldArgumentListDefWithFirstBase(struct DCCDecl *__restrict funtyde
  assert(firstbase_type);
  assert(firstbase_attr);
  DCCParse_CTypeOldArgumentListDefWithBase(funtydecl,firstbase_type,firstbase_attr);
- DCCParse_CTypeOldArgumentListDef(funtydecl);
+ DCCParse_CTypeOldArgumentListDef(funtydecl,NULL);
 }
 
 
@@ -491,7 +495,7 @@ DCCParse_CTypeTrail(struct DCCType     *__restrict self,
    assert(fun_decl->d_tdecl.td_fieldv == NULL);
    /* Although any argument specified would be unknown, we must
     * still make sure to handle that case for code integrity. */
-   DCCParse_CTypeOldArgumentListDef(self->t_base);
+   DCCParse_CTypeOldArgumentListDef(self->t_base,attr);
   } else {
    struct DCCType     firstarg_type;
    struct TPPKeyword *firstarg_name;
@@ -525,7 +529,7 @@ oldstyle_arglist:
     assert(DCCTYPE_GROUP(self->t_type) == DCCTYPE_FUNCTION);
     assert(self->t_base);
     assert(self->t_base->d_kind == DCC_DECLKIND_FUNCTION);
-    DCCParse_CTypeOldArgumentListDef(self->t_base);
+    DCCParse_CTypeOldArgumentListDef(self->t_base,attr);
    }
   }
   DCCParse_Attr(attr);
@@ -732,7 +736,7 @@ inner_end:
    assert(DCCTYPE_GROUP(self->t_type) == DCCTYPE_FUNCTION);
    assert(self->t_base);
    assert(self->t_base->d_kind == DCC_DECLKIND_FUNCTION);
-   DCCParse_CTypeOldArgumentListDef(self->t_base);
+   DCCParse_CTypeOldArgumentListDef(self->t_base,attr);
   }
   /* Calculate function offsets. */
   if (self->t_base &&

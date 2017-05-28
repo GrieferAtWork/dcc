@@ -41,6 +41,25 @@ DCCAttrDecl_Quit(struct DCCAttrDecl *__restrict self) {
  if (self->a_reach) TPPString_Decref(self->a_reach);
 }
 
+
+#define CCNAME_SHIFT 20
+PRIVATE char const *const cc_names[5] = {
+ /* [DCC_ATTRFLAG_CDECL    >> CCNAME_SHIFT] = */"cdecl",
+ /* [DCC_ATTRFLAG_STDCALL  >> CCNAME_SHIFT] = */"stdcall",
+ /* [DCC_ATTRFLAG_THISCALL >> CCNAME_SHIFT] = */"thiscall",
+ /* [DCC_ATTRFLAG_FASTCALL >> CCNAME_SHIFT] = */"fastcall",
+};
+
+#define ELFVISNAME_SHIFT   28
+PRIVATE char const *const elfvis_names[5] = {
+ NULL,
+ /* [DCC_ATTRFLAG_VIS_DEFAULT   >> ELFVISNAME_SHIFT] = */"default",
+ /* [DCC_ATTRFLAG_VIS_HIDDEN    >> ELFVISNAME_SHIFT] = */"hidden",
+ /* [DCC_ATTRFLAG_VIS_PROTECTED >> ELFVISNAME_SHIFT] = */"protected",
+ /* [DCC_ATTRFLAG_VIS_INTERNAL  >> ELFVISNAME_SHIFT] = */"internal",
+};
+
+
 PUBLIC void
 DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
                   struct DCCAttrDecl const *__restrict rhs) {
@@ -51,12 +70,42 @@ DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
  if (!(self->a_flags&DCC_ATTRFLAG_FIXEDALIGN) &&
      !(self->a_alias)) self->a_align = rhs->a_align;
  /* TODO: Do more strict checking when comparing old against new attributes. */
- self->a_flags |= rhs->a_flags&(DCC_ATTRFLAG_MASK_FLAGS|
-                                DCC_ATTRFLAG_MASK_MODE|
-                                DCC_ATTRFLAG_MASK_REACHABLE|
-                                DCC_ATTRFLAG_MASK_WARNING);
- /* TODO: DCC_ATTRFLAG_MASK_CALLCONV */
- /* TODO: DCC_ATTRFLAG_MASK_VISIBILITY */
+ self->a_flags |= rhs->a_flags&(DCC_ATTRFLAG_MASK_FLAGS
+                               |DCC_ATTRFLAG_MASK_MODE
+                               |DCC_ATTRFLAG_MASK_REACHABLE
+                               |DCC_ATTRFLAG_MASK_WARNING
+#ifdef DCC_ATTRFLAG_DLLIMPORT
+                               |DCC_ATTRFLAG_DLLIMPORT
+#endif
+#ifdef DCC_ATTRFLAG_DLLEXPORT
+                               |DCC_ATTRFLAG_DLLEXPORT
+#endif
+                                );
+ if ((rhs->a_flags&DCC_ATTRFLAG_MASK_CALLCONV) &&
+     (rhs->a_flags&DCC_ATTRFLAG_MASK_CALLCONV) !=
+     (self->a_flags&DCC_ATTRFLAG_MASK_CALLCONV)) {
+  if (self->a_flags&DCC_ATTRFLAG_MASK_CALLCONV) {
+   /* Warn about miss-matched calling conventions. */
+   WARN(W_ATTRIBUTE_MERGE_CALLCONV,
+        cc_names[(rhs->a_flags&DCC_ATTRFLAG_MASK_CALLCONV) >> CCNAME_SHIFT],
+        cc_names[(self->a_flags&DCC_ATTRFLAG_MASK_CALLCONV) >> CCNAME_SHIFT]);
+   self->a_flags &= ~(DCC_ATTRFLAG_MASK_CALLCONV);
+  }
+  self->a_flags |= rhs->a_flags&DCC_ATTRFLAG_MASK_CALLCONV;
+ }
+ if ((rhs->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) &&
+     (rhs->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) !=
+     (self->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY)) {
+  /* Warn about miss-matched ELF visibility. */
+  WARN(W_ATTRIBUTE_MERGE_VISIBILITY,
+       elfvis_names[(rhs->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) >> ELFVISNAME_SHIFT],
+       elfvis_names[(self->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) >> ELFVISNAME_SHIFT]);
+  if ((rhs->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) >
+      (self->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY)) {
+   self->a_flags &= ~(DCC_ATTRFLAG_MASK_ELFVISIBILITY);
+   self->a_flags |= (rhs->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY);
+  }
+ }
  if (rhs->a_reach) {
   if (!self->a_reach) {
    self->a_reach = rhs->a_reach;

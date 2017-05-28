@@ -131,7 +131,7 @@ struct DCCSymAddr {
 #define DCC_ATTRFLAG_VIS_DEFAULT   0x10000000 /*< Default/automatic visibility. */
 #define DCC_ATTRFLAG_VIS_HIDDEN    0x20000000 /*< Hidden visibility. */
 #define DCC_ATTRFLAG_VIS_PROTECTED 0x30000000 /*< Protected visibility. */
-#define DCC_ATTRFLAG_VIS_INTERNAL  0x40000000 /*< Protected visibility. */
+#define DCC_ATTRFLAG_VIS_INTERNAL  0x40000000 /*< Internal visibility. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE || \
     defined(GUARD_DCC_LEXER_C) || \
     defined(GUARD_DCC_LEXER_ATTRIBUTES_C_INL)
