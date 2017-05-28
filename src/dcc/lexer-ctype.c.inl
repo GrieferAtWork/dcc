@@ -783,6 +783,7 @@ DCCParse_CTypePrefix(struct DCCType *__restrict self,
 #define F_MISC    0x40 /* Everything else (e.g.: '_Atomic', 'const', 'volatile') */
 #define FIX_AUTO() \
 do{ if (flags&F_AUTO) {\
+     WARN(W_AUTO_STORAGE_ALREADY_BY_DEFAULT);\
      self->t_type &= ~(DCCTYPE_BASICMASK);\
      flags        &= ~(F_AUTO);\
     }\
@@ -903,7 +904,10 @@ again:
   tyid_t new_storage;
  case KWD_auto: /* Automatic storage / auto-type. */
   if (HAS(EXT_AUTO_FOR_AUTOTYPE) &&
-    !(flags&(F_INT|F_SIGN|F_WIDTH))) flags |= F_AUTO;
+    !(flags&(F_INT|F_SIGN|F_WIDTH))) {
+   self->t_type |= DCCTYPE_AUTO;
+   flags        |= F_AUTO;
+  }
   new_storage = DCCTYPE_AUTOMATIC;
   if (DCC_MACRO_FALSE) { case KWD_static:   new_storage = DCCTYPE_STATIC; }
   if (DCC_MACRO_FALSE) { case KWD_extern:   new_storage = DCCTYPE_EXTERN; }

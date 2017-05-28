@@ -71,7 +71,7 @@ DEF_K(__w64)
 /* Type qualifier keywords. */
 DEF_K(const)    DEF_K(__const)    DEF_K(__const__)
 DEF_K(volatile) DEF_K(__volatile) DEF_K(__volatile__)
-DEF_K(restrict) DEF_K(__restrict) DEF_K(__restrict__)
+/*DEF_K(restrict)*/ DEF_K(__restrict) DEF_K(__restrict__)
 
 /* Extension statement keywords. */
 DEF_K(asm) DEF_K(__asm) DEF_K(__asm__)
@@ -297,7 +297,7 @@ DEFINE_ATTRIBUTE(arithmetic) /* Allow arithmetic operations on structure types. 
 
 /* __declspec-attributes. */
 DEFINE_ATTRIBUTE(noalias)
-/*DEFINE_ATTRIBUTE(restrict)*/
+DEFINE_ATTRIBUTE(restrict)
 #undef DEFINE_ATTRIBUTE
 
 DEF_K(QI) /*< An integer that is as wide as the smallest addressable unit, usually 8 bits. */
@@ -1177,7 +1177,6 @@ DEF_WARNING(W_EXPECTED_TYPE_FOR_DECLARATION,(WG_SYNTAX),WSTATE_WARN,WARNF("Assum
 DEF_WARNING(W_EXPECTED_TYPE_FOR_PROTOTYPE_ARGUMENT,(WG_OLD_FUNCTION_DECL,WG_EXTENSIONS),WSTATE_WARN,WARNF("Expected type for function prototype argument"))
 DEF_WARNING(W_UNKNOWN_FUNCTION_ARGUMENT,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown function argument '%s'",KWDNAME()))
 DEF_WARNING(W_EXPECTED_STRING_FOR_ASSEMBLY_NAME,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string for assembly name, but got " TOK_S,TOK_A))
-DEF_WARNING(W_AUTO_USED_AS_STORAGE_CLASS,(WG_TYPE),WSTATE_WARN,WARNF("'auto' used as storage class"))
 DEF_WARNING(W_AUTO_TYPE_USED_AS_POINTER_BASE,(WG_TYPE),WSTATE_WARN,WARNF("'__auto_type' used as pointer base"))
 DEF_WARNING(W_QUAL_ON_AUTO_TYPE,(WG_TYPE),WSTATE_WARN,WARNF("Qualifiers on '__auto_type' have no defined semantics"))
 DEF_WARNING(W_VARIABLE_LENGTH_ARRAYS_NOT_ALLOWED_HERE,(WG_TYPE),WSTATE_WARN,WARNF("VLA array types are not allowed here"))
