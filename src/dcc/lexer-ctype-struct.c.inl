@@ -139,9 +139,9 @@ DCCParse_Struct(struct DCCDecl *__restrict struct_decl) {
  for (;;) {
   memset(&attr,0,sizeof(attr));
   if (!DCCParse_CTypePrefix(&base,&attr)) break;
-  DCCType_InitCopy(&part,&base);
   for (;;) {
    sflag_t bitfield = (sflag_t)-1;
+   DCCType_InitCopy(&part,&base);
    field_name = DCCParse_CTypeSuffix(&part,&attr);
    assert(field_name);
    if (fieldc == fielda) {

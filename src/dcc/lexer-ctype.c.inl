@@ -213,21 +213,28 @@ DCCParse_CTypeOldArgumentList(struct DCCDecl *__restrict funtydecl,
  assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION);
  assert((opt_firstname != NULL) == (opt_firstattr != NULL));
  assert(!opt_firstname || (TOK == ',' || TOK == ')'));
+ WARN(W_OLD_STYLE_FUNCTION_IMPLEMENTATION);
  argv = NULL; argc = arga = 0;
  for (;;) {
   struct DCCAttrDecl arg_attr = DCCATTRDECL_INIT;
   struct DCCDecl *arg_decl;
   if (!opt_firstname) {
    if (TOK == ')' || TOK <= 0) break;
+   if (TOK == TOK_DOTS) {
+    WARN(W_OLD_STYLE_FUNCTION_VARARGS);
+    funtydecl->d_flag |= DCC_DECLFLAG_VARIADIC;
+    YIELD();
+    goto nextarg;
+   }
    DCCParse_Attr(&arg_attr);
    if (TPP_ISKEYWORD(TOK)) {
     opt_firstname = TOKEN.t_kwd;
     YIELD();
     DCCParse_Attr(&arg_attr);
    } else {
-    if (TOK != ',') { /* Allow unnamed arguments. */
-     WARN(W_EXPECTED_KEYWORD_IN_OLDSTYLE_ARGUMENT_LIST);
-    }
+    /* Special warning for unnamed arguments. */
+    WARN(TOK == ',' ? W_OLD_STYLE_FUNCTION_UNNAMED_ARGUMENT
+                    : W_OLD_STYLE_FUNCTION_EXPECTED_ARGUMENT_KEYWORD);
     opt_firstname = &TPPKeyword_Empty;
    }
    opt_firstattr = &arg_attr;
@@ -250,6 +257,7 @@ DCCParse_CTypeOldArgumentList(struct DCCDecl *__restrict funtydecl,
   assert(arg_decl->d_type.t_type == DCCTYPE_INT);
   assert(arg_decl->d_type.t_base == NULL);
   argv[argc++].sf_decl = arg_decl; /* Inherit reference. */
+nextarg:
   if (TOK != ',') break;
   YIELD();
   opt_firstname = NULL;
@@ -399,6 +407,11 @@ DCCParse_CTypeArrayExt(struct DCCType *__restrict self,
  /* TODO: Reclaim temporary storage used by this expression. */
  DCCParse_Expr();
  popf();
+ if (!DCCType_IsComplete(self)) {
+  WARN(W_EXPECTED_COMPLETE_TYPE_FOR_ARRAY_BASE,self);
+  /* Try to fix incomplete types. */
+  DCCType_FixComplete(self);
+ }
  if (TOK != ']') WARN(W_EXPECTED_RBRACKET); else YIELD();
  if (visconst_xval()) {
   array_size = vgtconst_int();
@@ -531,11 +544,6 @@ oldstyle_arglist:
   self = &self->t_base->d_type;
   DCCParse_Attr(attr);
   DCCParse_CTypeTrail(self,attr);
-  if (!DCCType_IsComplete(self)) {
-   WARN(W_EXPECTED_COMPLETE_TYPE_FOR_ARRAY_BASE,self);
-   /* Try to fix incomplete types. */
-   DCCType_FixComplete(self);
-  }
  }
 }
 
@@ -883,9 +891,38 @@ again:
  } break;
 
 
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+  /* Letting DCC chew through the windows headers, I came across a ~very~ strange construct:
+   * >> #define WTF_BOOL /##/
+   * >> typedef WTF_BOOL bool;
+   * Now while DCC doesn't perform concatenation in that case, it appears that '//' was
+   * hacked into visual C as a token representing what C99 would later define as '_Bool'.
+   * The code below tries to detect this _really_ weird construct, translating to to '_Bool'.
+   */
+ {
+  char *next_tok;
+  struct TPPFile *next_file;
+ case '/':
+  next_tok = peek_next_token(&next_file);
+  if (next_tok[0] == '/' && next_tok == TOKEN.t_end) { YIELD(); goto w32_bool; }
+  if (*next_tok++ != '#') break;
+  next_tok = peek_next_advance(next_tok,&next_file);
+  if (*next_tok++ != '#') break;
+  next_tok = peek_next_advance(next_tok,&next_file);
+  if (*next_tok++ != '/') break;
+  while (TOKEN.t_file != next_file) YIELD();
+  TOKEN.t_file->f_pos = next_tok;
+  goto w32_bool;
+ } break;
+#endif
+
  { /* Special builtin types. */
   tyid_t newflags;
-  if (DCC_MACRO_FALSE) { case KWD__Bool: newflags = DCCTYPE_BOOL; WARN(W_BUILTIN_TYPE_BOOL_C99); }
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
+  if (DCC_MACRO_FALSE) { case KWD__Bool: WARN(W_BUILTIN_TYPE_BOOL_C99); w32_bool: newflags = DCCTYPE_BOOL; }
+#else
+  if (DCC_MACRO_FALSE) { case KWD__Bool: WARN(W_BUILTIN_TYPE_BOOL_C99);           newflags = DCCTYPE_BOOL; }
+#endif
   if (DCC_MACRO_FALSE) { case KWD_void:  newflags = DCCTYPE_VOID; }
   if (DCC_MACRO_FALSE) { case KWD_float: newflags = DCCTYPE_FLOAT; }
   if (flags&(F_INT|F_SIGN|F_WIDTH)) break;
@@ -960,7 +997,6 @@ again:
   self->t_type |= DCCTYPE_TLS;
   goto next;
 #endif
-
 
  { /* Type flag: Atomic accessor. */
  case KWD__Atomic:

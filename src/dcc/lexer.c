@@ -122,8 +122,22 @@ INTDEF char *skip_whitespace_and_comments(char *iter, char *end);
 
 LEXPRIV char *DCC_PARSE_CALL
 peek_next_token(struct TPPFile **tok_file) {
- char *result = TOKEN.t_end,*end,*file_begin;
- struct TPPFile *curfile = TOKEN.t_file;
+ if (tok_file) *tok_file = TOKEN.t_file;
+ return peek_next_advance(TOKEN.t_end,tok_file);
+}
+
+LEXPRIV char *DCC_PARSE_CALL
+peek_next_advance(char *p, struct TPPFile *__restrict *tok_file) {
+ char *result = p,*end,*file_begin;
+ struct TPPFile *curfile;
+ if (tok_file) {
+  curfile = *tok_file;
+  assert(curfile);
+ } else {
+  curfile = TOKEN.t_file;
+ }
+ assert(p >= curfile->f_begin &&
+        p <= curfile->f_end);
 again:
  end = curfile->f_end;
  result = skip_whitespace_and_comments(result,end);

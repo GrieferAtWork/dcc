@@ -36,6 +36,7 @@ LEXDECL struct TPPKeyword *DCC_PARSE_CALL tok_without_underscores(void);
 
 /* Peek the first character of what will likely be the next token. */
 LEXDECL char *DCC_PARSE_CALL peek_next_token(struct TPPFile **tok_file);
+LEXDECL char *DCC_PARSE_CALL peek_next_advance(char *p, struct TPPFile *__restrict *tok_file);
 
 
 INTDEF void DCCDecl_CalculateFunctionOffsets(struct DCCDecl *__restrict funtydecl);

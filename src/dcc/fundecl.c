@@ -83,8 +83,8 @@ DCCFunctionFrame_Enter(struct DCCFunctionFrame *__restrict self,
    *    >> Emit warnings like: 'redeclaration as static after previously declaration was extern' */
   fun_sym->sy_flags |= DCCDecl_CalculateSymflags(fun_decl);
   /* Warn if the function declaration isn't a function type. */
-  if (DCCTYPE_GROUP(fun_decl->d_type.t_type) != DCCTYPE_FUNCTION
-      ) WARN(W_DECL_EXPECTED_FUNCTION_TYPE_FOR_CODE_INITIALIZER,fun_decl);
+  if (DCCTYPE_GROUP(fun_decl->d_type.t_type) != DCCTYPE_FUNCTION)
+      WARN(W_DECL_EXPECTED_FUNCTION_TYPE_FOR_CODE_INITIALIZER,fun_decl);
   /* Warn if the function section isn't executable. */
   if (!(unit.u_curr->sc_start.sy_flags&DCC_SYMFLAG_SEC_X)) {
    WARN(W_DECL_FUNCTION_SECTION_NOT_EXECUTABLE,

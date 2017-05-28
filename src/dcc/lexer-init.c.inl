@@ -227,7 +227,7 @@ parse_field_name:
      else field_curr = next_field; /* Select the explicit field. */
      YIELD();
      if (!cxx_field_name) {
-      if (TOK != '=') WARN(W_EXPECTED_EQUALS_AFTER_FIELD_NAME);
+      if (TOK != '=') WARN(W_EXPECTED_EQUAL_AFTER_FIELD_NAME);
       else YIELD();
      }
     } else if (TPP_ISKEYWORD(TOK)) {
@@ -296,7 +296,7 @@ parse_field:
       index_end = DCCParse_CExpr(0)+1;
      }
      if (TOK != ']') WARN(W_EXPECTED_RBRACKET); else YIELD();
-     if (TOK != '=') WARN(W_EXPECTED_EQUALS_AFTER_ARRAY_INDEX); else YIELD();
+     if (TOK != '=') WARN(W_EXPECTED_EQUAL_AFTER_ARRAY_INDEX); else YIELD();
      if (index_begin < 0) WARN(W_NEGATIVE_INDEX_IN_ARRAY_INITIALIZER,type),index_begin = 0;
      if (kind != KIND_VARRAY && index_end > target_maxindex)
       WARN(W_OUT_OF_BOUNDS_IN_ARRAY_INITIALIZER,type),

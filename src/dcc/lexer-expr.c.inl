@@ -575,7 +575,7 @@ parse_string:
    */
   struct DCCStackValue sval;
  case '%':
-  if (!HAS(EXT_ASM_REGISTERS)) break;
+  if (!HAS(EXT_ASM_REGISTERS)) goto default_case;
   /* Push an explicitly defined register stack value. */
   sval.sv_reg          = DCCVStack_KillXNon(DCCParse_Register());
   sval.sv_reg2         = DCC_RC_CONST;
@@ -1359,9 +1359,19 @@ DCCParse_ExprDiscard(void) {
 }
 DCCFUN int DCC_PARSE_CALL
 DCCParse_IsExpr(void) {
- /* TODO: This can be done better! */
- return TOK != ',' && TOK != ';' && TOK != ')' &&
-        TOK != ']' && TOK != '}';
+ switch (TOK) {
+ if (DCC_MACRO_FALSE) { case '%':      if (!HAS(EXT_ASM_REGISTERS))  break; }
+ if (DCC_MACRO_FALSE) { case TOK_LAND: if (!HAS(EXT_GCC_LABEL_EXPR)) break; }
+ if (DCC_MACRO_FALSE) { case '.':      if (!HAS(EXT_ASM_ADDRESS))    break; }
+ if (DCC_MACRO_FALSE) { case KWD_if:   if (!HAS(EXT_IFELSE_IN_EXPR)) break; }
+ case TOK_INT: case TOK_CHAR: case TOK_FLOAT: case TOK_STRING:
+ case '+': case '-': case '*': case '&': case '~': case '!':
+ case '(': case TOK_INC: case TOK_DEC: goto yes;
+ default:
+  if (!TPP_ISKEYWORD(TOK)) break;
+yes: return 1;
+ }
+ return 0;
 }
 
 

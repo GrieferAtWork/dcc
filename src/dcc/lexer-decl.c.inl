@@ -167,7 +167,8 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
  if (DCCType_ISVLA(&type)) DCCParse_WarnAllocaInLoop();
  if (decl_name != &TPPKeyword_Empty) {
   decl = DCCCompiler_NewLocalDecl(decl_name,DCC_NS_LOCALS);
- } else if (TOK != '=' && TOK != '{') {
+ } else if (TOK != '=' && TOK != '{' &&
+           (!HAS(EXT_OLD_VARIABLE_INIT) || !DCCParse_IsExpr())) {
   decl = NULL;
   goto push_void;
  } else {
@@ -184,7 +185,7 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
      declaration_did_change = 1;
     } else if (decl->d_mdecl.md_loc.ml_sym) {
      if (!DCCSym_ISFORWARD(decl->d_mdecl.md_loc.ml_sym) &&
-         (TOK == '=' || TOK == '{')) {
+         (TOK == '=' || TOK == '{' || (HAS(EXT_OLD_VARIABLE_INIT) && DCCParse_IsExpr()))) {
       WARN(W_DECL_ALREADY_DEFINED,decl);
       declaration_did_change = 1;
      }
@@ -233,6 +234,7 @@ no_decl:
  if (TOK == '=') {
   /* Symbol initializer. */
   YIELD();
+init_after_equals:
   pushf();
   compiler.c_flags &= ~(DCC_COMPILER_FLAG_SINIT);
   if (!compiler.c_fun ||
@@ -292,10 +294,17 @@ no_decl:
  } else if (TOK == '{') {
   if (decl && (real_decl_type->t_type&DCCTYPE_STOREBASE) == DCCTYPE_TYPEDEF)
       WARN(W_DECL_TYPEDEF_WITH_INITIALIZER,decl),decl = NULL;
+  if (HAS(EXT_OLD_VARIABLE_INIT) && decl &&
+      DCCTYPE_GROUP(decl->d_type.t_type) != DCCTYPE_FUNCTION)
+      goto old_style_init; /* Old-style brace initializer. */
   DCCParse_Function(decl,asmname,real_decl_type,&attr);
   result = 2;
   if (decl && (real_decl_type->t_type&DCCTYPE_STOREBASE) ==
       DCCTYPE_TYPEDEF) goto declare_typedef;
+ } else if (HAS(EXT_OLD_VARIABLE_INIT) && DCCParse_IsExpr()) {
+old_style_init:
+  WARN(W_OLD_STYLE_INITIALIZER_ASSIGNMENT);
+  goto init_after_equals;
  } else if (decl) {
   if ((real_decl_type->t_type&DCCTYPE_STOREBASE) == DCCTYPE_TYPEDEF) {
 declare_typedef:

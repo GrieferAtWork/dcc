@@ -763,6 +763,7 @@ EXTENSION(EXT_VARIABLE_LENGTH_ARRAYS,"variable-length-arrays",1)         /*< All
 EXTENSION(EXT_FUNCTION_STRING_LITERALS,"function-string-literals",1)     /*< Treat '__FUNCTION__' and '__PRETTY_FUNCTION__' as string literals during language-level string-concatation. */
 EXTENSION(EXT_CANONICAL_LIB_PATHS,"canonical-lib-paths",1)               /*< Fix library paths before using them (e.g.: Remove whitespace, fix slashes, etc.). */
 EXTENSION(EXT_CANONICAL_LIB_NAMES,"canonical-lib-names",1)               /*< Fix library names before using them (e.g.: Remove whitespace, fix slashes, etc.). */
+EXTENSION(EXT_OLD_VARIABLE_INIT,"old-variable-init",1)                   /*< Recognize old-style variable initializers (e.g.: 'int x 42;' - WARNING: This extension creates ambiguity; s.a.: '-Wold-variable-init'). */
 EXTENSION(EXT_SHORT_EXT_KEYWORDS,"asm",1)                                /*< Recognize 'asm', 'typeof' and 'inline' as keywords aliasing '__asm__', '__typeof__' and '__inline__'.
                                                                           *  NOTE: The name was chosen for compatibility with GCC's commandline flag '-fno-asm' that does the same.
                                                                           *  NOTE: This extension also control if '__STRICT_ANSI__' is defined as a predefined macro, meaning this is the central '-ansi' flag */
@@ -775,6 +776,7 @@ WGROUP(WG_ZERO_TYPED_ARRAY,"zero-sized-arrays",WSTATE_ERROR)             /*< War
 WGROUP(WG_NESTED_FUNCTIONS,"nested-functions",WSTATE_ERROR)              /*< Warn about nested functions. */
 WGROUP(WG_EMPTY_STRUCTURES,"empty-structures",WSTATE_ERROR)              /*< Warn about empty structures. */
 WGROUP(WG_OLD_FUNCTION_DECL,"old-function-decl",WSTATE_ERROR)            /*< Warn about old-style function declarations. */
+WGROUP(WG_OLD_VARIABLE_INIT,"old-variable-init",WSTATE_ERROR)            /*< Warn about old-style variable initialization. */
 WGROUP(WG_MIXED_DECLARATIONS,"mixed-declarations",WSTATE_ERROR)          /*< Warn about declarations mixed with statements. */
 WGROUP(WG_TYPE_IN_EXPRESSION,"type-in-expression",WSTATE_ERROR)          /*< Warn if c++-style calls to types are used in expressions. */
 WGROUP(WG_ASSIGN_INITIALIZER,"assign-initializer",WSTATE_ERROR)          /*< Warn if brace-initializer are used during assignment. */
@@ -883,7 +885,6 @@ DEF_WARNING(W_EXPECTED_RBRACKET,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("]")
 DEF_WARNING(W_EXPECTED_LBRACE,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("{") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_EXPECTED_RBRACE,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("}") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_EXPECTED_SEMICOLON,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q(";") ", but got " TOK_S,TOK_A))
-DEF_WARNING(W_EXPECTED_KEYWORD_IN_OLDSTYLE_ARGUMENT_LIST,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword in old-style argument list, but got " TOK_S,TOK_A))
 DEF_WARNING(W_SIZEOF_WITHOUT_PARENTHESIS,(WG_QUALITY),WSTATE_WARN,WARNF("Encountered " Q("%s") " without parenthesis",KWDNAME()))
 DEF_WARNING(W_IASM_EXPECTED_KEYWORD_FOR_NAMED_OPERAND,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword for named assembly operand, but got " TOK_S,TOK_A))
 DEF_WARNING(W_IASM_EXPECTED_STRING_FOR_CONSTRAINTS,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string for assembly constraints, but got " TOK_S,TOK_A))
@@ -1153,7 +1154,12 @@ DEF_WARNING(W_TYPE_STRUCT_EXPLICIT_ALIGNMENT_TOO_LOW,(WG_VALUE),WSTATE_WARN,{
        (unsigned long)used_alignment,DECL_NAME(),(unsigned long)ARG(target_siz_t));
  DECL_PRINT(NULL);
 })
-DEF_WARNING(W_OLD_STYLE_FUNCTION_DECLARATION,(WG_OLD_FUNCTION_DECL,WG_EXTENSIONS),WSTATE_WARN,WARNF("An old-style function declarations was used"))
+DEF_WARNING(W_OLD_STYLE_FUNCTION_DECLARATION,(WG_OLD_FUNCTION_DECL),WSTATE_WARN,WARNF("An old-style function declarations was used"))
+DEF_WARNING(W_OLD_STYLE_FUNCTION_IMPLEMENTATION,(WG_OLD_FUNCTION_DECL),WSTATE_WARN,WARNF("An old-style function implementation was used"))
+DEF_WARNING(W_OLD_STYLE_FUNCTION_VARARGS,(WG_SYNTAX),WSTATE_WARN,WARNF("varargs " Q("...") " used in old-style function parameter list"))
+DEF_WARNING(W_OLD_STYLE_FUNCTION_UNNAMED_ARGUMENT,(WG_SYNTAX),WSTATE_WARN,WARNF("Unnamed argument in old-style function parameter list"))
+DEF_WARNING(W_OLD_STYLE_FUNCTION_EXPECTED_ARGUMENT_KEYWORD,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword in old-style argument list, but got " TOK_S,TOK_A))
+DEF_WARNING(W_OLD_STYLE_INITIALIZER_ASSIGNMENT,(WG_OLD_VARIABLE_INIT),WSTATE_WARN,WARNF("Old-style variable initialization is used. Consider placing " Q("=") " before the initial value."))
 DEF_WARNING(W_MIXED_DECLARATIONS,(WG_MIXED_DECLARATIONS,WG_C99,WG_EXTENSIONS),WSTATE_WARN,
             WARNF("Mixing statements with declarations requires a C99-compliant compiler"))
 DEF_WARNING(W_BUILTIN_TYPE_BOOL_C99,(WG_C99,WG_EXTENSIONS),WSTATE_WARN,
@@ -1177,10 +1183,9 @@ DEF_WARNING(W_UNKNOWN_FIELD,(WG_TYPE,WG_UNDEFINED),WSTATE_WARN,{
  TPPString_Decref(tyrepr);
 })
 DEF_WARNING(W_DEREF_VOID,(WG_TYPE,WG_VALUE),WSTATE_WARN,WARNF("Dereference yields a void/function type"))
-DEF_WARNING(W_EXPECTED_EQUALS_AFTER_FIELD_NAME,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("=") " after field name in struct initializer, but got " TOK_S,TOK_A))
-DEF_WARNING(W_EXPECTED_EQUALS_AFTER_ARRAY_INDEX,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("=") " after index in array initializer, but got " TOK_S,TOK_A))
+DEF_WARNING(W_EXPECTED_EQUAL_AFTER_FIELD_NAME,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("=") " after field name in struct initializer, but got " TOK_S,TOK_A))
+DEF_WARNING(W_EXPECTED_EQUAL_AFTER_ARRAY_INDEX,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("=") " after index in array initializer, but got " TOK_S,TOK_A))
 DEF_WARNING(W_EXPECTED_TYPE_FOR_DECLARATION,(WG_SYNTAX),WSTATE_WARN,WARNF("Assuming " Q("int") " when no type base is given"))
-DEF_WARNING(W_EXPECTED_TYPE_FOR_PROTOTYPE_ARGUMENT,(WG_OLD_FUNCTION_DECL,WG_EXTENSIONS),WSTATE_WARN,WARNF("Expected type for function prototype argument"))
 DEF_WARNING(W_UNKNOWN_FUNCTION_ARGUMENT,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown function argument " Q("%s") "",KWDNAME()))
 DEF_WARNING(W_EXPECTED_STRING_FOR_ASSEMBLY_NAME,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string for assembly name, but got " TOK_S,TOK_A))
 DEF_WARNING(W_AUTO_TYPE_USED_AS_POINTER_BASE,(WG_TYPE),WSTATE_WARN,WARNF(Q("__auto_type") " used as pointer base"))
