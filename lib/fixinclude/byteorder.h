@@ -17,6 +17,9 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 #pragma once
+#ifdef __STRICT_ANSI__
+#warning "<byteorder.h> should not be included when -ansi is passed"
+#endif
 #pragma GCC system_header
 
 #if __has_include_next(<byteorder.h>)

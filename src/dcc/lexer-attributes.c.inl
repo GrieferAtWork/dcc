@@ -449,6 +449,7 @@ DCCParse_Attr(struct DCCAttrDecl *__restrict self) {
 again:
  switch (TOK) {
  case KWD_attribute:
+  if (!HAS(EXT_SHORT_EXT_KEYWORDS)) break;
  case KWD___attribute:
  case KWD___attribute__:
   if (!HAS(EXT_GCC_ATTRIBUTE)) break;

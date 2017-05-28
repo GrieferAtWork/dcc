@@ -328,8 +328,11 @@ PREDEFINED_MACRO(__STDC_VERSION__,"199901L")
 
 PREDEFINED_MACRO(__STDC_NO_COMPLEX__,"1")
 
+/* Define '__STRICT_ANSI__' when '-ansi' was passed. */
+PREDEFINED_MACRO_IF(__STRICT_ANSI__,!TPPLexer_HasExtension(EXT_SHORT_EXT_KEYWORDS),"1")
+
 /* Predefined macro: '__ASSEMBLER__' (Only defined while parsing assembler code) */
-PREDEFINED_MACRO_IF(__ASSEMBLER__,compiler.c_flags&DCC_COMPILER_FLAG_INASM,"1")
+PREDEFINED_MACRO_IF(__ASSEMBLER__,(compiler.c_flags&DCC_COMPILER_FLAG_INASM),"1")
 
 
 PREDEFINED_MACRO_IF(__pic__,TPPLexer_HasExtension(EXT_SYSTEM_MACROS) && (linker.l_flags&DCC_LINKER_FLAG_PIC),"1")
@@ -347,7 +350,8 @@ PREDEFINED_MACRO_IF(_WIN32,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 PREDEFINED_MACRO_IF(_WIN64,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 #endif
 #elif DCC_TARGET_OS == DCC_OS_LINUX
-PREDEFINED_MACRO_IF(linux,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
+PREDEFINED_MACRO_IF(linux,TPPLexer_HasExtension(EXT_SHORT_EXT_KEYWORDS) &&
+                          TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 PREDEFINED_MACRO_IF(__linux,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 PREDEFINED_MACRO_IF(__linux__,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 #elif DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
@@ -357,14 +361,17 @@ PREDEFINED_MACRO_IF(__FreeBSD__,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 #endif
 
 #if !!(DCC_TARGET_OS&DCC_OS_UNIX)
-PREDEFINED_MACRO_IF(unix,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
+PREDEFINED_MACRO_IF(unix,TPPLexer_HasExtension(EXT_SHORT_EXT_KEYWORDS) &&
+                         TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 PREDEFINED_MACRO_IF(__unix,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 PREDEFINED_MACRO_IF(__unix__,TPPLexer_HasExtension(EXT_SYSTEM_MACROS),"1")
 #endif
 
 #if 1 /* Define all 3 versions of a keyword name. */
 #define ARCH_MACRO3(name) \
- PREDEFINED_KWDMACRO_IF(KWD_##name,#name,TPPLexer_HasExtension(EXT_CPU_MACROS),"1") \
+ PREDEFINED_KWDMACRO_IF(KWD_##name,#name,\
+                        TPPLexer_HasExtension(EXT_SHORT_EXT_KEYWORDS) && \
+                        TPPLexer_HasExtension(EXT_CPU_MACROS),"1") \
  PREDEFINED_MACRO_IF(__##name,TPPLexer_HasExtension(EXT_CPU_MACROS),"1") \
  PREDEFINED_MACRO_IF(__##name##__,TPPLexer_HasExtension(EXT_CPU_MACROS),"1")
 #else
@@ -711,7 +718,7 @@ EXTENSION(EXT_ASM_ATT,"asm-atnt",1)
  * >> 32  --> l
  * >> 64  --> q
  * >> 128 --> (no mnemonic)
- * >> I   --> l/q (based on assembly target; aka. __SIZEOF_POINTER__) */
+ * >> I   --> ? (Same as the mnemonic for '__SIZEOF_POINTER__*<bits-per-byte>') */
 EXTENSION(EXT_ASM_FIXED_LENGTH,"asm-fixed-length",1)
 EXTENSION(EXT_ASM_CASE_INSENSITIVE,"asm-case-insensitive",1) /* Case-insensitive opcode mnemonics. */
 
@@ -753,7 +760,8 @@ EXTENSION(EXT_FUNCTION_STRING_LITERALS,"function-string-literals",1)     /*< Tre
 EXTENSION(EXT_CANONICAL_LIB_PATHS,"canonical-lib-paths",1)               /*< Fix library paths before using them (e.g.: Remove whitespace, fix slashes, etc.). */
 EXTENSION(EXT_CANONICAL_LIB_NAMES,"canonical-lib-names",1)               /*< Fix library names before using them (e.g.: Remove whitespace, fix slashes, etc.). */
 EXTENSION(EXT_SHORT_EXT_KEYWORDS,"asm",1)                                /*< Recognize 'asm', 'typeof' and 'inline' as keywords aliasing '__asm__', '__typeof__' and '__inline__'.
-                                                                          *  NOTE: The name was chosen for compatibility with GCC's commandline flag '-fno-asm' that does the same. */
+                                                                          *  NOTE: The name was chosen for compatibility with GCC's commandline flag '-fno-asm' that does the same.
+                                                                          *  NOTE: This extension also control if '__STRICT_ANSI__' is defined as a predefined macro, meaning this is the central '-ansi' flag */
 WGROUP(WG_CONSTANT_CASE,"constant-case-expressions",WSTATE_ERROR)        /*< Warn about non-constant case expressions. */
 WGROUP(WG_EXTENSIONS,"extensions",WSTATE_ERROR)                          /*< Enable/disable extension warnings (Those things that are really sweet syntactically, but you sadly can't use for standard-compliance). */
 WGROUP(WG_CASE_RANGES,"case-ranges",WSTATE_ERROR)                        /*< Warn about using case-ranges. */

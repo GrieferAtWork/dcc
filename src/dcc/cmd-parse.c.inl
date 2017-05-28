@@ -337,6 +337,21 @@ def_secbase:
 #undef SETFLAG
  } break;
 
+ case OPT_ansi:
+  /* Disable extensions that may interfere with ansi syntax. */
+  //TPPLexer_DisableExtension(EXT_GCC_EXPRSTMT); /* TODO: usercode should be able to override this with '__extension__' */
+  //TPPLexer_DisableExtension(EXT_GCC_LABEL_EXPR); /* TODO: usercode should be able to override this with '__extension__' */
+  TPPLexer_DisableExtension(EXT_CXX11_ATTRIBUTE);
+  TPPLexer_DisableExtension(EXT_ASM_REGISTERS);
+  TPPLexer_DisableExtension(EXT_ASM_ADDRESS);
+  TPPLexer_DisableExtension(EXT_VOID_ARITHMETIC);
+  TPPLexer_DisableExtension(EXT_STRUCT_COMPATIBLE);
+  TPPLexer_DisableExtension(EXT_AUTO_FOR_AUTOTYPE);
+  TPPLexer_DisableExtension(EXT_SHORT_EXT_KEYWORDS);
+  /* Disable C++-style comments. */
+  TPPLexer_Current->l_extokens &= ~(TPPLEXER_TOKEN_CPP_COMMENT);
+  break;
+
  case OPT_traditional:
   /* Enable old-style spelling of inplace operators ('x += 42;' --> 'x =+ 42;') */
   TPPLexer_Current->l_extokens |= TPPLEXER_TOKEN_EQUALBINOP;
