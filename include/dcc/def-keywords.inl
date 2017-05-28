@@ -842,10 +842,10 @@ DEF_WARNING(W_ASM_INVALID_EFFECTIVE_ADDRESS,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF
 DEF_WARNING(W_ASM_INVALID_SHIFT,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Invalid shift " Q("%s") " (expected " Q("1") ", " Q("2") ", " Q("4") " or " Q("8") ")",CONST_STR()))
 DEF_WARNING(W_ASM_INVALID_SYMBOL_OPERATION,(WG_ASM,WG_SYMBOL,WG_USAGE),WSTATE_WARN,WARNF("Invalid symbol operation"))
 DEF_WARNING(W_ASM_EXPECTED_EXPR,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected assembly expression, but got " TOK_S,TOK_A))
-DEF_WARNING(W_ASM_UNKNOWN_LOCAL_LABEL,(WG_ASM,WG_UNDEFINED),WSTATE_WARN,WARNF("Unknown local label " Q("%s") "",KWDNAME()))
+DEF_WARNING(W_ASM_UNKNOWN_LOCAL_LABEL,(WG_ASM,WG_UNDEFINED),WSTATE_WARN,WARNF("Unknown local label " Q("%s"),KWDNAME()))
 DEF_WARNING(W_ASM_UNKNOWN_DIRECTIVE,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Unknown assembly directive " TOK_S,TOK_A))
-DEF_WARNING(W_ASM_EXPECTED_INTEGER_EXPRESSION,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected integer expression, but got dependency on symbol " Q("%s") "",KWDNAME()))
-DEF_WARNING(W_ASM_INVALID_ALIGNMENT,(WG_ASM,WG_VALUE),WSTATE_WARN,WARNF("Expected power-of-two for alignment, but got " Q("%lu") "",(unsigned long)ARG(size_t)))
+DEF_WARNING(W_ASM_EXPECTED_INTEGER_EXPRESSION,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected integer expression, but got dependency on symbol " Q("%s"),KWDNAME()))
+DEF_WARNING(W_ASM_INVALID_ALIGNMENT,(WG_ASM,WG_VALUE),WSTATE_WARN,WARNF("Expected power-of-two for alignment, but got " Q("%lu"),(unsigned long)ARG(size_t)))
 DEF_WARNING(W_ASM_DIRECTIVE_VISIBILITY_EXPECTED_KEYWORD,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword for symbol visibility directive, but got " TOK_S,TOK_A))
 DEF_WARNING(W_ASM_DIRECTIVE_SIZE_EXPECTED_KEYWORD,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword for symbol size directive, but got " TOK_S,TOK_A))
 DEF_WARNING(W_ASM_DIRECTIVE_SIZE_ALREADY_SET,(WG_REDEFINE,WG_ASM,WG_SYMBOL),WSTATE_WARN,WARNF("Symbol " Q("%s") " size was already set",KWDNAME()))
@@ -866,7 +866,7 @@ DEF_WARNING(W_PRAGMA_COMMENT_EXPECTED_KEYWORD,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,
 DEF_WARNING(W_PRAGMA_COMMENT_EXPECTED_STRING,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected string after #pragma comment group, but got " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_COMMENT_UNKNOWN,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Unknown #pragma comment group " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_PACK_NOTHING_TO_POP,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("No old packing state to pop in " Q("#pragma pack(pop)")))
-DEF_WARNING(W_PRAGMA_PACK_EXPECTED_POWER_OF_TWO,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Expected power-of-2 for " Q("#pragma pack(...)") ", but got " Q("%lu") "",(unsigned long)ARG(DCC(target_siz_t))))
+DEF_WARNING(W_PRAGMA_PACK_EXPECTED_POWER_OF_TWO,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Expected power-of-2 for " Q("#pragma pack(...)") ", but got " Q("%lu"),(unsigned long)ARG(DCC(target_siz_t))))
 DEF_WARNING(W_PRAGMA_GCC_VISIBILITY_EXPECTED_PUSH_OR_POP,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("push") " or " Q("pop") " after " Q("#pragma GCC visibility") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_GCC_VISIBILITY_EXPECTED_STRING,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword or string after " Q("#pragma GCC visibility") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_GCC_VISIBILITY_UNKNOWN_VISIBILITY,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Unknown visibility " Q("%s") " passed to " Q("#pragma GCC visibility"),ARG(char *)))
@@ -875,9 +875,9 @@ DEF_WARNING(W_PRAGMA_WEAK_EXPECTES_KEYWORD,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WAR
 DEF_WARNING(W_PRAGMA_WEAK_EXPECTES_KEYWORD_AFTER_EQUAL,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after #pragma weak ... =, but got " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_WEAK_ALREADY_WEAK,(WG_REDEFINE,WG_PRAGMA,WG_QUALITY,WG_SYMBOL),WSTATE_WARN,WARNF("Symbol " Q("%s") " passed to #pragma weak already has weak linkage",KWDNAME()))
 DEF_WARNING(W_PRAGMA_LIBRARY_PATH_NOTHING_TO_POP,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("No old library paths to pop in " Q("#pragma DCC library_path(pop)")))
-DEF_WARNING(W_PRAGMA_LIBRARY_PATH_EXPECTED_STRING,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,WARNF("Expected string after #pragma DCC library_path, but got " Q("%s") "",CONST_STR()))
+DEF_WARNING(W_PRAGMA_LIBRARY_PATH_EXPECTED_STRING,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,WARNF("Expected string after #pragma DCC library_path, but got " Q("%s"),CONST_STR()))
 DEF_WARNING(W_PRAGMA_LIBRARY_PATH_ALREADY_EXISTS,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("Library path " Q("%.*s") " already exists",(int)ARG(size_t),temp); })
-DEF_WARNING(W_PRAGMA_LIBRARY_PATH_UNKNOWN,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("Unknown library path " Q("%.*s") "",(int)ARG(size_t),temp); })
+DEF_WARNING(W_PRAGMA_LIBRARY_PATH_UNKNOWN,(WG_PRAGMA,WG_VALUE),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("Unknown library path " Q("%.*s"),(int)ARG(size_t),temp); })
 
 WARNING_NAMESPACE(WN_SYNTAX,1400)
 DEF_WARNING(W_EXPECTED_LBRACKET,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("[") ", but got " TOK_S,TOK_A))
@@ -909,22 +909,22 @@ DEF_WARNING(W_EXPECTED_LVALUE_IN_STORE,(WG_TYPE,WG_VALUE),WSTATE_WARN,TYPE_WARNI
 DEF_WARNING(W_EXPECTED_LVALUE_FOR_REFERENCE,(WG_TYPE,WG_VALUE),WSTATE_WARN,TYPE_WARNING("Expected an lvalue " Q("%s") " for reference operator " Q("&")))
 DEF_WARNING(W_EXPECTED_LVALUE_FOR_BINARY_OP,(WG_TYPE,WG_VALUE),WSTATE_WARN,TYPE_WARNING("Expected an lvalue " Q("%s") " as inplace-binary operation target"))
 DEF_WARNING(W_EXPECTED_POINTER_FOR_DEREF,(WG_TYPE,WG_VALUE),WSTATE_WARN,TYPE_WARNING("Expected a pointer type " Q("%s") " for dereference operator " Q("*")))
-DEF_WARNING(W_ARRAY_SIZE_NEGATIVE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Negative size for array type " Q("%s") ""))
-DEF_WARNING(W_UNARY_NEG_ON_POINTER_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Unary operator " Q("-") " on pointer type " Q("%s") ""))
-DEF_WARNING(W_UNARY_NEG_ON_UNSIGNED_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Unary operator " Q("-") " on unsigned type " Q("%s") ""))
+DEF_WARNING(W_ARRAY_SIZE_NEGATIVE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Negative size for array type " Q("%s")))
+DEF_WARNING(W_UNARY_NEG_ON_POINTER_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Unary operator " Q("-") " on pointer type " Q("%s")))
+DEF_WARNING(W_UNARY_NEG_ON_UNSIGNED_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Unary operator " Q("-") " on unsigned type " Q("%s")))
 
 DEF_WARNING(W_AUTO_TYPE_REQUIRES_INITIALIZER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF(Q("__auto_type") " requires an initializer"))
 DEF_WARNING(W_VARIADIC_REQUIRES_INITIALIZER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("variadic array type " Q("%s") " requires an initializer"))
 DEF_WARNING(W_LVALUE_REQUIRES_INITIALIZER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("l-value type " Q("%s") " require an initializer"))
 DEF_WARNING(W_EXPECTED_FUNCTION_TYPE_FOR_CALL,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected function type " Q("%s") " for call"))
 
-DEF_WARNING(W_BRACE_INITIALIZER_FOR_LVALUE_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for initial assignment of l-value type " Q("%s") ""))
+DEF_WARNING(W_BRACE_INITIALIZER_FOR_LVALUE_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for initial assignment of l-value type " Q("%s")))
 DEF_WARNING(W_BRACE_INITIALIZER_FOR_LVALUE_TYPE_NOTARGET,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for initialization of l-value type " Q("%s") " without target"))
-DEF_WARNING(W_BRACE_INITIALIZER_FOR_DEFAULT_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for regular type " Q("%s") ""))
+DEF_WARNING(W_BRACE_INITIALIZER_FOR_DEFAULT_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for regular type " Q("%s")))
 DEF_WARNING(W_BRACE_INITIALIZER_FOR_VLA_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Variable length array type " Q("%s") " cannot be brace-initialized"))
 DEF_WARNING(W_STRUCTURE_FULLY_INITIALIZED,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("struct/union type " Q("%s") " was already fully initialized"))
 DEF_WARNING(W_ARRAY_FULLY_INITIALIZED,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Array type " Q("%s") " was already fully initialized"))
-DEF_WARNING(W_EXPECTED_KEYWORD_FOR_FIELD_NAME,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected keyword for field name of structure type " Q("%s") ""))
+DEF_WARNING(W_EXPECTED_KEYWORD_FOR_FIELD_NAME,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected keyword for field name of structure type " Q("%s")))
 DEF_WARNING(W_NEGATIVE_INDEX_IN_ARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Negative index in array-type " Q("%s") " initializer "))
 DEF_WARNING(W_OUT_OF_BOUNDS_IN_ARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Out-of-bounds index in array-type " Q("%s") " initializer "))
 DEF_WARNING(W_UNORDERED_RANGE_IN_ARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Unordered index-range in array-type " Q("%s") " initializer "))
@@ -932,34 +932,34 @@ DEF_WARNING(W_EMPTY_RANGE_IN_ARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNIN
 DEF_WARNING(W_NON_CONSTANT_GLOBAL_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Static initializer for " Q("%s") " cannot be determined at compile-time (Consider moving it into a function scope)"))
 DEF_WARNING(W_NON_CONSTANT_STATIC_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Static initializer for " Q("%s") " is evaluated at runtime"))
 DEF_WARNING(W_TYPE_IN_EXPRESSION,(WG_TYPE_IN_EXPRESSION,WG_EXTENSIONS),WSTATE_WARN,TYPE_WARNING("Type " Q("%s") " appears in expression"))
-DEF_WARNING(W_INITIALIZER_MISSING_BRACE,(WG_TYPE,WG_QUALITY),WSTATE_WARN,TYPE_WARNING("Missing braces around initializer for " Q("%s") ""))
+DEF_WARNING(W_INITIALIZER_MISSING_BRACE,(WG_TYPE,WG_QUALITY),WSTATE_WARN,TYPE_WARNING("Missing braces around initializer for " Q("%s")))
 DEF_WARNING(W_EXPECTED_LPAREN_AFTER_TYPE_IN_EXPRESSION,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Expected " Q("(") " or " Q("{") " after type " Q("%s") " in expression"))
-DEF_WARNING(W_BRACE_INITIALIZER_DURING_ASSIGNMENT,(WG_ASSIGN_INITIALIZER,WG_EXTENSIONS),WSTATE_WARN,TYPE_WARNING("Encountered brace-initializers during assignment of type " Q("%s") ""))
+DEF_WARNING(W_BRACE_INITIALIZER_DURING_ASSIGNMENT,(WG_ASSIGN_INITIALIZER,WG_EXTENSIONS),WSTATE_WARN,TYPE_WARNING("Encountered brace-initializers during assignment of type " Q("%s")))
 DEF_WARNING(W_LOCAL_VARRAY_VERY_INEFFICIENT,(WG_QUALITY),WSTATE_WARN,TYPE_WARNING("Locally initialized variadic array type " Q("%s") " is very inefficient"))
-DEF_WARNING(W_INCOMPLETE_TYPE_DESCRIPTOR,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Incomplete type descriptor interpreted as " Q("%s") ""))
-DEF_WARNING(W_STRUCTURE_ARITHMETIC,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Arithmetic operation with structure type " Q("%s") ""))
-DEF_WARNING(W_POINTER_ARITHMETIC_VOID,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Pointer arithmetic on void or function type " Q("%s") ""))
-DEF_WARNING(W_POINTER_ARITHMETIC_INCOMPLETE,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Pointer arithmetic on pointer to incomplete type " Q("%s") ""))
-DEF_WARNING(W_POINTER_ARITHMETIC_EXPECTED_INTEGRAL,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected integral type for binary pointer arithmetic, but got " Q("%s") ""))
-DEF_WARNING(W_SHIFT_OPERATOR_ON_POINTER_TYPE,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Shift operation on pointer type " Q("%s") ""))
-DEF_WARNING(W_BITWISE_OPERATOR_ON_POINTER_TYPE,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Bit-wise operation on pointer type " Q("%s") ""))
+DEF_WARNING(W_INCOMPLETE_TYPE_DESCRIPTOR,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Incomplete type descriptor interpreted as " Q("%s")))
+DEF_WARNING(W_STRUCTURE_ARITHMETIC,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Arithmetic operation with structure type " Q("%s")))
+DEF_WARNING(W_POINTER_ARITHMETIC_VOID,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Pointer arithmetic on void or function type " Q("%s")))
+DEF_WARNING(W_POINTER_ARITHMETIC_INCOMPLETE,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Pointer arithmetic on pointer to incomplete type " Q("%s")))
+DEF_WARNING(W_POINTER_ARITHMETIC_EXPECTED_INTEGRAL,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected integral type for binary pointer arithmetic, but got " Q("%s")))
+DEF_WARNING(W_SHIFT_OPERATOR_ON_POINTER_TYPE,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Shift operation on pointer type " Q("%s")))
+DEF_WARNING(W_BITWISE_OPERATOR_ON_POINTER_TYPE,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Bit-wise operation on pointer type " Q("%s")))
 DEF_WARNING(W_SHIFT_OPERATOR_WITH_POINTER_TYPE,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Shift operation with pointer type " Q("%s") " as operand"))
 DEF_WARNING(W_BITWISE_OPERATOR_WITH_POINTER_TYPE,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Bit-wise operation with pointer type " Q("%s") " as operand"))
-DEF_WARNING(W_UNARY_CONSTANT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Unary operation on constant type " Q("%s") ""))
-DEF_WARNING(W_UNARY_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Unary operation on r-value of type " Q("%s") ""))
+DEF_WARNING(W_UNARY_CONSTANT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Unary operation on constant type " Q("%s")))
+DEF_WARNING(W_UNARY_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Unary operation on r-value of type " Q("%s")))
 DEF_WARNING(W_EXPECTED_COMPLETE_TYPE_FOR_FUNCTION_BASE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected a complete type " Q("%s") " as function base"))
 DEF_WARNING(W_EXPECTED_COMPLETE_TYPE_FOR_ARRAY_BASE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected a complete type " Q("%s") " as array base"))
 DEF_WARNING(W_SIZEOF_INCOMPLETE_TYPE,(WG_SIZEOF,WG_TYPE),WSTATE_WARN,TYPE_WARNING("An imcomplete type " Q("%s") " is not allowed by sizeof()"))
-DEF_WARNING(W_SIZEOF_VOID_OR_FUNCTION,(WG_SIZEOF),WSTATE_WARN,TYPE_WARNING("Sizeof void or function type " Q("%s") ""))
+DEF_WARNING(W_SIZEOF_VOID_OR_FUNCTION,(WG_SIZEOF),WSTATE_WARN,TYPE_WARNING("Sizeof void or function type " Q("%s")))
 DEF_WARNING(W_SIZEOF_VLA_ARRAY_TYPE,(WG_QUALITY,WG_SIZEOF),WSTATE_DISABLE,TYPE_WARNING("Sizeof vla array-type " Q("%s") " can only be determined at runtime"))
 DEF_WARNING(W_ASSIGN_VLA_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Re-assignment VLA type " Q("%s") " pointer is not intended behavior"))
-DEF_WARNING(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("(un)signed modifier cannot be used with non-arithmetic type " Q("%s") ""))
-DEF_WARNING(W_ASSIGN_INIT_CONSTANT_TYPE,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Assignment of initializer to constant type " Q("%s") ""))
+DEF_WARNING(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("(un)signed modifier cannot be used with non-arithmetic type " Q("%s")))
+DEF_WARNING(W_ASSIGN_INIT_CONSTANT_TYPE,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Assignment of initializer to constant type " Q("%s")))
 DEF_WARNING(W_GENERIC_EXPRESSION_DEFAULT_NONLAST,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("DCC requires only the last case of a generic expression " Q("%s") " to be generic"))
 DEF_WARNING(W_GENERIC_EXPRESSION_NO_MATCH,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("No matching case for " Q("%s") " in generic expression"))
 DEF_WARNING(W_GENERIC_EXPRESSION_SECOND_MATCH,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Additional match for " Q("%s") " in generic expression"))
-DEF_WARNING(W_GENERIC_EXPRESSION_EXPECTED_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Expected type for generic expression " Q("%s") ""))
-DEF_WARNING(W_GENERIC_EXPRESSION_EXPECTED_COLON,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Expected " Q(":") " after type in generic expression " Q("%s") ""))
+DEF_WARNING(W_GENERIC_EXPRESSION_EXPECTED_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Expected type for generic expression " Q("%s")))
+DEF_WARNING(W_GENERIC_EXPRESSION_EXPECTED_COLON,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Expected " Q(":") " after type in generic expression " Q("%s")))
 DEF_WARNING(W_GENERIC_EXPRESSION_C11,(WG_C11,WG_EXTENSIONS),WSTATE_WARN,WARNF("_Generic expressions are only accepted by C11-compliant compilers"))
 DEF_WARNING(W_BUILTIN_JMPBUF_HAS_INCORRECT_SIZE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Incorrect size for " Q("jmp_buf") " of type " Q("%s") " in " Q("setjmp/longjmp")))
 DEF_WARNING(W_BUILTIN_LONGJMP_VALZERO_IS_ONE,(WG_TYPE),WSTATE_WARN,WARNF("Passing " Q("0") " as argument to " Q("longjmp") " is translated to " Q("1")))
@@ -1005,17 +1005,17 @@ DEF_WARNING(W_UNKNOWN_SYMBOL_IN_EXPRESSION,(WG_UNDEFINED,WG_SYMBOL),WSTATE_WARN,
 DEF_WARNING(W_ATTRIBUTE_ALREADY_DEFINED,(WG_REDEFINE,WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Attribute " Q("%s") " was already set",KWDNAME()))
 DEF_WARNING(W_ATTRIBUTE_NOT_DEFINED,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Attribute " Q("%s") " was not set",KWDNAME()))
 DEF_WARNING(W_ATTRIBUTE_EXPECTED_STRING,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Expected string for __attribute__((%s(...))), but got " TOK_S,KWDNAME(),TOK_A))
-DEF_WARNING(W_ATTRIBUTE_ALIAS_ALREADY_DEFINED,(WG_REDEFINE,WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Another __attribute__((alias(...))) was already defined for " Q("%s") "",KWDNAME()))
+DEF_WARNING(W_ATTRIBUTE_ALIAS_ALREADY_DEFINED,(WG_REDEFINE,WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Another __attribute__((alias(...))) was already defined for " Q("%s"),KWDNAME()))
 DEF_WARNING(W_ATTRIBUTE_ALIAS_OFFSET_EXTENSION,(WG_EXTENSIONS,WG_ATTRIBUTE),WSTATE_WARN,WARNF("Offset-alias attributes are a DCC extension"))
 DEF_WARNING(W_ATTRIBUTE_ALIAS_WITH_SECTION,(WG_ATTRIBUTE,WG_USAGE),WSTATE_WARN,WARNF("Using __attribute__((alias(...))) with __attribute__((section(...))) doesn't make sense and isn't allowed."))
 DEF_WARNING(W_ATTRIBUTE_ALIAS_WITH_DLL,(WG_ATTRIBUTE,WG_USAGE),WSTATE_WARN,WARNF("Using __attribute__((alias(...))) with __attribute__((dll(...))) doesn't make sense and isn't allowed."))
 DEF_WARNING(W_ATTRIBUTE_VISIBILITY_UNKNOWN_VISIBILITY,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Unknown visibility " Q("%s") " for __attribute__((visibility(...)))",ARG(char *)))
-DEF_WARNING(W_ATTRIBUTE_SECTION_ALREADY_SET,(WG_REDEFINE,WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Unknown __attribute__((section(...))) was already set to " Q("%s") "",KWDNAME()))
+DEF_WARNING(W_ATTRIBUTE_SECTION_ALREADY_SET,(WG_REDEFINE,WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Unknown __attribute__((section(...))) was already set to " Q("%s"),KWDNAME()))
 DEF_WARNING(W_ATTRIBUTE_SECTION_UNKNOWN_SECTION,(WG_ATTRIBUTE,WG_UNDEFINED),WSTATE_WARN,WARNF("Unknown section " Q("%s") " for __attribute__((section(...)))",ARG(char *)))
 DEF_WARNING(W_ATTRIBUTE_LIB_IS_A_SECTION,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Section " Q("%s") " specified for __attribute__((dll(...)))",ARG(char *)))
 DEF_WARNING(W_ATTRIBUTE_LIB_ALREADY_SET,(WG_REDEFINE,WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("__attribute__((dll(...))) was already set"))
 DEF_WARNING(W_ATTRIBUTE_DEPRECATED_ALREADY_DEFINED,(WG_REDEFINE,WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("__attribute__((deprecated())) was already set"))
-DEF_WARNING(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Expected power-of-2 for __attribute__((aligned(...))), but got " Q("%lu") "",(unsigned long)ARG(DCC(target_ptr_t))))
+DEF_WARNING(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Expected power-of-2 for __attribute__((aligned(...))), but got " Q("%lu"),(unsigned long)ARG(DCC(target_ptr_t))))
 DEF_WARNING(W_ATTRIBUTE_ALIGNED_WITH_ALIAS,(WG_ATTRIBUTE,WG_USAGE),WSTATE_WARN,WARNF("Using __attribute__((aligned(...))) with __attribute__((alias(...))) doesn't make sense and isn't allowed."))
 DEF_WARNING(W_ATTRIBUTE_MODE_EXPECTED_KEYWORD,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Expected keyword in __attribute__((mode(...))), but got " TOK_S,TOK_A))
 DEF_WARNING(W_ATTRIBUTE_MODE_UNKNOWN_MODE,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Unknown name " TOK_S " for __attribute__((mode(...)))",TOK_A))
@@ -1025,7 +1025,7 @@ DEF_WARNING(W_ATTRIBUTE_UNKNOWN,(WG_ATTRIBUTE,WG_SYNTAX),WSTATE_WARN,WARNF("Unkn
 DEF_WARNING(W_ATTRIBUTE_UNSUPPORTED,(WG_ATTRIBUTE),WSTATE_DISABLE,WARNF("Unsupported attribute " TOK_S,TOK_A))
 DEF_WARNING(W_ATTRIBUTE_MERGE_CALLCONV,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("New calling convention " Q("%s") " is incompatible with old convention " Q("%s")))
 DEF_WARNING(W_ATTRIBUTE_MERGE_VISIBILITY,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("New ELF visibility " Q("%s") " is incompatible with old visibility " Q("%s")))
-DEF_WARNING(W_ATTRIBUTE_MERGE_REACHMSG,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,{ char *newmsg = ARG(char *); WARNF("Attribute message " Q("%s") " is incompatible with old declaration " Q("%s") "",newmsg,ARG(char *)); })
+DEF_WARNING(W_ATTRIBUTE_MERGE_REACHMSG,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,{ char *newmsg = ARG(char *); WARNF("Attribute message " Q("%s") " is incompatible with old declaration " Q("%s"),newmsg,ARG(char *)); })
 #ifdef DECLARE_WARNING_MESSAGES
 {
  char const *format,*reason;
@@ -1033,7 +1033,7 @@ emit_attr_warning:
  DECL_LOAD();
  reason = ARG(char *);
  WARNF(format,DECL_NAME());
- if (reason && *reason) WARNF(": " Q("%s") "",reason);
+ if (reason && *reason) WARNF(": " Q("%s"),reason);
  WARNF("\n");
  DECL_PRINT(NULL);
  break;
@@ -1079,7 +1079,7 @@ DEF_WARNING(W_DECL_TYPEDEF_WITH_INITIALIZER,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,{
 })
 
 DEF_WARNING(W_STMT_ASM_EXPECTED_STRING,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string after __asm__, but got " TOK_S,TOK_A))
-DEF_WARNING(W_CONSTANT_EXPR_DEPENDS_ON_SYMBOL,(WG_SYNTAX,WG_VALUE,WG_SYMBOL),WSTATE_WARN,{ WARNF("A constant expression here can't depend on a symbol " Q("%s") "",KWDNAME()); })
+DEF_WARNING(W_CONSTANT_EXPR_DEPENDS_ON_SYMBOL,(WG_SYNTAX,WG_VALUE,WG_SYMBOL),WSTATE_WARN,{ WARNF("A constant expression here can't depend on a symbol " Q("%s"),KWDNAME()); })
 DEF_WARNING(W_EXPECTED_CONSTANT_EXPRESSION,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,WARNF("Expected a constant expression"))
 DEF_WARNING(W_UNEXPECTED_TOKEN_IN_C_EXPRESSION,(WG_SYNTAX),WSTATE_WARN,WARNF("Unexpected token " TOK_S " in c expression",TOK_A))
 DEF_WARNING(W_GOT_TYPE_IN_EXPRESSION,(WG_SYNTAX),WSTATE_WARN,WARNF("Got type in expression"))
@@ -1145,7 +1145,7 @@ DEF_WARNING(W_TYPE_STRUCT_EMPTY,(WG_EMPTY_STRUCTURES,WG_EXTENSIONS),WSTATE_WARN,
  WARNF("Declared empty structure type " Q("%s") "\n",DECL_NAME(),KWDNAME());
  DECL_PRINT("See reference to first declaration");
 })
-DEF_WARNING(W_TYPE_STRUCT_BITFIELD_NEGATIVE,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("Negative value for bit-field " Q("%s") ""))
+DEF_WARNING(W_TYPE_STRUCT_BITFIELD_NEGATIVE,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("Negative value for bit-field " Q("%s")))
 DEF_WARNING(W_TYPE_STRUCT_BITFIELD_SCALAR,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("bit-field " Q("%s") " requires scalar type"))
 DEF_WARNING(W_TYPE_STRUCT_BITFIELD_LARGER_THAN_BASE,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("bit-field " Q("%s") " exceeds size of underlying type"))
 DEF_WARNING(W_TYPE_STRUCT_BITFIELD_TOO_LARGE,(WG_VALUE),WSTATE_WARN,DECL_PRINTTY_LOAD("bit-field " Q("%s") " is too long"))
@@ -1168,7 +1168,7 @@ DEF_WARNING(W_BUILTIN_TYPE_BOOL_C99,(WG_C99,WG_EXTENSIONS),WSTATE_WARN,
             WARNF("Built-in type " Q("_Bool") " is only accepted by C99-compliant compilers"))
 DEF_WARNING(W_ARRAY_SIZE_ZERO,(WG_ZERO_TYPED_ARRAY,WG_EXTENSIONS),WSTATE_WARN,{
  struct TPPString *tyrepr = DCCType_ToTPPString(ARG(struct DCCType *),NULL);
- WARNF("Zero-sized array type " Q("%s") "",tyrepr->s_text);
+ WARNF("Zero-sized array type " Q("%s"),tyrepr->s_text);
  TPPString_Decref(tyrepr);
 })
 
@@ -1181,14 +1181,14 @@ DEF_WARNING(W_AUTO_STORAGE_ALREADY_BY_DEFAULT,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WA
 DEF_WARNING(W_RESTRICT_EXPECTS_POINTER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF(Q("restrict") " is only allowed for pointer types"))
 DEF_WARNING(W_UNKNOWN_FIELD,(WG_TYPE,WG_UNDEFINED),WSTATE_WARN,{
  struct TPPString *tyrepr = DCCType_ToTPPString(ARG(struct DCCType *),NULL);
- WARNF("Type " Q("%s") " has no member " Q("%s") "",tyrepr->s_text,KWDNAME());
+ WARNF("Type " Q("%s") " has no member " Q("%s"),tyrepr->s_text,KWDNAME());
  TPPString_Decref(tyrepr);
 })
 DEF_WARNING(W_DEREF_VOID,(WG_TYPE,WG_VALUE),WSTATE_WARN,WARNF("Dereference yields a void/function type"))
 DEF_WARNING(W_EXPECTED_EQUAL_AFTER_FIELD_NAME,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("=") " after field name in struct initializer, but got " TOK_S,TOK_A))
 DEF_WARNING(W_EXPECTED_EQUAL_AFTER_ARRAY_INDEX,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("=") " after index in array initializer, but got " TOK_S,TOK_A))
 DEF_WARNING(W_EXPECTED_TYPE_FOR_DECLARATION,(WG_SYNTAX),WSTATE_WARN,WARNF("Assuming " Q("int") " when no type base is given"))
-DEF_WARNING(W_UNKNOWN_FUNCTION_ARGUMENT,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown function argument " Q("%s") "",KWDNAME()))
+DEF_WARNING(W_UNKNOWN_FUNCTION_ARGUMENT,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown function argument " Q("%s"),KWDNAME()))
 DEF_WARNING(W_EXPECTED_STRING_FOR_ASSEMBLY_NAME,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string for assembly name, but got " TOK_S,TOK_A))
 DEF_WARNING(W_AUTO_TYPE_USED_AS_POINTER_BASE,(WG_TYPE),WSTATE_WARN,WARNF(Q("__auto_type") " used as pointer base"))
 DEF_WARNING(W_QUAL_ON_AUTO_TYPE,(WG_TYPE),WSTATE_WARN,WARNF("Qualifiers on " Q("__auto_type") " have no defined semantics"))
@@ -1262,40 +1262,40 @@ emit_typ_warning:
 #endif
 #define TYPE_WARNING(msg) { format = msg; goto emit_typ_warning; }
 DEF_WARNING(W_POINTER_ARITHMETIC_INCOMPATIBLE_DIFF,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Incompatible pointer types " Q("%s") " and " Q("%s") " used in pointer arithmetic"))
-DEF_WARNING(W_ASSIGN_CONSTANT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assignment of " Q("%s") " to constant type " Q("%s") ""))
-DEF_WARNING(W_ASSIGN_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assignment of " Q("%s") " to r-value of type " Q("%s") ""))
-DEF_WARNING(W_BINARY_CONSTANT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Binary operation with " Q("%s") " on constant type " Q("%s") ""))
-DEF_WARNING(W_BINARY_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Binary operation with " Q("%s") " on r-value of type " Q("%s") ""))
-DEF_WARNING(W_CAST_TO_VOID,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Inplicit cast from " Q("%s") " to void-type " Q("%s") ""))
-DEF_WARNING(W_CAST_INCOMPATIBLE_TYPES,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Cast between incompatible types " Q("%s") " and " Q("%s") ""))
+DEF_WARNING(W_ASSIGN_CONSTANT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assignment of " Q("%s") " to constant type " Q("%s")))
+DEF_WARNING(W_ASSIGN_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assignment of " Q("%s") " to r-value of type " Q("%s")))
+DEF_WARNING(W_BINARY_CONSTANT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Binary operation with " Q("%s") " on constant type " Q("%s")))
+DEF_WARNING(W_BINARY_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Binary operation with " Q("%s") " on r-value of type " Q("%s")))
+DEF_WARNING(W_CAST_TO_VOID,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Inplicit cast from " Q("%s") " to void-type " Q("%s")))
+DEF_WARNING(W_CAST_INCOMPATIBLE_TYPES,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Cast between incompatible types " Q("%s") " and " Q("%s")))
 DEF_WARNING(W_CAST_INTEGRAL_OVERFLOW,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from " Q("%s") " to " Q("%s") " causes an overflow"))
 DEF_WARNING(W_CAST_INTEGRAL_MAYOVERFLOW,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from " Q("%s") " to " Q("%s") " may cause an overflow"))
 DEF_WARNING(W_CAST_INTEGRAL_SIGNLOSS,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from " Q("%s") " to " Q("%s") " causes the sign to be lost"))
 DEF_WARNING(W_CAST_INTEGRAL_MAYSIGNLOSS,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from " Q("%s") " to " Q("%s") " may cause the sign to be lost"))
-DEF_WARNING(W_CAST_FLOAT_TO_INT,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from floating-point-type " Q("%s") " to integer-type " Q("%s") ""))
-DEF_WARNING(W_CAST_FLOAT_DOWNCAST,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit downcast of floating-point-type " Q("%s") " to " Q("%s") ""))
-DEF_WARNING(W_CAST_INCOMPATIBLE_POINTERS,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast between incompatible pointer types " Q("%s") " and " Q("%s") ""))
-DEF_WARNING(W_CAST_INCOMPATIBLE_POINTERS_VOID,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast between void-pointer-type " Q("%s") " and non-void-pointer-type " Q("%s") ""))
-DEF_WARNING(W_CAST_TO_POINTER,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from incompatible type " Q("%s") " to pointer-type " Q("%s") ""))
-DEF_WARNING(W_CAST_FLOAT_TO_POINTER,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Casting floating-point-type " Q("%s") " to pointer-type " Q("%s") ""))
-DEF_WARNING(W_CAST_INT_TO_POINTER,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from integer-type " Q("%s") " to pointer-type " Q("%s") ""))
+DEF_WARNING(W_CAST_FLOAT_TO_INT,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from floating-point-type " Q("%s") " to integer-type " Q("%s")))
+DEF_WARNING(W_CAST_FLOAT_DOWNCAST,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit downcast of floating-point-type " Q("%s") " to " Q("%s")))
+DEF_WARNING(W_CAST_INCOMPATIBLE_POINTERS,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast between incompatible pointer types " Q("%s") " and " Q("%s")))
+DEF_WARNING(W_CAST_INCOMPATIBLE_POINTERS_VOID,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast between void-pointer-type " Q("%s") " and non-void-pointer-type " Q("%s")))
+DEF_WARNING(W_CAST_TO_POINTER,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from incompatible type " Q("%s") " to pointer-type " Q("%s")))
+DEF_WARNING(W_CAST_FLOAT_TO_POINTER,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Casting floating-point-type " Q("%s") " to pointer-type " Q("%s")))
+DEF_WARNING(W_CAST_INT_TO_POINTER,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from integer-type " Q("%s") " to pointer-type " Q("%s")))
 DEF_WARNING(W_CAST_INT_TO_POINTER_SIZ,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from integer-type " Q("%s") " to pointer-type " Q("%s") " of different size"))
-DEF_WARNING(W_CAST_POINTER_TO_FLOAT,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from pointer-type " Q("%s") " to floating-point-type " Q("%s") ""))
-DEF_WARNING(W_CAST_POINTER_TO_INT,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from pointer-type " Q("%s") " to integer-type " Q("%s") ""))
+DEF_WARNING(W_CAST_POINTER_TO_FLOAT,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from pointer-type " Q("%s") " to floating-point-type " Q("%s")))
+DEF_WARNING(W_CAST_POINTER_TO_INT,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from pointer-type " Q("%s") " to integer-type " Q("%s")))
 DEF_WARNING(W_CAST_POINTER_TO_INT_SIZ,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from pointer-type " Q("%s") " to integer-type " Q("%s") " of different size"))
-DEF_WARNING(W_CAST_CONST_POINTER,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from constant pointer-type " Q("%s") " to non-constant pointer-type " Q("%s") ""))
-DEF_WARNING(W_CAST_CONST_LVALUE,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from constant lvalue-type " Q("%s") " to non-constant lvalue-type " Q("%s") ""))
-DEF_WARNING(W_CAST_VOLATILE_POINTER,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from volatile pointer-type " Q("%s") " to non-volatile pointer-type " Q("%s") ""))
-DEF_WARNING(W_CAST_RVALUE_TO_LVALUE,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from r-value " Q("%s") " to l-value " Q("%s") ""))
-DEF_WARNING(W_CAST_INCOMPATIBLE_LVALUE,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from " Q("%s") " to incompatible l-value-type " Q("%s") ""))
-DEF_WARNING(W_CAST_TO_FUNCTION,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Incompatible function types " Q("%s") " and " Q("%s") ""))
-DEF_WARNING(W_CAST_TO_ARRAY,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Incompatible array types " Q("%s") " and " Q("%s") ""))
-DEF_WARNING(W_CAST_TO_VARRAY,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Incompatible variadic array types " Q("%s") " and " Q("%s") ""))
+DEF_WARNING(W_CAST_CONST_POINTER,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from constant pointer-type " Q("%s") " to non-constant pointer-type " Q("%s")))
+DEF_WARNING(W_CAST_CONST_LVALUE,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from constant lvalue-type " Q("%s") " to non-constant lvalue-type " Q("%s")))
+DEF_WARNING(W_CAST_VOLATILE_POINTER,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from volatile pointer-type " Q("%s") " to non-volatile pointer-type " Q("%s")))
+DEF_WARNING(W_CAST_RVALUE_TO_LVALUE,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from r-value " Q("%s") " to l-value " Q("%s")))
+DEF_WARNING(W_CAST_INCOMPATIBLE_LVALUE,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from " Q("%s") " to incompatible l-value-type " Q("%s")))
+DEF_WARNING(W_CAST_TO_FUNCTION,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Incompatible function types " Q("%s") " and " Q("%s")))
+DEF_WARNING(W_CAST_TO_ARRAY,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Incompatible array types " Q("%s") " and " Q("%s")))
+DEF_WARNING(W_CAST_TO_VARRAY,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Incompatible variadic array types " Q("%s") " and " Q("%s")))
 DEF_WARNING(W_INCOMPATIBLE_TYPES_FOR_VARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Incompatible types " Q("%s") " and " Q("%s") " for variadic-array initializer"))
-DEF_WARNING(W_EXPECTED_ARRAY_FOR_VARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected an array type for the initializer of variadic-array-type " Q("%s") ", but got " Q("%s") ""))
+DEF_WARNING(W_EXPECTED_ARRAY_FOR_VARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected an array type for the initializer of variadic-array-type " Q("%s") ", but got " Q("%s")))
 DEF_WARNING(W_UNSUPPORTED_CAS_SIZE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Type " Q("%s") " has an unsupported CAS size"))
-DEF_WARNING(W_ASSIGN_VOID,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Can't assign non-void-type " Q("%s") " to void-type " Q("%s") ""))
-DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assigning void-type " Q("%s") " to void-type " Q("%s") ""))
+DEF_WARNING(W_ASSIGN_VOID,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Can't assign non-void-type " Q("%s") " to void-type " Q("%s")))
+DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assigning void-type " Q("%s") " to void-type " Q("%s")))
 #undef TYPE_WARNING
 #ifdef DECLARE_WARNING_MESSAGES
 }
@@ -1331,7 +1331,7 @@ DEF_WARNING(W_CALL_TO_FEW_ARGUMENTS,(WG_TYPE),WSTATE_WARN,{
 #endif
 
 WARNING_NAMESPACE(WN_CMD,1900)
-DEF_WARNING(W_CMD_UNKNOWN,(WG_CMD),WSTATE_ERROR,WARNF("Unknown option: " Q("%s") "",ARG(char *)))
+DEF_WARNING(W_CMD_UNKNOWN,(WG_CMD),WSTATE_ERROR,WARNF("Unknown option: " Q("%s"),ARG(char *)))
 DEF_WARNING(W_CMD_ILLEGAL,(WG_CMD),WSTATE_ERROR,WARNF("This command is only legal on the commandline"))
 DEF_WARNING(W_CMD_A_EXPECTED_VALUE,(WG_CMD),WSTATE_ERROR,WARNF("Expected assertion value after " Q("-A")))
 DEF_WARNING(W_CMD_WL_SECTION_START_UNKNOWN_SECTION,(WG_CMD,WG_UNDEFINED),WSTATE_ERROR,WARNF("Unknown section " Q("%s") " specified for " Q("-Wl,--section-start"),ARG(char *)))
@@ -1345,11 +1345,12 @@ DEF_WARNING(W_LINKER_NO_INPUT_FILES,(WG_USAGE,WG_LINKER),WSTATE_ERROR,WARNF("No 
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMPLUSSYM,(WG_LINKER,WG_SYMBOL),WSTATE_WARN,WARNF("Symbol+Symbol expression cannot be relocated"))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM,(WG_LINKER,WG_SYMBOL),WSTATE_WARN,WARNF("Symbol-Symbol expressions can only be relocated when both symbols are declared and exist in the same section"))
 DEF_WARNING(W_LINKER_MISSING_ENTRY_POINT,(WG_LINKER,WG_USAGE),WSTATE_WARN,WARNF("Missing entry point " Q("%s") " (Using start of default .text section)",ARG(char *)))
-DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_SEC,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol " Q("%s") " was already defined in section " Q("%s") "",n,ARG(char *)); })
-DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol " Q("%s") " was already defined as import from " Q("%s") "",n,ARG(char *)); })
-DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP_IMP,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); char *o = ARG(char *); WARNF("Redefining import symbol " Q("%s") " from " Q("%s") " to " Q("%s") "",n,o,ARG(char *)); })
-DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP_IMP_NOT,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_DISABLE,{ char *n = ARG(char *); char *o = ARG(char *); WARNF("Ignoring second definition of symbol " Q("%s") " from " Q("%s") " in " Q("%s") "",n,o,ARG(char *)); })
-DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_ALIAS,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol " Q("%s") " was already defined as alias for " Q("%s") "",n,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_SEC,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol " Q("%s") " was already defined in section " Q("%s"),n,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol " Q("%s") " was already defined as import from " Q("%s"),n,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP_IMP,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); char *o = ARG(char *); WARNF("Redefining import symbol " Q("%s") " from " Q("%s") " to " Q("%s"),n,o,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_IMP_IMP_NOT,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_DISABLE,{ char *n = ARG(char *); char *o = ARG(char *); WARNF("Ignoring second definition of symbol " Q("%s") " from " Q("%s") " in " Q("%s"),n,o,ARG(char *)); })
+DEF_WARNING(W_SYMBOL_OVERWRITING_LIBRARY_IMPORT,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_DISABLE,{ char *n = ARG(char *); char *o = ARG(char *); WARNF("Ignoring library " Q("%s") " definition of symbol " Q("%s") " already defined in " Q("%s"),ARG(char *),n,o); })
+DEF_WARNING(W_SYMBOL_ALREADY_DEFINED_ALIAS,(WG_REDEFINE,WG_LINKER,WG_SYMBOL),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Symbol " Q("%s") " was already defined as alias for " Q("%s"),n,ARG(char *)); })
 DEF_WARNING(W_UNRESOLVED_REFERENCE,(WG_LINKER,WG_USAGE,WG_SYMBOL),WSTATE_ERROR,{
  char *kwdname = KWDNAME();
  char *secname = KWDNAME();
@@ -1371,7 +1372,7 @@ DEF_WARNING(W_FUNCTION_EXIT_IN_DIFFERENT_SECTION,(WG_LINKER),WSTATE_WARN,{
  DECL_LOAD();
  start = ARG(struct DCCSection *);
  end = ARG(struct DCCSection *);
- WARNF("Function " Q("%s") " ends in section " Q("%s") ", but begins in " Q("%s") "",
+ WARNF("Function " Q("%s") " ends in section " Q("%s") ", but begins in " Q("%s"),
        DECL_NAME(),
        start->sc_start.sy_name->k_name,
        end->sc_start.sy_name->k_name);
@@ -1407,12 +1408,12 @@ DEF_WARNING(W_INVALID_PE_SYMBOL_LINKAGE,(WG_LINKER),WSTATE_WARN,
             WARNF("PE import symbol " Q("%s") " is liked without indirection",KWDNAME()))
 DEF_WARNING(W_INVALID_LIBRARY_CHARACTER,(WG_LINKER,WG_QUALITY),WSTATE_WARN,{
  int ch = ARG(int); char *n = ARG(char *);
- WARNF("Invalid character " Q("%c") " in library name " Q("%.*s") "",ch,(unsigned int)ARG(size_t),n);
+ WARNF("Invalid character " Q("%c") " in library name " Q("%.*s"),ch,(unsigned int)ARG(size_t),n);
 })
-DEF_WARNING(W_LINKER_CANT_MERGE_NONIMPORT_WITH_IMPORT,(WG_LINKER),WSTATE_WARN,{ char *name = KWDNAME(); WARNF("Can't merge non-import-section " Q("%s") " with import-section " Q("%s") "",name,KWDNAME()); })
-DEF_WARNING(W_LINKER_CANT_MERGE_IMPORT_WITH_NONIMPORT,(WG_LINKER),WSTATE_WARN,{ char *name = KWDNAME(); WARNF("Can't merge import-section " Q("%s") " with non-import-section " Q("%s") "",name,KWDNAME()); })
+DEF_WARNING(W_LINKER_CANT_MERGE_NONIMPORT_WITH_IMPORT,(WG_LINKER),WSTATE_WARN,{ char *name = KWDNAME(); WARNF("Can't merge non-import-section " Q("%s") " with import-section " Q("%s"),name,KWDNAME()); })
+DEF_WARNING(W_LINKER_CANT_MERGE_IMPORT_WITH_NONIMPORT,(WG_LINKER),WSTATE_WARN,{ char *name = KWDNAME(); WARNF("Can't merge import-section " Q("%s") " with non-import-section " Q("%s"),name,KWDNAME()); })
 DEF_WARNING(W_LINKER_CANT_RELOC_LIB_SECTION,(WG_LINKER),WSTATE_WARN,
-            WARNF("Can't add relocations to library section " Q("%s") "",KWDNAME()))
+            WARNF("Can't add relocations to library section " Q("%s"),KWDNAME()))
 DEF_WARNING(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,(WG_LINKER,WG_QUALITY,WG_SYMBOL),WSTATE_WARN,{
  target_ptr_t p = ARG(target_siz_t);
  target_siz_t s = ARG(target_siz_t);
@@ -1422,11 +1423,11 @@ DEF_WARNING(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,(WG_LINKER,WG_QUALITY,WG_SYMBOL),
        (unsigned long)ARG(target_siz_t));
 })
 DEF_WARNING(W_LINKER_DELETE_UNUSED_STATIC_SYMBOL,(WG_LINKER,WG_QUALITY,WG_SYMBOL),WSTATE_WARN,
-            WARNF("Removing unused static symbol " Q("%s") "",KWDNAME()))
+            WARNF("Removing unused static symbol " Q("%s"),KWDNAME()))
 DEF_WARNING(W_LINKER_DELETE_UNUSED_SYMBOL,(WG_LINKER,WG_QUALITY,WG_SYMBOL),WSTATE_DISABLE,
-            WARNF("Removing unused symbol " Q("%s") "",KWDNAME()))
+            WARNF("Removing unused symbol " Q("%s"),KWDNAME()))
 DEF_WARNING(W_LINKER_DELETE_UNUSED_SECTION,(WG_LINKER,WG_QUALITY,WG_SYMBOL),WSTATE_DISABLE,
-            WARNF("Removing unused section " Q("%s") "",KWDNAME()))
+            WARNF("Removing unused section " Q("%s"),KWDNAME()))
 DEF_WARNING(W_LINKER_RECURSIVE_ALIAS,(WG_LINKER,WG_SYMBOL),WSTATE_WARN,{
  struct DCCSym *path_start;
  struct DCCSym *path = path_start = ARG(struct DCCSym *);
@@ -1434,7 +1435,7 @@ DEF_WARNING(W_LINKER_RECURSIVE_ALIAS,(WG_LINKER,WG_SYMBOL),WSTATE_WARN,{
  WARNF("Illegal alias recursion: ");
  do WARNF("" Q("%s") " -> ",path->sy_name->k_name);
  while ((path = path->sy_alias) != target);
- WARNF("" Q("%s") " -> " Q("%s") "",target->sy_name->k_name,
+ WARNF("" Q("%s") " -> " Q("%s"),target->sy_name->k_name,
        path_start->sy_name->k_name);
 })
 #if DCC_TARGET_BIN == DCC_BINARY_PE
@@ -1450,12 +1451,12 @@ DEF_WARNING(W_LINKER_PE_CANT_EXPORT_EMPTY_SECTION,(WG_LINKER),WSTATE_WARN,
 WARNING_NAMESPACE(WN_LIBLOADER,3000)
 
 /* Library loader warnings. */
-DEF_WARNING(W_LIB_NOT_FOUND,(WG_LIBLOAD),WSTATE_ERROR,{ char *n = ARG(char *); WARNF("Dependency not found: " Q("%.*s") "",(unsigned int)ARG(size_t),n); })
+DEF_WARNING(W_LIB_NOT_FOUND,(WG_LIBLOAD),WSTATE_ERROR,{ char *n = ARG(char *); WARNF("Dependency not found: " Q("%.*s"),(unsigned int)ARG(size_t),n); })
 #if DCC_LIBFORMAT_PE_DYNAMIC || DCC_LIBFORMAT_PE_STATIC
 DEF_WARNING(W_LIB_PE_INVALID_MACHINE,(WG_LIBLOAD),WSTATE_ERROR,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid 'Machine' in " Q("%s") " (Expected " Q("%#x") ", but got " Q("%#x") ")",n,x,ARG(unsigned int)); })
 #endif
 #if DCC_LIBFORMAT_PE_DYNAMIC
-DEF_WARNING(W_LIB_PE_INVMAGIC,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Invalid header magic in PE library " Q("%s") "",ARG(char *)))
+DEF_WARNING(W_LIB_PE_INVMAGIC,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Invalid header magic in PE library " Q("%s"),ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_DLL,(WG_QUALITY,WG_LIBLOAD),WSTATE_WARN,WARNF("Library " Q("%s") " is not a dll.",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_RELOCATIONS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Can't link against PE library " Q("%s") " without relocations",ARG(char *)))
 DEF_WARNING(W_LIB_PE_NO_EXPORT_TABLE,(WG_LIBLOAD),WSTATE_ERROR,WARNF("PE binary " Q("%s") " has no export table",ARG(char *)))
@@ -1542,7 +1543,7 @@ DEF_WARNING(W_STA_PE_UNMAPPED_DISP_TARGET,(WG_LIBLOAD),WSTATE_RELOCWARN,{
 #undef WSTATE_RELOCWARN
 #endif /* DCC_LIBFORMAT_PE_STATIC */
 #if DCC_LIBFORMAT_DEF_DYNAMIC
-DEF_WARNING(W_LIB_DEF_EXPECTED_EXPORTS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Expected " Q("EXPORTS") ", but got " Q("%s") "",ARG(char *)))
+DEF_WARNING(W_LIB_DEF_EXPECTED_EXPORTS,(WG_LIBLOAD),WSTATE_WARN,WARNF("Expected " Q("EXPORTS") ", but got " Q("%s"),ARG(char *)))
 #endif /* DCC_LIBFORMAT_DEF_DYNAMIC */
 #if DCC_LIBFORMAT_ELF
 DEF_WARNING(W_LIB_ELF_INVALID_CLASS,       (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid " Q("EI_CLASS") " in " Q("%s") " (Expected " Q("%#x") ", but got " Q("%#x") ")",n,x,ARG(unsigned int)); })
@@ -1551,9 +1552,9 @@ DEF_WARNING(W_LIB_ELF_INVALID_VERSION,     (WG_LIBLOAD),WSTATE_WARN,{ char *n = 
 DEF_WARNING(W_LIB_ELF_INVALID_VERSION2,    (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid " Q("e_version") " in " Q("%s") " (Expected " Q("%#x") ", but got " Q("%#x") ")",n,x,ARG(unsigned int)); })
 DEF_WARNING(W_LIB_ELF_INVALID_OSABI,       (WG_LIBLOAD),WSTATE_WARN,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid " Q("EI_OSABI") " in " Q("%s") " (Expected " Q("%#x") ", but got " Q("%#x") ")",n,x,ARG(unsigned int)); })
 DEF_WARNING(W_LIB_ELF_INVALID_MACHINE,     (WG_LIBLOAD),WSTATE_ERROR,{ char *n = ARG(char *); unsigned int x = ARG(unsigned int); WARNF("Invalid " Q("e_machine") " in " Q("%s") " (Expected " Q("%#x") ", but got " Q("%#x") ")",n,x,ARG(unsigned int)); })
-DEF_WARNING(W_LIB_ELF_STATIC_SHARED,       (WG_LIBLOAD),WSTATE_WARN,WARNF("Statically linking against shared library " Q("%s") "",ARG(char *)))
-DEF_WARNING(W_LIB_ELF_DYNAMIC_EXEC,        (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against executable " Q("%s") "",ARG(char *)))
-DEF_WARNING(W_LIB_ELF_DYNAMIC_RELO,        (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against relocatable object file " Q("%s") "",ARG(char *)))
+DEF_WARNING(W_LIB_ELF_STATIC_SHARED,       (WG_LIBLOAD),WSTATE_WARN,WARNF("Statically linking against shared library " Q("%s"),ARG(char *)))
+DEF_WARNING(W_LIB_ELF_DYNAMIC_EXEC,        (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against executable " Q("%s"),ARG(char *)))
+DEF_WARNING(W_LIB_ELF_DYNAMIC_RELO,        (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against relocatable object file " Q("%s"),ARG(char *)))
 DEF_WARNING(W_LIB_ELF_DYNAMIC_EMPTY,       (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against ELF binary " Q("%s") " with no program headers",ARG(char *)))
 DEF_WARNING(W_LIB_ELF_DYNAMIC_NOSIZE,      (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against ELF binary " Q("%s") " with size-less program headers",ARG(char *)))
 DEF_WARNING(W_LIB_ELF_DYNAMIC_NOLOAD,      (WG_LIBLOAD),WSTATE_WARN,WARNF("Dynamically linking against ELF binary " Q("%s") " with no load headers",ARG(char *)))

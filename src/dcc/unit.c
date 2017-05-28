@@ -764,15 +764,18 @@ DCCSym_Define(struct DCCSym *__restrict self,
   if (self->sy_sec == section &&
       self->sy_addr == addr &&
       self->sy_size == size) return;
-  if (DCCSection_ISIMPORT(self->sy_sec) &&
-      DCCSection_ISIMPORT(section)) {
-   WARN((linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)
+  if (DCCSection_ISIMPORT(section)) {
+   /* Don't allow library symbols re-defining local symbols. */
+   WARN(!DCCSection_ISIMPORT(self->sy_sec)
+        ? W_SYMBOL_OVERWRITING_LIBRARY_IMPORT
+        : (linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)
         ? W_SYMBOL_ALREADY_DEFINED_IMP_IMP
         : W_SYMBOL_ALREADY_DEFINED_IMP_IMP_NOT,
         self->sy_name->k_name,
         self->sy_sec->sc_start.sy_name->k_name,
         section->sc_start.sy_name->k_name);
-   if (!(linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)) return;
+   if (!DCCSection_ISIMPORT(self->sy_sec) ||
+       !(linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)) return;
   }
  }
  /* Acquire a reference to the pointed-to address range of this symbol. */

@@ -1138,7 +1138,7 @@ fill_data:
    if unlikely(!sym) break;
    if (mode == KWD_weak) sym->sy_flags |= DCC_SYMFLAG_WEAK;
    else if (mode != KWD_extern) {
-    sym->sy_flags &= ~(DCC_SYMFLAG_VISIBILITYBASE);
+    sym->sy_flags &= ~(DCC_SYMFLAG_VISIBILITY);
     sym->sy_flags |=   new_vis;
    }
    YIELD();
