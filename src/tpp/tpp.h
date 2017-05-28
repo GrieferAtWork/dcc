@@ -164,6 +164,26 @@
 #define TPP_MACRO_FALSE   0
 #endif
 
+/* Special strings inserted into warnings. */
+#ifndef TPP_WARNF_QUOTE_BEGIN
+#define TPP_WARNF_QUOTE_BEGIN "'" /* Expected keyword, but got >'<...' */
+#endif
+#ifndef TPP_WARNF_QUOTE_END
+#define TPP_WARNF_QUOTE_END   "'" /* Expected keyword, but got '...>'< */
+#endif
+#ifndef TPP_WARNF_WARN_BEGIN
+#define TPP_WARNF_WARN_BEGIN  ""  /* ><W1234("-Wsyntax"): ... */
+#endif
+#ifndef TPP_WARNF_WARN_END
+#define TPP_WARNF_WARN_END    ""  /* W1234("-Wsyntax")><: ... */
+#endif
+#ifndef TPP_WARNF_ERROR_BEGIN
+#define TPP_WARNF_ERROR_BEGIN ""  /* ><E1234("-Wsyntax"): ... */
+#endif
+#ifndef TPP_WARNF_ERROR_END
+#define TPP_WARNF_ERROR_END   ""  /* E1234("-Wsyntax")><: ... */
+#endif
+
 #ifndef TPPFUN
 #define TPPFUN  extern
 #endif

@@ -188,17 +188,20 @@ DCCStackValue_Kill(struct DCCStackValue *__restrict self) {
   local_target.sv_ctype = self->sv_ctype;
  }
 
- /* During static initialization, allocate section memory instead! */
  local_target.sv_flags    = DCC_SFLAG_LVALUE;
  local_target.sv_reg2     = DCC_RC_CONST;
  local_target.sv_const.it = 0;
  if (compiler.c_flags&DCC_COMPILER_FLAG_SINIT) {
+  /* During static initialization, allocate section memory instead!
+   * NOTE: Due to some low-level constructs, assignment to
+   *       section memory during static initialization is
+   *       performed at compile-time. */
   struct DCCSection *target_section;
   target_ptr_t       target_ptr;
   struct DCCSym     *target_sym;
   target_section = DCCTYPE_STATICWRITABLE(self->sv_ctype.t_type)
-                                          ? unit.u_data
-                                          : unit.u_bss;
+                                          ? unit.u_bss
+                                          : unit.u_data;
   WARN(W_IMPLICIT_SECTION_ALLOCATION,
        target_section->sc_start.sy_name->k_name,s);
   target_sym     = DCCUnit_AllocSym();

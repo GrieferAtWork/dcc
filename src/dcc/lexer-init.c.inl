@@ -173,7 +173,7 @@ lvalue_initial:
     /* Global storage duration. */
     target_section = attr ? DCCATTRDECL_GETSECTION_OR_IMPORT(attr) : NULL;
     if (!target_section || DCCSection_ISIMPORT(target_section)) {
-     target_section = type->t_type&DCCTYPE_CONST ? unit.u_data : unit.u_bss;
+     target_section = DCCTYPE_STATICWRITABLE(type->t_type) ? unit.u_bss : unit.u_data;
     }
     assert(target_section && !DCCSection_ISIMPORT(target_section));
     if (!type_a) type_a = 1;

@@ -9089,7 +9089,9 @@ err:    return 0;
 #pragma warning(disable: 4701)
 #endif
 
-#if TPP_CONFIG_DEBUG && (defined(_WIN32) || defined(WIN32))
+#if defined(TPP_WARNF)
+#define WARNF      TPP_WARNF
+#elif TPP_CONFIG_DEBUG && (defined(_WIN32) || defined(WIN32))
 PRIVATE void tpp_warnf(char const *fmt, ...) {
  char buffer[1024];
  va_list args;
@@ -9109,6 +9111,8 @@ PRIVATE void tpp_warnf(char const *fmt, ...) {
 #else
 #define WARNF(...) fprintf(stderr,__VA_ARGS__)
 #endif
+
+#define Q(x) TPP_WARNF_QUOTE_BEGIN x TPP_WARNF_QUOTE_END
 
 PUBLIC int TPPLexer_Warn(int wnum, ...) {
  va_list args; char const *true_filename;
@@ -9136,7 +9140,7 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
   if (current.l_flags&TPPLEXER_FLAG_WERROR) behavior = TPP_WARNINGMODE_ERROR;
  }
  va_start(args,wnum);
-#define TOK_S         "'%.*s'"
+#define TOK_S       Q("%.*s")
 #define TOK_A        (int)(token.t_end-token.t_begin),token.t_begin
 #define ARG(T)        va_arg(args,T)
 #define FILENAME()   (ARG(struct TPPFile *)->f_name)
@@ -9201,7 +9205,18 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
    }
   } break; 
  }
- if (macro_name) WARNF("In macro '%.*s': ",macro_name_size,macro_name);
+ if (macro_name) WARNF("In macro " Q("%.*s") ": ",macro_name_size,macro_name);
+#ifdef _MSC_VER
+#define IFC(x)  if(0,x)
+#else
+#define IFC     if
+#endif
+ IFC(sizeof(TPP_WARNF_ERROR_BEGIN) != sizeof("") ||
+     sizeof(TPP_WARNF_WARN_BEGIN)  != sizeof("")) {
+  if (behavior == TPP_WARNINGMODE_ERROR)
+       WARNF(TPP_WARNF_ERROR_BEGIN);
+  else WARNF(TPP_WARNF_WARN_BEGIN);
+ }
  WARNF("%c%04d(",(behavior == TPP_WARNINGMODE_ERROR) ? 'E' : 'W',wnum);
  /* print a list of all groups associated with the warning. */
  wid = wnum2id(wnum);
@@ -9216,7 +9231,15 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
   }
 #endif
  }
- WARNF("): ");
+ IFC(sizeof(TPP_WARNF_ERROR_END) != sizeof("") ||
+     sizeof(TPP_WARNF_WARN_END)  != sizeof("")) {
+  if (behavior == TPP_WARNINGMODE_ERROR)
+       WARNF(")" TPP_WARNF_ERROR_END ": ");
+  else WARNF(")" TPP_WARNF_WARN_END ": ");
+ } else {
+  WARNF("): ");
+ }
+#undef IFC
  switch (wnum) {
 #define DECLARE_WARNING_MESSAGES
 #define WARNING_MESSAGE(name,expr) case name: expr; break;
@@ -9251,7 +9274,7 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
      WARNF("See reference to effective code location\n");
      break;
     } else {
-     WARNF("See reference to macro '%.*s'\n",
+     WARNF("See reference to macro " Q("%.*s") "\n",
           (unsigned int)iter->f_namesize,iter->f_name);
     }
    }
@@ -9275,6 +9298,7 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
  }
  return 1;
 }
+#undef Q
 
 #ifdef _MSC_VER
 #pragma warning(pop)

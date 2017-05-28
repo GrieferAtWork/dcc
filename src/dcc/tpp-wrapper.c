@@ -25,6 +25,32 @@
 #include <dcc/unit.h>
 #include <dcc/compiler.h>
 
+#include <stdio.h>
+
+DCC_DECL_BEGIN
+
+#if DCC_DEBUG && (defined(_WIN32) || defined(WIN32))
+PRIVATE void dcc_warnf(char const *fmt, ...) {
+ char buffer[1024];
+ va_list args;
+ size_t bufsiz;
+ va_start(args,fmt);
+#ifdef _MSC_VER
+ _vsnprintf(buffer,sizeof(buffer),fmt,args);
+#else
+  vsnprintf(buffer,sizeof(buffer),fmt,args);
+#endif
+ va_end(args);
+ bufsiz = strlen(buffer);
+ fwrite(buffer,sizeof(char),bufsiz,stderr);
+ OutputDebugStringA(buffer);
+}
+#else
+#define dcc_warnf(...) fprintf(stderr,__VA_ARGS__)
+#endif
+
+DCC_DECL_END
+
 #undef CURRENT
 #undef TOK
 #undef TOKEN
@@ -60,7 +86,13 @@ case W_UNRESOLVED_REFERENCE: \
 #undef tpp
 #undef c
 
-#define PRIVATE  INTDEF
+/* Re-define all private declarations as internal,
+ * so that other parts of the compiler can re-use
+ * some of the more useful helper functions. */
+#define PRIVATE    INTDEF
+
+/* Custom warning print callback (used for adding colors). */
+#define TPP_WARNF  dcc_warnf
 
 #include DCC_TPP_FILE(tpp.c)
 
