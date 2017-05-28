@@ -19,9 +19,52 @@
 #pragma once
 #pragma GCC system_header
 
+#pragma push_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
+                         "realloc","cfree","memalign","aligned_alloc","pvalloc",\
+                         "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
 #if __has_include_next(<string.h>)
 #include_next <string.h>
+#else
+
+#pragma push_macro("__IMP")
+#ifdef __PE__
+#include __IMP [[__dllimport__]]
+#else
+#include __IMP
 #endif
+
+__IMP void *memcpy(void *,void const *,__SIZE_TYPE__);
+__IMP void *memmove(void *,void const *,__SIZE_TYPE__);
+__IMP char *strcpy(char *,char const *);
+__IMP char *strncpy(char *,char const *,__SIZE_TYPE__);
+
+__IMP char *strcat(char *,char const *);
+__IMP char *strncat(char *,char const *,__SIZE_TYPE__);
+
+__IMP int memcmp(void const *,void const *,__SIZE_TYPE__);
+__IMP int strcmp(char const *,char const *);
+__IMP int strcoll(char const *,char const *);
+__IMP int strncmp(char const *,char const *,__SIZE_TYPE__);
+__IMP __SIZE_TYPE__ strxfrm(char const *,char const *,__SIZE_TYPE__);
+
+__IMP void *memchr(void const *,int,__SIZE_TYPE__);
+__IMP char *strchr(char const *,int);
+__IMP __SIZE_TYPE__ strcspn(char const *,char const *);
+__IMP char *strpbrk(char const *,char const *);
+__IMP char *strrchr(char const *,int);
+__IMP __SIZE_TYPE__ strspn(char const *,char const *);
+__IMP char *strstr(char const *,char const *);
+__IMP char *strtok(char *,char const *);
+
+__IMP void *memset(void *,int,__SIZE_TYPE__);
+__IMP char *strerror(int);
+__IMP __SIZE_TYPE__ strlen(char const *);
+
+#pragma pop_macro("__IMP")
+#endif
+#pragma pop_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
+                        "realloc","cfree","memalign","aligned_alloc","pvalloc",\
+                        "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
 
 /* Fixed/optimized system header <string.h> for DCC */
 #undef size_t
