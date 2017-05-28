@@ -401,6 +401,7 @@ PREDEFINED_MACRO_IF(__x86_64__,TPPLexer_HasExtension(EXT_CPU_MACROS),"1")
 #ifdef DCC_TARGET_IA32_VERSION
 PREDEFINED_MACRO_IF(_M_IX86,TPPLexer_HasExtension(EXT_CPU_MACROS),DCC_PP_STR(DCC_TARGET_IA32_VERSION))
 #endif
+PREDEFINED_MACRO_IF(_INTEGRAL_MAX_BITS,TPPLexer_HasExtension(EXT_UTILITY_MACROS),"64")
 #endif /* DCC_TARGET_OS == DCC_OS_WINDOWS */
 #undef ARCH_MACRO3
 
@@ -1298,9 +1299,10 @@ DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTAT
  struct TPPString *funty_repr;
  size_t expected_argc;
  char const *format;
+ struct DCCType *ty;
 emit_call_warning:
- funty_repr = DCCType_ToTPPString(ARG(struct DCCType *),
-                                  ARG(struct TPPKeyword *));
+ ty         = ARG(struct DCCType *);
+ funty_repr = DCCType_ToTPPString(ty,ARG(struct TPPKeyword *));
  expected_argc = ARG(size_t);
  WARNF(format,funty_repr->s_text,
       (unsigned long)expected_argc,

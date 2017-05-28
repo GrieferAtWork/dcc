@@ -131,11 +131,12 @@ DCCParse_CTypeNewArgumentList(struct DCCDecl *__restrict funtydecl,
  assert((opt_firsttype != NULL) == (opt_firstname != NULL));
  assert((opt_firsttype != NULL) == (opt_firstattr != NULL));
  argv = NULL; argc = arga = 0;
- while (TOK != ')' && TOK > 0) {
+ for (;;) {
   struct DCCType     arg_type;
   struct DCCAttrDecl arg_attr = DCCATTRDECL_INIT;
   struct DCCDecl *arg_decl;
   if (!opt_firstname) {
+   if (TOK == ')' || TOK <= 0) break;
    if (TOK == TOK_DOTS) {
     /* Variable argument list. */
     funtydecl->d_flag |= DCC_DECLFLAG_VARIADIC;
@@ -213,10 +214,11 @@ DCCParse_CTypeOldArgumentList(struct DCCDecl *__restrict funtydecl,
  assert((opt_firstname != NULL) == (opt_firstattr != NULL));
  assert(!opt_firstname || (TOK == ',' || TOK == ')'));
  argv = NULL; argc = arga = 0;
- while (TOK != ')' && TOK > 0) {
+ for (;;) {
   struct DCCAttrDecl arg_attr = DCCATTRDECL_INIT;
   struct DCCDecl *arg_decl;
   if (!opt_firstname) {
+   if (TOK == ')' || TOK <= 0) break;
    DCCParse_Attr(&arg_attr);
    if (TPP_ISKEYWORD(TOK)) {
     opt_firstname = TOKEN.t_kwd;
@@ -827,6 +829,18 @@ again:
   flags        &= ~(F_AUTO); /* A previous 'auto' was a storage modifier. */
   goto next;
 
+ /* Double-precision floating point modifier. */
+ case KWD_double:
+  if (flags&(F_INT|F_SIGN)) break;
+  if (self->t_type&DCCTYPE_ALTLONG) {
+   self->t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK);
+   self->t_type |=   DCCTYPE_LDOUBLE;
+  } else {
+   self->t_type &= ~(DCCTYPE_BASICMASK);
+   self->t_type |=   DCCTYPE_DOUBLE;
+  }
+  flags |= (F_INT|F_SIGN|F_WIDTH);
+  goto next;
 
  { /* Type width modifiers. */
   tyid_t newwidth;

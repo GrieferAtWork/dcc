@@ -218,6 +218,8 @@ default_visibility:
 
  if ((self->d_type.t_type&DCCTYPE_STOREBASE) == DCCTYPE_STATIC)
       result |= DCC_SYMFLAG_STATIC; /* Hide inside unit. */
+ if (self->d_type.t_type&DCCTYPE_INLINE)
+     result |= DCC_SYMFLAG_UNUSED; /* Don't warn about unused inline functions. */
  return result;
 }
 
