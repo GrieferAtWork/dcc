@@ -107,10 +107,12 @@ GROUP_BEGIN(grp_main) /* Main options group */
    OPTION_O(OPT_message_format,OPTION_FLAG_EQUAL,NULL,"message-format",NULL) /* --message-format={msvc|gcc} */
 
    /* GCC extension flags. */
-   OPTION_O(OPT_undef,       OPTION_FLAG_NONE,"undef",    NULL,NULL) /* -undef */
-   OPTION_O(OPT_trigraphs,   OPTION_FLAG_NONE,"trigraphs",NULL,NULL) /* -trigraphs */
-   OPTION_A(OPT_Wl_Bsymbolic,OPTION_FLAG_NONE,"symbolic", NULL,NULL) /* -symbolic */
-   OPTION_A(OPT_Wl_nostdlib, OPTION_FLAG_NONE,"nostdlib", NULL,NULL) /* -nostdlib */
+   OPTION_O(OPT_undef,       OPTION_FLAG_NONE,"undef",          NULL,NULL) /* -undef */
+   OPTION_O(OPT_trigraphs,   OPTION_FLAG_NONE,"trigraphs",      NULL,NULL) /* -trigraphs */
+   OPTION_A(OPT_Wl_Bsymbolic,OPTION_FLAG_NONE,"symbolic",       NULL,NULL) /* -symbolic */
+   OPTION_A(OPT_Wl_nostdlib, OPTION_FLAG_NONE,"nostdlib",       NULL,NULL) /* -nostdlib */
+   OPTION_O(OPT_traditional, OPTION_FLAG_NONE,"traditional",    NULL,NULL) /* -traditional */
+   OPTION_A(OPT_traditional, OPTION_FLAG_NONE,"traditional-cpp",NULL,NULL) /* -traditional-cpp */
 GROUP_END
 
 #undef OPTION_N

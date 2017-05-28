@@ -318,6 +318,8 @@ INTERN void dcc_help(char const *subject) {
 #else
                 INDENT "--message-format={msvc|gcc} Set the format for error message (Default: gcc)\n"
 #endif
+                INDENT "-traditional[-cpp]          Emulate traditional C-compiler behavior, not warning about old-style\n"
+                INDENT "                            functions and accepting old-style spelling of inplace operation tokens\n"
               //INDENT "-f[no-]magiclf              Enable/Disable magic linefeeds sometimes used in place of #line (Default: off)\n"
               //INDENT "-f[(cpp|no)-]line           Enable/Disable emission of #line directives (Default: cpp-compatible)\n"
               //INDENT "-f[no-]decode               Enable/Disable decoding of di/tri-graphs, as well as escaped linefeeds in output (Default: on)\n"

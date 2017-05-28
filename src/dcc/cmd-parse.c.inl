@@ -337,6 +337,13 @@ def_secbase:
 #undef SETFLAG
  } break;
 
+ case OPT_traditional:
+  /* Enable old-style spelling of inplace operators ('x += 42;' --> 'x =+ 42;') */
+  TPPLexer_Current->l_extokens |= TPPLEXER_TOKEN_EQUALBINOP;
+  /* Disable old-style function warnings. */
+  TPPLexer_SetWarning(WG_OLD_FUNCTION_DECL,WSTATE_DISABLE);
+  break;
+
 
  case OPT_undef:
   TPPLexer_DisableExtension(EXT_CPU_MACROS);
