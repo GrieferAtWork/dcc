@@ -257,8 +257,8 @@ LEXPRIV int DCC_PARSE_CALL DCCParse_ExprType(void) {
  /* Warn about use of types in expressions. */
  WARN(W_TYPE_IN_EXPRESSION,&type);
  pushf();
- if ((type.t_type&DCCTYPE_STOREMASK) == DCCTYPE_STATIC ||
-     (type.t_type&DCCTYPE_STOREMASK) == DCCTYPE_EXTERN
+ if ((type.t_type&DCCTYPE_STOREBASE) == DCCTYPE_STATIC ||
+     (type.t_type&DCCTYPE_STOREBASE) == DCCTYPE_EXTERN
      ) compiler.c_flags |= (DCC_COMPILER_FLAG_SINIT);
  if (TOK == '(' || TOK == KWD___pack) {
   /* Parse a type initializer.
@@ -697,8 +697,8 @@ parse_string:
    /* Extension: Allow initializer here. */
    /* TODO: Add a switch for this! */
    pushf();
-   if ((cast_type.t_type&DCCTYPE_STOREMASK) == DCCTYPE_STATIC ||
-       (cast_type.t_type&DCCTYPE_STOREMASK) == DCCTYPE_EXTERN
+   if ((cast_type.t_type&DCCTYPE_STOREBASE) == DCCTYPE_STATIC ||
+       (cast_type.t_type&DCCTYPE_STOREBASE) == DCCTYPE_EXTERN
        ) compiler.c_flags |= (DCC_COMPILER_FLAG_SINIT);
    if (TOK == '{')
         DCCParse_Init(&cast_type,&cast_attr,NULL,DCCPARSE_INITFLAG_INITIAL);

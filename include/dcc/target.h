@@ -276,6 +276,13 @@ DCC_DECL_BEGIN
 #   define DCC_TARGET_VA_ALIGN             DCC_TARGET_SIZEOF_POINTER
 
 
+#   define DCC_TARGET_TLSMODE_NONE         0 /*< TLS storage is not supported. */
+#   define DCC_TARGET_TLSMODE_NATIVE       1 /*< TLS storage is supported natively (CPU-specific) (TODO: Missing) */
+#   define DCC_TARGET_TLSMODE_EMULATED     2 /*< TLS storage is emulated with extern function calls (TODO: Missing) */
+#   define DCC_TARGET_TLS                  DCC_TARGET_TLSMODE_NONE
+
+
+#ifdef DCC_TARGET_X86
 /* 6: %EBX, %EDI, %ESI, %ESP, %EBP, %EIP */
 #if DCC_TARGET_SIZEOF_POINTER == 4
 #   define DCC_TARGET_SIZEOF_JMP_BUF       32
@@ -285,6 +292,9 @@ DCC_DECL_BEGIN
 #   define DCC_TARGET_SIZEOF_JMP_BUF      __TPP_EVAL(DCC_TARGET_SIZEOF_POINTER*6)
 #else
 #   define DCC_TARGET_SIZEOF_JMP_BUF      (DCC_TARGET_SIZEOF_POINTER*6)
+#endif
+#else
+#   error FIXME
 #endif
 
 

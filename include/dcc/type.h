@@ -104,22 +104,25 @@ struct DCCDecl;
 #define DCCTYPE_VOLATILE  0x00002000 /* FLAG: volatile type. */
 #define DCCTYPE_QUAL     (DCCTYPE_CONST|DCCTYPE_VOLATILE) /* Mask for type qualifiers. */
 #define DCCTYPE_ATOMIC    0x00020000 /* FLAG: TODO: atomic-seqcst read/write access (warn if not possible). */
-#define DCCTYPE_AUTOMATIC 0x00000000 /* STORAGE: Automatic storage duration (NOTE: Must always be ZERO(0)). */
 #define DCCTYPE_ALTLONG   0x01000000 /* FLAG: Alternative type 'long' (Used to differentiate during type-matching). */
+#define DCCTYPE_AUTOMATIC 0x00000000 /* STORAGE: Automatic storage duration (NOTE: Must always be ZERO(0)). */
 #define DCCTYPE_STATIC    0x10000000 /* STORAGE: Static storage duration. */
 #define DCCTYPE_EXTERN    0x20000000 /* STORAGE: Extern storage duration. */
 #define DCCTYPE_REGISTER  0x30000000 /* STORAGE: Prefer register storage (TODO: Currently ignored). */
 #define DCCTYPE_TYPEDEF   0x40000000 /* STORAGE: Declare as type. */
 #define DCCTYPE_INLINE    0x80000000 /* STORAGE:FLAG: Inline storage (Same as static in forward declarations; otherwise: inline memory). */
+#if DCC_TARGET_TLS != DCC_TARGET_TLSMODE_NONE
+#define DCCTYPE_TLS       0x08000000 /* STORAGE:FLAG: Use thread-local storage. */
+#endif
 #define DCCTYPE_STOREBASE 0x70000000 /* Mask for basic storage flags. */
-#define DCCTYPE_STOREMASK 0xf0000000 /* Mask for storage flags. */
+#define DCCTYPE_STOREMASK 0xf8000000 /* Mask for storage flags. */
 
 
 /* Type masks. */
 #define DCCTYPE_BASICMASK 0x0000000f /* Mask for base type ids. */
 #define DCCTYPE_GROUPMASK 0x00000ff0 /* Mask for type group. */
 #define DCCTYPE_FLAGSMASK 0xfffff000 /* Mask for type flags. */
-#define DCCTYPE_ALTMASK   0x0f000000 /* Alternate type-names mask. */
+#define DCCTYPE_ALTMASK   0x07000000 /* Alternate type-names mask. */
 
 /* Type helper macros. */
 #define DCCTYPE_BASIC(t)             ((t)&DCCTYPE_BASICMASK)

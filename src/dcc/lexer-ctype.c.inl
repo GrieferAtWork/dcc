@@ -498,6 +498,7 @@ oldstyle_arglist:
     is_old_funimpl = 1;
    } else if ((firstarg_name = DCCParse_CType(&firstarg_type,&firstarg_attr)) != NULL) {
     DCCParse_CTypeNewArgumentList(fun_decl,&firstarg_type,firstarg_name,&firstarg_attr);
+    DCCType_Quit(&firstarg_type);
    } else {
     /* Fallback: Old-style argument list. */
     goto oldstyle_arglist;
@@ -938,6 +939,14 @@ again:
   if (!(flags&F_STORAGE)) self->t_type |= DCCTYPE_STATIC;
   goto next;
  } break;
+
+#if DCC_TARGET_TLS != DCC_TARGET_TLSMODE_NONE
+ case KWD__Thread_local:
+ case KWD___thread:
+  self->t_type |= DCCTYPE_TLS;
+  goto next;
+#endif
+
 
  { /* Type flag: Atomic accessor. */
  case KWD__Atomic:

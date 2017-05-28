@@ -829,6 +829,20 @@ DCCType_DoToString(char *buf, size_t buflen,
  char *iter,*end,*newpos;
  assert(self);
  end = (iter = buf)+buflen;
+ switch (self->t_type&DCCTYPE_STOREBASE) {
+ { char const *cls_name;
+   if (DCC_MACRO_FALSE) { case DCCTYPE_STATIC  : cls_name = "static "; }
+   if (DCC_MACRO_FALSE) { case DCCTYPE_EXTERN  : cls_name = "extern "; }
+   if (DCC_MACRO_FALSE) { case DCCTYPE_REGISTER: cls_name = "register "; }
+   if (DCC_MACRO_FALSE) { case DCCTYPE_TYPEDEF : cls_name = "typedef "; }
+   WRITE(cls_name,strlen(cls_name));
+ } break;
+ default: break;
+ }
+ if (self->t_type&DCCTYPE_INLINE) { WRITE("inline ",7); }
+#ifdef DCCTYPE_TLS
+ if (self->t_type&DCCTYPE_TLS) { WRITE("_Thread_local ",14); }
+#endif
  iter += DCCType_PutPrefix(iter,buflen,self,0);
  if (name && name->k_size) {
   struct DCCType const *prefix_type = self;

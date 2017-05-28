@@ -60,6 +60,9 @@ DEF_K(void) DEF_K(float) DEF_K(double)
 /* Type storage keywords. */
 DEF_K(register) DEF_K(static)
 DEF_K(typedef) DEF_K(extern)
+#if DCC_TARGET_TLS != DCC_TARGET_TLSMODE_NONE
+DEF_K(_Thread_local) DEF_K(__thread)
+#endif
 DEF_K(inline) DEF_K(__inline) DEF_K(__inline__)
 
 /* Type flag keywords. */
@@ -913,7 +916,7 @@ DEF_WARNING(W_VARIADIC_REQUIRES_INITIALIZER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE
 DEF_WARNING(W_LVALUE_REQUIRES_INITIALIZER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("l-value type " Q("%s") " require an initializer"))
 DEF_WARNING(W_EXPECTED_FUNCTION_TYPE_FOR_CALL,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected function type " Q("%s") " for call"))
 
-DEF_WARNING(W_BRACE_INITIALIZER_FOR_LVALUE_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for initial assignment to l-value type " Q("%s") ""))
+DEF_WARNING(W_BRACE_INITIALIZER_FOR_LVALUE_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for initial assignment of l-value type " Q("%s") ""))
 DEF_WARNING(W_BRACE_INITIALIZER_FOR_LVALUE_TYPE_NOTARGET,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for initialization of l-value type " Q("%s") " without target"))
 DEF_WARNING(W_BRACE_INITIALIZER_FOR_DEFAULT_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for regular type " Q("%s") ""))
 DEF_WARNING(W_BRACE_INITIALIZER_FOR_VLA_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Variable length array type " Q("%s") " cannot be brace-initialized"))

@@ -166,8 +166,8 @@ lvalue_initial:
    target_ptr_t type_s,type_a;
    type_s = DCCType_Sizeof(type,&type_a,1);
    if (!compiler.c_fun ||
-      (type->t_type&DCCTYPE_STOREMASK) == DCCTYPE_EXTERN ||
-      (type->t_type&DCCTYPE_STOREMASK) == DCCTYPE_STATIC ||
+      (type->t_type&DCCTYPE_STOREBASE) == DCCTYPE_EXTERN ||
+      (type->t_type&DCCTYPE_STOREBASE) == DCCTYPE_STATIC ||
       (compiler.c_flags&DCC_COMPILER_FLAG_SINIT)) {
     struct DCCSection *target_section;
     /* Global storage duration. */

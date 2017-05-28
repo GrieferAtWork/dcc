@@ -216,7 +216,7 @@ default_visibility:
   result |= compiler.c_visibility.vs_viscur;
  }
 
- if ((self->d_type.t_type&DCCTYPE_STOREMASK) == DCCTYPE_STATIC)
+ if ((self->d_type.t_type&DCCTYPE_STOREBASE) == DCCTYPE_STATIC)
       result |= DCC_SYMFLAG_STATIC; /* Hide inside unit. */
  return result;
 }
@@ -249,9 +249,9 @@ DCCDecl_AllocStorage(struct DCCDecl *__restrict self, int has_init,
  assert(self->d_kind == DCC_DECLKIND_NONE);
  is_global = !compiler.c_fun;
  is_const  = self->d_type.t_type&DCCTYPE_CONST;
- storage   = self->d_type.t_type&DCCTYPE_STOREMASK;
+ storage   = self->d_type.t_type&DCCTYPE_STOREBASE;
  symflags  = DCCDecl_CalculateSymflags(self);
- self->d_type.t_type &= ~(DCCTYPE_STOREMASK);
+ self->d_type.t_type &= ~(DCCTYPE_STOREBASE);
  /* TODO: When non-NULL, interpret 'asmname' as a register name for local declarations:
   *   >> int EAX __asm__("%eax");
   *   >> printf("EAX = %d\n",EAX);

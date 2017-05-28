@@ -427,7 +427,8 @@ fix_alias:
      goto fix_alias;
     }
     if (dst_sym && dst_sym != src_sym &&
-      !(src_sym->sy_flags&DCC_SYMFLAG_STATIC)) {
+      !(src_sym->sy_flags&DCC_SYMFLAG_STATIC) &&
+      !(dst_sym->sy_flags&DCC_SYMFLAG_STATIC)) {
      /* Override an existing symbol, or define it. */
      if (src_sym->sy_sec) {
       /* Section merge adjustments were already made above! */
