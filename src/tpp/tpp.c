@@ -2579,7 +2579,7 @@ keyword_pushmacro(struct TPPKeyword *self) {
  return 1;
 }
 PRIVATE void
-keyword_popmacro(struct TPPKeyword *self) {
+keyword_popmacro(struct TPPKeyword *self, int maybe_keep_current) {
  struct TPPFile *macro;
  assert(self);
  /* Drop a reference to a current definition of the macro. */
@@ -2596,8 +2596,13 @@ keyword_popmacro(struct TPPKeyword *self) {
   TPPFile_Incref(macro);
  }
 set_macro:
- if unlikely(self->k_macro) TPPFile_Decref(self->k_macro);
+ if (self->k_macro) {
+  /* If we're not supposed to override new definitions,  */
+  if (maybe_keep_current) { TPPFile_Decref(macro); goto done; }
+  TPPFile_Decref(self->k_macro);
+ }
  self->k_macro = macro; /*< Inherit reference. */
+done:
  assert(!macro || !macro->f_macro.m_pushprev);
  assert(!macro || !macro->f_macro.m_pushcount);
 }
@@ -4180,11 +4185,11 @@ nextfile:
  }
  /* Search system folders for this file. */
  {
-  struct TPPString **iter,**end,*elem;
-  end = (iter = current.l_syspaths.il_pathv)+
-                current.l_syspaths.il_pathc;
+  struct TPPString **iter,**begin,*elem;
+  iter = (begin = current.l_syspaths.il_pathv)+
+                  current.l_syspaths.il_pathc;
 next_syspath:
-  for (; iter != end; ++iter) {
+  while (iter-- != begin) {
    elem = *iter;
    if (elem->s_size == 1 && elem->s_text[0] == '.') {
     /* Special case: CWD path. */
@@ -8607,27 +8612,39 @@ TPPLexer_ParseBuiltinPragma(void) {
   { /* push/pop a macro definition. */
    struct TPPKeyword *keyword;
    struct TPPConst const_val;
-   tok_t mode;
+   tok_t mode; int should_undef;
   case KWD_push_macro:
   case KWD_pop_macro:
    mode = TOK;
    yield_fetch();
    if (TOK == '(') yield_fetch();
    else TPPLexer_Warn(W_EXPECTED_LPAREN);
-   if unlikely(!TPPLexer_Eval(&const_val)) goto err;
-   if (const_val.c_kind != TPP_CONST_STRING) {
-    TPPLexer_Warn(W_EXPECTED_STRING_AFTER_PUSHMACRO,&const_val);
-   } else {
-    keyword = TPPLexer_LookupKeyword(const_val.c_data.c_string->s_text,
-                                     const_val.c_data.c_string->s_size,1);
-    if unlikely(!keyword) goto seterr;
-    if (mode == KWD_push_macro) {
-     if unlikely(!keyword_pushmacro(keyword)) goto seterr;
-    } else {
-     keyword_popmacro(keyword);
-    }
+   should_undef = TOK == KWD_undef;
+   if (should_undef) {
+    yield_fetch();
+    if (TOK != ',') TPPLexer_Warn(W_EXPECTED_COMMA);
+    else yield_fetch();
    }
-   TPPConst_Quit(&const_val);
+   for (;;) {
+    if unlikely(!TPPLexer_Eval(&const_val)) goto err;
+    if (const_val.c_kind != TPP_CONST_STRING) {
+     TPPLexer_Warn(W_EXPECTED_STRING_AFTER_PUSHMACRO,&const_val);
+    } else {
+     keyword = TPPLexer_LookupKeyword(const_val.c_data.c_string->s_text,
+                                      const_val.c_data.c_string->s_size,1);
+     if unlikely(!keyword) goto seterr;
+     if (mode == KWD_push_macro) {
+      if unlikely(!keyword_pushmacro(keyword)) goto seterr;
+      /* Delete the macro definition. */
+      if (should_undef) TPPKeyword_Undef(keyword);
+     } else {
+      keyword_popmacro(keyword,should_undef);
+     }
+    }
+    TPPConst_Quit(&const_val);
+    if (TOK != ',') break;
+    yield_fetch();
+   }
    if (TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
    else yield_fetch();
    return 1;

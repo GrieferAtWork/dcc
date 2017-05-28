@@ -345,7 +345,8 @@ DCCUnit_Import(struct DCCLibDef *__restrict def) {
  } else {
   pathlist = &linker.l_paths;
 search_pathlist:
-  for (i = 0; i < pathlist->lp_pathc; ++i) {
+  i = pathlist->lp_pathc;
+  while (i-- != 0) {
    /* Search user-defined library paths. */
    result = DCCUnit_ImportWithPath(pathlist->lp_pathv[i],def);
    if (result || !OK) goto end;

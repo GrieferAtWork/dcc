@@ -144,6 +144,43 @@
 // [GCC diagnostic]        #pragma GCC diagnostic push              /*< Configure warnings GCC-style by name. */
 
 
+/* NOTE: TPP adds a minor extension to #pragma push_macro/pop_macro:
+ * >> #define foo 42
+ * >> #define bar 12
+ * >> #define baz 7
+ * >> foo // 42
+ * >> bar // 12
+ * >> baz // 7
+ * >> #pragma push_macro(undef,"foo","bar","baz") // Automatically undef the macros
+ * >> foo // foo
+ * >> bar // bar
+ * >> baz // baz
+ * >> #define foo FOOTEXT
+ * >> #define bar BARTEXT
+ * >> foo // FOOTEXT
+ * >> bar // BARTEXT
+ * >> baz // baz
+ * >> #pragma pop_macro("foo")
+ * >> foo // 42
+ * >> #pragma pop_macro(undef,"bar")
+ * >> bar // BARTEXT << The popped macro is not restored because a new definition was given
+ * >> #pragma pop_macro(undef,"baz")
+ * >> baz // 7 << The popped macro is restored because it was not defined before
+ * Using this, you can very easily include headers and
+ * automatically import new macro definitions from inside:
+ * "/fixinclude/stdlib.h":
+ * >> #if __has_include_next(<stdlib.h>)
+ * >> // Push user-definitions for 'malloc' and undef them
+ * >> #pragma push_macro(undef,"malloc")
+ * >> #include_next <stdlib.h>
+ * >> // Pop the macro, and if '<stdlib.h>' didn't define
+ * >> // its own 'malloc' macro, restore user-definitions
+ * >> // NOTE: If this weak re-declaration behavior is
+ * >> //       not intended 'undef' should be removed.
+ * >> #pragma pop_macro(undef,"malloc")
+ * >> #endif
+ */
+
 #if defined(GUARD_TPP_C) && \
     defined(_MSC_VER) && TPP_CONFIG_DEBUG
 /* Make use of MSVC's builtin memory leak detector. */

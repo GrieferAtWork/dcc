@@ -66,6 +66,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
   target_ptr_t target_maxindex,target_index;
   target_ptr_t elem_size,elem_align;
   has_brace       = 1;
+  goto parse_braceblock;
 parse_braceblock:
   target_maxindex = 0;
   target_index    = 0;
@@ -483,6 +484,7 @@ end_brace:
    else YIELD();
   }
  } else {
+#if 0 /* This _still_ doesn't work for string --> char[] */
   /* Special case: handle missing braces around struct/union/array types.
    * NOTE: Though we must not handle missing braces around arithmetic structure types! */
   if (type->t_base && (flags&DCCPARSE_INITFLAG_INBRACE)) {
@@ -497,6 +499,7 @@ end_brace:
     goto parse_braceblock;
    }
   }
+#endif
   DCCParse_Expr1();
   if (vbottom->sv_reg != DCC_RC_CONST) {
    if (!compiler.c_fun) WARN(W_NON_CONSTANT_GLOBAL_INITIALIZER,type);

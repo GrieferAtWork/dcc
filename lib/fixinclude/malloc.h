@@ -17,20 +17,26 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 #pragma once
+#ifdef __STRICT_ANSI__
+#warning "<malloc.h> should not be included when -ansi is passed"
+#endif
 #pragma GCC system_header
 
-#if __has_include_next(<stdlib.h>)
+#if __has_include_next(<malloc.h>)
 #pragma push_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
                          "realloc","cfree","memalign","aligned_alloc","pvalloc",\
                          "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
-#include_next <stdlib.h>
+#include_next <malloc.h>
 #pragma pop_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
                         "realloc","cfree","memalign","aligned_alloc","pvalloc",\
                         "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
+#endif /* <malloc.h> */
+
+#ifdef alloca
+/* Re-define 'alloca'  */
+#if __has_builtin(__builtin_alloca)
+#define alloca __builtin_alloca
+#endif
 #endif
 
-/* Fixed/optimized system header <stdlib.h> for DCC */
-#undef size_t
-typedef __SIZE_TYPE__ size_t;
 
-#define NULL  __NULL__
