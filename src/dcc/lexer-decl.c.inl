@@ -249,7 +249,8 @@ no_decl:
    WARN(W_DECL_TYPEDEF_WITH_INITIALIZER,decl);
    goto declare_typedef;
   }
-  DCCParse_Init(real_decl_type,&attr,NULL,1);
+  DCCParse_Init(real_decl_type,&attr,NULL,
+                DCCPARSE_INITFLAG_INITIAL);
   DCCParse_FixType(real_decl_type);
   if (decl) {
    DCCDecl_AllocStorage(decl,1,asmname);

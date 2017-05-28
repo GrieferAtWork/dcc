@@ -1548,8 +1548,8 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
                   target_siz_t min_align) {
  target_ptr_t result = addr;
  assert(self);
- assertf(min_align,"Invalid alignment");
- assertf(!(addr&(min_align-1)),
+ assertf(!size || min_align,"Invalid alignment");
+ assertf(!size || !(addr&(min_align-1)),
          "The given addr %lx isn't aligned by %lx",
         (unsigned long)addr,(unsigned long)min_align);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);

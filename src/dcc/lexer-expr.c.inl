@@ -264,13 +264,13 @@ LEXPRIV int DCC_PARSE_CALL DCCParse_ExprType(void) {
   /* Parse a type initializer.
    * NOTE: This is written in a way that also allows: 'int[] ({ 10,20,30 })' */
   DCCParse_ParPairBegin();
-  DCCParse_Init(&type,&attr,NULL,1);
+  DCCParse_Init(&type,&attr,NULL,DCCPARSE_INITFLAG_INITIAL);
   DCCParse_FixType(&type);
   DCCParse_ParPairEnd();
  } else {
   if (TOK != '{') WARN(W_EXPECTED_LPAREN_AFTER_TYPE_IN_EXPRESSION,&type);
   /* Parse a type initializer. */
-  DCCParse_Init(&type,&attr,NULL,1);
+  DCCParse_Init(&type,&attr,NULL,DCCPARSE_INITFLAG_INITIAL);
   DCCParse_FixType(&type);
  }
  popf();
@@ -701,7 +701,7 @@ parse_string:
        (cast_type.t_type&DCCTYPE_STOREMASK) == DCCTYPE_EXTERN
        ) compiler.c_flags |= (DCC_COMPILER_FLAG_SINIT);
    if (TOK == '{')
-        DCCParse_Init(&cast_type,&cast_attr,NULL,1);
+        DCCParse_Init(&cast_type,&cast_attr,NULL,DCCPARSE_INITFLAG_INITIAL);
    else DCCParse_ExprUnary();
    DCCParse_FixType(&cast_type);
    vcast(&cast_type,1);
@@ -1297,10 +1297,12 @@ PUBLIC void DCC_PARSE_CALL DCCParse_Expr1(void) {
        WARN(W_BINARY_CONSTANT_TYPE,&vbottom->sv_ctype,&vbottom->sv_ctype);
    if (vbottom->sv_flags&DCC_SFLAG_RVALUE)
        WARN(W_BINARY_RVALUE_TYPE,&vbottom->sv_ctype,&vbottom->sv_ctype);
-   DCCParse_Init(&vbottom->sv_ctype,NULL,&target,0);
+   DCCParse_Init(&vbottom->sv_ctype,NULL,&target,
+                 DCCPARSE_INITFLAG_NONE);
    vpop(0);
   } else {
-   DCCParse_Init(&vbottom->sv_ctype,NULL,NULL,0);
+   DCCParse_Init(&vbottom->sv_ctype,NULL,NULL,
+                 DCCPARSE_INITFLAG_NONE);
    vstore(0);
   }
   break;

@@ -51,7 +51,7 @@ PUBLIC void DCC_PARSE_CALL
 DCCParse_Init(struct DCCType const *__restrict type,
               struct DCCAttrDecl const *attr,
               struct DCCMemLoc const *target,
-              int initial_init) {
+              uint32_t flags) {
  int has_brace;
  assert(type);
  if (TOK == '{') {
@@ -66,7 +66,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
   target_ptr_t target_maxindex,target_index;
   target_ptr_t elem_size,elem_align;
   has_brace       = 1;
-//parse_braceblock:
+parse_braceblock:
   target_maxindex = 0;
   target_index    = 0;
   elem_size       = 0;
@@ -74,8 +74,9 @@ DCCParse_Init(struct DCCType const *__restrict type,
   field_curr      =
   field_end       = NULL;
   /* Warn about initializer-assignment to constant target. */
-  if (!initial_init && type->t_type&DCCTYPE_CONST)
-       WARN(W_ASSIGN_INIT_CONSTANT_TYPE,type);
+  if (!(flags&DCCPARSE_INITFLAG_INITIAL) &&
+        type->t_type&DCCTYPE_CONST)
+        WARN(W_ASSIGN_INIT_CONSTANT_TYPE,type);
   switch (DCCTYPE_GROUP(type->t_type)) {
 
   case DCCTYPE_STRUCTURE:
@@ -98,7 +99,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
     pushf();
     compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
     for (;;) {
-     DCCParse_Init(type,attr,target,initial_init);
+     DCCParse_Init(type,attr,target,flags|DCCPARSE_INITFLAG_INBRACE);
      vpop(1);
      if (TOK != ',' || !has_brace) break;
      YIELD();
@@ -117,7 +118,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
    WARN(W_BRACE_INITIALIZER_FOR_DEFAULT_TYPE,type);
    if (has_brace) YIELD();
    for (;;) {
-    DCCParse_Init(type,attr,target,initial_init);
+    DCCParse_Init(type,attr,target,flags|DCCPARSE_INITFLAG_INBRACE);
     if (TOK != ',' || !has_brace) break;
     vpop(1);
     YIELD();
@@ -229,12 +230,12 @@ parse_field:
      if (field_curr->sf_bitfld) {
       push_target(field_type,&elem_target);
       vbitfldf(field_curr->sf_bitfld);
-      DCCParse_Init(field_type,attr,
-                    NULL,initial_init);
-      vstore(initial_init);
+      DCCParse_Init(field_type,attr,NULL,
+                    flags|DCCPARSE_INITFLAG_INBRACE);
+      vstore(flags&DCCPARSE_INITFLAG_INITIAL);
      } else {
-      DCCParse_Init(field_type,attr,
-                    &elem_target,initial_init);
+      DCCParse_Init(field_type,attr,&elem_target,
+                    flags|DCCPARSE_INITFLAG_INBRACE);
      }
      vpop(0);
      ++field_curr;
@@ -243,8 +244,12 @@ parse_field:
 
    { /* array/variadic array. */
     target_ptr_t repeat,elem_addr;
+    int has_initializer;
+    struct DCCType *elem_type;
    case KIND_VARRAY:
    case KIND_ARRAY:
+    assert(type->t_base);
+    elem_type = &type->t_base->d_type;
     repeat = 1;
     if (TOK == '[') {
      int_t index_begin,index_end;
@@ -272,6 +277,17 @@ parse_field:
     } else if (kind != KIND_VARRAY && target_index >= target_maxindex) {
      WARN(W_ARRAY_FULLY_INITIALIZED,type);
      repeat = 0; /* Don't repeat! */
+    }
+    has_initializer = 0;
+    if (DCCTYPE_ISBASIC(elem_type->t_type,DCCTYPE_AUTO)) {
+     /* Special case: 'auto x[] = {10,20,30};' --> 'int x[] = {10,20,30};' */
+     DCCParse_Init(elem_type,attr,NULL,flags|
+                   DCCPARSE_INITFLAG_INBRACE);
+     has_initializer = 1;
+     assert(vsize);
+     assert(!elem_type->t_base);
+     DCCType_InitCopy(elem_type,&vbottom->sv_ctype);
+     elem_size = DCCType_Sizeof(elem_type,&elem_align,1);
     }
     elem_target         = base_target;
     elem_target.ml_off += target_index*elem_size;
@@ -331,29 +347,41 @@ update_elem_target_off:
      pushf();
      compiler.c_flags |=   DCC_COMPILER_FLAG_NOCGEN;
      compiler.c_flags &= ~(DCC_COMPILER_FLAG_SINIT);
-     DCCParse_Init(&type->t_base->d_type,attr,NULL,initial_init);
+     if (!has_initializer) {
+      DCCParse_Init(elem_type,attr,NULL,flags|
+                    DCCPARSE_INITFLAG_INBRACE);
+     }
      vpop(1);
      popf();
     } else if (repeat == 1) {
-     DCCParse_Init(&type->t_base->d_type,attr,&elem_target,initial_init);
+     if (!has_initializer) {
+      DCCParse_Init(elem_type,attr,&elem_target,
+                    flags|DCCPARSE_INITFLAG_INBRACE);
+     } else {
+      push_target(elem_type,&elem_target);
+      vswap(); /* target, init */
+      vstore(flags&DCCPARSE_INITFLAG_INITIAL);
+     }
      vpop(0);
     } else {
-     struct DCCType *elem_type = &type->t_base->d_type;
      /* Special case: Must initialize more than one thing. */
-     DCCParse_Init(elem_type,attr,NULL,initial_init);
+     if (!has_initializer) {
+      DCCParse_Init(elem_type,attr,NULL,
+                    flags|DCCPARSE_INITFLAG_INBRACE);
+     }
      for (;;) {
       /* Force 'vbottom' into the target. */
       push_target(elem_type,&elem_target);
       vswap();   /* target, init */
       /* Warn if vbottom is a register, or register-offset. */
       if (!--repeat) {
-       vstore(initial_init); /* target=init */
+       vstore(flags&DCCPARSE_INITFLAG_INITIAL); /* target=init */
        break;
       }
-      vdup(1);              /* target, init, init */
-      vlrot(3);             /* init, target, init */
-      vstore(initial_init); /* init, target=init */
-      vpop(0);              /* init */
+      vdup(1);                                 /* target, init, init */
+      vlrot(3);                                /* init, target, init */
+      vstore(flags&DCCPARSE_INITFLAG_INITIAL); /* init, target=init */
+      vpop(0);                                 /* init */
       elem_target.ml_off += elem_size;
      }
      vpop(0);    /* . */
@@ -421,10 +449,9 @@ end_brace:
    else YIELD();
   }
  } else {
-#if 0 /* TODO: FIXME: This currently breaks struct/string assignment! */
   /* Special case: handle missing braces around struct/union/array types.
    * NOTE: Though we must not handle missing braces around arithmetic structure types! */
-  if (type->t_base) {
+  if (type->t_base && (flags&DCCPARSE_INITFLAG_INBRACE)) {
    uint16_t base_kind = type->t_base->d_kind;
    if ((base_kind == DCC_DECLKIND_STRUCT &&
        (!type->t_base->d_attr || !(type->t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC))) ||
@@ -436,7 +463,6 @@ end_brace:
     goto parse_braceblock;
    }
   }
-#endif
   DCCParse_Expr1();
   if (vbottom->sv_reg != DCC_RC_CONST) {
    if (!compiler.c_fun) WARN(W_NON_CONSTANT_GLOBAL_INITIALIZER,type);
@@ -447,7 +473,7 @@ end_brace:
   if (target) {
    push_target(type,target);
    vswap();
-   vstore(initial_init);
+   vstore(flags&DCCPARSE_INITFLAG_INITIAL);
   }
  }
 }

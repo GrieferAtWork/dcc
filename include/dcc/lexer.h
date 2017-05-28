@@ -256,6 +256,7 @@ struct DCCMemLoc;
 
 /* Parse an initializer for the given type 'type'.
  * NOTE: The value parsed will be located in vbottom upon return.
+ * @param: flags:  A set of 'DCCPARSE_INITFLAG_*'
  * @param: target: When non-NULL, specify a custom target for the initializer.
  *                 When NULL, the target is automatically determined,
  *                 usually as a value on the stack, a register, or a constant. */
@@ -263,7 +264,11 @@ DCCFUN void DCC_PARSE_CALL
 DCCParse_Init(struct DCCType const *__restrict type,
               struct DCCAttrDecl const *attr,
               struct DCCMemLoc const *target,
-              int initial_init);
+              uint32_t flags);
+#define DCCPARSE_INITFLAG_NONE    0x00000000
+#define DCCPARSE_INITFLAG_INITIAL 0x00000001 /*< Set for initial initializations. */
+#define DCCPARSE_INITFLAG_INBRACE 0x00000002 /*< Set during recursive initialization to allow for automatic skipping of braces. */
+
 
 /* Parse a variable declaration. The declaration is then pushed on the v-stack.
  * @return: 0: Failed to parse a type.
