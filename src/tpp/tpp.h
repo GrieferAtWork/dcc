@@ -1056,6 +1056,22 @@ TPP_LOCAL TPP(col_t) TPPLexer_COLUMN(void) { struct TPPFile *f = TPPLexer_Textfi
 #define TPPLEXER_FLAG_ERROR                  0x80000000 /*< When set, the lexer is in an error-state in which calls to yield() will return TOK_ERR. */
 #define TPPLEXER_FLAG_MERGEMASK              0xf0000000 /*< A mask of flags that are merged (or'd together) during popf(). */
 #define TPPLEXER_FLAG_DEFAULT                0x00000000 /*< Default set of flags (suitable for use with most token-based compilers). */
+/* A mask of flags that are preserved when modified by #pragma directives.
+ * WARNING: 'TPPLEXER_FLAG_MERGEMASK' must not be part of this mask.
+ * WARNING: 'TPPLEXER_FLAG_NO_MACROS|TPPLEXER_FLAG_NO_DIRECTIVES|TPPLEXER_FLAG_NO_BUILTIN_MACROS'
+ *           must not be part of this mask, as these flags may
+ *           contain custom values while pragmas are executed. */
+#define TPPLEXER_FLAG_PRAGMA_KEEPMASK \
+       (TPPLEXER_FLAG_KEEP_MACRO_WHITESPACE|TPPLEXER_FLAG_TERMINATE_STRING_LF\
+       |TPPLEXER_FLAG_ASM_COMMENTS|TPPLEXER_FLAG_MESSAGE_LOCATION\
+       |TPPLEXER_FLAG_MESSAGE_NOLINEFEED|TPPLEXER_FLAG_KEEP_ARG_WHITESPACE\
+       |TPPLEXER_FLAG_NO_LEGACY_GUARDS|TPPLEXER_FLAG_WERROR\
+       |TPPLEXER_FLAG_WSYSTEMHEADERS|TPPLEXER_FLAG_NO_DEPRECATED\
+       |TPPLEXER_FLAG_MSVC_MESSAGEFORMAT|TPPLEXER_FLAG_NO_WARNINGS\
+       |TPPLEXER_FLAG_NO_ENCODING|TPPLEXER_FLAG_EAT_UNKNOWN_PRAGMA\
+       |TPPLEXER_FLAG_CHAR_UNSIGNED)
+
+
 
 /* Recognized extension token flags. */
 #define TPPLEXER_TOKEN_NONE                  0x00000000
@@ -1074,6 +1090,8 @@ TPP_LOCAL TPP(col_t) TPPLexer_COLUMN(void) { struct TPPFile *f = TPPLexer_Textfi
 #define TPPLEXER_TOKEN_ANGLE3                0x00001000 /*< Enable recognition of '<<<' and '>>>' tokens. */
 #define TPPLEXER_TOKEN_ANGLE3_EQUAL          0x00002000 /*< Enable recognition of '<<<=' and '>>>=' tokens. */
 #define TPPLEXER_TOKEN_LOGT                  0x00004000 /*< Enable recognition of '<>' tokens. */
+#define TPPLEXER_TOKEN_EQUALBINOP            0x00008000 /*< Enable recognition of '=+', '=-', '=*', '=/', '=%', '=&', '=|', '=^', '=<<', '=>>', '=>>>', '=<<<', '=@' and '=**' tokens (NOTE: These are all aliasing the regular inplace versions).
+                                                         *  NOTE: Special token such as '=@' or '=<<<' are only available when other token extensions are enabled as well! */
 #define TPPLEXER_TOKEN_DOLLAR                0x80000000 /*< Recognize '$' as its own token (Supersedes 'EXT_DOLLAR_IS_ALPHA'). */
 #define TPPLEXER_TOKEN_DEFAULT               0x0fffffff /*< Default set of extension tokens (enable all). */
 

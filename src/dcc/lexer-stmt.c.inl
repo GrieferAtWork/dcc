@@ -702,6 +702,7 @@ ignore_case_label:
  {
   /* Parse AT&T-style inline-assembly. */
  case KWD_asm:
+  if (!HAS(EXT_SHORT_EXT_KEYWORDS)) break;
  case KWD___asm:
  case KWD___asm__:
   DCCParse_AsmStmt(0);
@@ -839,6 +840,7 @@ PUBLIC void DCC_PARSE_CALL DCCParse_Global(void) {
 
  { /* Global assembly statement. */
  case KWD_asm:
+  if (!HAS(EXT_SHORT_EXT_KEYWORDS)) break;
  case KWD___asm:
  case KWD___asm__:
   DCCParse_AsmStmt(1);

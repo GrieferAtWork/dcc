@@ -752,6 +752,8 @@ EXTENSION(EXT_VARIABLE_LENGTH_ARRAYS,"variable-length-arrays",1)         /*< All
 EXTENSION(EXT_FUNCTION_STRING_LITERALS,"function-string-literals",1)     /*< Treat '__FUNCTION__' and '__PRETTY_FUNCTION__' as string literals during language-level string-concatation. */
 EXTENSION(EXT_CANONICAL_LIB_PATHS,"canonical-lib-paths",1)               /*< Fix library paths before using them (e.g.: Remove whitespace, fix slashes, etc.). */
 EXTENSION(EXT_CANONICAL_LIB_NAMES,"canonical-lib-names",1)               /*< Fix library names before using them (e.g.: Remove whitespace, fix slashes, etc.). */
+EXTENSION(EXT_SHORT_EXT_KEYWORDS,"asm",1)                                /*< Recognize 'asm', 'typeof' and 'inline' as keywords aliasing '__asm__', '__typeof__' and '__inline__'.
+                                                                          *  NOTE: The name was chosen for compatibility with GCC's commandline flag '-fno-asm' that does the same. */
 WGROUP(WG_CONSTANT_CASE,"constant-case-expressions",WSTATE_ERROR)        /*< Warn about non-constant case expressions. */
 WGROUP(WG_EXTENSIONS,"extensions",WSTATE_ERROR)                          /*< Enable/disable extension warnings (Those things that are really sweet syntactically, but you sadly can't use for standard-compliance). */
 WGROUP(WG_CASE_RANGES,"case-ranges",WSTATE_ERROR)                        /*< Warn about using case-ranges. */

@@ -42,13 +42,14 @@ PRIVATE void load_std_sections(void) {
 INTERN void DCCUNIT_IMPORTCALL
 DCCUnit_LoadSrc_C(struct DCCLibDef *__restrict def) {
  (void)def;
- compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
- CURRENT.l_flags |= (TPPLEXER_FLAG_TERMINATE_STRING_LF);
+ compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN);
+ CURRENT.l_flags  |= (TPPLEXER_FLAG_TERMINATE_STRING_LF);
 
  /* Load standard sections. */
  load_std_sections();
- CURRENT.l_extokens = (TPPLEXER_TOKEN_LANG_C|
-                       TPPLEXER_TOKEN_TILDETILDE);
+ CURRENT.l_extokens &= (TPPLEXER_TOKEN_EQUALBINOP);
+ CURRENT.l_extokens |= (TPPLEXER_TOKEN_LANG_C|
+                        TPPLEXER_TOKEN_TILDETILDE);
  /* Yield the initial token. */
  TPPLexer_Yield();
 

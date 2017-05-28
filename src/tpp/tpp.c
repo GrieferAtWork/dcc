@@ -284,6 +284,13 @@ do{uint32_t const _oldflags = current.l_flags
    current.l_flags = _oldflags|(current.l_flags&TPPLEXER_FLAG_MERGEMASK);\
 }while(FALSE)
 
+/* Similar to 'popf', but flags part of 'mask' are not restored. */
+#define breakff(mask) \
+  (void)(current.l_flags = (_oldflags&~(mask))|(current.l_flags&(TPPLEXER_FLAG_MERGEMASK|(mask))))
+#define popff(mask) \
+         current.l_flags = (_oldflags&~(mask))|(current.l_flags&(TPPLEXER_FLAG_MERGEMASK|(mask)));\
+}while(FALSE)
+
 #define pusheob() \
 do{struct TPPFile *const _oldeob = current.l_eob_file;\
    current.l_eob_file            = token.t_file
@@ -4471,7 +4478,49 @@ parse_multichar:
 
   case '=':
    if (*forward == '=') { ch = TOK_EQUAL; goto settok_forward1; }
-   goto settok;
+   if (!(current.l_extokens&TPPLEXER_TOKEN_EQUALBINOP)) goto settok;
+   /*< '=<<', '=>>', '=>>>', '=<<<', '=@' and '=**' */
+   switch (*forward) {
+   case '+': ch = TOK_ADD_EQUAL; break;
+   case '-': ch = TOK_SUB_EQUAL; break;
+   case '/': ch = TOK_DIV_EQUAL; break;
+   case '%': ch = TOK_MOD_EQUAL; break;
+   case '&': ch = TOK_AND_EQUAL; break;
+   case '|': ch = TOK_OR_EQUAL; break;
+   case '^': ch = TOK_XOR_EQUAL; break;
+   case '*':
+    if (current.l_extokens&TPPLEXER_TOKEN_STARSTAR) {
+     char *forward2 = forward+1;
+     while (SKIP_WRAPLF(forward2,end));
+     if (*forward2 == '*') { iter = ++forward2; ch = TOK_POW_EQUAL; goto settok; }
+    }
+    ch = TOK_MUL_EQUAL;
+    break;
+   case '@': if (!(current.l_extokens&TPPLEXER_TOKEN_ATEQUAL)) goto settok; ch = TOK_XOR_EQUAL; break;
+   {
+    char *forward2;
+   case '<': case '>':
+    forward2 = forward+1;
+    while (SKIP_WRAPLF(forward2,end));
+    if (*forward2 == *forward) {
+     iter = ++forward2;
+     ch = (*forward2 == '<') ? TOK_LANGLE2_EQUAL : TOK_RANGLE2_EQUAL;
+     if (current.l_extokens&TPPLEXER_TOKEN_ANGLE3_EQUAL) {
+      /* Check for 3-range inplace tokens. */
+      while (SKIP_WRAPLF(forward2,end));
+      if (*forward2 == ch) {
+       iter = ++forward2;
+       ch = (ch == '<') ? TOK_LANGLE3_EQUAL : TOK_RANGLE3_EQUAL;
+      }
+     }
+    }
+    goto settok;
+   } break;
+
+   default: goto settok;
+   }
+   goto settok_forward1;
+   
 
   case '!':
    if (*forward == '=') { ch = TOK_NOT_EQUAL; goto settok_forward1; }
@@ -5004,7 +5053,11 @@ def_skip_until_lf:
     if (pragma_error) goto def_skip_until_lf;
     /* Must re-emit this #pragma. */
     breakeob();
+#if TPPLEXER_FLAG_PRAGMA_KEEPMASK
+    breakff(TPPLEXER_FLAG_PRAGMA_KEEPMASK);
+#else
     breakf();
+#endif
     return TPPLexer_YieldRaw();
    } break;
 
@@ -5621,7 +5674,11 @@ again:
      while (token.t_file != current.l_eof_file) popfile();
      popeof();
     }
+#if TPPLEXER_FLAG_PRAGMA_KEEPMASK
+    popff(TPPLEXER_FLAG_PRAGMA_KEEPMASK);
+#else
     popf();
+#endif
     if (!pragma_error) {
      token.t_file->f_pos = old_filepos; /* Restore the old file pointer. */
     } else {
@@ -5972,7 +6029,11 @@ create_int_file:
     }
     if (!pragma_error) token.t_file->f_pos = old_filepos; /* Restore the old file pointer. */
     popeof();
+#if TPPLEXER_FLAG_PRAGMA_KEEPMASK
+    popff(TPPLEXER_FLAG_PRAGMA_KEEPMASK);
+#else
     popf();
+#endif
     if (!pragma_error) TPPLexer_YieldPP(); /* Don't parse pragmas again to prevent infinite recursion. */
     else if (!TOK) goto again; /* If we managed to parse the pragma, continue parsing afterwards. */
     result = TOK;
@@ -6993,8 +7054,8 @@ at_next_non_whitespace:
                   ) ++paren_recursion[RECURSION_BRACE];
               break;
     case TOK_LOWER_EQUAL:   /* '<=' */
-    case TOK_SHL_EQUAL:     /* '<<=' */
-    case TOK_LANGLE3_EQUAL: /* '<<<=' */
+    case TOK_SHL_EQUAL:     /* '<<=' / '=<<' */
+    case TOK_LANGLE3_EQUAL: /* '<<<=' / '=<<<' */
      if (calling_conv >= RECURSION_ANGLE &&
         !paren_recursion[RECURSION_PAREN] &&
         !paren_recursion[RECURSION_BRACKET] &&
@@ -7002,7 +7063,9 @@ at_next_non_whitespace:
       paren_recursion[RECURSION_ANGLE] += TOK == TOK_LANGLE3_EQUAL ? 3 :
                                           TOK == TOK_SHL_EQUAL ? 2 : 1;
       arguments_file->f_pos = token.t_end-1;
-      assert(*arguments_file->f_pos == '=');
+      assert(*arguments_file->f_pos == '=' ||
+             *arguments_file->f_pos == '<');
+      if (*arguments_file->f_pos == '<') ++arguments_file->f_pos;
      }
      break;
     case '<':         /* '<' */
@@ -7026,11 +7089,11 @@ at_next_non_whitespace:
                                 paren_recursion[RECURSION_BRACKET] ||
                                 paren_recursion[RECURSION_PAREN]) break;
                             --paren_recursion[RECURSION_BRACE]; }
-     if (FALSE) { case TOK_SHR:
-                  case TOK_SHR_EQUAL:
-                  case TOK_GREATER_EQUAL:
-                  case TOK_RANGLE3:
-                  case TOK_RANGLE3_EQUAL:
+     if (FALSE) { case TOK_SHR:           /* '>>' */
+                  case TOK_SHR_EQUAL:     /* '>>=' / '=>>' */
+                  case TOK_GREATER_EQUAL: /* '>=' */
+                  case TOK_RANGLE3:       /* '>>>' */
+                  case TOK_RANGLE3_EQUAL: /* '>>>=' / '=>>>' */
                   case '>': if (calling_conv < RECURSION_ANGLE ||
                                 paren_recursion[RECURSION_BRACE] ||
                                 paren_recursion[RECURSION_BRACKET] ||
@@ -7042,13 +7105,15 @@ at_next_non_whitespace:
                               --paren_recursion[RECURSION_ANGLE];
                               --arguments_file->f_pos; /* Parse the '=' again. */
                               break;
-                             case TOK_SHR:
-                             case TOK_SHR_EQUAL:
+                             case TOK_SHR:       /* '>>' */
+                             case TOK_SHR_EQUAL: /* '>>=' / '=>>' */
                               if (paren_recursion[RECURSION_ANGLE] >= 2) {
                                paren_recursion[RECURSION_ANGLE] -= 2;
                                if (TOK == TOK_SHR_EQUAL) {
-                                assert(arguments_file->f_pos[-1] == '=');
-                                --arguments_file->f_pos; /* Parse the '=' again. */
+                                assert(arguments_file->f_pos[-1] == '=' ||
+                                       arguments_file->f_pos[-1] == '>');
+                                if (arguments_file->f_pos[-1] == '=')
+                                  --arguments_file->f_pos; /* Parse the '=' again. */
                                }
                                ++token.t_begin;
                               } else {
@@ -7057,19 +7122,32 @@ at_next_non_whitespace:
                                 assert(arguments_file->f_pos[-1] == '>');
                                 --arguments_file->f_pos; /* Parse the second '>' again. */
                                } else {
-                                assert(arguments_file->f_pos[-1] == '=');
-                                assert(token.t_begin[0] == '>');
-                                arguments_file->f_pos = token.t_begin+1; /* Parse everything after the first '>' again. */
+                                assert(arguments_file->f_pos[-1] == '=' ||
+                                       arguments_file->f_pos[-1] == '>');
+                                assert(token.t_begin[0] == '>' ||
+                                       token.t_begin[0] == '=');
+                                /* Parse everything after the first '>' again. */
+                                if (token.t_begin[0] != '=') {
+                                 arguments_file->f_pos = token.t_begin+1;
+                                } else {
+                                 arguments_file->f_pos = token.t_begin+1;
+                                 while (SKIP_WRAPLF(arguments_file->f_pos,
+                                                    arguments_file->f_end));
+                                 assert(arguments_file->f_pos[0] == '>');;
+                                 ++arguments_file->f_pos;
+                                }
                                }
                               }
                               break;
-                             case TOK_RANGLE3:
-                             case TOK_RANGLE3_EQUAL:
+                             case TOK_RANGLE3:       /* '>>>' */
+                             case TOK_RANGLE3_EQUAL: /* '>>>=' = '=>>>' */
                               if (paren_recursion[RECURSION_ANGLE] >= 3) {
                                paren_recursion[RECURSION_ANGLE] -= 3;
                                if (TOK == TOK_RANGLE3_EQUAL) {
-                                assert(arguments_file->f_pos[-1] == '=');
-                                --arguments_file->f_pos; /* Parse the '=' again. */
+                                assert(arguments_file->f_pos[-1] == '=' ||
+                                       arguments_file->f_pos[-1] == '>');
+                                if (arguments_file->f_pos[-1] == '=')
+                                  --arguments_file->f_pos; /* Parse the '=' again. */
                                }
                                ++token.t_begin;
                                while (SKIP_WRAPLF(token.t_begin,token.t_end));
@@ -7078,11 +7156,14 @@ at_next_non_whitespace:
                               } else if (paren_recursion[RECURSION_ANGLE] >= 2) {
                                paren_recursion[RECURSION_ANGLE] -= 2;
                                if (TOK == TOK_RANGLE3_EQUAL) {
-                                assert(arguments_file->f_pos[-1] == '=');
+                                assert(arguments_file->f_pos[-1] == '=' ||
+                                       arguments_file->f_pos[-1] == '>');
                                 --arguments_file->f_pos; /* Parse the '=' again. */
-                                while (SKIP_WRAPLF_REV(arguments_file->f_pos,arguments_file->f_begin));
-                                assert(arguments_file->f_pos[-1] == '>');
-                                --arguments_file->f_pos; /* Parse the '>=' again. */
+                                if (arguments_file->f_pos[0] != '>') {
+                                 while (SKIP_WRAPLF_REV(arguments_file->f_pos,arguments_file->f_begin));
+                                 assert(arguments_file->f_pos[-1] == '>');
+                                 --arguments_file->f_pos; /* Parse the '>=' again. */
+                                }
                                } else {
                                 assert(arguments_file->f_pos[-1] == '>');
                                 --arguments_file->f_pos; /* Parse the '>' again. */
@@ -7090,8 +7171,14 @@ at_next_non_whitespace:
                                ++token.t_begin;
                                assert(*token.t_begin == '>');
                               } else {
+                               assert(*token.t_begin == '>' ||
+                                      *token.t_begin == '=');
+                               if (*token.t_begin == '=') {
+                                ++token.t_begin;
+                                while (SKIP_WRAPLF(token.t_begin,arguments_file->f_end));
+                               }
                                --paren_recursion[RECURSION_ANGLE];
-                               arguments_file->f_pos = token.t_begin+1; /* Parse the '>>' / '>>=' again. */
+                               arguments_file->f_pos = token.t_begin+1; /* Parse the '>>' / '>>=' / '>' / '>>' again. */
                               }
                               break;
                             }

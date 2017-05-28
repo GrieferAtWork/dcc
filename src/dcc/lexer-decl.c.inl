@@ -143,36 +143,15 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
  DCCAttrDecl_InitCopy(&attr,base_attr);
  decl_name = DCCParse_CTypeSuffix(&type,&attr);
  DCCType_ASSERT(&type);
- if (TOK == KWD_asm ||
-     TOK == KWD___asm ||
-     TOK == KWD___asm__) {
+ if ((TOK == KWD_asm && HAS(EXT_SHORT_EXT_KEYWORDS)) ||
+      TOK == KWD___asm ||
+      TOK == KWD___asm__) {
   struct TPPString *asmname_string;
   /* Assembly name declaration. */
   YIELD();
   DCCParse_ParPairBegin();
   if (TPP_ISSTRING(TOK)) {
-#if 0 /*< Don't do this... If we did it here, we'd need to add more exceptions
-       *  for attribute parsing: __attribute__((alias("alt_" __FUNCTION__)))
-       *  And that would just get too messy:
-       *  >> void foo() __attribute__((alias("alt_" __FUNCTION__))); // Doable (could be written to expand to "alt_foo")
-       *  >> __attribute__((alias("alt_" __FUNCTION__))) void foo(); // Impossible (At the time of the attribute, the declaration name is unknown!)
-       */
-   /* Expand __FUNCTION__/__PRETTY_FUNCTION__ to the name/type of the declaration. */
-   if (compiler.c_fun && HAS(EXT_FUNCTION_STRING_LITERALS)) {
-    struct DCCType stored_type;
-    struct TPPKeyword const *stored_name;
-    stored_type = compiler.c_fun->d_type;
-    stored_name = compiler.c_fun->d_name;
-    compiler.c_fun->d_type = type;
-    compiler.c_fun->d_name = decl_name;
-    asmname_string = DCCParse_String();
-    compiler.c_fun->d_name = stored_name;
-    compiler.c_fun->d_type = stored_type;
-   } else
-#endif
-   {
-    asmname_string = DCCParse_String();
-   }
+   asmname_string = DCCParse_String();
   } else {
    WARN(W_EXPECTED_STRING_FOR_ASSEMBLY_NAME);
    asmname_string = NULL;

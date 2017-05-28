@@ -923,6 +923,7 @@ again:
 
  { /* Storage flag: inline. */
  case KWD_inline:
+  if (!HAS(EXT_SHORT_EXT_KEYWORDS)) break;
  case KWD___inline:
  case KWD___inline__:
   if (flags&F_INLINE)
@@ -947,6 +948,7 @@ again:
   int has_paren;
   struct DCCAttrDecl typeof_attr;
  case KWD_typeof:
+  if (!HAS(EXT_SHORT_EXT_KEYWORDS)) break;
  case KWD___typeof:
  case KWD___typeof__:
   if (flags&(F_INT|F_SIGN|F_WIDTH)) break;
