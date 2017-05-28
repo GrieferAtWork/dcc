@@ -1591,6 +1591,8 @@ check_bss:
   }
  }
 end:
+ /* TODO: (ab-)use this function for transferring
+  *        data to lower, free memory regions? */
  return result;
 }
 

@@ -187,12 +187,33 @@ DCCStackValue_Kill(struct DCCStackValue *__restrict self) {
   s = DCCType_Sizeof(&self->sv_ctype,&a,1);
   local_target.sv_ctype = self->sv_ctype;
  }
- local_target.sv_flags        = DCC_SFLAG_LVALUE;
- local_target.sv_reg          = DCC_RR_XBP;
- local_target.sv_reg2         = DCC_RC_CONST;
- local_target.sv_const.it     = 0;
- local_target.sv_const.offset = DCCCompiler_HWStackAlloc(s,a,0);
- local_target.sv_sym          = NULL;
+
+ /* During static initialization, allocate section memory instead! */
+ local_target.sv_flags    = DCC_SFLAG_LVALUE;
+ local_target.sv_reg2     = DCC_RC_CONST;
+ local_target.sv_const.it = 0;
+ if (compiler.c_flags&DCC_COMPILER_FLAG_SINIT) {
+  struct DCCSection *target_section;
+  target_ptr_t       target_ptr;
+  struct DCCSym     *target_sym;
+  target_section = DCCTYPE_STATICWRITABLE(self->sv_ctype.t_type)
+                                          ? unit.u_data
+                                          : unit.u_bss;
+  WARN(W_IMPLICIT_SECTION_ALLOCATION,
+       target_section->sc_start.sy_name->k_name,s);
+  target_sym     = DCCUnit_AllocSym();
+  if unlikely(!target_sym) goto alloc_stack;
+  target_ptr     = DCCSection_DAlloc(target_section,s,a,0);
+  DCCSym_Define(target_sym,target_section,target_ptr,s);
+  local_target.sv_reg = DCC_RC_CONST;
+  local_target.sv_sym = target_sym;
+  DCCSym_Incref(target_sym);
+ } else {
+alloc_stack:
+  local_target.sv_reg          = DCC_RR_XBP;
+  local_target.sv_const.offset = DCCCompiler_HWStackAlloc(s,a,0);
+  local_target.sv_sym          = NULL;
+ }
  /* Generate the store. */
  DCCStackValue_Store(self,&local_target,1);
  if (was_lvalue) DCCDecl_XDecref(self->sv_ctype.t_base);

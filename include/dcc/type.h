@@ -129,6 +129,11 @@ struct DCCDecl;
 #define DCCTYPE_ISARRAY(t)           (DCCTYPE_GROUP(t) == DCCTYPE_ARRAY || DCCTYPE_GROUP(t) == DCCTYPE_VARRAY)
 #define DCCTYPE_ISSIGNLESSBASIC(t,x) (((t)&((DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))|DCCTYPE_GROUPMASK)) == (DCCTYPE_BUILTIN|(x)))
 
+/* Returns TRUE/FALSE indicating if a given type 't'
+ * must be allocated in writable static storage.
+ * Note, that the storage of an l-value pointer is not writable! */
+#define DCCTYPE_STATICWRITABLE(t) (!((t)&DCCTYPE_CONST || DCCTYPE_GROUP(t) == DCCTYPE_LVALUE))
+
 
 
 typedef uint32_t DCC(tyid_t); /*< Type id+flags ('DCCTYPE_*'). */

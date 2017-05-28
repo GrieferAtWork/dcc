@@ -79,6 +79,40 @@ parse_braceblock:
         WARN(W_ASSIGN_INIT_CONSTANT_TYPE,type);
   switch (DCCTYPE_GROUP(type->t_type)) {
 
+  case DCCTYPE_LVALUE:
+   /* L-value initializer. */
+   assert(type->t_base);
+   if (flags&DCCPARSE_INITFLAG_INITIAL) {
+    WARN(W_BRACE_INITIALIZER_FOR_LVALUE_TYPE,type);
+lvalue_initial:
+    /* Fallback: Generate an automatic target and assign it to the current. */
+    DCCParse_Init(&type->t_base->d_type,NULL,NULL,flags);
+    DCCParse_FixType(&type->t_base->d_type);
+    if (!target) {
+     /* Explicitly cast to l-value type to generate indirection. */
+     vcast(type,1);
+    } else {
+     push_target(type,target);
+     vswap();   /* target, init */
+     vstore(1); /* target=init */
+    }
+   } else {
+    struct DCCMemLoc lv_target;
+    if (!target) {
+     WARN(W_BRACE_INITIALIZER_FOR_LVALUE_TYPE_NOTARGET,type);
+     goto lvalue_initial;
+    }
+    /* Point the target at the pointed-to value. */
+    lv_target.ml_reg = DCCVStack_GetReg(DCC_RC_PTR,1);
+    lv_target.ml_off = 0;
+    lv_target.ml_sym = NULL;
+    DCCDisp_LeaReg(target,lv_target.ml_reg);
+    /* Recursively compile an initialize for the l-value target. */
+    DCCParse_Init(&type->t_base->d_type,NULL,&lv_target,flags);
+    DCCParse_FixType(&type->t_base->d_type);
+   }
+   return;
+
   case DCCTYPE_STRUCTURE:
    assert(type->t_base);
    assert(type->t_base->d_kind == DCC_DECLKIND_STRUCT ||
@@ -137,7 +171,7 @@ parse_braceblock:
       (compiler.c_flags&DCC_COMPILER_FLAG_SINIT)) {
     struct DCCSection *target_section;
     /* Global storage duration. */
-    target_section = DCCATTRDECL_GETSECTION_OR_IMPORT(attr);
+    target_section = attr ? DCCATTRDECL_GETSECTION_OR_IMPORT(attr) : NULL;
     if (!target_section || DCCSection_ISIMPORT(target_section)) {
      target_section = type->t_type&DCCTYPE_CONST ? unit.u_data : unit.u_bss;
     }
@@ -281,7 +315,7 @@ parse_field:
     has_initializer = 0;
     if (DCCTYPE_ISBASIC(elem_type->t_type,DCCTYPE_AUTO)) {
      /* Special case: 'auto x[] = {10,20,30};' --> 'int x[] = {10,20,30};' */
-     DCCParse_Init(elem_type,attr,NULL,flags|
+     DCCParse_Init(elem_type,NULL,NULL,flags|
                    DCCPARSE_INITFLAG_INBRACE);
      has_initializer = 1;
      assert(vsize);

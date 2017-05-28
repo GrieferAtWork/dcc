@@ -913,7 +913,9 @@ DEF_WARNING(W_VARIADIC_REQUIRES_INITIALIZER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE
 DEF_WARNING(W_LVALUE_REQUIRES_INITIALIZER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("l-value type '%s' require an initializer"))
 DEF_WARNING(W_EXPECTED_FUNCTION_TYPE_FOR_CALL,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected function type '%s' for call"))
 
-DEF_WARNING(W_BRACE_INITIALIZER_FOR_DEFAULT_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer for regular type '%s'"))
+DEF_WARNING(W_BRACE_INITIALIZER_FOR_LVALUE_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for initial assignment to l-value type '%s'"))
+DEF_WARNING(W_BRACE_INITIALIZER_FOR_LVALUE_TYPE_NOTARGET,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for initialization of l-value type '%s' without target"))
+DEF_WARNING(W_BRACE_INITIALIZER_FOR_DEFAULT_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Brace initializer used for regular type '%s'"))
 DEF_WARNING(W_BRACE_INITIALIZER_FOR_VLA_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Variable length array type '%s' cannot be brace-initialized"))
 DEF_WARNING(W_STRUCTURE_FULLY_INITIALIZED,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("struct/union type '%s' was already fully initialized"))
 DEF_WARNING(W_ARRAY_FULLY_INITIALIZED,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Array type '%s' was already fully initialized"))
@@ -1344,6 +1346,11 @@ DEF_WARNING(W_UNRESOLVED_REFERENCE,(WG_LINKER,WG_USAGE,WG_SYMBOL),WSTATE_ERROR,{
        kwdname,secname,(unsigned long)offset);
 })
 DEF_WARNING(W_JMP_TARGET_TRUNCATED,(WG_LINKER),WSTATE_WARN,WARNF("jmp target was truncated to fit"))
+DEF_WARNING(W_IMPLICIT_SECTION_ALLOCATION,(WG_QUALITY),WSTATE_WARN,{
+ char *n = ARG(char *);
+ WARNF("Implicit allocation of '%lu' bytes in section '%s' during static initialization\n",
+      (unsigned long)ARG(target_siz_t),n);
+})
 DEF_WARNING(W_ALLOC_OBJECT_IN_TEXT,(WG_LINKER),WSTATE_WARN,{
  DECL_LOAD();
  WARNF("Declaration '%s' allocated inside assembly of section '%s'\n",
