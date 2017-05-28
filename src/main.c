@@ -98,9 +98,8 @@ static void tpp_clrfile(void) {
 }
 
 int main(int argc, char *argv[]) {
- struct DCCSection *sec;
- int result = 0;
  char const *outfile_name = NULL;
+ int result = 0;
 
 #define F_COMPILEONLY  0x00000001
 #define F_PREPROCESSOR 0x00000002
@@ -211,6 +210,7 @@ int main(int argc, char *argv[]) {
   save_object(outfile_name);
  } else {
   stream_t s_out;
+  struct DCCSection *sec;
   /* Prepare generated code for output to file. */
   DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);
   s_out = s_openw(outfile_name);
@@ -221,6 +221,7 @@ int main(int argc, char *argv[]) {
 
 #if 0 /* TODO: Direct execution mode. */
  {
+  struct DCCSection *sec;
   struct DCCSym *entry_sym;
   void(*entry)(void);
 

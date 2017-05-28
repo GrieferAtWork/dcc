@@ -2215,7 +2215,7 @@ strop_normal:
      *       as the TPP equivalent for:
      *    >> #define is_defined(x)  defined(#!x)
      *       With that in mind, implement that extension here.
-     * NOTE: I thought GCC did this and think I even remember seeing something use it (may the linux kernel?)
+     * NOTE: I thought GCC did this and think I even remember seeing something use it (maybe the linux kernel?)
      *       Anyways... ' guess that's Mandella for ya (And I'm from a parallel reality where GCC did do this!)
      *    >> I still implemented this as an extension though,
      *       simply because it feels like a good idea, that may
@@ -8004,7 +8004,6 @@ restore_warnings:
    if (result) {
     if (!TPPConst_IsBool(result)) TPPLexer_Warn(W_EXPECTED_BOOL,result);
     is_true = TPPConst_IsTrue(result);
-    is_true = 1;
     TPPConst_Quit(result);
    }
    if unlikely(TOK != ',') TPPLexer_Warn(W_EXPECTED_COMMA);

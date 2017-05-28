@@ -528,6 +528,7 @@ DCC_DECL_END
 #include "lexer-attributes.c.inl"
 #include "lexer-builtins.c.inl"
 #include "lexer-ctype.c.inl"
+#include "lexer-ctype-struct.c.inl"
 #include "lexer-decl.c.inl"
 #include "lexer-expr.c.inl"
 #include "lexer-init.c.inl"

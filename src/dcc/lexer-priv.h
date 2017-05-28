@@ -29,24 +29,32 @@ struct TPPKeyword;
 struct DCCSym;
 struct DCCDecl;
 
-#define LEXDECL extern
-#define LEXPRIV /* nothing */
-
-LEXDECL void DCCSym_CalculateStructureOffsets(struct DCCDecl *__restrict self);
+#define LEXDECL INTDEF
+#define LEXPRIV INTERN
 
 LEXDECL struct TPPKeyword *DCC_PARSE_CALL tok_without_underscores(void);
+
 /* Peek the first character of what will likely be the next token. */
 LEXDECL char *DCC_PARSE_CALL peek_next_token(struct TPPFile **tok_file);
 
-/* Do type promotions on a function argument type (e.g.: 'array/V-array --> pointer') */
-LEXDECL void DCC_PARSE_CALL DCCType_PromoteFunArg(struct DCCType *__restrict self);
+
+INTDEF void DCCDecl_CalculateFunctionOffsets(struct DCCDecl *__restrict funtydecl);
+INTDEF void DCCDecl_CalculateStructureOffsets(struct DCCDecl *__restrict self);
+INTDEF void DCCType_SetTypeMode(struct DCCType *__restrict self, uint32_t mode_flags);
+INTDEF void DCCType_PromoteFunArg(struct DCCType *__restrict self); /* Do type promotions on a function argument type (e.g.: 'array/V-array --> pointer') */
 
 #define ATTRKIND_ATTRIBUTE 0
 #define ATTRKIND_DECLSPEC  1
 #define ATTRKIND_BRACKETS  2
 LEXDECL void DCC_PARSE_CALL DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind);
 
-LEXDECL void DCC_PARSE_CALL DCCParse_CTypeSuffix2(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);
+LEXDECL void DCC_PARSE_CALL DCCParse_CTypeNewArgumentList(struct DCCDecl *__restrict funtydecl, struct DCCType *opt_firsttype, struct TPPKeyword *opt_firstname, struct DCCAttrDecl *opt_firstattr);
+LEXDECL void DCC_PARSE_CALL DCCParse_CTypeOldArgumentList(struct DCCDecl *__restrict funtydecl, struct TPPKeyword  *opt_firstname, struct DCCAttrDecl *opt_firstattr);
+LEXDECL void DCC_PARSE_CALL DCCParse_CTypeOldArgumentListDefWithBase(struct DCCDecl *__restrict funtydecl, struct DCCType const *__restrict base_type, struct DCCAttrDecl const *__restrict base_attr);
+LEXDECL void DCC_PARSE_CALL DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl);
+LEXDECL void DCC_PARSE_CALL DCCParse_CTypeOldArgumentListDefWithFirstBase(struct DCCDecl *__restrict funtydecl, struct DCCType *__restrict firstbase_type, struct DCCAttrDecl *__restrict firstbase_attr);
+LEXDECL void DCC_PARSE_CALL DCCParse_CTypeArrayExt(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);
+LEXDECL void DCC_PARSE_CALL DCCParse_CTypeTrail(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);
 
 LEXDECL void DCC_PARSE_CALL DCCParse_WarnAllocaInLoop(void);
 LEXDECL rc_t DCC_PARSE_CALL DCCParse_Register(void);
@@ -70,7 +78,6 @@ LEXDECL void DCC_PARSE_CALL DCCParse_ExprLXor(void);
 LEXDECL void DCC_PARSE_CALL DCCParse_ExprLOr(void);
 LEXDECL void DCC_PARSE_CALL DCCParse_ExprCond(void);
 
-LEXDECL int DCC_PARSE_CALL DCCParse_TryFunctionPrototype(struct DCCDecl *__restrict fundecl, int try_parse);
 /* Fix a given type using the value from 'vbottom'. */
 LEXDECL void DCC_PARSE_CALL DCCParse_FixType(struct DCCType *__restrict type);
 
@@ -82,7 +89,7 @@ LEXPRIV void DCC_PARSE_CALL
 DCCParse_OldFunctionArgument(struct DCCArgAllocator *__restrict allocator,
                              struct DCCType const *__restrict base_type,
                              struct DCCAttrDecl const *__restrict base_attr);
-LEXDECL int DCC_PARSE_CALL
+LEXDECL void DCC_PARSE_CALL
 DCCParse_Function(struct DCCDecl *fun_decl, struct TPPKeyword const *asmname,
                   struct DCCType const *__restrict fun_type,
                   struct DCCAttrDecl const *__restrict fun_attr);

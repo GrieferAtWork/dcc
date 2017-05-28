@@ -528,7 +528,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
   YIELD();
  } break;
 
-#if 1
+#if 0
  {
   float_t fltval;
   int flt_kind;

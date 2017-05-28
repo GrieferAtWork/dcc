@@ -269,6 +269,9 @@ DCC_DECL_BEGIN
 #   define DCC_TARGET_BITPERBYTE           8
 #   define DCC_TARGET_PAGESIZE          4096
 
+/* Default stack-alignment of normal arguments. */
+#   define DCC_TARGET_STACKALIGN           DCC_TARGET_SIZEOF_INT
+
 /* Stack-alignment of variadic arguments. */
 #   define DCC_TARGET_VA_ALIGN             DCC_TARGET_SIZEOF_POINTER
 

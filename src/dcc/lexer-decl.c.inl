@@ -36,62 +36,6 @@ struct DCCArgAllocator {
  rc_t         aa_basereg; /*< Base-register used for argument allocation. */
  target_off_t aa_offset;  /*< Current argument offset from the base register. */
 };
-PRIVATE target_off_t
-DCCArgAllocator_AllocWithAttr(struct DCCArgAllocator *__restrict allocator,
-                              struct DCCType const *__restrict type,
-                              struct DCCAttrDecl const *__restrict attr) {
- size_t s,a; target_off_t address;
- s = DCCType_Sizeof(type,&a,1);
- /* Require at least integer alignment. */
- if (a < DCC_TARGET_SIZEOF_INT) a = DCC_TARGET_SIZEOF_INT;
- /* Respect explicit alignment through attributes. */
- if (attr->a_flags&DCC_ATTRFLAG_PACKED) {
-  a = (attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN) ? attr->a_align : 1;
- } else if (attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN && attr->a_align > a) {
-  a = attr->a_align;
- }
- address = allocator->aa_offset;
- address = (address+(a-1)) & ~(a-1);
- allocator->aa_offset = address+s;
- return address;
-}
-
-
-
-LEXPRIV void DCC_PARSE_CALL
-DCCParse_OldFunctionArgument(struct DCCArgAllocator *__restrict allocator,
-                             struct DCCType const *__restrict base_type,
-                             struct DCCAttrDecl const *__restrict base_attr) {
- struct DCCType type;
- struct DCCAttrDecl attr;
- struct TPPKeyword *argument_name;
- struct DCCDecl *local_decl;
- target_off_t address;
- DCCType_InitCopy(&type,base_type);
- DCCAttrDecl_InitCopy(&attr,base_attr);
- argument_name = DCCParse_CTypeSuffix(&type,&attr);
- DCCType_PromoteFunArg(&type);
- address = DCCArgAllocator_AllocWithAttr(allocator,&type,&attr);
- /* Define a local variable. */
- if (argument_name != &TPPKeyword_Empty &&
-    (local_decl = DCCCompiler_NewLocalDecl(argument_name,DCC_NS_LOCALS)) != NULL) {
-  if (local_decl->d_kind != DCC_DECLKIND_NONE)
-   WARN(W_DECL_ALREADY_DEFINED,local_decl);
-  else {
-   local_decl->d_type = type; /* Inherit data */
-   type.t_base = NULL; /* Prevent decref below. */
-   DCCDecl_SetAttr(local_decl,&attr);
-   local_decl->d_kind = DCC_DECLKIND_MLOC;
-   assert(local_decl->d_mdecl.md_loc.ml_sym == NULL);
-   /* Positive offsets from %EBP. */
-   local_decl->d_mdecl.md_loc.ml_reg = allocator->aa_basereg;
-   local_decl->d_mdecl.md_loc.ml_off = address;
-   local_decl->d_mdecl.md_scope      = compiler.c_scope.s_id;
-  }
- }
- DCCType_Quit(&type);
- DCCAttrDecl_Quit(&attr);
-}
 
 PRIVATE void
 DCCParse_AllocFunArgs(struct DCCArgAllocator *__restrict allocator,
@@ -124,18 +68,17 @@ DCCParse_AllocFunArgs(struct DCCArgAllocator *__restrict allocator,
  }
 }
 
-LEXPRIV int DCC_PARSE_CALL
+LEXPRIV void DCC_PARSE_CALL
 DCCParse_Function(struct DCCDecl *fun_decl, struct TPPKeyword const *asmname,
                   struct DCCType const *__restrict fun_type,
                   struct DCCAttrDecl const *__restrict fun_attr) {
+ struct DCCFunctionFrame frame;
+ struct DCCSym *fun_sym = NULL;
  struct DCCArgAllocator function_allocator;
- struct DCCType oldarg_type;
- struct DCCAttrDecl oldarg_attr = DCCATTRDECL_INIT;
  /* TODO: arrow-style return expressions/return-type-declarations:
   * >> auto add(int x, int y) -> typeof(x+y) { return x+y; }
   * >> auto add(int x, int y) -> x+y; // Deemon-style (Define return type & expression)
   */
- if (TOK != '{' && !DCCParse_CTypePrefix(&oldarg_type,&oldarg_attr)) return 0;
  /* Create the function scope. */
  pushscope_function();
  if (fun_attr->a_flags&DCC_ATTRFLAG_NAKED) {
@@ -146,61 +89,43 @@ DCCParse_Function(struct DCCDecl *fun_decl, struct TPPKeyword const *asmname,
   function_allocator.aa_offset  = DCC_TARGET_SIZEOF_POINTER*2;
   function_allocator.aa_basereg = DCC_RR_XBP;
  }
-
- /* Allocate new-style arguments. */
+ /* Allocate arguments. */
  if (DCCTYPE_GROUP(fun_type->t_type) == DCCTYPE_FUNCTION &&
      fun_type->t_base->d_kind == DCC_DECLKIND_FUNCTION) {
   DCCParse_AllocFunArgs(&function_allocator,fun_type->t_base);
  }
- /* Parse old-style arguments. */
- while (TOK != '{' && TOK > 0) {
-  for (;;) {
-   DCCParse_OldFunctionArgument(&function_allocator,
-                                &oldarg_type,&oldarg_attr);
-   if (TOK != ',') break;
-   YIELD();
-  }
-  if (TOK != ';') WARN(W_EXPECTED_SEMICOLON); else YIELD();
-  DCCAttrDecl_Quit(&oldarg_attr);
-  DCCType_Quit(&oldarg_type);
- }
  /* Actually parse the function body. */
- if (TOK == '{') {
-  struct DCCFunctionFrame frame;
-  struct DCCSym *fun_sym = NULL;
-  if (fun_decl) {
-   if (fun_decl->d_kind == DCC_DECLKIND_NONE)
-       fun_decl->d_kind =  DCC_DECLKIND_MLOC;
-   if (fun_decl->d_kind&DCC_DECLKIND_MLOC) {
-    fun_sym = fun_decl->d_mdecl.md_loc.ml_sym;
-    /* TODO: Shouldn't local function be static+unnamed to prevent symbol re-declaration?
-     *       What does GCC do here? (Go figure it out and mirror that behavior!) */
-    if (!fun_sym) {
-     /* Allocate missing function symbols. */
-     if (!asmname) asmname = DCCDecl_GenAsmname(fun_decl);
-     fun_sym = (asmname == &TPPKeyword_Empty)
-      ? DCCUnit_AllocSym()
-      : DCCUnit_NewSym(asmname,DCC_SYMFLAG_NONE);
-     fun_decl->d_mdecl.md_loc.ml_sym = fun_sym;
-     DCCSym_XIncref(fun_sym);
-    }
+ if (fun_decl) {
+  if (fun_decl->d_kind == DCC_DECLKIND_NONE)
+      fun_decl->d_kind =  DCC_DECLKIND_MLOC;
+  if (fun_decl->d_kind&DCC_DECLKIND_MLOC) {
+   fun_sym = fun_decl->d_mdecl.md_loc.ml_sym;
+   /* TODO: Shouldn't local function be static+unnamed to prevent symbol re-declaration?
+    *       What does GCC do here? (Go figure it out and mirror that behavior!) */
+   if (!fun_sym) {
+    /* Allocate missing function symbols. */
+    if (!asmname) asmname = DCCDecl_GenAsmname(fun_decl);
+    fun_sym = (asmname == &TPPKeyword_Empty)
+     ? DCCUnit_AllocSym()
+     : DCCUnit_NewSym(asmname,DCC_SYMFLAG_NONE);
+    fun_decl->d_mdecl.md_loc.ml_sym = fun_sym;
+    DCCSym_XIncref(fun_sym);
    }
   }
-  if unlikely(!fun_sym) fun_sym = DCCUnit_AllocSym();
-  if unlikely(!fun_sym) goto done;
-  DCCFunctionFrame_Enter(&frame,fun_decl,fun_sym,fun_attr);
-  /* Parse the function scope text. */
-  YIELD();
-  if (TOK != '}') {
-   DCCParse_ScopeText(DCC_PFLAG_NONE);
-   vpop(1); /* Pop the last expression within the function. */
-  }
-  if (TOK != '}') WARN(W_EXPECTED_RBRACE); else YIELD();
-  DCCFunctionFrame_Leave(&frame);
  }
+ if unlikely(!fun_sym) fun_sym = DCCUnit_AllocSym();
+ if unlikely(!fun_sym) goto done;
+ DCCFunctionFrame_Enter(&frame,fun_decl,fun_sym,fun_attr);
+ /* Parse the function scope text. */
+ YIELD();
+ if (TOK != '}') {
+  DCCParse_ScopeText(DCC_PFLAG_NONE);
+  vpop(1); /* Pop the last expression within the function. */
+ }
+ if (TOK != '}') WARN(W_EXPECTED_RBRACE); else YIELD();
+ DCCFunctionFrame_Leave(&frame);
 done:
  popscope_function();
- return 1;
 }
 
 
@@ -384,19 +309,10 @@ no_decl:
   }
   popf();
   goto end_nopush; /* Don't push again below! */
- } else if ((TOK == '{' || DCCTYPE_GROUP(real_decl_type->t_type) == DCCTYPE_FUNCTION) &&
-             /* old-style function implementation:
-              * >> int main()
-              * >>     int    argc;
-              * >>     char **argv;
-              * >> {
-              * >>     printf("Hello World!\n");
-              * >>     return 0;
-              * >> } */
-             DCCParse_Function(
-             ((decl && (real_decl_type->t_type&DCCTYPE_STOREBASE) == DCCTYPE_TYPEDEF)
-               ? (WARN(W_DECL_TYPEDEF_WITH_INITIALIZER,decl),NULL)
-               : decl),asmname,real_decl_type,&attr)) {
+ } else if (TOK == '{') {
+  if (decl && (real_decl_type->t_type&DCCTYPE_STOREBASE) == DCCTYPE_TYPEDEF)
+      WARN(W_DECL_TYPEDEF_WITH_INITIALIZER,decl),decl = NULL;
+  DCCParse_Function(decl,asmname,real_decl_type,&attr);
   result = 2;
   if (decl && (real_decl_type->t_type&DCCTYPE_STOREBASE) ==
       DCCTYPE_TYPEDEF) goto declare_typedef;

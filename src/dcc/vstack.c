@@ -2080,7 +2080,7 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
 #endif
    /* Nothing else to do here.
     * The actual effect of this is handled once the value is used! */
-   self->sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ASTMASK);
+   self->sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK);
 #if DCCTYPE_INT != 0
    self->sv_ctype.t_type |=   DCCTYPE_INT;
 #endif
@@ -2493,10 +2493,7 @@ DCCVStack_PushSym(struct DCCSym *__restrict sym) {
  slot.sv_reg2         = DCC_RC_CONST;
  slot.sv_ctype.t_base = NULL;
  slot.sv_ctype.t_type = DCCTYPE_VOID;
- //DCCType_MkOldFunc(&slot.sv_ctype);
- //assert(slot.sv_ctype.t_base);
  vpush(&slot);
- //DCCDecl_Decref(slot.sv_ctype.t_base);
 }
 
 PUBLIC void DCC_VSTACK_CALL
@@ -3746,8 +3743,8 @@ DCCVStack_PromInt2(void) {
       vbottom[1].sv_ctype.t_type&DCCTYPE_UNSIGNED)
       common_type |= DCCTYPE_UNSIGNED;
   /* Apply the common typing to with stack-values. */
-  vbottom[0].sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ASTMASK);
-  vbottom[1].sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ASTMASK);
+  vbottom[0].sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK);
+  vbottom[1].sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK);
   vbottom[0].sv_ctype.t_type |=   common_type;
   vbottom[1].sv_ctype.t_type |=   common_type;
  }
@@ -3975,7 +3972,7 @@ after_typefix:
  }
  DCCDecl_XIncref(funty_decl);
  cc          = DCC_ATTRFLAG_CDECL;
- stack_align = DCC_TARGET_SIZEOF_INT;
+ stack_align = DCC_TARGET_STACKALIGN;
  argc        = 0;
  argv        = NULL;
  untyped     = n_args;

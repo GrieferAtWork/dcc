@@ -499,10 +499,10 @@ DCCType_IsCompatible(struct DCCType const *__restrict a,
  if (!result) {
   tyid_t ta,tb;
   /* Make sure that the alt-name masks of both types match. */
-  if ((a->t_type&DCCTYPE_ASTMASK) !=
-      (b->t_type&DCCTYPE_ASTMASK)) return 0;
-  ta = a->t_type & ~(DCCTYPE_FLAGSMASK&~(DCCTYPE_QUAL|DCCTYPE_ASTMASK));
-  tb = b->t_type & ~(DCCTYPE_FLAGSMASK&~(DCCTYPE_QUAL|DCCTYPE_ASTMASK));
+  if ((a->t_type&DCCTYPE_ALTMASK) !=
+      (b->t_type&DCCTYPE_ALTMASK)) return 0;
+  ta = a->t_type & ~(DCCTYPE_FLAGSMASK&~(DCCTYPE_QUAL|DCCTYPE_ALTMASK));
+  tb = b->t_type & ~(DCCTYPE_FLAGSMASK&~(DCCTYPE_QUAL|DCCTYPE_ALTMASK));
   if (unqualified) {
    ta &= ~(DCCTYPE_QUAL);
    tb &= ~(DCCTYPE_QUAL);

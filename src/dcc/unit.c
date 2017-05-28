@@ -560,10 +560,6 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
 #if DCC_TARGET_BIN == DCC_BINARY_PE
  DCCSym_XDecref(self->sy_peind);
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
-#if DCC_DEBUG
- assert(!self->sy_unit_next);
-#endif
-
  if (self->sy_sec_pself) {
   assert(*self->sy_sec_pself == self);
   if ((*self->sy_sec_pself = self->sy_sec_next) != NULL) {
@@ -648,6 +644,13 @@ DCCSection_Clear(struct DCCSection *__restrict self) {
     self->sc_relc = 0;
     self->sc_rela = 0;
     for (; iter != end; ++iter) {
+#if 0
+     _CrtCheckMemory();
+     printf("REL(%d) at %#.8lx: %s\n",
+            iter->r_type,
+           (unsigned long)iter->r_addr,
+            iter->r_sym->sy_name->k_name);
+#endif
      assert(iter->r_sym);
      DCCSym_Decref(iter->r_sym);
     }
@@ -741,7 +744,7 @@ DCCSym_ClearDef(struct DCCSym *__restrict self, int warn) {
    }
    DCCSection_Decref(old_sec);
   }
-  if (old_alias) DCCSym_Decref(old_alias);
+  DCCSym_XDecref(old_alias);
  }
 }
 PUBLIC void

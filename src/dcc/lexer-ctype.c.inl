@@ -25,44 +25,45 @@
 
 #include "lexer-priv.h"
 
-#include <string.h>
-
 DCC_DECL_BEGIN
 
-PUBLIC struct TPPKeyword *DCC_PARSE_CALL
-DCCParse_CTypeOnly(struct DCCType *__restrict self,
-                   struct DCCAttrDecl *__restrict attr) {
- struct TPPKeyword *result;
- assert(self);
- assert(attr);
- /* NOTE: If 'self' is an LVA type, code may still be generated
- *        by this unless the caller set the NOCGEN flag. */
- result = DCCParse_CType(self,attr);
- if (!result) {
-  pushf();
-  /* Make sure no code is generated for the discarded expression. */
-  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
-  DCCParse_Expr1();
-  DCCType_InitCopy(self,&vbottom->sv_ctype);
-  vpop(1);
-  popf();
-  result = &TPPKeyword_Empty;
+INTERN void
+DCCType_SetTypeMode(struct DCCType *__restrict self,
+                    uint32_t mode_flags) {
+ tyid_t modeid;
+ switch (mode_flags/*&DCC_ATTRFLAG_MASK_MODE*/) {
+ {
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_QI: modeid = DCCTYPE_INTN(1); }
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_HI: modeid = DCCTYPE_INTN(2); }
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_SI: modeid = DCCTYPE_INTN(4); }
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_DI: modeid = DCCTYPE_INTN(8); }
+#if DCC_TARGET_SIZEOF_FLOAT == 4
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_SF: modeid = DCCTYPE_FLOAT; }
+#elif DCC_TARGET_SIZEOF_DOUBLE == 4
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_SF: modeid = DCCTYPE_DOUBLE; }
+#else
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_SF: modeid = DCCTYPE_LDOUBLE; }
+#endif
+#if DCC_TARGET_SIZEOF_FLOAT == 8
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_DF: modeid = DCCTYPE_FLOAT; }
+#elif DCC_TARGET_SIZEOF_DOUBLE == 8
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_DF: modeid = DCCTYPE_DOUBLE; }
+#else
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_DF: modeid = DCCTYPE_LDOUBLE; }
+#endif
+  if (DCCTYPE_GROUP(self->t_type) != DCCTYPE_BUILTIN) {
+   WARN(W_ATTRIBUTE_MODE_EXPECTS_BASIC_TYPE);
+  } else {
+   self->t_type &= ~(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED));
+   if (modeid >= 8) self->t_type &= ~(DCCTYPE_UNSIGNED);
+   self->t_type |= modeid;
+  }
+ } break;
+ default: break;
  }
- return result;
 }
 
-PUBLIC struct TPPKeyword *DCC_PARSE_CALL
-DCCParse_CType(struct DCCType *__restrict self,
-               struct DCCAttrDecl *__restrict attr) {
- struct TPPKeyword *result = NULL;
- if (DCCParse_CTypePrefix(self,attr)) {
-  result = DCCParse_CTypeSuffix(self,attr);
- }
- return result;
-}
-
-
-LEXPRIV void DCC_PARSE_CALL
+INTERN void
 DCCType_PromoteFunArg(struct DCCType *__restrict self) {
  assert(self);
  switch (DCCTYPE_GROUP(self->t_type)) {
@@ -81,121 +82,308 @@ DCCType_PromoteFunArg(struct DCCType *__restrict self) {
  }
 }
 
+INTERN void
+DCCDecl_CalculateFunctionOffsets(struct DCCDecl *__restrict funtydecl) {
+ target_off_t current_offset = 0;
+ target_siz_t s,a;
+ struct DCCStructField *iter,*end;
+ assert(funtydecl);
+ assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION);
+ end = (iter = funtydecl->d_tdecl.td_fieldv)+
+               funtydecl->d_tdecl.td_size;
+ for (; iter != end; ++iter) {
+  struct DCCDecl *decl = iter->sf_decl;
+  assert(decl);
+  assert(decl->d_kind == DCC_DECLKIND_TYPE);
+  DCCType_PromoteFunArg(&decl->d_type);
+  s = DCCType_Sizeof(&decl->d_type,&a,1);
+  if (a < DCC_TARGET_STACKALIGN) a = DCC_TARGET_STACKALIGN;
+  if (decl->d_attr) {
+   if (decl->d_attr->a_flags&DCC_ATTRFLAG_PACKED) {
+    a = (decl->d_attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN) ? decl->d_attr->a_align : 1;
+   } else if (decl->d_attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN && decl->d_attr->a_align > a) {
+    a = decl->d_attr->a_align;
+   }
+  }
+  current_offset  = (current_offset+(a-1)) & ~(a-1);
+  iter->sf_off    =  current_offset;
+  current_offset += s;
+ }
+}
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4701)
-#endif
 
-LEXPRIV int DCC_PARSE_CALL
-DCCParse_TryFunctionPrototype(struct DCCDecl *__restrict fundecl, int try_parse) {
+/* Parse the contents of a new-style argument list.
+ * int add(int x, int y);
+ *         ^^^^^^^^^^^^ (When 'opt_first*' is NULL)
+ *              ^^^^^^^ (When 'opt_first*' isn't NULL)
+ * 'opt_first*' may be passed to describe the first type
+ * in the event that the caller was required to parse it.
+ */
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_CTypeNewArgumentList(struct DCCDecl *__restrict funtydecl,
+                              struct DCCType     *opt_firsttype,
+                              struct TPPKeyword  *opt_firstname,
+                              struct DCCAttrDecl *opt_firstattr) {
  struct DCCStructField *argv,*new_argv;
- size_t argc,arga; struct DCCDecl *argdecl;
- target_off_t current_offset;
- assert(fundecl);
- assert(fundecl->d_kind == DCC_DECLKIND_FUNCTION);
- assert(!fundecl->d_tdecl.td_size);
- assert(!fundecl->d_tdecl.td_fieldv);
- argc = 0,arga = 2,argdecl = NULL;
- argv = (struct DCCStructField *)malloc(arga*sizeof(struct DCCStructField));
- if unlikely(!argv) goto seterr;
- current_offset = 0;
- while (TOK > 0) {
-  if (TOK == TOK_DOTS) {
-   /* varargs-function. */
-   fundecl->d_flag |= DCC_DECLFLAG_VARIADIC;
-   YIELD();
-   break;
-  }
-  {
-   struct DCCStructField *arg;
-   struct DCCAttrDecl attr = DCCATTRDECL_INIT;
-   struct TPPKeyword *arg_name;
-   target_ptr_t s,a;
-   if (!argdecl && unlikely((argdecl = DCCDecl_New(&TPPKeyword_Empty)) == NULL)) goto seterr;
-   arg_name = DCCParse_CType(&argdecl->d_type,&attr);
-   if unlikely(!arg_name) {
-    if (try_parse && !argc) {
-     DCCDecl_Decref(argdecl);
-     DCCAttrDecl_Quit(&attr);
-     free(argv);
-     return 0;
-    }
-    WARN(W_EXPECTED_TYPE_FOR_PROTOTYPE_ARGUMENT);
-    if (!TPP_ISKEYWORD(TOK)) goto next;
-    /* If we've at least got a keyword,
-     * let's guess this is an unnamed type?
-     * >> The type is already default-initialized to 'int'. */
-    arg_name = TOKEN.t_kwd;
+ size_t argc,arga; int is_first = 1;
+ assert(funtydecl);
+ assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION);
+ assert((opt_firsttype != NULL) == (opt_firstname != NULL));
+ assert((opt_firsttype != NULL) == (opt_firstattr != NULL));
+ argv = NULL; argc = arga = 0;
+ while (TOK != ')' && TOK > 0) {
+  struct DCCType     arg_type;
+  struct DCCAttrDecl arg_attr = DCCATTRDECL_INIT;
+  struct DCCDecl *arg_decl;
+  if (!opt_firstname) {
+   if (TOK == TOK_DOTS) {
+    /* Variable argument list. */
+    funtydecl->d_flag |= DCC_DECLFLAG_VARIADIC;
     YIELD();
-   } else if (TOK != ',' && arg_name == &TPPKeyword_Empty &&
-              DCCTYPE_ISBASIC(argdecl->d_type.t_type,DCCTYPE_VOID) && !argc) {
-    /* First (and only) argument is unnamed void --> empty parameter list. */
-    DCCAttrDecl_Quit(&attr);
-    break;
+    goto nextarg;
    }
-   if (argc == arga) {
-    new_argv = (struct DCCStructField *)realloc(argv,(arga*2)*
-                                                sizeof(struct DCCStructField));
-    if unlikely(!new_argv) goto seterr;
-    argv = new_argv,arga *= 2;
-   }
-   DCCType_PromoteFunArg(&argdecl->d_type);
-   s = DCCType_Sizeof(&argdecl->d_type,&a,1);
-   /* Require at least integer alignment. */
-   if (a < DCC_TARGET_SIZEOF_INT) a = DCC_TARGET_SIZEOF_INT;
-   /* Respect explicit alignment through attributes. */
-   if (attr.a_flags&DCC_ATTRFLAG_PACKED) {
-    a = (attr.a_flags&DCC_ATTRFLAG_FIXEDALIGN) ? attr.a_align : 1;
-   } else if (attr.a_flags&DCC_ATTRFLAG_FIXEDALIGN && attr.a_align > a) {
-    a = attr.a_align;
-   }
-   current_offset = (current_offset+(a-1)) & ~(a-1);
-   argdecl->d_kind = DCC_DECLKIND_TYPE;
-   argdecl->d_name = arg_name;
-   DCCDecl_SetAttr(argdecl,&attr);
-   arg = &argv[argc++];
-   arg->sf_off = current_offset;
-   arg->sf_decl = argdecl;
-   argdecl = NULL;
-   current_offset += s;
-next:
-   DCCAttrDecl_Quit(&attr);
-   if (TOK != ',') break;
-   YIELD();
+   opt_firstname = DCCParse_CType(&arg_type,&arg_attr);
+   if unlikely(!opt_firstname) break;
+   opt_firsttype = &arg_type;
+   opt_firstattr = &arg_attr;
+   is_first      = 0;
   }
- }
- if (argdecl) DCCDecl_Decref(argdecl);
- if (argc != arga) {
-  if (!argc) free(argv),argv = NULL;
-  else {
-   new_argv = (struct DCCStructField *)realloc(argv,argc*sizeof(struct DCCStructField));
-   if likely(new_argv) argv = new_argv;
+  assert(opt_firstname);
+  if (argc == arga) {
+   /* Allocate more storage. */
+   if (!arga) arga = 1;
+   arga *= 2;
+   new_argv = (struct DCCStructField *)realloc(argv,arga*sizeof(struct DCCStructField));
+   if unlikely(!new_argv) goto err_argv;
+   argv = new_argv;
   }
+  arg_decl = DCCDecl_New(opt_firstname);
+  if unlikely(!arg_decl) goto err_argv;
+  DCCDecl_SetAttr(arg_decl,opt_firstattr);
+  if (is_first) DCCDecl_XIncref(opt_firsttype->t_base);
+  else          DCCAttrDecl_Quit(opt_firstattr);
+  arg_decl->d_kind = DCC_DECLKIND_TYPE;
+  arg_decl->d_type = *opt_firsttype; /* Inherit object. */
+  argv[argc++].sf_decl = arg_decl; /* Inherit reference. */
+nextarg:
+  if (TOK != ',') break;
+  YIELD();
+  opt_firstname = NULL;
  }
- assert((argc != 0) == (argv != NULL));
- fundecl->d_tdecl.td_size   = argc;
- fundecl->d_tdecl.td_fieldv = argv;
- return 1;
-seterr:
- if (argdecl) DCCDecl_Decref(argdecl);
+ if (argc == 1 && argv[0].sf_decl->d_name == &TPPKeyword_Empty &&
+     DCCTYPE_ISBASIC(argv[0].sf_decl->d_type.t_type,DCCTYPE_VOID)) {
+  /* Special case: void argument list. */
+  DCCDecl_Decref(argv[0].sf_decl);
+  free(argv);
+  argv = NULL;
+  argc = 0;
+ } else if (argc != arga) {
+  assert(argc);
+  new_argv = (struct DCCStructField *)realloc(argv,argc*sizeof(struct DCCStructField));
+  if (new_argv) argv = new_argv;
+ }
+ funtydecl->d_tdecl.td_size   = argc;
+ funtydecl->d_tdecl.td_fieldv = argv;
+ return;
+err_argv:
  new_argv = argv+argc;
  while (new_argv-- != argv) {
   assert(new_argv->sf_decl);
   DCCDecl_Decref(new_argv->sf_decl);
  }
+ free(argv);
  TPPLexer_SetErr();
- return 1;
 }
 
+/* Parse the contents of an old-style argument list.
+ * int add(x,y);
+ *         ^^^ (When 'opt_first*' is NULL)
+ *          ^^ (When 'opt_first*' isn't NULL)
+ * 'opt_first*' may be passed to describe the first argument
+ * in the event that the caller was required to parse it.
+ */
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_CTypeOldArgumentList(struct DCCDecl *__restrict funtydecl,
+                              struct TPPKeyword  *opt_firstname,
+                              struct DCCAttrDecl *opt_firstattr) {
+ struct DCCStructField *argv,*new_argv;
+ size_t argc,arga; int is_first = 1;
+ assert(funtydecl);
+ assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION);
+ assert((opt_firstname != NULL) == (opt_firstattr != NULL));
+ assert(!opt_firstname || (TOK == ',' || TOK == ')'));
+ argv = NULL; argc = arga = 0;
+ while (TOK != ')' && TOK > 0) {
+  struct DCCAttrDecl arg_attr = DCCATTRDECL_INIT;
+  struct DCCDecl *arg_decl;
+  if (!opt_firstname) {
+   DCCParse_Attr(&arg_attr);
+   if (TPP_ISKEYWORD(TOK)) {
+    opt_firstname = TOKEN.t_kwd;
+    YIELD();
+    DCCParse_Attr(&arg_attr);
+   } else {
+    if (TOK != ',') { /* Allow unnamed arguments. */
+     WARN(W_EXPECTED_KEYWORD_IN_OLDSTYLE_ARGUMENT_LIST);
+    }
+    opt_firstname = &TPPKeyword_Empty;
+   }
+   opt_firstattr = &arg_attr;
+   is_first      = 0;
+  }
+  assert(opt_firstname);
+  if (argc == arga) {
+   /* Allocate more storage. */
+   if (!arga) arga = 1;
+   arga *= 2;
+   new_argv = (struct DCCStructField *)realloc(argv,arga*sizeof(struct DCCStructField));
+   if unlikely(!new_argv) goto err_argv;
+   argv = new_argv;
+  }
+  arg_decl = DCCDecl_New(opt_firstname);
+  if unlikely(!arg_decl) goto err_argv;
+  arg_decl->d_kind = DCC_DECLKIND_TYPE;
+  DCCDecl_SetAttr(arg_decl,opt_firstattr);
+  if (!is_first) DCCAttrDecl_Quit(opt_firstattr);
+  assert(arg_decl->d_type.t_type == DCCTYPE_INT);
+  assert(arg_decl->d_type.t_base == NULL);
+  argv[argc++].sf_decl = arg_decl; /* Inherit reference. */
+  if (TOK != ',') break;
+  YIELD();
+  opt_firstname = NULL;
+ }
+ if (argc == 1 && argv[0].sf_decl->d_name == &TPPKeyword_Empty &&
+     DCCTYPE_ISBASIC(argv[0].sf_decl->d_type.t_type,DCCTYPE_VOID)) {
+  /* Special case: void argument list. */
+  DCCDecl_Decref(argv[0].sf_decl);
+  free(argv);
+  argv = NULL;
+  argc = 0;
+ } else if (argc != arga) {
+  assert(argc);
+  new_argv = (struct DCCStructField *)realloc(argv,argc*sizeof(struct DCCStructField));
+  if (new_argv) argv = new_argv;
+ }
+ funtydecl->d_tdecl.td_size   = argc;
+ funtydecl->d_tdecl.td_fieldv = argv;
+ return;
+err_argv:
+ new_argv = argv+argc;
+ while (new_argv-- != argv) {
+  assert(new_argv->sf_decl);
+  DCCDecl_Decref(new_argv->sf_decl);
+ }
+ free(argv);
+ TPPLexer_SetErr();
+}
+
+/* Parse a single chain of definitions for an old-style argument list:
+ * >> int add(x,y) int x,y;
+ *                     ^^^
+ * >> int add(x,y) int x; int y;
+ *                     ^
+ */
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_CTypeOldArgumentListDefWithBase(struct DCCDecl *__restrict funtydecl,
+                                         struct DCCType     const *__restrict base_type,
+                                         struct DCCAttrDecl const *__restrict base_attr) {
+ struct DCCType type;
+ struct DCCAttrDecl attr;
+ struct TPPKeyword *arg_name;
+ assert(funtydecl);
+ assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION ||
+        funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
+ assert(base_type);
+ assert(base_attr);
+ DCCType_InitCopy(&type,base_type);
+ DCCAttrDecl_InitCopy(&attr,base_attr);
+ arg_name = DCCParse_CTypeSuffix(&type,&attr);
+ assert(arg_name);
+ if (arg_name != &TPPKeyword_Empty) {
+  struct DCCStructField *iter,*end;
+  end = (iter = funtydecl->d_tdecl.td_fieldv)+
+                funtydecl->d_tdecl.td_size;
+  for (; iter != end; ++iter) {
+   assert(iter->sf_decl);
+   if (iter->sf_decl->d_name == arg_name) {
+    if (iter->sf_decl->d_type.t_type == DCCTYPE_INT) {
+     iter->sf_decl->d_type = type; /* Inherit object. */
+     type.t_base           = NULL;
+    } else {
+     /* Warning: Argument already defined. */
+     WARN(W_DECL_ALREADY_DEFINED,iter->sf_decl);
+    }
+    goto done;
+   }
+  }
+  WARN(W_UNKNOWN_FUNCTION_ARGUMENT,arg_name);
+ }
+done:
+ DCCAttrDecl_Quit(&attr);
+ DCCType_Quit(&type);
+}
+
+
+/* Parse all definitions for an old-style argument list:
+ * >> int add(x,y) int x,y;
+ *                 ^^^^^^^^
+ * NOTE: No-op when no definitions were found.
+ */
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl) {
+ assert(funtydecl);
+ assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION ||
+        funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
+ for (;;) {
+  struct DCCType type;
+  struct DCCAttrDecl attr = DCCATTRDECL_INIT;
+  if (!DCCParse_CTypePrefix(&type,&attr)) {
+   DCCAttrDecl_Quit(&attr);
+   break;
+  }
+  DCCParse_CTypeOldArgumentListDefWithBase(funtydecl,&type,&attr);
+  DCCAttrDecl_Quit(&attr);
+  DCCType_Quit(&type);
+  if (TOK != ';') WARN(W_EXPECTED_SEMICOLON);
+  else YIELD();
+ }
+}
+
+/* Parse all definitions for an old-style argument list:
+ * >> int add(x,y) int x,y;
+ *                     ^^^^
+ * >> int add(x,y) int x; int y;
+ *                     ^^^^^^^^^
+ * NOTE: No-op when no definitions were found.
+ */
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_CTypeOldArgumentListDefWithFirstBase(struct DCCDecl *__restrict funtydecl,
+                                              struct DCCType     *__restrict firstbase_type,
+                                              struct DCCAttrDecl *__restrict firstbase_attr) {
+ assert(funtydecl);
+ assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION ||
+        funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
+ assert(firstbase_type);
+ assert(firstbase_attr);
+ DCCParse_CTypeOldArgumentListDefWithBase(funtydecl,firstbase_type,firstbase_attr);
+ DCCParse_CTypeOldArgumentListDef(funtydecl);
+}
+
+
+
+/* Parse the array extension suffix of a type declaration:
+ * >> int foo[42];
+ *           ^^^^
+ */
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_CTypeArrayExt(struct DCCType *__restrict self,
                        struct DCCAttrDecl *__restrict attr) {
  int_t array_size;
- assert(self),assert(attr);
+ assert(self);
+ assert(attr);
+ assert(TOK == '[');
+ YIELD();
  if (TOK == ']') {
-  if (!DCCType_IsComplete(self)) {
-  }
   DCCType_MkVArray(self);
   YIELD();
   return;
@@ -253,58 +441,30 @@ compiletime_array:
  vpop(1);
 }
 
-LEXPRIV int DCC_PARSE_CALL
-DCCParse_CTypeTryParenthesis(struct DCCType *__restrict self,
-                             struct DCCAttrDecl *__restrict attr) {
- /* TODO: Old-style functions listed the parameter names here!
-  *    >> The following declarations were only used to describe
-  *       their typing that, when omitted, defaults to 'int'! */
- /* TODO: Ambiguity:
-  *                                                  v - HERE (Is it the declaration name, or an old-style argument)
-  * Named new-style function 'a': >> auto f = ({ int(a)(int x, int y) { return a+b; } });
-  * Unnamed old-style function:   >> auto f = ({ int(a,b) int a,b; { return a+b; } });
-  * (Possible) solution: Old-style function types with non-empty parameter list must be named.
-  *                   >> What did K&R say about unnamed symbols? Did they even exist?
-  */
- if (TOK == ')') {
-  WARN(W_OLD_STYLE_FUNCTION_DECLARATION);
-  YIELD();
-  DCCType_MkOldFunc(self);
-  if unlikely(!self->t_base) return 0;
-  DCCParse_Attr(attr);
-  DCCDecl_SetAttr(self->t_base,attr);
- } else {
-  struct DCCDecl *fun_decl = DCCDecl_New(&TPPKeyword_Empty);
-  if unlikely(!fun_decl) return 0;
-  if (!DCCType_IsComplete(self)) WARN(W_EXPECTED_COMPLETE_TYPE_FOR_FUNCTION_BASE,self);
-  fun_decl->d_type = *self;
-  DCCDecl_XIncref(self->t_base);
-  fun_decl->d_type.t_type &= ~(DCCTYPE_STOREMASK);
-  fun_decl->d_kind = DCC_DECLKIND_FUNCTION;
-  /* Parse a function prototype. */
-  if (!DCCParse_TryFunctionPrototype(fun_decl,1)) {
-   DCCDecl_Decref(fun_decl);
-   return 0;
-  } else {
-   DCCDecl_XDecref(self->t_base);
-   self->t_type &= (DCCTYPE_FLAGSMASK&~(DCCTYPE_ASTMASK));
-   self->t_type |= (DCCTYPE_FUNCTION);
-   self->t_base  = fun_decl; /* Inherit reference. */
-  }
- }
- return 1;
-}
 
+
+
+
+/* Parse optional trailing type modifiers:
+ * >> int x[42];
+ *         ^^^^
+ * >> int (*p)(int foo);
+ *            ^^^^^^^^^
+ */
 LEXPRIV void DCC_PARSE_CALL
-DCCParse_CTypeSuffix2(struct DCCType *__restrict self,
-                      struct DCCAttrDecl *__restrict attr) {
+DCCParse_CTypeTrail(struct DCCType     *__restrict self,
+                    struct DCCAttrDecl *__restrict attr) {
+ assert(self);
+ assert(attr);
+ DCCParse_Attr(attr);
  if (TOK == '(') {
-  struct DCCDecl *fun_decl = DCCDecl_New(&TPPKeyword_Empty);
+  struct DCCDecl *fun_decl;
+  fun_decl = DCCDecl_New(&TPPKeyword_Empty);
   if unlikely(!fun_decl) return;
   if (!DCCType_IsComplete(self)) WARN(W_EXPECTED_COMPLETE_TYPE_FOR_FUNCTION_BASE,self);
   fun_decl->d_type = *self; /* Inherit data. */
   fun_decl->d_type.t_type &= ~(DCCTYPE_STOREMASK);
-  self->t_type &= (DCCTYPE_FLAGSMASK&~(DCCTYPE_ASTMASK));
+  self->t_type &= (DCCTYPE_FLAGSMASK&~(DCCTYPE_ALTMASK));
   self->t_type |= (DCCTYPE_FUNCTION);
   self->t_base  = fun_decl; /* Inherit reference. */
   YIELD();
@@ -314,23 +474,60 @@ DCCParse_CTypeSuffix2(struct DCCType *__restrict self,
    fun_decl->d_kind = DCC_DECLKIND_OLDFUNCTION;
    assert(fun_decl->d_tdecl.td_size   == 0);
    assert(fun_decl->d_tdecl.td_fieldv == NULL);
+   /* Although any argument specified would be unknown, we must
+    * still make sure to handle that case for code integrity. */
+   DCCParse_CTypeOldArgumentListDef(self->t_base);
   } else {
+   struct DCCType     firstarg_type;
+   struct TPPKeyword *firstarg_name;
+   struct DCCAttrDecl firstarg_attr = DCCATTRDECL_INIT;
+   int is_old_funimpl = 0;
    fun_decl->d_kind = DCC_DECLKIND_FUNCTION;
-   /* Parse a function prototype. */
-   DCCParse_TryFunctionPrototype(fun_decl,0);
+   /* Parse a function prototype:
+    * #1: >> int add(int x, int y); // New-style declaration with 2 named arguments.
+    *     >> int add(int,int);      // New-style declaration with 2 unnamed arguments.
+    *     >> int add(void);         // New-style declaration with empty argument list.
+    * #2: >> int add(x,y);          // Old-style declaration with implicit argument types.
+    *     >> int add(x,y) int x,y;  // Old-style declaration with explicit argument types.
+    *     >> int add(,);            // Old-style declaration with 2 unnamed arguments.
+    */
+   if (TOK == ',') {
+    /* Old-style argument list with an unnamed first argument. */
+oldstyle_arglist:
+    DCCParse_CTypeOldArgumentList(fun_decl,NULL,NULL);
+    is_old_funimpl = 1;
+   } else if ((firstarg_name = DCCParse_CType(&firstarg_type,&firstarg_attr)) != NULL) {
+    DCCParse_CTypeNewArgumentList(fun_decl,&firstarg_type,firstarg_name,&firstarg_attr);
+   } else {
+    /* Fallback: Old-style argument list. */
+    goto oldstyle_arglist;
+   }
+   DCCAttrDecl_Quit(&firstarg_attr);
    if (TOK != ')') WARN(W_EXPECTED_RPAREN); else YIELD();
+   if (is_old_funimpl) {
+    /* Parse the type definitions of an old-style argument list. */
+    assert(DCCTYPE_GROUP(self->t_type) == DCCTYPE_FUNCTION);
+    assert(self->t_base);
+    assert(self->t_base->d_kind == DCC_DECLKIND_FUNCTION);
+    DCCParse_CTypeOldArgumentListDef(self->t_base);
+   }
   }
   DCCParse_Attr(attr);
   DCCDecl_SetAttr(fun_decl,attr);
+  /* TODO: Only for function types */
+  if (self->t_base &&
+      self->t_base->d_kind == DCC_DECLKIND_FUNCTION) {
+   DCCDecl_CalculateFunctionOffsets(self->t_base);
+  }
  } else if (TOK == '[') {
-  YIELD(); /* Array/VArray declaration. */
+  /* Array/VArray declaration. */
   DCCParse_CTypeArrayExt(self,attr);
   assert(self->t_base);
   assert(self->t_base->d_kind&DCC_DECLKIND_TYPE);
   /* Continue working on the base type, thus ensuring correct type order. */
   self = &self->t_base->d_type;
   DCCParse_Attr(attr);
-  DCCParse_CTypeSuffix2(self,attr);
+  DCCParse_CTypeTrail(self,attr);
   if (!DCCType_IsComplete(self)) {
    WARN(W_EXPECTED_COMPLETE_TYPE_FOR_ARRAY_BASE,self);
    /* Try to fix incomplete types. */
@@ -339,37 +536,34 @@ DCCParse_CTypeSuffix2(struct DCCType *__restrict self,
  }
 }
 
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+
 
 PUBLIC struct TPPKeyword *DCC_PARSE_CALL
-DCCParse_CTypeSuffix(struct DCCType *__restrict self,
+DCCParse_CTypeSuffix(struct DCCType     *__restrict self,
                      struct DCCAttrDecl *__restrict attr) {
- struct DCCType ty2;
- struct TPPKeyword *result;
- int has_ty2 = 0;
- assert(self);
- assert(attr);
-next_prefix:
  DCCType_ASSERT(self);
+ struct DCCType inner_type;
+ int        has_inner_type = 0;
+ struct TPPKeyword *result = &TPPKeyword_Empty;
+parse_leading:
  DCCParse_Attr(attr);
+ /* Parse leading suffix modifiers for const/volatile/pointer/l-value */
  switch (TOK) {
 
- { /* Parse const/volatile qualifiers. */
+ { /* Parse leading const/volatile qualifiers. */
   tyid_t qual;
   if (DCC_MACRO_FALSE) { case KWD_const:    case KWD___const:    case KWD___const__:    qual = DCCTYPE_CONST; }
   if (DCC_MACRO_FALSE) { case KWD_volatile: case KWD___volatile: case KWD___volatile__: qual = DCCTYPE_VOLATILE; }
   if (DCCTYPE_GROUP(self->t_type) == DCCTYPE_LVALUE) WARN(W_QUAL_ON_LVALUE);
   else if (DCCTYPE_ISBASIC(self->t_type,DCCTYPE_AUTO)) WARN(W_QUAL_ON_AUTO_TYPE);
   else { if (self->t_type&qual) WARN(W_QUALIFIER_ALREADY_IN_USE); self->t_type |= qual; }
-  goto yield_next_prefix;
+  goto next_leading;
  } break;
 
  case '&':
  case '*':
   if (DCCTYPE_GROUP(self->t_type) == DCCTYPE_LVALUE)
-   WARN(TOK == '&' ? W_ALREADY_AN_LVALUE : W_LVALUE_POINTER);
+      WARN(TOK == '&' ? W_ALREADY_AN_LVALUE : W_LVALUE_POINTER);
   /* Disable typing for special l-value conditions.
    * NOTE: Internally, an l-value of an l-value does has a meaning,
    *       in that it describes the result of killing a stack-value
@@ -383,6 +577,7 @@ next_prefix:
 #endif
   if (TOK == '*') {
    if (DCCTYPE_ISBASIC(self->t_type,DCCTYPE_AUTO)) {
+    assert(!self->t_base);
     WARN(W_AUTO_TYPE_USED_AS_POINTER_BASE);
     self->t_type = DCCTYPE_INT;
    }
@@ -390,128 +585,217 @@ next_prefix:
   } else {
    DCCType_MkLValue(self);
   }
-  goto yield_next_prefix;
+  goto next_leading;
 
+  /* Skip restrict-pointer qualifiers. */
  case KWD_restrict:
  case KWD___restrict:
  case KWD___restrict__:
   if (DCCTYPE_GROUP(self->t_type) != DCCTYPE_POINTER)
-   WARN(W_RESTRICT_EXPECTS_POINTER);
-yield_next_prefix:
-  YIELD();
-  goto next_prefix;
+      WARN(W_RESTRICT_EXPECTS_POINTER);
+  goto next_leading;
 
  default: break;
  }
+
  if (TOK == '(') {
+  int is_old_funimpl = 0;
+  struct DCCAttrDecl paren_attr = DCCATTRDECL_INIT;
+  /* This gets ~really~ complicated.
+   * Here, we must differentiate between:
+   * #1: >> int (int foo) { return foo; }      // Unnamed new-style function.
+   *     >> int (int);                         // Unnamed new-style function with unnamed argument.
+   * #2: >> int (foo)(int bar) { return bar; } // Parenthesis recursion in named type.
+   *     >> int (*)(int bar);                  // Parenthesis recursion around inner qualifiers.
+   *     >> int (x);                           // Technically ambigous (may be an unnamed old-style function w/ 1 int-argument 'x'), but is parsed as variable type 'int x;'
+   * #3: >> int (foo) int foo; { return foo; } // Old-style function arguments for unnamed type.
+   *     >> int (x,y) int x,y; { return x+y; } // Multiple old-style function arguments.
+   *     >> int (,y) int y; { return y; }      // Old-style function with unnamed first argument.
+   *     >> int ();                            // Unnamed old-style function with empty argument list.
+   */
   YIELD();
-  /* Allow for a function parameter list here. */
-  if (DCCParse_CTypeTryParenthesis(self,attr)) {
-   goto unnamed_type;
+  DCCParse_Attr(&paren_attr);
+  if (TOK == ')') {
+/*parcase_3:*/ /* Unnamed old-style argument list. */
+   WARN(W_OLD_STYLE_FUNCTION_DECLARATION);
+   DCCType_MkOldFunc(self);
+   goto innerend_yield;
+  } else if (TOK == '*' || TOK == '&') {
+   /* Optimization: For these tokens, we can effortlessly determine case #2. */
+parcase_2:
+   DCCAttrDecl_Merge(&paren_attr,attr);
+   has_inner_type    = 1;
+   inner_type.t_type = 0;
+   inner_type.t_base = NULL;
+   result = DCCParse_CTypeSuffix(&inner_type,&paren_attr);
+inner_endparen:
+   if (TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else innerend_yield: YIELD();
+  } else if ((result = DCCParse_CType(&inner_type,&paren_attr)) != NULL) {
+   struct DCCDecl *newfun_decl;
+   /* A type is located inside the parenthesis. - This is case #1. */
+/*parcase_1:*/
+   newfun_decl = DCCDecl_New(&TPPKeyword_Empty);
+   if likely(newfun_decl) {
+    newfun_decl->d_kind = DCC_DECLKIND_FUNCTION;
+    newfun_decl->d_type = *self; /* Inherit data. */
+    self->t_base  = newfun_decl; /* Inherit reference. */
+    self->t_type &= (DCCTYPE_FLAGSMASK&~(DCCTYPE_ALTMASK));
+    self->t_type |= (DCCTYPE_FUNCTION);
+    DCCDecl_SetAttr(newfun_decl,attr);
+    /* Parse a new-style argument list. */
+    DCCParse_CTypeNewArgumentList(newfun_decl,
+                                 &inner_type,result,
+                                 &paren_attr);
+   }
+   result = &TPPKeyword_Empty;
+   DCCType_Quit(&inner_type);
+   goto inner_endparen;
+  } else if (TPP_ISKEYWORD(TOK)) {
+   /* Ambiguity between cases #2 and #3.
+    * >> When the next token is ',' this is case #3 for sure.
+    * >> When the next token is ')' this is case #3 if an old-style argument list follows.
+    * >>                                ... case #2 otherwise.
+    */
+   result = TOKEN.t_kwd;
+   YIELD();
+   DCCParse_Attr(&paren_attr);
+   if (TOK == ',') {
+    struct DCCDecl *oldfun_decl;
+oldstyle_arglist:
+    oldfun_decl = DCCDecl_New(&TPPKeyword_Empty);
+    if likely(oldfun_decl) {
+     /* Old-style argument list. */
+     oldfun_decl->d_kind = DCC_DECLKIND_FUNCTION;
+     oldfun_decl->d_type = *self; /* Inherit data. */
+     self->t_base  = oldfun_decl; /* Inherit reference. */
+     self->t_type &= (DCCTYPE_FLAGSMASK&~(DCCTYPE_ALTMASK));
+     self->t_type |= (DCCTYPE_FUNCTION);
+     DCCDecl_SetAttr(oldfun_decl,attr);
+     DCCParse_CTypeOldArgumentList(oldfun_decl,result,&paren_attr);
+     is_old_funimpl = 1;
+    }
+    goto inner_endparen;
+   }
+   if (TOK == ')') {
+    /* Either a simple recursive type, or the first argument of an unnamed old-style function. */
+    YIELD();
+    DCCParse_Attr(attr);
+    if (DCCParse_CTypePrefix(&inner_type,&paren_attr)) {
+     struct DCCDecl *oldfun_decl;
+     oldfun_decl = DCCDecl_New(&TPPKeyword_Empty);
+     if likely(oldfun_decl) {
+      /* Old-style argument list. */
+      oldfun_decl->d_kind = DCC_DECLKIND_FUNCTION;
+      oldfun_decl->d_type = *self; /* Inherit data. */
+      self->t_base  = oldfun_decl; /* Inherit reference. */
+      self->t_type &= (DCCTYPE_FLAGSMASK&~(DCCTYPE_ALTMASK));
+      self->t_type |= (DCCTYPE_FUNCTION);
+      DCCDecl_SetAttr(oldfun_decl,attr);
+      DCCParse_CTypeOldArgumentListDefWithFirstBase(oldfun_decl,
+                                                   &inner_type,
+                                                   &paren_attr);
+     }
+     DCCType_Quit(&inner_type);
+    } else {
+     /* The r-paren isn't followed by a type, meaning this isn't an old-style argument list. */
+     DCCAttrDecl_Merge(attr,&paren_attr);
+    }
+    goto inner_end;
+   }
+   /* Everything else is case #2 (The keyword we found is the name of the resulting type) */
+   DCCAttrDecl_Merge(attr,&paren_attr);
+   goto inner_endparen;
+  } else if (TOK == ',') {
+   /* Old-style argument list with an unnamed first argument. */
+   result = &TPPKeyword_Empty;
+   goto oldstyle_arglist;
   } else {
-   struct DCCAttrDecl attr2 = DCCATTRDECL_INIT;
-   DCCParse_Attr(attr);
-   has_ty2 = 1;
-   ty2.t_type = 0;
-   ty2.t_base = NULL;
-   result = DCCParse_CTypeSuffix(&ty2,&attr2);
-   DCCAttrDecl_Quit(&attr2);
+   /* Anything else is considered case #2 */
+   goto parcase_2;
   }
-  if (TOK != ')') WARN(W_EXPECTED_RPAREN); else YIELD();
+inner_end:
+  DCCAttrDecl_Quit(&paren_attr);
+  if (is_old_funimpl) {
+   /* Parse the type definitions of an old-style argument list. */
+   assert(DCCTYPE_GROUP(self->t_type) == DCCTYPE_FUNCTION);
+   assert(self->t_base);
+   assert(self->t_base->d_kind == DCC_DECLKIND_FUNCTION);
+   DCCParse_CTypeOldArgumentListDef(self->t_base);
+  }
+  /* Calculate function offsets. */
+  if (self->t_base &&
+      self->t_base->d_kind == DCC_DECLKIND_FUNCTION) {
+   DCCDecl_CalculateFunctionOffsets(self->t_base);
+  }
  } else if (TPP_ISKEYWORD(TOK)) {
+  /* Simple named type: 'int x;' */
   result = TOKEN.t_kwd;
   YIELD();
-  DCCParse_Attr(attr);
  } else {
-unnamed_type:
+  /* Unnamed type case. */
   result = &TPPKeyword_Empty;
  }
- DCCParse_CTypeSuffix2(self,attr);
- if (has_ty2) {
+
+ /* Parse trailing type modifiers. */
+ DCCParse_CTypeTrail(self,attr);
+
+ /* Check if we must load 'self' as the base of an inner type.
+  * Required for situations like:
+  * >> int (*foo)(int x, int y);
+  */
+ if (has_inner_type) {
   struct DCCType *iter;
   /* Must override 'self' as lowest-possible base
-   * of 'ty2', the fill '*self' with 'ty2' */
-  DCCType_ForceDynamic(&ty2);
-  iter = &ty2;
+   * of 'inner_type', the fill '*self' with 'inner_type' */
+  DCCType_ForceDynamic(&inner_type);
+  iter = &inner_type;
   while (iter->t_base) {
    assert(iter->t_base->d_kind&DCC_DECLKIND_TYPE);
    iter = &iter->t_base->d_type;
   }
-  assertf(iter->t_type == 0,"As set by 'ty2.t_type = 0' above!");
+  assertf(iter->t_type == 0,"As set by 'inner_type.t_type = 0' above!");
   *iter = *self; /* Inherit reference. */
-  ty2.t_type |= (self->t_type&(DCCTYPE_FLAGSMASK&~(DCCTYPE_ASTMASK)));
-  *self = ty2;   /* Inherit reference. */
+  inner_type.t_type |= (self->t_type&(DCCTYPE_FLAGSMASK&~(DCCTYPE_ALTMASK)));
+  *self = inner_type; /* Inherit reference. */
  }
- /* Apply mode attributes. */
+ /* Apply & delete attribute mode flags. */
  if (attr->a_flags&DCC_ATTRFLAG_MASK_MODE) {
-  tyid_t modeid;
-  switch (attr->a_flags&DCC_ATTRFLAG_MASK_MODE) {
-  {
-   if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_QI: modeid = DCCTYPE_INTN(1); }
-   if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_HI: modeid = DCCTYPE_INTN(2); }
-   if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_SI: modeid = DCCTYPE_INTN(4); }
-   if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_DI: modeid = DCCTYPE_INTN(8); }
-#if DCC_TARGET_SIZEOF_FLOAT == 4
-   if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_SF: modeid = DCCTYPE_FLOAT; }
-#elif DCC_TARGET_SIZEOF_DOUBLE == 4
-   if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_SF: modeid = DCCTYPE_DOUBLE; }
-#else
-   if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_SF: modeid = DCCTYPE_LDOUBLE; }
-#endif
-#if DCC_TARGET_SIZEOF_FLOAT == 8
-   if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_DF: modeid = DCCTYPE_FLOAT; }
-#elif DCC_TARGET_SIZEOF_DOUBLE == 8
-   if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_DF: modeid = DCCTYPE_DOUBLE; }
-#else
-   if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_DF: modeid = DCCTYPE_LDOUBLE; }
-#endif
-   if (DCCTYPE_GROUP(self->t_type) != DCCTYPE_BUILTIN) {
-    WARN(W_ATTRIBUTE_MODE_EXPECTS_BASIC_TYPE);
-   } else {
-    self->t_type &= ~(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED));
-    if (modeid >= 8) self->t_type &= ~(DCCTYPE_UNSIGNED);
-    self->t_type |= modeid;
-   }
-   attr->a_flags &= ~(DCC_ATTRFLAG_MASK_MODE);
-  } break;
-  default: break;
-  }
+  DCCType_SetTypeMode(self,attr->a_flags&DCC_ATTRFLAG_MASK_MODE);
+  attr->a_flags &= ~(DCC_ATTRFLAG_MASK_MODE);
  }
  return result;
+next_leading: YIELD(); goto parse_leading;
 }
+
+
 
 
 PUBLIC int DCC_PARSE_CALL
 DCCParse_CTypePrefix(struct DCCType *__restrict self,
                      struct DCCAttrDecl *__restrict attr) {
- int flags; struct DCCDecl *decl;
-#define FLAG_FOUND_SOMETHING 0x01
-#define FLAG_FOUND_INT       0x02
-#define FLAG_FOUND_SIGN      0x04
-#define FLAG_FOUND_LENGTH    0x08
-#define FLAG_FOUND_AUTO      0x10 /* Now here are my keys... */
-#define FLAG_FOUND_STORAGE   0x20
+#define F_INT     0x01 /* 'int' */
+#define F_SIGN    0x02 /* 'signed', 'unsigned' */
+#define F_WIDTH   0x04 /* 'char', 'short', 'long' */
+#define F_STORAGE 0x08 /* 'static', 'extern', 'typedef', 'register' */
+#define F_INLINE  0x10 /* 'inline' */
+#define F_AUTO    0x20 /* 'auto' (NOTE: Only used for automatic detection of 'auto' as storage/type) */
+#define F_MISC    0x40 /* Everything else (e.g.: '_Atomic', 'const', 'volatile') */
+#define FIX_AUTO() \
+do{ if (flags&F_AUTO) {\
+     self->t_type &= ~(DCCTYPE_BASICMASK);\
+     flags        &= ~(F_AUTO);\
+    }\
+}while(DCC_MACRO_FALSE)
+ unsigned int flags = 0;
  assert(self);
  assert(attr);
  /* Initialized to int. */
  self->t_type = DCCTYPE_INT;
  self->t_base = NULL;
- flags = 0;
- goto begin;
-next: YIELD();
-next_noyield:
- flags |= FLAG_FOUND_SOMETHING;
- /* Make sure that '_Atomic' is only used with integral types. */
- if ((self->t_type&DCCTYPE_ATOMIC) &&
-     (DCCTYPE_GROUP(self->t_type) != DCCTYPE_POINTER) &&
-     (DCCTYPE_GROUP(self->t_type) != DCCTYPE_BUILTIN ||
-      DCCTYPE_ISFLOAT(self->t_type))) {
-  WARN(W_TYPE_MODIFIER_ATOMIC_REQUIRES_INTEGRAL);
-  self->t_type &= ~(DCCTYPE_ATOMIC);
- }
-begin: DCCParse_Attr(attr);
+again:
+ DCCParse_Attr(attr);
  switch (TOK) {
-
 #if DCC_TARGET_OS == DCC_OS_WINDOWS
  case KWD___w64: goto next;
 #endif
@@ -525,59 +809,84 @@ begin: DCCParse_Attr(attr);
   goto next;
  } break;
 
- {
-  tyid_t length;
+ { /* Integer type flag. */
+ case KWD_int:
+  /* HINT: 'DCCTYPE_INT' equals ZERO(0), so it's already set implicitly. */
+  if (flags&F_INT) WARN(W_QUALIFIER_ALREADY_IN_USE);
+  else { FIX_AUTO(); flags |= F_INT; }
+  goto next;
+ } break;
+
+ case KWD___auto_type:
+  if ((flags&(F_INT|F_SIGN|F_WIDTH)) ||
+      (self->t_type&DCCTYPE_QUAL)) break; /* TODO: Warning? */
+  self->t_type |= DCCTYPE_AUTO;
+  flags        |= (F_INT|F_SIGN|F_WIDTH);
+  flags        &= ~(F_AUTO); /* A previous 'auto' was a storage modifier. */
+  goto next;
+
+
+ { /* Type width modifiers. */
+  tyid_t newwidth;
  case KWD_long:
-  self->t_type |= DCCTYPE_ALTLONG;
-  if (flags&FLAG_FOUND_LENGTH) {
+  if (flags&F_WIDTH) {
+   /* Extended long modifiers. */
    if ((self->t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_LONG) {
-    /* 'long long' / 'unsigned long long' */
-    self->t_type &= (DCCTYPE_FLAGSMASK|DCCTYPE_UNSIGNED)&~(DCCTYPE_ASTMASK);
-    self->t_type |=  DCCTYPE_LLONG;
+    self->t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK);
+    self->t_type |=   DCCTYPE_LLONG;
     goto next;
-   } else if ((self->t_type&DCCTYPE_BASICMASK) == DCCTYPE_DOUBLE) {
-    /* long double. */
-    self->t_type &= ~(DCCTYPE_ASTMASK);
+   }
+   if ((self->t_type&DCCTYPE_BASICMASK) == DCCTYPE_DOUBLE) {
+    self->t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK);
     self->t_type |=   DCCTYPE_LDOUBLE;
     goto next;
    }
   }
-  length = DCCTYPE_LONG;
-  /* fallthrough */
-  if (DCC_MACRO_FALSE) { case KWD_short: length = DCCTYPE_SHORT; }
+  newwidth = (DCCTYPE_LONG|DCCTYPE_ALTLONG);
+  if (DCC_MACRO_FALSE) { case KWD_short: newwidth = DCCTYPE_SHORT; }
+  if (DCC_MACRO_FALSE) { case KWD_char:  newwidth = DCCTYPE_CHAR; if (CURRENT.l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED && !(flags&F_SIGN)) newwidth |= DCCTYPE_UNSIGNED; }
   if (DCC_MACRO_FALSE) {
-    if (DCC_MACRO_FALSE) { case KWD___int8:  length = DCCTYPE_INT8; }
-    if (DCC_MACRO_FALSE) { case KWD___int16: length = DCCTYPE_INT16; }
-    if (DCC_MACRO_FALSE) { case KWD___int32: length = DCCTYPE_INT32; }
-    if (DCC_MACRO_FALSE) { case KWD___int64: length = DCCTYPE_INT64; }
+#ifdef DCCTYPE_INT8
+    if (DCC_MACRO_FALSE) { case KWD___int8:  newwidth = DCCTYPE_INT8; }
+#endif
+#ifdef DCCTYPE_INT16
+    if (DCC_MACRO_FALSE) { case KWD___int16: newwidth = DCCTYPE_INT16; }
+#endif
+#ifdef DCCTYPE_INT32
+    if (DCC_MACRO_FALSE) { case KWD___int32: newwidth = DCCTYPE_INT32; }
+#endif
+#ifdef DCCTYPE_INT64
+    if (DCC_MACRO_FALSE) { case KWD___int64: newwidth = DCCTYPE_INT64; }
+#endif
     if (!HAS(EXT_FIXED_LENGTH_INTEGER_TYPES)) break;
   }
-  if (DCC_MACRO_FALSE) {
- case KWD_char:
-   length = DCCTYPE_CHAR;
-   if (TPPLexer_Current->l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED &&
-      !(flags&FLAG_FOUND_SIGN)) self->t_type |= DCCTYPE_UNSIGNED;
-  }
-  if (flags&FLAG_FOUND_LENGTH) WARN(W_QUALIFIER_ALREADY_IN_USE);
-  flags |= FLAG_FOUND_LENGTH;
-  self->t_type |= length;
+  if (flags&F_WIDTH) WARN(W_QUALIFIER_ALREADY_IN_USE);
+  self->t_type |= newwidth;
+  flags        |= F_WIDTH;
   goto next;
  } break;
 
- {
-  tyid_t flag;
- case KWD_unsigned:
- case KWD___unsigned:
- case KWD___unsigned__:
-  flag = DCCTYPE_UNSIGNED;
-  if (DCC_MACRO_FALSE) {
- case KWD_signed:
- case KWD___signed:
- case KWD___signed__:
-   flag = 0;
-  }
-  if (flags&FLAG_FOUND_SIGN) WARN(W_QUALIFIER_ALREADY_IN_USE);
-  flags |= FLAG_FOUND_SIGN;
+
+ { /* Special builtin types. */
+  tyid_t newflags;
+  if (DCC_MACRO_FALSE) { case KWD__Bool: newflags = DCCTYPE_BOOL; WARN(W_BUILTIN_TYPE_BOOL_C99); }
+  if (DCC_MACRO_FALSE) { case KWD_void:  newflags = DCCTYPE_VOID; }
+  if (DCC_MACRO_FALSE) { case KWD_float: newflags = DCCTYPE_FLOAT; }
+  if (flags&(F_INT|F_SIGN|F_WIDTH)) break;
+  FIX_AUTO();
+  assert(!self->t_base);
+  self->t_type |= newflags;
+  flags        |= (F_INT|F_SIGN|F_WIDTH);
+  goto next;
+ } break;
+
+ { /* Sign modifiers */
+  tyid_t new_sign;
+  if (DCC_MACRO_FALSE) { case KWD_unsigned: case KWD___unsigned: case KWD___unsigned__: new_sign = DCCTYPE_UNSIGNED; }
+  if (DCC_MACRO_FALSE) { case KWD_signed:   case KWD___signed:   case KWD___signed__:   new_sign = 0; }
+  if (flags&F_SIGN) WARN(W_QUALIFIER_ALREADY_IN_USE);
+  FIX_AUTO();
+  flags |= F_SIGN;
   /* Apply the new sign flag. */
   self->t_type &= ~(DCCTYPE_UNSIGNED);
   if ((DCCTYPE_GROUP(self->t_type) == DCCTYPE_BUILTIN &&
@@ -585,69 +894,30 @@ begin: DCCParse_Attr(attr);
      (DCCTYPE_GROUP(self->t_type) == DCCTYPE_STRUCTURE &&
       self->t_base->d_attr &&
      (self->t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC))
-     ) self->t_type |= flag;
-  else {
-   WARN(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,self);
-  }
-  goto next;
- } break;
-
- {
- case KWD_int:
-  if (flags&FLAG_FOUND_INT) WARN(W_QUALIFIER_ALREADY_IN_USE);
-  flags |= FLAG_FOUND_INT;
-  /* HINT: 'DCCTYPE_INT' equals ZERO(0), so it's already set implicitly. */
-  goto next;
- } break;
-
- case KWD___auto_type:
-  if ((flags&(FLAG_FOUND_INT|FLAG_FOUND_SIGN|FLAG_FOUND_LENGTH)) ||
-      (self->t_type&DCCTYPE_QUAL)) break;
-  self->t_type |= DCCTYPE_AUTO;
-  flags |= (FLAG_FOUND_INT|FLAG_FOUND_SIGN|FLAG_FOUND_LENGTH);
-  goto next;
-
- {
-  tyid_t newflags;
-  if (DCC_MACRO_FALSE) { case KWD__Bool: newflags = DCCTYPE_BOOL; WARN(W_BUILTIN_TYPE_BOOL_C99); }
-  if (DCC_MACRO_FALSE) { case KWD_void:  newflags = DCCTYPE_VOID; }
-  if (DCC_MACRO_FALSE) { case KWD_float: newflags = DCCTYPE_FLOAT; }
-  if (flags&(FLAG_FOUND_INT|FLAG_FOUND_SIGN|FLAG_FOUND_LENGTH)) break;
-  self->t_type |= newflags;
-  flags |= (FLAG_FOUND_INT|FLAG_FOUND_SIGN|FLAG_FOUND_LENGTH);
-  goto next;
- } break;
-
- { /* floating-point type: double */
- case KWD_double:
-  if (flags&(FLAG_FOUND_INT|FLAG_FOUND_SIGN)) break;
-  if (flags&FLAG_FOUND_LENGTH) {
-   if ((self->t_type&~(DCCTYPE_FLAGSMASK)) != DCCTYPE_LONG) break;
-   self->t_type &= (DCCTYPE_FLAGSMASK);
-   self->t_type |= (DCCTYPE_LDOUBLE);
-  } else {
-   self->t_type &= (DCCTYPE_FLAGSMASK);
-   self->t_type |= (DCCTYPE_DOUBLE);
-  }
-  flags |= (FLAG_FOUND_INT|FLAG_FOUND_SIGN|FLAG_FOUND_LENGTH);
+      ) self->t_type |= new_sign;
+  else WARN(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,self);
   goto next;
  } break;
 
  { /* Storage modifiers. */
   tyid_t new_storage;
  case KWD_auto: /* Automatic storage / auto-type. */
-  if (HAS(EXT_AUTO_FOR_AUTOTYPE)) { flags |= FLAG_FOUND_AUTO; goto next; }
+  if (HAS(EXT_AUTO_FOR_AUTOTYPE) &&
+    !(flags&(F_INT|F_SIGN|F_WIDTH))) flags |= F_AUTO;
   new_storage = DCCTYPE_AUTOMATIC;
   if (DCC_MACRO_FALSE) { case KWD_static:   new_storage = DCCTYPE_STATIC; }
   if (DCC_MACRO_FALSE) { case KWD_extern:   new_storage = DCCTYPE_EXTERN; }
   if (DCC_MACRO_FALSE) { case KWD_register: new_storage = DCCTYPE_REGISTER; }
   if (DCC_MACRO_FALSE) { case KWD_typedef:  new_storage = DCCTYPE_TYPEDEF; }
-  if (self->t_type&(DCCTYPE_STOREMASK&~(DCCTYPE_INLINE))) {
+  if (flags&F_STORAGE) {
    WARN(W_TYPE_STORAGE_CLASS_ALREADY_DEFINED);
    self->t_type &= ~(DCCTYPE_STOREMASK&~(DCCTYPE_INLINE));
+  } else if (flags&F_INLINE) {
+   self->t_type &= ~(DCCTYPE_STOREMASK&~(DCCTYPE_INLINE));
   }
+  if (new_storage != DCCTYPE_AUTOMATIC) FIX_AUTO();
   self->t_type |= new_storage;
-  flags |= FLAG_FOUND_STORAGE;
+  flags        |= F_STORAGE;
   goto next;
  } break;
 
@@ -655,74 +925,101 @@ begin: DCCParse_Attr(attr);
  case KWD_inline:
  case KWD___inline:
  case KWD___inline__:
-  if (self->t_type&DCCTYPE_INLINE)
-   WARN(W_TYPE_STORAGE_CLASS_ALREADY_DEFINED);
+  if (flags&F_INLINE)
+      WARN(W_TYPE_STORAGE_CLASS_ALREADY_DEFINED);
   self->t_type |= DCCTYPE_INLINE;
+  flags        |= F_INLINE;
+  /* Inline storage (tries to) imply static storage duration. */
+  if (!(flags&F_STORAGE)) self->t_type |= DCCTYPE_STATIC;
   goto next;
  } break;
 
- {
+ { /* Type flag: Atomic accessor. */
  case KWD__Atomic:
   WARN(W_TYPE_MODIFIER_ATOMIC_C11);
   if (self->t_type&DCCTYPE_ATOMIC)
-   WARN(W_TYPE_MODIFIER_ATOMIC_ALREADY_DEFINED);
+      WARN(W_TYPE_MODIFIER_ATOMIC_ALREADY_DEFINED);
   self->t_type |= DCCTYPE_ATOMIC;
   goto next;
  } break;
 
+ { /* GCC-extension: '__typeof__(...)' */
+  int has_paren;
+  struct DCCAttrDecl typeof_attr;
+ case KWD_typeof:
+ case KWD___typeof:
+ case KWD___typeof__:
+  if (flags&(F_INT|F_SIGN|F_WIDTH)) break;
+  flags |= (F_INT|F_SIGN|F_WIDTH);
+  assert(!self->t_base);
+  YIELD();
+  has_paren = (TOK == '(');
+  if (has_paren) YIELD();
+  memset(&typeof_attr,0,sizeof(typeof_attr));
+  DCCParse_CTypeOnly(self,&typeof_attr);
+  DCCType_ASSERT(self);
+  if (has_paren) {
+   if (TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
+  }
+ } break;
+
  { /* struct/union/enum declaration */
   uint16_t decl_flag;
+  struct DCCDecl *tydecl;
   if (DCC_MACRO_FALSE) { case KWD_enum:   decl_flag = DCC_DECLKIND_ENUM; }
   if (DCC_MACRO_FALSE) { case KWD_struct: decl_flag = DCC_DECLKIND_STRUCT; }
   if (DCC_MACRO_FALSE) { case KWD_union:  decl_flag = DCC_DECLKIND_UNION; }
-  if (flags&(FLAG_FOUND_INT|FLAG_FOUND_LENGTH)) break;
+  /* NOTE: Allow sign modifiers for arithmetic structure types. */
+  if (flags&(F_INT|F_WIDTH)) break;
+  flags |= (F_INT|F_WIDTH);
+  assert(!self->t_base);
   YIELD();
   DCCParse_Attr(attr);
   if (TPP_ISKEYWORD(TOK)) {
-   decl = DCCCompiler_NewDecl(TOKEN.t_kwd,DCC_NS_STRUCT);
-   if unlikely(!decl) break;
+   tydecl = DCCCompiler_NewDecl(TOKEN.t_kwd,DCC_NS_STRUCT);
+   if unlikely(!tydecl) break;
    YIELD();
    DCCParse_Attr(attr);
-   DCCDecl_Incref(decl);
+   DCCDecl_Incref(tydecl);
   } else {
-   decl = DCCDecl_New(&TPPKeyword_Empty);
-   if unlikely(!decl) break;
+   tydecl = DCCDecl_New(&TPPKeyword_Empty);
+   if unlikely(!tydecl) break;
   }
-  if (decl->d_kind == DCC_DECLKIND_NONE) {
+  if (tydecl->d_kind == DCC_DECLKIND_NONE) {
    /* TODO: Warn about struct/union/enum declaration in argument list. */
    /* (Forward) declare a new type. */
-   decl->d_kind  = DCC_DECLKIND_TYPE|decl_flag;
-   decl->d_flag |= DCC_DECLFLAG_FORWARD;
+   tydecl->d_kind  = DCC_DECLKIND_TYPE|decl_flag;
+   tydecl->d_flag |= DCC_DECLFLAG_FORWARD;
    /* The following are already initialized thanks to zero-initialization. */
-   assert((decl->d_type.t_type&DCCTYPE_BASICMASK) == DCCTYPE_INT);
-   assert(decl->d_type.t_base == NULL);
-   assert(decl->d_tdecl.td_size == 0);
-   assert(decl->d_tdecl.td_fieldv == NULL);
+   assert((tydecl->d_type.t_type&DCCTYPE_BASICMASK) == DCCTYPE_INT);
+   assert(tydecl->d_type.t_base                     == NULL);
+   assert(tydecl->d_tdecl.td_size                   == 0);
+   assert(tydecl->d_tdecl.td_fieldv                 == NULL);
   }
-  assertf(decl->d_kind&DCC_DECLKIND_TYPE,
+  assertf(tydecl->d_kind&DCC_DECLKIND_TYPE,
           "The struct symtab should only contain types, but '%s' isn't",
-          decl->d_name->k_name);
-  flags |= (FLAG_FOUND_INT|FLAG_FOUND_LENGTH);
+          tydecl->d_name->k_name);
   if (TOK == '{') {
    /* The type is actually being declared _here_! */
-   if (!(decl->d_flag&DCC_DECLFLAG_FORWARD)) {
-    WARN(W_TYPE_NOT_FORWARD,decl);
-    if (decl->d_depth >= compiler.c_scope.s_depth) {
-     DCCDecl_Clear(decl,compiler.c_scope.s_depth);
+   if (!(tydecl->d_flag&DCC_DECLFLAG_FORWARD)) {
+    WARN(W_TYPE_NOT_FORWARD,tydecl);
+    if (tydecl->d_depth >= compiler.c_scope.s_depth) {
+     DCCDecl_Clear(tydecl,compiler.c_scope.s_depth);
     } else {
      struct DCCDecl *newdecl;
-     newdecl = DCCDecl_New(decl->d_name);
-     DCCDecl_Decref(decl);
+     newdecl = DCCDecl_New(&TPPKeyword_Empty);
+     DCCDecl_Decref(tydecl);
      if unlikely(!newdecl) break;
-     decl = newdecl;
+     tydecl = newdecl;
     }
-    decl->d_kind = decl_flag;
+    tydecl->d_kind = decl_flag;
    }
-   decl->d_flag &= ~(DCC_DECLFLAG_FORWARD);
+   tydecl->d_flag &= ~(DCC_DECLFLAG_FORWARD);
    YIELD();
    if (decl_flag == DCC_DECLKIND_STRUCT ||
        decl_flag == DCC_DECLKIND_UNION) {
-    DCCParse_Struct(decl);
+    DCCParse_Struct(tydecl);
    } else {
     /* TODO: Unless unnamed, STD-C doesn't want enum
      *       constants to be type-compatible with int!
@@ -743,19 +1040,19 @@ begin: DCCParse_Attr(attr);
    }
    if (TOK != '}') WARN(W_EXPECTED_RBRACE); else YIELD();
    DCCParse_Attr(attr);
-   DCCDecl_SetAttr(decl,attr);
+   DCCDecl_SetAttr(tydecl,attr);
    if (decl_flag == DCC_DECLKIND_STRUCT ||
        decl_flag == DCC_DECLKIND_UNION) {
-    DCCSym_CalculateStructureOffsets(decl);
+    DCCDecl_CalculateStructureOffsets(tydecl);
    }
   }
   if (decl_flag == DCC_DECLKIND_STRUCT ||
       decl_flag == DCC_DECLKIND_UNION) {
-   self->t_base  = decl; /* Inherit reference. */
+   self->t_base  = tydecl; /* Inherit reference. */
    self->t_type |= DCCTYPE_STRUCTURE;
    DCCType_ASSERT(self);
-   if (flags&FLAG_FOUND_SIGN && (!decl->d_attr ||
-     !(decl->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC))) {
+   if ((flags&F_SIGN) && (!tydecl->d_attr ||
+      !(tydecl->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC))) {
     WARN(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,self);
     self->t_type &= ~(DCCTYPE_UNSIGNED);
    }
@@ -763,76 +1060,38 @@ begin: DCCParse_Attr(attr);
    /* Enum types don't reference the actual enum symbol.
     * Instead, they simply behave as an alias for 'int'. */
    assert(self->t_base == NULL);
-   assert((decl->d_type.t_type&DCCTYPE_BASICMASK) ==  DCCTYPE_INT ||
-          (decl->d_type.t_type&DCCTYPE_BASICMASK) == (DCCTYPE_INT|DCCTYPE_UNSIGNED));
-   DCCDecl_Decref(decl);
+   assert((tydecl->d_type.t_type&DCCTYPE_BASICMASK) ==  DCCTYPE_INT ||
+          (tydecl->d_type.t_type&DCCTYPE_BASICMASK) == (DCCTYPE_INT|DCCTYPE_UNSIGNED));
+   DCCDecl_Decref(tydecl);
   }
   goto next_noyield;
  } break;
 
- { /* GCC-extension: '__typeof__(...)' */
-  int has_paren;
-  struct DCCAttrDecl attr2;
-  struct TPPKeyword *kwd2;
- case KWD_typeof:
- case KWD___typeof:
- case KWD___typeof__:
-  if (flags&(FLAG_FOUND_INT|FLAG_FOUND_SIGN|FLAG_FOUND_LENGTH)) break;
-  flags |= (FLAG_FOUND_INT|FLAG_FOUND_SIGN|FLAG_FOUND_LENGTH);
-  assert(!self->t_base);
-  YIELD();
-  has_paren = (TOK == '(');
-  if (has_paren) YIELD();
-  memset(&attr2,0,sizeof(attr2));
-  /* Give 'typeof' a chance to referr to a type declaration directly,
-   * meaning that similar to 'sizeof', you may also specify a type
-   * after 'typeof', to which 'typeof' will simply do nothing and
-   * return that same type! */
-  kwd2 = DCCParse_CType(self,&attr2);
-  DCCAttrDecl_Quit(&attr2);
-  if (!kwd2) {
-   /* Simple enough: Just disable code generation & parse a regular, old expression.
-    *                Once that's done, the expression can be found on the vstack! */
-   pushf();
-   compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
-   DCCParse_Expr();
-   *self = vbottom->sv_ctype;
-   if (self->t_base) DCCDecl_Incref(self->t_base);
-   vpop(1);
-   popf();
-  }
-  DCCType_ASSERT(self);
-  if (has_paren) {
-   if (TOK != ')') WARN(W_EXPECTED_RPAREN);
-   else YIELD();
-  }
- } break;
-
  default:
-  if (TPP_ISKEYWORD(TOK) &&
-    !(flags&(FLAG_FOUND_INT|FLAG_FOUND_LENGTH))) {
+  if (TPP_ISKEYWORD(TOK) && !(flags&(F_INT|F_WIDTH))) {
+   struct DCCDecl *tydecl;
    /* Lookup a user-defined type. */
-   decl = DCCCompiler_GetDecl(TOKEN.t_kwd,DCC_NS_LOCALS);
-   if (decl && decl->d_kind&DCC_DECLKIND_TYPE) {
-    flags |= (FLAG_FOUND_INT|FLAG_FOUND_LENGTH);
+   tydecl = DCCCompiler_GetDecl(TOKEN.t_kwd,DCC_NS_LOCALS);
+   if (tydecl && tydecl->d_kind&DCC_DECLKIND_TYPE) {
+    flags |= (F_INT|F_WIDTH);
     assert(!self->t_base);
-    self->t_type &= (DCCTYPE_UNSIGNED|DCCTYPE_FLAGSMASK&~(DCCTYPE_ASTMASK)); /* Keep flags! */
-    if (flags&FLAG_FOUND_SIGN) {
+    self->t_type &= (DCCTYPE_UNSIGNED|DCCTYPE_FLAGSMASK&~(DCCTYPE_ALTMASK)); /* Keep flags! */
+    if (flags&F_SIGN) {
      /* Allow sign modifiers on arithmetic structures, or integral builtins. */
-     if ((DCCTYPE_GROUP(decl->d_type.t_type) == DCCTYPE_BUILTIN &&
-          DCCTYPE_BASIC(decl->d_type.t_type) < 8) ||
-        (DCCTYPE_GROUP(decl->d_type.t_type) == DCCTYPE_STRUCTURE &&
-         decl->d_type.t_base->d_attr &&
-        (decl->d_type.t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC)));
+     if ((DCCTYPE_GROUP(tydecl->d_type.t_type) == DCCTYPE_BUILTIN &&
+          DCCTYPE_BASIC(tydecl->d_type.t_type) < 8) ||
+         (DCCTYPE_GROUP(tydecl->d_type.t_type) == DCCTYPE_STRUCTURE &&
+          tydecl->d_type.t_base->d_attr &&
+         (tydecl->d_type.t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC)));
      else {
-      WARN(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,&decl->d_type);
+      WARN(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,&tydecl->d_type);
       self->t_type &= ~(DCCTYPE_UNSIGNED);
      }
     }
-    DCCType_ASSERT(&decl->d_type);
-    self->t_type |= decl->d_type.t_type;
-    self->t_base  = decl->d_type.t_base;
-    if (decl->d_attr) DCCAttrDecl_Merge(attr,decl->d_attr);
+    DCCType_ASSERT(&tydecl->d_type);
+    self->t_type |= tydecl->d_type.t_type;
+    self->t_base  = tydecl->d_type.t_base;
+    if (tydecl->d_attr) DCCAttrDecl_Merge(attr,tydecl->d_attr);
     if (self->t_base) DCCDecl_Incref(self->t_base);
     DCCType_ASSERT(self);
     goto next;
@@ -840,252 +1099,49 @@ begin: DCCParse_Attr(attr);
   }
   break;
  }
- if (!(flags&(FLAG_FOUND_INT|FLAG_FOUND_SIGN|FLAG_FOUND_LENGTH))) {
-  if (flags&FLAG_FOUND_AUTO) {
-   /* Special case: Only found 'auto', but nothing else!
-    * >> In this case, and since 'FLAG_FOUND_AUTO' can only be set
-    *    when that extension is enabled, actually return '__auto_type'! */
-   assert(!self->t_base);
-   self->t_type = DCCTYPE_AUTO;
-   flags = (FLAG_FOUND_INT|FLAG_FOUND_SIGN|FLAG_FOUND_LENGTH);
-  } else if (flags) {
-   /* This can happen if all that's been given was a storage specifier.
-    * e.g.: >> extern;
-    */
-   WARN(W_INCOMPLETE_TYPE_DESCRIPTOR,self);
-  }
- } else if (flags&FLAG_FOUND_AUTO) {
-  WARN(W_AUTO_USED_AS_STORAGE_CLASS);
+ return flags != 0;
+next:         YIELD();
+next_noyield: flags |= F_MISC;
+ if ((self->t_type&DCCTYPE_ATOMIC) &&
+     (DCCTYPE_GROUP(self->t_type) != DCCTYPE_POINTER) &&
+     (DCCTYPE_GROUP(self->t_type) != DCCTYPE_BUILTIN ||
+      DCCTYPE_ISFLOAT(self->t_type))) {
+  WARN(W_TYPE_MODIFIER_ATOMIC_REQUIRES_INTEGRAL);
+  self->t_type &= ~(DCCTYPE_ATOMIC);
  }
- if ((self->t_type&DCCTYPE_INLINE) &&
-    !(flags&FLAG_FOUND_STORAGE)) {
-  assert((self->t_type&DCCTYPE_STOREMASK) == DCCTYPE_INLINE);
-  /* A raw inline storage modifier causes the
-   * storage class to default to static duration. */
-  self->t_type |= DCCTYPE_STATIC;
-  flags        |= FLAG_FOUND_STORAGE;
- }
- return flags;
+ goto again;
 }
 
-LEXPRIV void
-DCCSym_CalculateStructureOffsets(struct DCCDecl *__restrict self) {
- int use_ms_alignment,is_union,pack_structure;
- target_off_t current_offset;
- target_siz_t max_alignment,s,a,max_size;
- unsigned int bitpos = 0; /* bit-position offset added to 'current_offset' */
- struct DCCAttrDecl *attr;
- struct DCCStructField *iter,*end;
+PUBLIC struct TPPKeyword *DCC_PARSE_CALL
+DCCParse_CType(struct DCCType *__restrict self,
+               struct DCCAttrDecl *__restrict attr) {
+ struct TPPKeyword *result = NULL;
+ if (DCCParse_CTypePrefix(self,attr)) {
+  result = DCCParse_CTypeSuffix(self,attr);
+ }
+ return result;
+}
+
+PUBLIC struct TPPKeyword *DCC_PARSE_CALL
+DCCParse_CTypeOnly(struct DCCType *__restrict self,
+                   struct DCCAttrDecl *__restrict attr) {
+ struct TPPKeyword *result;
  assert(self);
- assert(self->d_kind == DCC_DECLKIND_STRUCT ||
-        self->d_kind == DCC_DECLKIND_UNION);
- /* Align all structure members, considering attributes from 'attr' */
- /* NOTE: Make sure to consider 'self->d_attr' */
- use_ms_alignment = 0;
- pack_structure = 0;
- max_alignment = 1;
- current_offset = 0;
- max_size = 0;
- is_union = self->d_kind == DCC_DECLKIND_UNION;
- if ((attr = self->d_attr) != NULL) {
-  if (attr->a_flags&DCC_ATTRFLAG_PACKED) pack_structure = 1;
-  if (attr->a_flags&DCC_ATTRFLAG_MSSTRUCT) use_ms_alignment = 1;
-  if (attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN) max_alignment = attr->a_align;
+ assert(attr);
+ /* NOTE: If 'self' is an LVA type, code may still be generated
+ *        by this unless the caller set the NOCGEN flag. */
+ result = DCCParse_CType(self,attr);
+ if (!result) {
+  pushf();
+  /* Make sure no code is generated for the discarded expression. */
+  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
+  DCCParse_Expr1();
+  DCCType_InitCopy(self,&vbottom->sv_ctype);
+  vpop(1);
+  popf();
+  result = &TPPKeyword_Empty;
  }
- end = (iter = self->d_tdecl.td_fieldv)+self->d_tdecl.td_size;
- (void)use_ms_alignment; /* TODO: Special ms algorithm. */
- for (; iter != end; ++iter) {
-  assert(iter->sf_decl);
-  attr = iter->sf_decl->d_attr;
-  s = DCCType_Sizeof(&iter->sf_decl->d_type,&a,0);
-  if (iter->sf_bitfld != (sflag_t)-1) {
-   target_siz_t ceil_offset;
-   sflag_t field_size = iter->sf_bitfld;
-   /* Make bitfields in unions are always located at the beginning. */
-   if (is_union) current_offset = 0,bitpos = 0;
-   /* Warn if the bit-field is larger than the underlying type. */
-   if (field_size > s*DCC_TARGET_BITPERBYTE) WARN(W_TYPE_STRUCT_BITFIELD_TOO_LARGE,iter->sf_decl);
-   /* Special case: No need for a bit-field, everything is already aligning. */
-   if (field_size == s*DCC_TARGET_BITPERBYTE && !bitpos) goto no_bitfield;
-#define MAX_BITFIELD_SIZE   (DCC_SFLAG_BITSIZ_MASK >> DCC_SFLAG_BITSIZ_SHIFT)
-   if (field_size > MAX_BITFIELD_SIZE) {
-    WARN(W_TYPE_STRUCT_BITFIELD_TOO_LARGE,iter->sf_decl);
-    field_size = MAX_BITFIELD_SIZE; /* This is an actual implementation limit! */
-   }
-#undef MAX_BITFIELD_SIZE
-   iter->sf_off    = current_offset;
-   /* Generate the bitfield flags. */
-   iter->sf_bitfld = DCC_SFLAG_MKBITFLD(bitpos,field_size);
-   bitpos         += field_size;
-   current_offset += (bitpos/DCC_TARGET_BITPERBYTE);
-   bitpos         %= DCC_TARGET_BITPERBYTE;
-   ceil_offset     = (target_siz_t)current_offset;
-   if (bitpos) ++ceil_offset;
-   /* Must use the ceiling of the current offset when checking against max_size. */
-   if (max_size < ceil_offset)
-       max_size = ceil_offset;
-   goto check_align;
-  } else {
-   if (bitpos) {
-    /* If the last field was a non-empty bit-field,
-     * advance the structure pointer to prevent overlap. */
-    bitpos = 0;
-    ++current_offset;
-   }
-no_bitfield:
-   iter->sf_bitfld = 0;
-  }
-  /* Allow per-field alignment override. */
-  if (attr && (attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN)) {
-   if (a < attr->a_align) a = attr->a_align;
-  } else if (pack_structure || (attr && attr->a_flags&DCC_ATTRFLAG_PACKED)) a = 1;
-  else if (compiler.c_pack.ps_pack &&
-           compiler.c_pack.ps_pack < a) a = compiler.c_pack.ps_pack;
-  /* Force ZERO-offsets in unions, thus
-   * allocating all fields in the same position. */
-  if (is_union) current_offset = 0;
-  else current_offset = (current_offset+(a-1))&~(a-1);
-  iter->sf_off = current_offset;
-  current_offset += s;
-  if (max_size < (target_siz_t)current_offset)
-      max_size = (target_siz_t)current_offset;
-check_align:
-  if (max_alignment < a)
-      max_alignment = a;
- }
- if (self->d_attr &&
-    (self->d_attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN) &&
-     max_alignment > self->d_attr->a_align) {
-  WARN(W_TYPE_STRUCT_EXPLICIT_ALIGNMENT_TOO_LOW,
-       self,self->d_attr->a_align,max_alignment);
- }
- self->d_tdecl.td_struct_size  = max_size;
- self->d_tdecl.td_struct_align = max_alignment;
-}
-
-
-PUBLIC void DCC_PARSE_CALL
-DCCParse_Struct(struct DCCDecl *__restrict struct_decl) {
- size_t fieldc,fielda,new_fielda;
- struct DCCStructField *fieldv,*new_fieldv;
- struct DCCType base,part;
- struct DCCAttrDecl attr;
- struct TPPKeyword *field_name;
- struct DCCDecl *field_decl;
- assert(struct_decl);
- assert(struct_decl->d_kind == DCC_DECLKIND_STRUCT ||
-        struct_decl->d_kind == DCC_DECLKIND_UNION);
- assert(struct_decl->d_tdecl.td_fieldv == NULL);
- fieldc = fielda = 0,fieldv = NULL;
- for (;;) {
-  memset(&attr,0,sizeof(attr));
-  if (!DCCParse_CTypePrefix(&base,&attr)) break;
-  DCCType_InitCopy(&part,&base);
-  for (;;) {
-   sflag_t bitfield = (sflag_t)-1;
-   field_name = DCCParse_CTypeSuffix(&part,&attr);
-   assert(field_name);
-   if (fieldc == fielda) {
-    new_fielda = fielda ? fielda*2 : 2;
-    new_fieldv = (struct DCCStructField *)realloc(fieldv,new_fielda*
-                                                  sizeof(struct DCCStructField));
-    if unlikely(!new_fieldv) {seterr: TPPLexer_SetErr(); goto next_field; }
-    fielda = new_fielda;
-    fieldv = new_fieldv;
-   }
-   /* TODO: Warn if 'field_name' was already used in this structure.
-    * NOTE: Must check unnamed structures recursively for this! */
-   field_decl = DCCDecl_New(field_name);
-   if unlikely(!field_decl) goto seterr;
-   field_decl->d_kind = DCC_DECLKIND_TYPE;
-   field_decl->d_type = part,part.t_base = NULL; /* Inherit reference. */
-   DCCDecl_SetAttr(field_decl,&attr);
-   if (TOK == ':') {
-    int_t field_size;
-    /* Bit-field declaration. */
-    YIELD();
-    field_size = DCCParse_CExpr(1);
-    if (field_size < 0) WARN(W_TYPE_STRUCT_BITFIELD_NEGATIVE,field_decl);
-    else bitfield = (sflag_t)field_size;
-    /* Check the field type for being a scalar. */
-    if (!DCCType_IsScalar(&field_decl->d_type))
-        WARN(W_TYPE_STRUCT_BITFIELD_SCALAR,field_decl);
-    /* TODO: Didn't STD-C only allow 'unsigned int/int' for bitfields?
-     *    >> If so, emit an extension-warning if something else is used! */
-   }
-   fieldv[fieldc].sf_decl   = field_decl;
-   fieldv[fieldc].sf_bitfld = bitfield;
-   ++fieldc;
-next_field:
-   DCCType_Quit(&part);
-   if (TOK != ',') break;
-   YIELD();
-   DCCParse_Attr(&attr);
-  }
-  DCCType_Quit(&base);
-  DCCAttrDecl_Quit(&attr);
-  if (TOK != ';') WARN(W_EXPECTED_SEMICOLON); else YIELD();
- }
- DCCAttrDecl_Quit(&attr);
- if (fieldc != fielda) {
-  new_fieldv = (struct DCCStructField *)realloc(fieldv,fieldc*
-                                                sizeof(struct DCCStructField));
-  if (new_fieldv) fieldv = new_fieldv;
- }
- assert((fieldc != 0) == (fieldv != NULL));
- struct_decl->d_tdecl.td_size   = fieldc;
- struct_decl->d_tdecl.td_fieldv = fieldv; /* Inherit data. */
- /* Warn about empty structures. */
- if (!fieldc) WARN(W_TYPE_STRUCT_EMPTY,struct_decl);
-}
-
-
-
-PUBLIC void DCC_PARSE_CALL
-DCCParse_Enum(void) {
- struct TPPKeyword *cst_name;
- struct DCCDecl *constant_decl;
- struct DCCSymExpr next_val;
- int done = 0;
- next_val.e_sym = NULL;
- next_val.e_int = 0;
- while (!done) {
-  struct DCCAttrDecl attr = DCCATTRDECL_INIT;
-  DCCParse_Attr(&attr);
-  cst_name = NULL;
-  if (TPP_ISKEYWORD(TOK)) {
-   cst_name = TOKEN.t_kwd;
-   YIELD();
-   DCCParse_Attr(&attr);
-  }
-  if (TOK == '=') {
-   YIELD();
-   /* NOTE: We actually allow enum constants to depend on symbols. */
-   DCCParse_CExpr2(1,&next_val);
-   DCCParse_Attr(&attr);
-  }
-  if (cst_name) {
-   /* Declare a constant symbol. */
-   constant_decl = DCCCompiler_NewLocalDecl(cst_name,DCC_NS_LOCALS);
-   if (constant_decl) {
-    if (constant_decl->d_kind != DCC_DECLKIND_NONE) {
-     WARN(W_DECL_ALREADY_DEFINED,constant_decl);
-    } else {
-     DCCDecl_SetAttr(constant_decl,&attr);
-     /* TODO: clamp to int? (Shouldn't always be done; also: enum classes?) */
-     assert(constant_decl->d_mdecl.md_loc.ml_reg == DCC_RC_CONST);
-     constant_decl->d_kind                = DCC_DECLKIND_MREF;
-     constant_decl->d_mdecl.md_loc.ml_off = (target_off_t)next_val.e_int;
-     constant_decl->d_mdecl.md_loc.ml_sym = next_val.e_sym;
-     DCCSym_XIncref(next_val.e_sym); /* Create reference. */
-    }
-    ++next_val.e_int;
-   }
-  }
-  DCCAttrDecl_Quit(&attr);
-  if (TOK != ',') break;
-  YIELD();
- }
+ return result;
 }
 
 DCC_DECL_END

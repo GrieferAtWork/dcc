@@ -241,5 +241,8 @@
     <None Include="..\src\dcc\unit-import-arch.c.inl">
       <Filter>src\dcc</Filter>
     </None>
+    <None Include="..\src\dcc\lexer-ctype-struct.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
   </ItemGroup>
 </Project>

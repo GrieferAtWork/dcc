@@ -119,7 +119,7 @@ struct DCCDecl;
 #define DCCTYPE_BASICMASK 0x0000000f /* Mask for base type ids. */
 #define DCCTYPE_GROUPMASK 0x00000ff0 /* Mask for type group. */
 #define DCCTYPE_FLAGSMASK 0xfffff000 /* Mask for type flags. */
-#define DCCTYPE_ASTMASK   0x0f000000 /* Alternate type-names mask. */
+#define DCCTYPE_ALTMASK   0x0f000000 /* Alternate type-names mask. */
 
 /* Type helper macros. */
 #define DCCTYPE_BASIC(t)             ((t)&DCCTYPE_BASICMASK)
