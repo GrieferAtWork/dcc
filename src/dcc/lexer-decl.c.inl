@@ -81,7 +81,7 @@ DCCParse_Function(struct DCCDecl *fun_decl, struct TPPKeyword const *asmname,
   */
  /* Create the function scope. */
  pushscope_function();
- if (fun_attr->a_flags&DCC_ATTRFLAG_NAKED) {
+ if (fun_attr->a_specs&DCC_ATTRSPEC_NAKED) {
   function_allocator.aa_offset  = DCC_TARGET_SIZEOF_POINTER;
   function_allocator.aa_basereg = DCC_RR_XSP;
   --compiler.c_scope.s_id; /* Naked functions don't generate new stack-frames. */

@@ -490,7 +490,7 @@ end_brace:
   if (type->t_base && (flags&DCCPARSE_INITFLAG_INBRACE)) {
    uint16_t base_kind = type->t_base->d_kind;
    if ((base_kind == DCC_DECLKIND_STRUCT &&
-       (!type->t_base->d_attr || !(type->t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC))) ||
+       (!type->t_base->d_attr || !(type->t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC))) ||
         base_kind == DCC_DECLKIND_UNION ||
         base_kind == DCC_DECLKIND_ARRAY ||
         base_kind == DCC_DECLKIND_VLA) {

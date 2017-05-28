@@ -90,21 +90,33 @@ struct DCCSymAddr {
 };
 
 
+#define DCC_ATTRSPEC_NONE          0x00000000
+#define DCC_ATTRSPEC_NOINLINE      0x00000001 /*< Used for functions: Mark as no-inline. */
+#define DCC_ATTRSPEC_NORETURN      0x00000002 /*< Used for functions: Mark as no-return. */
+#define DCC_ATTRSPEC_SECTION       0x00000004 /*< An explicit section was defined (When not set, the symbol is used as alias).
+                                               *  WARNING: This flag may only be set when 'a_section' is non-NULL. */
+#define DCC_ATTRSPEC_WEAK          0x00000008 /*< Used for symbols: Define as weak. */
+#if DCC_TARGET_BIN == DCC_BINARY_PE || \
+    defined(GUARD_DCC_LEXER_C) || \
+    defined(GUARD_DCC_LEXER_ATTRIBUTES_C_INL)
+#define DCC_ATTRSPEC_DLLIMPORT     0x00000010 /*< On PE targets: dllimport. */
+#define DCC_ATTRSPEC_DLLEXPORT     0x00000020 /*< On PE targets: dllexport. */
+#endif
+#define DCC_ATTRSPEC_USED          0x00000040 /*< Don't exclude a symbol associated with this because it appears unused. */
+#define DCC_ATTRSPEC_UNUSED        0x00000080 /*< Don't warn about a associated with this not being used. */
+#define DCC_ATTRSPEC_NAKED         0x00000100 /*< Used for functions: Don't generate a prologue/epilogue. */
+#define DCC_ATTRSPEC_CONSTRUCTOR   0x00000200 /*< Used for functions: Run before main(). */
+#define DCC_ATTRSPEC_DESTRUCTOR    0x00000400 /*< Used for functions: Run after main(). */
+#define DCC_ATTRSPEC_PACKED        0x00000800 /*< When set, tightly pack a structure. */
+#define DCC_ATTRSPEC_FIXEDALIGN    0x00001000 /*< When set, 'a_align' contains fixed alignment information. */
+#define DCC_ATTRSPEC_TRANSUNION    0x00002000 /*< When set for a union type, it may implicitly be cast of any of its members. */
+#define DCC_ATTRSPEC_MSSTRUCT      0x00004000 /*< A structure type is packed using the ms algorithm. */
+#define DCC_ATTRSPEC_ARITHMETIC    0x00008000 /*< Allow arithmetic operations with structure types. */
+#define DCC_ATTRSPEC_WUNUSED       0x00010000 /*< Used for functions: Warn when return value is unused. */
+
+
 
 #define DCC_ATTRFLAG_NONE          0x00000000
-#define DCC_ATTRFLAG_NOINLINE      0x00000001 /*< Used for functions: Mark as no-inline. */
-#define DCC_ATTRFLAG_NORETURN      0x00000002 /*< Used for functions: Mark as no-return. */
-#define DCC_ATTRFLAG_SECTION       0x00000004 /*< An explicit section was defined (When not set, the symbol is used as alias).
-                                               *  WARNING: This flag may only be set when 'a_section' is non-NULL. */
-#define DCC_ATTRFLAG_WEAK          0x00000008 /*< Used for symbols: Define as weak. */
-#define DCC_ATTRFLAG_NAKED         0x00000010 /*< Used for functions: Don't generate a prologue/epilogue. */
-#define DCC_ATTRFLAG_CONSTRUCTOR   0x00000020 /*< Used for functions: Run before main(). */
-#define DCC_ATTRFLAG_DESTRUCTOR    0x00000040 /*< Used for functions: Run after main(). */
-#define DCC_ATTRFLAG_PACKED        0x00000080 /*< When set, tightly pack a structure. */
-#define DCC_ATTRFLAG_FIXEDALIGN    0x00000100 /*< When set, 'a_align' contains fixed alignment information. */
-#define DCC_ATTRFLAG_TRANSUNION    0x00000200 /*< When set for a union type, it may implicitly be cast of any of its members. */
-#define DCC_ATTRFLAG_MSSTRUCT      0x00000400 /*< A structure type is packed using the ms algorithm. */
-#define DCC_ATTRFLAG_ARITHMETIC    0x00000800 /*< Allow arithmetic operations with structure types. */
 
 #define DCC_ATTRFLAG_MODE_NONE     0x00000000
 #define DCC_ATTRFLAG_MODE_QI       0x00002000 /*< An integer that is as wide as the smallest addressable unit, usually 8 bits. */
@@ -118,28 +130,17 @@ struct DCCSymAddr {
 #define DCC_ATTRFLAG_REACH_WARN    0x00010000 /*< [if(a_depr != NULL)] Emit a warning when this function is reached. */
 #define DCC_ATTRFLAG_REACH_ERROR   0x00020000 /*< [if(a_depr != NULL)] Emit an error when this function is reached. */
 
-#define DCC_ATTRFLAG_CDECL         0x00000000 /*< Use cdecl calling conventions. */
-#define DCC_ATTRFLAG_STDCALL       0x00100000 /*< Use stdcall calling conventions. */
-#define DCC_ATTRFLAG_THISCALL      0x00200000 /*< Use thiscall calling conventions. */
-#define DCC_ATTRFLAG_FASTCALL      0x00300000 /*< Use fastcall calling conventions. */
-
-#define DCC_ATTRFLAG_WUNUSED       0x01000000 /*< Used for functions: Warn when return value is unused. */
-#define DCC_ATTRFLAG_USED          0x02000000 /*< Don't exclude a symbol associated with this because it appears unused. */
-#define DCC_ATTRFLAG_UNUSED        0x04000000 /*< Don't warn about a associated with this not being used. */
+#define DCC_ATTRFLAG_CC_CDECL      0x00000000 /*< Use cdecl calling conventions. */
+#define DCC_ATTRFLAG_CC_STDCALL    0x00100000 /*< Use stdcall calling conventions. */
+#define DCC_ATTRFLAG_CC_THISCALL   0x00200000 /*< Use thiscall calling conventions. */
+#define DCC_ATTRFLAG_CC_FASTCALL   0x00300000 /*< Use fastcall calling conventions. */
 
 #define DCC_ATTRFLAG_VIS_NONE      0x00000000 /*< No special visibility (use command-line option '-fvisibility=...'). */
 #define DCC_ATTRFLAG_VIS_DEFAULT   0x10000000 /*< Default/automatic visibility. */
 #define DCC_ATTRFLAG_VIS_HIDDEN    0x20000000 /*< Hidden visibility. */
 #define DCC_ATTRFLAG_VIS_PROTECTED 0x30000000 /*< Protected visibility. */
 #define DCC_ATTRFLAG_VIS_INTERNAL  0x40000000 /*< Internal visibility. */
-#if DCC_TARGET_BIN == DCC_BINARY_PE || \
-    defined(GUARD_DCC_LEXER_C) || \
-    defined(GUARD_DCC_LEXER_ATTRIBUTES_C_INL)
-#define DCC_ATTRFLAG_DLLIMPORT     0x08000000 /*< On PE targets: dllimport. */
-#define DCC_ATTRFLAG_DLLEXPORT     0x80000000 /*< On PE targets: dllexport. */
-#endif
 
-#define DCC_ATTRFLAG_MASK_FLAGS         0x00001fff /*< General purpose flags. */
 #define DCC_ATTRFLAG_MASK_MODE          0x0000e000 /*< Mask for type mode. */
 #define DCC_ATTRFLAG_MASK_REACHABLE     0x000f0000 /*< Mask for behavior when reached. */
 #define DCC_ATTRFLAG_MASK_CALLCONV      0x00f00000 /*< Mask for calling-convention flags. */
@@ -148,29 +149,30 @@ struct DCCSymAddr {
 #define DCC_ATTRFLAG_MASK_VISIBILITY    0xf8000000 /*< Mask for visibility flags. */
 
 struct DCCAttrDecl {
+ uint32_t                  a_specs;    /*< Attribute specs (Set of 'DCC_ATTRSPEC_*') */
  uint32_t                  a_flags;    /*< Attribute flags (Set of 'DCC_ATTRFLAG_*') */
  uint8_t                   a_regparm;  /*< Used for __attribute__((regparm(...))) */
  uint8_t                   a_padding1; /*< Padding/unused... */
  uint16_t                  a_padding2; /*< Padding/unused... */
 union{
- /*ref*/struct DCCSection *a_section;  /*< [0..1][DCC_ATTRFLAG_SECTION] Used for __attribute__((section(...))) */
- /*ref*/struct DCCSym     *a_alias;    /*< [0..1][!DCC_ATTRFLAG_SECTION] Used for __attribute__((alias(...))) */
+ /*ref*/struct DCCSection *a_section;  /*< [0..1][DCC_ATTRSPEC_SECTION] Used for __attribute__((section(...))) */
+ /*ref*/struct DCCSym     *a_alias;    /*< [0..1][!DCC_ATTRSPEC_SECTION] Used for __attribute__((alias(...))) */
 };
  /*ref*/struct TPPString  *a_reach;    /*< [0..1] Used for __attribute__((deprecated(...))) (User-defined warning text when declaration is reached) */
 union{
- DCC(target_siz_t)         a_align;    /*< Used by 'DCC_ATTRFLAG_FIXEDALIGN' */
+ DCC(target_siz_t)         a_align;    /*< Used by 'DCC_ATTRSPEC_FIXEDALIGN' */
  DCC(target_off_t)         a_offset;   /*< Used with 'a_alias' for alias-offsets. */
 };
  int                       a_c_prio;   /*< Constructor priority, or '0' when using default. */
  int                       a_d_prio;   /*< Destructor priority, or '0' when using default. */
 };
-#define DCCATTRDECL_INIT  {0,0,0,0,{NULL},NULL,{0},0,0}
+#define DCCATTRDECL_INIT  {0,0,0,0,0,{NULL},NULL,{0},0,0}
 
-#define DCCATTRDECL_HASSECTION_OR_IMPORT(self) ((self)->a_section && ((self)->a_flags&DCC_ATTRFLAG_SECTION))
-#define DCCATTRDECL_HASALIAS(self)             ((self)->a_alias && !((self)->a_flags&DCC_ATTRFLAG_SECTION))
+#define DCCATTRDECL_HASSECTION_OR_IMPORT(self) ((self)->a_section && ((self)->a_specs&DCC_ATTRSPEC_SECTION))
+#define DCCATTRDECL_HASALIAS(self)             ((self)->a_alias && !((self)->a_specs&DCC_ATTRSPEC_SECTION))
 #define DCCATTRDECL_HASSECTION(self)           (DCCATTRDECL_HASSECTION_OR_IMPORT(self) && !DCCSection_ISIMPORT((self)->a_section))
 #define DCCATTRDECL_HASIMPORT(self)            (DCCATTRDECL_HASSECTION_OR_IMPORT(self) && DCCSection_ISIMPORT((self)->a_section))
-#define DCCATTRDECL_GETSECTION_OR_IMPORT(self) (((self)->a_flags&DCC_ATTRFLAG_SECTION) ? (self)->a_section : NULL)
+#define DCCATTRDECL_GETSECTION_OR_IMPORT(self) (((self)->a_specs&DCC_ATTRSPEC_SECTION) ? (self)->a_section : NULL)
 
 DCCFUN void DCCAttrDecl_Quit(struct DCCAttrDecl *__restrict self);
 DCCFUN void DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,

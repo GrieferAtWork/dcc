@@ -47,9 +47,9 @@ DCCDecl_CalculateStructureOffsets(struct DCCDecl *__restrict self) {
  max_size = 0;
  is_union = self->d_kind == DCC_DECLKIND_UNION;
  if ((attr = self->d_attr) != NULL) {
-  if (attr->a_flags&DCC_ATTRFLAG_PACKED) pack_structure = 1;
-  if (attr->a_flags&DCC_ATTRFLAG_MSSTRUCT) use_ms_alignment = 1;
-  if (attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN) max_alignment = attr->a_align;
+  if (attr->a_specs&DCC_ATTRSPEC_PACKED) pack_structure = 1;
+  if (attr->a_specs&DCC_ATTRSPEC_MSSTRUCT) use_ms_alignment = 1;
+  if (attr->a_specs&DCC_ATTRSPEC_FIXEDALIGN) max_alignment = attr->a_align;
  }
  end = (iter = self->d_tdecl.td_fieldv)+self->d_tdecl.td_size;
  (void)use_ms_alignment; /* TODO: Special ms algorithm. */
@@ -95,9 +95,9 @@ no_bitfield:
    iter->sf_bitfld = 0;
   }
   /* Allow per-field alignment override. */
-  if (attr && (attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN)) {
+  if (attr && (attr->a_specs&DCC_ATTRSPEC_FIXEDALIGN)) {
    if (a < attr->a_align) a = attr->a_align;
-  } else if (pack_structure || (attr && attr->a_flags&DCC_ATTRFLAG_PACKED)) a = 1;
+  } else if (pack_structure || (attr && attr->a_specs&DCC_ATTRSPEC_PACKED)) a = 1;
   else if (compiler.c_pack.ps_pack &&
            compiler.c_pack.ps_pack < a) a = compiler.c_pack.ps_pack;
   /* Force ZERO-offsets in unions, thus
@@ -113,7 +113,7 @@ check_align:
       max_alignment = a;
  }
  if (self->d_attr &&
-    (self->d_attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN) &&
+    (self->d_attr->a_specs&DCC_ATTRSPEC_FIXEDALIGN) &&
      max_alignment > self->d_attr->a_align) {
   WARN(W_TYPE_STRUCT_EXPLICIT_ALIGNMENT_TOO_LOW,
        self,self->d_attr->a_align,max_alignment);

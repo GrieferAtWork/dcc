@@ -46,7 +46,7 @@ DCCFunctionFrame_Enter(struct DCCFunctionFrame *__restrict self,
  self->ff_old_section = unit.u_curr;
  self->ff_new_section = fun_attr->a_section;
  if (self->ff_new_section &&
-    (!(fun_attr->a_flags&DCC_ATTRFLAG_SECTION) ||
+    (!(fun_attr->a_specs&DCC_ATTRSPEC_SECTION) ||
        DCCSection_ISIMPORT(self->ff_new_section))
      ) self->ff_new_section = NULL; /* Make sure this isn't an import section. */
  self->ff_jmpsym      = NULL;
@@ -56,7 +56,7 @@ DCCFunctionFrame_Enter(struct DCCFunctionFrame *__restrict self,
  if (!self->ff_new_section) self->ff_new_section = unit.u_curr;
  if (!self->ff_new_section) self->ff_new_section = unit.u_text;
  assert(self->ff_new_section);
- if (fun_attr->a_flags&DCC_ATTRFLAG_NAKED)
+ if (fun_attr->a_specs&DCC_ATTRSPEC_NAKED)
      self->ff_flags |= DCC_FUNCTIONFRAME_FLAG_NAKED;
  /* Generate a jump across the function code if code generation was enabled. 
   * >> This is required for nested function declarations. */
@@ -95,9 +95,9 @@ DCCFunctionFrame_Enter(struct DCCFunctionFrame *__restrict self,
  /* Align the text address. */
  if (fun_attr) {
   target_ptr_t align = 1;
-  if (fun_attr->a_flags&DCC_ATTRFLAG_PACKED) {
-   align = (fun_attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN) ? fun_attr->a_align : 1;
-  } else if (fun_attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN && fun_attr->a_align > align) {
+  if (fun_attr->a_specs&DCC_ATTRSPEC_PACKED) {
+   align = (fun_attr->a_specs&DCC_ATTRSPEC_FIXEDALIGN) ? fun_attr->a_align : 1;
+  } else if (fun_attr->a_specs&DCC_ATTRSPEC_FIXEDALIGN && fun_attr->a_align > align) {
    align = fun_attr->a_align;
   }
   /* Align the text pointer. */

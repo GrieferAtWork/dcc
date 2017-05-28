@@ -196,13 +196,47 @@ DCCDecl_CalculateSymflags(struct DCCDecl const *__restrict self) {
  struct DCCAttrDecl *attr;
  assert(self);
  if ((attr = self->d_attr) != NULL) {
-#if DCC_TARGET_BIN == DCC_BINARY_PE
-  if (attr->a_flags&DCC_ATTRFLAG_DLLIMPORT) result |= DCC_SYMFLAG_DLLIMPORT;
-  if (attr->a_flags&DCC_ATTRFLAG_DLLEXPORT) result |= DCC_SYMFLAG_DLLEXPORT;
+#if (DCC_ATTRSPEC_WEAK == DCC_SYMFLAG_WEAK) || \
+    (defined(DCC_ATTRSPEC_DLLIMPORT) && (DCC_ATTRSPEC_DLLIMPORT == DCC_SYMFLAG_DLLIMPORT)) || \
+    (defined(DCC_ATTRSPEC_DLLEXPORT) && (DCC_ATTRSPEC_DLLEXPORT == DCC_SYMFLAG_DLLEXPORT)) || \
+    (DCC_ATTRSPEC_USED == DCC_SYMFLAG_USED) || \
+    (DCC_ATTRSPEC_UNUSED == DCC_SYMFLAG_UNUSED)
+  result |= attr->a_specs&(0
+#if (DCC_ATTRSPEC_WEAK == DCC_SYMFLAG_WEAK)
+                          |DCC_ATTRSPEC_WEAK
 #endif
-  if (attr->a_flags&DCC_ATTRFLAG_WEAK)   result |= DCC_SYMFLAG_WEAK;
-  if (attr->a_flags&DCC_ATTRFLAG_USED)   result |= DCC_SYMFLAG_USED;
-  if (attr->a_flags&DCC_ATTRFLAG_UNUSED) result |= DCC_SYMFLAG_UNUSED;
+#if defined(DCC_ATTRSPEC_DLLIMPORT) && DCC_ATTRSPEC_DLLIMPORT == DCC_SYMFLAG_DLLIMPORT
+                          |DCC_ATTRSPEC_DLLIMPORT
+#endif
+#if defined(DCC_ATTRSPEC_DLLEXPORT) && DCC_ATTRSPEC_DLLEXPORT == DCC_SYMFLAG_DLLEXPORT
+                          |DCC_ATTRSPEC_DLLIMPORT
+#endif
+#if DCC_ATTRSPEC_WEAK == DCC_SYMFLAG_WEAK
+                          |DCC_ATTRSPEC_WEAK
+#endif
+#if DCC_ATTRSPEC_USED == DCC_SYMFLAG_USED
+                          |DCC_ATTRSPEC_USED
+#endif
+#if DCC_ATTRSPEC_UNUSED == DCC_SYMFLAG_UNUSED
+                          |DCC_ATTRSPEC_UNUSED
+#endif
+                           );
+#endif /* ... */
+#if defined(DCC_ATTRSPEC_DLLIMPORT) && DCC_ATTRSPEC_DLLIMPORT != DCC_SYMFLAG_DLLIMPORT
+  if (attr->a_specs&DCC_ATTRSPEC_DLLIMPORT) result |= DCC_SYMFLAG_DLLIMPORT;
+#endif
+#if defined(DCC_ATTRSPEC_DLLEXPORT) && DCC_ATTRSPEC_DLLEXPORT != DCC_SYMFLAG_DLLEXPORT
+  if (attr->a_specs&DCC_ATTRSPEC_DLLEXPORT) result |= DCC_SYMFLAG_DLLEXPORT;
+#endif
+#if DCC_ATTRSPEC_WEAK != DCC_SYMFLAG_WEAK
+  if (attr->a_specs&DCC_ATTRSPEC_WEAK)   result |= DCC_SYMFLAG_WEAK;
+#endif
+#if DCC_ATTRSPEC_USED != DCC_SYMFLAG_USED
+  if (attr->a_specs&DCC_ATTRSPEC_USED)   result |= DCC_SYMFLAG_USED;
+#endif
+#if DCC_ATTRSPEC_UNUSED != DCC_SYMFLAG_UNUSED
+  if (attr->a_specs&DCC_ATTRSPEC_UNUSED) result |= DCC_SYMFLAG_UNUSED;
+#endif
   switch (attr->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) {
   default: goto default_visibility;
   case DCC_ATTRFLAG_VIS_DEFAULT  : result |= DCC_SYMFLAG_NONE; break;
@@ -355,9 +389,9 @@ forward_decl:
 reload_size:
  s = DCCType_Sizeof(&self->d_type,&a,1);
  if (attr) { /* Respect alignment/packing from attributes. */
-  if (attr->a_flags&DCC_ATTRFLAG_PACKED) {
-   a = (attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN) ? attr->a_align : 1;
-  } else if (attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN && attr->a_align > a) {
+  if (attr->a_specs&DCC_ATTRSPEC_PACKED) {
+   a = (attr->a_specs&DCC_ATTRSPEC_FIXEDALIGN) ? attr->a_align : 1;
+  } else if (attr->a_specs&DCC_ATTRSPEC_FIXEDALIGN && attr->a_align > a) {
    a = attr->a_align;
   }
  }
@@ -406,7 +440,7 @@ reload_size:
    symaddr = 0; /* ~shrugs~ */
   } else if (DCCSym_ISFORWARD(decl_sym) ||
              /* Don't re-define if already defined and this is a weak declaration. */
-            !attr || !(attr->a_flags&DCC_ATTRFLAG_WEAK)) {
+            !attr || !(attr->a_specs&DCC_ATTRSPEC_WEAK)) {
    /* Warn if allocating within the current
     * text-section, but not when inside the global scope. */
    if (storage_section == unit.u_curr &&

@@ -799,7 +799,7 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
   /* Warn if an arithmetic operation is used with a non-arithmetic structure type. */
   if (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_STRUCTURE &&
      (!self->sv_ctype.t_base->d_attr ||
-      !(self->sv_ctype.t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC)
+      !(self->sv_ctype.t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC)
       )) WARN(W_STRUCTURE_ARITHMETIC,&self->sv_ctype);
  }
 
@@ -1205,11 +1205,11 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
   /* Warn if an arithmetic operation is used with a non-arithmetic structure type. */
   if (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_STRUCTURE &&
      (!self->sv_ctype.t_base->d_attr ||
-      !(self->sv_ctype.t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC)
+      !(self->sv_ctype.t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC)
       )) WARN(W_STRUCTURE_ARITHMETIC,&self->sv_ctype);
   if (DCCTYPE_GROUP(target->sv_ctype.t_type) == DCCTYPE_STRUCTURE &&
      (!target->sv_ctype.t_base->d_attr ||
-      !(target->sv_ctype.t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC)
+      !(target->sv_ctype.t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC)
       )) WARN(W_STRUCTURE_ARITHMETIC,&target->sv_ctype);
  }
 
@@ -3444,7 +3444,7 @@ DCCType_IsUnionCompatible(struct DCCType const *__restrict union_type,
   if (struct_decl->d_kind == DCC_DECLKIND_UNION &&
       struct_decl->d_attr &&
      (explicit_cast || /* Following GCC, always allow explicit union-casts. */
-     (struct_decl->d_attr->a_flags&DCC_ATTRFLAG_TRANSUNION))) {
+     (struct_decl->d_attr->a_specs&DCC_ATTRSPEC_TRANSUNION))) {
    struct DCCStructField *iter,*end;
    /* Check the members of a transparent union. */
    end = (iter = struct_decl->d_tdecl.td_fieldv)+
@@ -3548,7 +3548,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
   }
   if (DCCTYPE_GROUP(vid) == DCCTYPE_STRUCTURE &&
       value->sv_ctype.t_base->d_attr &&
-     (value->sv_ctype.t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC)) {
+     (value->sv_ctype.t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC)) {
    target_ptr_t tweight;
    if (explicit_cast) return 0; /* Always OK for explicit casts. */
    /* arith-structure --> integral. */
@@ -3605,7 +3605,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
   }
   if (DCCTYPE_GROUP(vid) == DCCTYPE_STRUCTURE &&
       value->sv_ctype.t_base->d_attr &&
-     (value->sv_ctype.t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC)) {
+     (value->sv_ctype.t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC)) {
    /* arith-structure --> pointer. */
    if (explicit_cast) return 0; /* Always OK for explicit casts. */
    /* Check for int2ptr of different size. */
@@ -3643,7 +3643,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
   assert(type->t_base);
   if (DCCType_IsUnionCompatible(type,&value->sv_ctype,explicit_cast)) return 0;
   if (type->t_base->d_attr &&
-     (type->t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC)) {
+     (type->t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC)) {
    /* Cast to arithmetic structure type. */
    if (DCCTYPE_GROUP(vid) == DCCTYPE_BUILTIN) {
     target_ptr_t tweight;
@@ -3686,7 +3686,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
    }
    if (DCCTYPE_GROUP(vid) == DCCTYPE_STRUCTURE &&
        value->sv_ctype.t_base->d_attr &&
-      (value->sv_ctype.t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC)) {
+      (value->sv_ctype.t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC)) {
     if (explicit_cast) return 0; /* Always OK for explicit casts. */
     /* arith-structure --> integral. */
     if (DCCType_Sizeof(type,NULL,1) <
@@ -3995,7 +3995,7 @@ after_typefix:
   funty_decl = NULL;
  }
  DCCDecl_XIncref(funty_decl);
- cc          = DCC_ATTRFLAG_CDECL;
+ cc          = DCC_ATTRFLAG_CC_CDECL;
  stack_align = DCC_TARGET_STACKALIGN;
  argc        = 0;
  argv        = NULL;
@@ -4061,7 +4061,7 @@ warn_argc:
  vpop(1); /* Pop the function. */
 
 
- if (arg_size && cc != DCC_ATTRFLAG_STDCALL) {
+ if (arg_size && cc != DCC_ATTRFLAG_CC_STDCALL) {
   struct DCCSymAddr temp;
   /* Reclaim stack memory. */
   temp.sa_off = (target_off_t)arg_size;

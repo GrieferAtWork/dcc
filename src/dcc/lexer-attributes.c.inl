@@ -44,10 +44,10 @@ DCCAttrDecl_Quit(struct DCCAttrDecl *__restrict self) {
 
 #define CCNAME_SHIFT 20
 PRIVATE char const *const cc_names[5] = {
- /* [DCC_ATTRFLAG_CDECL    >> CCNAME_SHIFT] = */"cdecl",
- /* [DCC_ATTRFLAG_STDCALL  >> CCNAME_SHIFT] = */"stdcall",
- /* [DCC_ATTRFLAG_THISCALL >> CCNAME_SHIFT] = */"thiscall",
- /* [DCC_ATTRFLAG_FASTCALL >> CCNAME_SHIFT] = */"fastcall",
+ /* [DCC_ATTRFLAG_CC_CDECL    >> CCNAME_SHIFT] = */"cdecl",
+ /* [DCC_ATTRFLAG_CC_STDCALL  >> CCNAME_SHIFT] = */"stdcall",
+ /* [DCC_ATTRFLAG_CC_THISCALL >> CCNAME_SHIFT] = */"thiscall",
+ /* [DCC_ATTRFLAG_CC_FASTCALL >> CCNAME_SHIFT] = */"fastcall",
 };
 
 #define ELFVISNAME_SHIFT   28
@@ -66,12 +66,12 @@ DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
  assert(self);
  assert(rhs);
  assert(self != rhs);
+ self->a_specs |= rhs->a_specs;
  /* If no alignment was set, inherit that from the right. */
- if (!(self->a_flags&DCC_ATTRFLAG_FIXEDALIGN) &&
+ if (!(self->a_specs&DCC_ATTRSPEC_FIXEDALIGN) &&
      !(self->a_alias)) self->a_align = rhs->a_align;
  /* TODO: Do more strict checking when comparing old against new attributes. */
- self->a_flags |= rhs->a_flags&(DCC_ATTRFLAG_MASK_FLAGS
-                               |DCC_ATTRFLAG_MASK_MODE
+ self->a_flags |= rhs->a_flags&(DCC_ATTRFLAG_MASK_MODE
                                |DCC_ATTRFLAG_MASK_REACHABLE
                                |DCC_ATTRFLAG_MASK_WARNING
 #ifdef DCC_ATTRFLAG_DLLIMPORT
@@ -118,11 +118,11 @@ DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
         rhs->a_reach->s_text);
   }
  }
- if (rhs->a_flags&DCC_ATTRFLAG_CONSTRUCTOR) self->a_c_prio = rhs->a_c_prio;
- if (rhs->a_flags&DCC_ATTRFLAG_DESTRUCTOR)  self->a_d_prio = rhs->a_d_prio;
+ if (rhs->a_specs&DCC_ATTRSPEC_CONSTRUCTOR) self->a_c_prio = rhs->a_c_prio;
+ if (rhs->a_specs&DCC_ATTRSPEC_DESTRUCTOR)  self->a_d_prio = rhs->a_d_prio;
  /* If the right has a lower alignment that 'self', inherit it. */
- if (rhs->a_flags&DCC_ATTRFLAG_FIXEDALIGN) {
-  if (DCCATTRDECL_HASALIAS(self)) self->a_flags &= ~(DCC_ATTRFLAG_FIXEDALIGN);
+ if (rhs->a_specs&DCC_ATTRSPEC_FIXEDALIGN) {
+  if (DCCATTRDECL_HASALIAS(self)) self->a_specs &= ~(DCC_ATTRSPEC_FIXEDALIGN);
   else if (self->a_align > rhs->a_align)
            self->a_align = rhs->a_align;
  }
@@ -159,25 +159,29 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
  if unlikely(!function) goto fallback;
  switch (function->k_id) {
  {
-  int delete_flag;
-  if (DCC_MACRO_FALSE) { case KWD_noinline:                mask = flag = DCC_ATTRFLAG_NOINLINE; }
-  if (DCC_MACRO_FALSE) { case KWD_noreturn:                mask = flag = DCC_ATTRFLAG_NORETURN; }
-  if (DCC_MACRO_FALSE) { case KWD_warn_unused_result:      mask = flag = DCC_ATTRFLAG_WUNUSED; }
-  if (DCC_MACRO_FALSE) { case KWD_weak:                    mask = flag = DCC_ATTRFLAG_WEAK; }
-  if (DCC_MACRO_FALSE) { case KWD_used:                    mask = flag = DCC_ATTRFLAG_USED; }
-  if (DCC_MACRO_FALSE) { case KWD_unused:                  mask = flag = DCC_ATTRFLAG_UNUSED; }
-  if (DCC_MACRO_FALSE) { case KWD_dllexport:               mask = flag = DCC_ATTRFLAG_DLLEXPORT; }
-  if (DCC_MACRO_FALSE) { case KWD_dllimport:               mask = flag = DCC_ATTRFLAG_DLLIMPORT; }
-  if (DCC_MACRO_FALSE) { case KWD_naked:                   mask = flag = DCC_ATTRFLAG_NAKED; }
-  if (DCC_MACRO_FALSE) { case KWD_packed:                  mask = flag = DCC_ATTRFLAG_PACKED; }
-  if (DCC_MACRO_FALSE) { case KWD_transparent_union:       mask = flag = DCC_ATTRFLAG_TRANSUNION; }
-  if (DCC_MACRO_FALSE) { case KWD_ms_struct:               mask = flag = DCC_ATTRFLAG_MSSTRUCT; }
-  if (DCC_MACRO_FALSE) { case KWD_arithmetic:              mask = flag = DCC_ATTRFLAG_ARITHMETIC; }
-  if (DCC_MACRO_FALSE) { case KWD_gcc_struct:              mask = DCC_ATTRFLAG_MSSTRUCT; flag = 0; }
-  if (DCC_MACRO_FALSE) { case KWD_cdecl:                   mask = DCC_ATTRFLAG_MASK_CALLCONV; flag = DCC_ATTRFLAG_CDECL; }
-  if (DCC_MACRO_FALSE) { case KWD_stdcall:                 mask = DCC_ATTRFLAG_MASK_CALLCONV; flag = DCC_ATTRFLAG_STDCALL; }
-  if (DCC_MACRO_FALSE) { case KWD_thiscall:                mask = DCC_ATTRFLAG_MASK_CALLCONV; flag = DCC_ATTRFLAG_THISCALL; }
-  if (DCC_MACRO_FALSE) { case KWD_force_align_arg_pointer: mask = flag = 0; } /* TODO */
+  int delete_flag,isspec; uint32_t *p;
+#define SPECF(f)  (isspec = 1,mask =     flag = (f))
+#define SPEC(m,f) (isspec = 1,mask = (m),flag = (f))
+#define FLAGF(f)  (isspec = 0,mask =     flag = (f))
+#define FLAG(m,f) (isspec = 0,mask = (m),flag = (f))
+  if (DCC_MACRO_FALSE) { case KWD_noinline:                SPECF(DCC_ATTRSPEC_NOINLINE); }
+  if (DCC_MACRO_FALSE) { case KWD_noreturn:                SPECF(DCC_ATTRSPEC_NORETURN); }
+  if (DCC_MACRO_FALSE) { case KWD_warn_unused_result:      SPECF(DCC_ATTRSPEC_WUNUSED); }
+  if (DCC_MACRO_FALSE) { case KWD_weak:                    SPECF(DCC_ATTRSPEC_WEAK); }
+  if (DCC_MACRO_FALSE) { case KWD_used:                    SPECF(DCC_ATTRSPEC_USED); }
+  if (DCC_MACRO_FALSE) { case KWD_unused:                  SPECF(DCC_ATTRSPEC_UNUSED); }
+  if (DCC_MACRO_FALSE) { case KWD_dllexport:               SPECF(DCC_ATTRSPEC_DLLEXPORT); }
+  if (DCC_MACRO_FALSE) { case KWD_dllimport:               SPECF(DCC_ATTRSPEC_DLLIMPORT); }
+  if (DCC_MACRO_FALSE) { case KWD_naked:                   SPECF(DCC_ATTRSPEC_NAKED); }
+  if (DCC_MACRO_FALSE) { case KWD_packed:                  SPECF(DCC_ATTRSPEC_PACKED); }
+  if (DCC_MACRO_FALSE) { case KWD_transparent_union:       SPECF(DCC_ATTRSPEC_TRANSUNION); }
+  if (DCC_MACRO_FALSE) { case KWD_ms_struct:               SPECF(DCC_ATTRSPEC_MSSTRUCT); }
+  if (DCC_MACRO_FALSE) { case KWD_arithmetic:              SPECF(DCC_ATTRSPEC_ARITHMETIC); }
+  if (DCC_MACRO_FALSE) { case KWD_gcc_struct:              SPEC(DCC_ATTRSPEC_MSSTRUCT,0); }
+  if (DCC_MACRO_FALSE) { case KWD_cdecl:                   FLAG(DCC_ATTRFLAG_MASK_CALLCONV,DCC_ATTRFLAG_CC_CDECL); }
+  if (DCC_MACRO_FALSE) { case KWD_stdcall:                 FLAG(DCC_ATTRFLAG_MASK_CALLCONV,DCC_ATTRFLAG_CC_STDCALL); }
+  if (DCC_MACRO_FALSE) { case KWD_thiscall:                FLAG(DCC_ATTRFLAG_MASK_CALLCONV,DCC_ATTRFLAG_CC_THISCALL); }
+  if (DCC_MACRO_FALSE) { case KWD_force_align_arg_pointer: SPEC(0,0); } /* TODO */
   delete_flag = 0; YIELD();
   if (HAS(EXT_ATTRIBUTE_CONDITION) && (TOK == '(' || TOK == KWD___pack)) {
    int_t val;
@@ -187,8 +191,8 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
    delete_flag = !val; /* Don't set the flag, based on a constant expression. */
   }
 #if DCC_TARGET_BIN != DCC_BINARY_PE
-  if (flag == DCC_ATTRFLAG_DLLEXPORT ||
-      flag == DCC_ATTRFLAG_DLLIMPORT) {
+  if (isspec && (flag == DCC_ATTRFLAG_DLLEXPORT ||
+                 flag == DCC_ATTRFLAG_DLLIMPORT)) {
    self->a_flags &= ~(DCC_ATTRFLAG_MASK_ELFVISIBILITY);
    self->a_flags |= (delete_flag
                      ? DCC_ATTRFLAG_VIS_HIDDEN
@@ -196,18 +200,19 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
    break;
   }
 #endif
+  p = isspec ? &self->a_specs : &self->a_flags;
   if (delete_flag) {
-   if ((self->a_flags&mask) != flag) WARN(W_ATTRIBUTE_NOT_DEFINED,function);
-   self->a_flags &= ~(mask);
+   if ((*p&mask) != flag) WARN(W_ATTRIBUTE_NOT_DEFINED,function);
+   *p &= ~(mask);
   } else {
-   if ((self->a_flags&mask) == flag && (mask || flag)) WARN(W_ATTRIBUTE_ALREADY_DEFINED,function);
-   self->a_flags &= ~(mask);
-   self->a_flags |=   flag;
+   if ((*p&mask) == flag && (mask || flag)) WARN(W_ATTRIBUTE_ALREADY_DEFINED,function);
+   *p &= ~(mask);
+   *p |=   flag;
   }
  } break;
 
  case KWD_weakref:
-  self->a_flags |= DCC_ATTRFLAG_WEAK;
+  self->a_specs |= DCC_ATTRSPEC_WEAK;
   YIELD();
   if (TOK == '(' || TOK == KWD___pack) goto parse_alias;
   break;
@@ -220,12 +225,12 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   if (function->k_id == KWD_aligned) {
    if (DCCATTRDECL_HASALIAS(self)) {
     WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
-    assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
+    assert(!(self->a_specs&DCC_ATTRSPEC_SECTION));
     DCCSym_Decref(self->a_alias);
     self->a_alias = NULL;
    }
    self->a_align  = (target_siz_t)DCCParse_CExpr(0);
-   self->a_flags |= DCC_ATTRFLAG_FIXEDALIGN;
+   self->a_specs |= DCC_ATTRSPEC_FIXEDALIGN;
    if (self->a_align&(self->a_align-1))
        WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
   } else {
@@ -235,14 +240,14 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
  } break;
 
  {
-  if (DCC_MACRO_FALSE) { case KWD_constructor: flag = DCC_ATTRFLAG_CONSTRUCTOR; }
-  if (DCC_MACRO_FALSE) { case KWD_destructor:  flag = DCC_ATTRFLAG_DESTRUCTOR; }
+  if (DCC_MACRO_FALSE) { case KWD_constructor: flag = DCC_ATTRSPEC_CONSTRUCTOR; }
+  if (DCC_MACRO_FALSE) { case KWD_destructor:  flag = DCC_ATTRSPEC_DESTRUCTOR; }
   YIELD();
-  if (self->a_flags&flag) WARN(W_ATTRIBUTE_ALREADY_DEFINED,function);
-  self->a_flags |= flag;
+  if (self->a_specs&flag) WARN(W_ATTRIBUTE_ALREADY_DEFINED,function);
+  self->a_specs |= flag;
   if (TOK == '(' || TOK == KWD___pack) {
    DCCParse_ParPairBegin();
-   if (flag == DCC_ATTRFLAG_CONSTRUCTOR)
+   if (flag == DCC_ATTRSPEC_CONSTRUCTOR)
         self->a_c_prio = (int)DCCParse_CExpr(0);
    else self->a_d_prio = (int)DCCParse_CExpr(0);
    DCCParse_ParPairEnd();
@@ -305,21 +310,21 @@ set_text:
    else {
     struct TPPKeyword *sec_name = TPPLexer_LookupKeyword(text->s_text,text->s_size,0);
     if (self->a_section) {
-     if (self->a_flags&DCC_ATTRFLAG_SECTION) {
+     if (self->a_specs&DCC_ATTRSPEC_SECTION) {
       WARN(W_ATTRIBUTE_SECTION_ALREADY_SET,
            self->a_section->sc_start.sy_name);
-      self->a_flags &= ~(DCC_ATTRFLAG_SECTION);
+      self->a_specs &= ~(DCC_ATTRSPEC_SECTION);
      } else WARN(W_ATTRIBUTE_ALIAS_WITH_SECTION);
      DCCSym_Decref(self->a_alias);
     }
-    assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
+    assert(!(self->a_specs&DCC_ATTRSPEC_SECTION));
     self->a_section = sec_name ? DCCUnit_GetSec(sec_name) : NULL;
     if (!self->a_section || DCCSection_ISIMPORT(self->a_section)) {
      WARN(W_ATTRIBUTE_SECTION_UNKNOWN_SECTION,text->s_text);
      self->a_section = NULL;
     } else {
 incref_section:
-     self->a_flags |= DCC_ATTRFLAG_SECTION;
+     self->a_specs |= DCC_ATTRSPEC_SECTION;
      DCCSection_Incref(self->a_section);
     }
    }
@@ -330,14 +335,14 @@ incref_section:
    if (text) {
     struct TPPKeyword *sec_name;
     if (self->a_section) {
-     if (self->a_flags&DCC_ATTRFLAG_SECTION) {
+     if (self->a_specs&DCC_ATTRSPEC_SECTION) {
       WARN(W_ATTRIBUTE_LIB_ALREADY_SET,
            self->a_section->sc_start.sy_name);
-      self->a_flags &= ~(DCC_ATTRFLAG_SECTION);
+      self->a_specs &= ~(DCC_ATTRSPEC_SECTION);
      } else WARN(W_ATTRIBUTE_ALIAS_WITH_DLL);
      DCCSym_Decref(self->a_alias);
     }
-    assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
+    assert(!(self->a_specs&DCC_ATTRSPEC_SECTION));
     sec_name = DCCParse_GetLibname(text->s_text,text->s_size);
     self->a_section = sec_name ? DCCUnit_NewSec(sec_name,DCC_SYMFLAG_SEC_ISIMPORT) : NULL;
     if (!self->a_section);
@@ -353,17 +358,17 @@ incref_section:
   { /* Define a symbol aliasing another. */
   case KWD_alias:
   case KWD_weakref:
-   if (self->a_flags&DCC_ATTRFLAG_FIXEDALIGN) {
+   if (self->a_specs&DCC_ATTRSPEC_FIXEDALIGN) {
     WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
-    self->a_flags &= ~(DCC_ATTRFLAG_FIXEDALIGN);
+    self->a_specs &= ~(DCC_ATTRSPEC_FIXEDALIGN);
    }
-   if (self->a_flags&DCC_ATTRFLAG_SECTION) {
+   if (self->a_specs&DCC_ATTRSPEC_SECTION) {
     assert(self->a_section);
     if (DCCSection_ISIMPORT(self->a_section))
          WARN(W_ATTRIBUTE_ALIAS_WITH_DLL);
     else WARN(W_ATTRIBUTE_ALIAS_WITH_SECTION);
     DCCSection_Decref(self->a_section);
-    self->a_flags &= ~(DCC_ATTRFLAG_SECTION);
+    self->a_specs &= ~(DCC_ATTRSPEC_SECTION);
    } else if (self->a_alias) {
     WARN(W_ATTRIBUTE_ALIAS_ALREADY_DEFINED,
          self->a_alias->sy_name);
@@ -377,7 +382,7 @@ incref_section:
     DCCSym_XIncref(alias);
     self->a_alias = alias; /* Inherit reference. */
    }
-   assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
+   assert(!(self->a_specs&DCC_ATTRSPEC_SECTION));
    self->a_offset = 0;
    if (TOK == ',') {
     /* Extension: Alias offset. */
@@ -556,7 +561,7 @@ again:
  } break;
 
  case KWD__Noreturn:
-  self->a_flags |= DCC_ATTRFLAG_NORETURN;
+  self->a_specs |= DCC_ATTRSPEC_NORETURN;
   goto yield_again;
 
  {
@@ -565,12 +570,12 @@ again:
   DCCParse_ParPairBegin();
   if (DCCATTRDECL_HASALIAS(self)) {
    WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
-   assert(!(self->a_flags&DCC_ATTRFLAG_SECTION));
+   assert(!(self->a_specs&DCC_ATTRSPEC_SECTION));
    DCCSym_Decref(self->a_alias);
    self->a_alias = NULL;
   }
   self->a_align  = (target_siz_t)DCCParse_CExpr(0);
-  self->a_flags |= DCC_ATTRFLAG_FIXEDALIGN;
+  self->a_specs |= DCC_ATTRSPEC_FIXEDALIGN;
   if (self->a_align&(self->a_align-1))
       WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
   DCCParse_ParPairEnd();
@@ -578,10 +583,10 @@ again:
 
  {
   uint32_t new_cc;
-  if (DCC_MACRO_FALSE) { case KWD__cdecl: case KWD___cdecl: new_cc = DCC_ATTRFLAG_CDECL; }
-  if (DCC_MACRO_FALSE) { case KWD__stdcall: case KWD___stdcall: new_cc = DCC_ATTRFLAG_STDCALL; }
-  if (DCC_MACRO_FALSE) { case KWD___thiscall: new_cc = DCC_ATTRFLAG_THISCALL; }
-  if (DCC_MACRO_FALSE) { case KWD__fastcall: case KWD___fastcall: new_cc = DCC_ATTRFLAG_FASTCALL; }
+  if (DCC_MACRO_FALSE) { case KWD__cdecl: case KWD___cdecl: new_cc = DCC_ATTRFLAG_CC_CDECL; }
+  if (DCC_MACRO_FALSE) { case KWD__stdcall: case KWD___stdcall: new_cc = DCC_ATTRFLAG_CC_STDCALL; }
+  if (DCC_MACRO_FALSE) { case KWD___thiscall: new_cc = DCC_ATTRFLAG_CC_THISCALL; }
+  if (DCC_MACRO_FALSE) { case KWD__fastcall: case KWD___fastcall: new_cc = DCC_ATTRFLAG_CC_FASTCALL; }
   if (!HAS(EXT_CALLING_CONVENTION_ATTR)) break;
   self->a_flags &= ~(DCC_ATTRFLAG_MASK_CALLCONV);
   self->a_flags |= new_cc;

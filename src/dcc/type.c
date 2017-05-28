@@ -376,7 +376,7 @@ DCCType_IsScalar(struct DCCType const *__restrict self) {
   return (tyid < DCCTYPE_FLOAT) || tyid == DCCTYPE_BOOL;
  case DCCTYPE_STRUCTURE:
   assert(self->t_base);
-  return self->t_base->d_attr && !!(self->t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC);
+  return self->t_base->d_attr && !!(self->t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC);
  default: break;
  }
  return 0;

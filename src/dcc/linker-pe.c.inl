@@ -535,7 +535,7 @@ do_export:
  if (!(linker.l_flags&DCC_LINKER_FLAG_PEDYNAMIC) ||
        DCCSym_ISFORWARD(sym)) return 0;
  /* NOTE: Never export symbols of static duration. */
- if ((sym->sy_flags&(DCC_SYMFLAG_VISIBILITYBASE|DCC_SYMFLAG_STATIC)) !=
+ if ((sym->sy_flags&(DCC_SYMFLAG_VISIBILITY|DCC_SYMFLAG_STATIC)) !=
                      DCC_SYMFLAG_NONE) return 0;
  /* Don't implicitly export section start symbols. */
  if (DCCSym_ISSECTION(sym)) return 0;

@@ -93,7 +93,7 @@ gen_call:
    function_type = &vbottom[n_args].sv_ctype;
    if (DCCTYPE_GROUP(function_type->t_type) == DCCTYPE_FUNCTION &&
       (assert(function_type->t_base),function_type->t_base->d_attr) &&
-      (function_type->t_base->d_attr->a_flags&DCC_ATTRFLAG_NORETURN)
+      (function_type->t_base->d_attr->a_specs&DCC_ATTRSPEC_NORETURN)
        ) is_noreturn = 1; /* Calling a function marked as __attribute__((noreturn)) */
    DCCVStack_Call(n_args);
    if (is_noreturn) {

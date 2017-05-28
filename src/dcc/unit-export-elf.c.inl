@@ -223,7 +223,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
                                                 sym->sy_name->k_name,
                                                 sym->sy_name->k_size);
    symhdr.st_info  = ELF(ST_INFO)(bind,type);
-   symhdr.st_other = ELF(ST_VISIBILITY)(elf_vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE]);
+   symhdr.st_other = ELF(ST_VISIBILITY)(elf_vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITY]);
    sym->sy_elfid   = symid++;
    if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ||
        !DCCSym_LoadAddr(sym,&symaddr,0)) {

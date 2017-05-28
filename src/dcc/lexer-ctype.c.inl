@@ -99,9 +99,9 @@ DCCDecl_CalculateFunctionOffsets(struct DCCDecl *__restrict funtydecl) {
   s = DCCType_Sizeof(&decl->d_type,&a,1);
   if (a < DCC_TARGET_STACKALIGN) a = DCC_TARGET_STACKALIGN;
   if (decl->d_attr) {
-   if (decl->d_attr->a_flags&DCC_ATTRFLAG_PACKED) {
-    a = (decl->d_attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN) ? decl->d_attr->a_align : 1;
-   } else if (decl->d_attr->a_flags&DCC_ATTRFLAG_FIXEDALIGN && decl->d_attr->a_align > a) {
+   if (decl->d_attr->a_specs&DCC_ATTRSPEC_PACKED) {
+    a = (decl->d_attr->a_specs&DCC_ATTRSPEC_FIXEDALIGN) ? decl->d_attr->a_align : 1;
+   } else if (decl->d_attr->a_specs&DCC_ATTRSPEC_FIXEDALIGN && decl->d_attr->a_align > a) {
     a = decl->d_attr->a_align;
    }
   }
@@ -950,7 +950,7 @@ again:
        DCCTYPE_BASIC(self->t_type) < 8) ||
      (DCCTYPE_GROUP(self->t_type) == DCCTYPE_STRUCTURE &&
       self->t_base->d_attr &&
-     (self->t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC))
+     (self->t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC))
       ) self->t_type |= new_sign;
   else WARN(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,self);
   goto next;
@@ -1121,7 +1121,7 @@ again:
    self->t_type |= DCCTYPE_STRUCTURE;
    DCCType_ASSERT(self);
    if ((flags&F_SIGN) && (!tydecl->d_attr ||
-      !(tydecl->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC))) {
+      !(tydecl->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC))) {
     WARN(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,self);
     self->t_type &= ~(DCCTYPE_UNSIGNED);
    }
@@ -1151,7 +1151,7 @@ again:
           DCCTYPE_BASIC(tydecl->d_type.t_type) < 8) ||
          (DCCTYPE_GROUP(tydecl->d_type.t_type) == DCCTYPE_STRUCTURE &&
           tydecl->d_type.t_base->d_attr &&
-         (tydecl->d_type.t_base->d_attr->a_flags&DCC_ATTRFLAG_ARITHMETIC)));
+         (tydecl->d_type.t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC)));
      else {
       WARN(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,&tydecl->d_type);
       self->t_type &= ~(DCCTYPE_UNSIGNED);

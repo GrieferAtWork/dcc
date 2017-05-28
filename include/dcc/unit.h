@@ -82,22 +82,21 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 
 
 
-#define DCC_SYMFLAG_NONE      0x00000000 /*< '[[visibility("default")]]': No special flags/default (aka. public) visibility. */
-#define DCC_SYMFLAG_PROTECTED 0x00000001 /*< '[[visibility("protected")]]': Protected symbol (don't export from the compilation unit). */
-#define DCC_SYMFLAG_PRIVATE   0x00000002 /*< '[[visibility("hidden")]]': Private symbol (don't export from a binary/library). */
-#define DCC_SYMFLAG_INTERNAL  0x00000003 /*< '[[visibility("internal")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
-#define DCC_SYMFLAG_STATIC    0x00000004 /*< 'static': FLAG: Protected symbol (don't export from the compilation unit). */
-#define DCC_SYMFLAG_WEAK      0x00000008 /*< '[[weak]]': FLAG: Weak symbol. A weak symbols can be overwritten at any time by another
-                                          *   symbol, meaning should assumptions may be made about its address, or its relation.
-                                          *   Access to such a symbol should take place exclusively through relocations. */
+#define DCC_SYMFLAG_NONE       0x00000000 /*< '[[visibility("default")]]': No special flags/default (aka. public) visibility. */
+#define DCC_SYMFLAG_PROTECTED  0x00000001 /*< '[[visibility("protected")]]': Protected symbol (don't export from the compilation unit). */
+#define DCC_SYMFLAG_PRIVATE    0x00000002 /*< '[[visibility("hidden")]]': Private symbol (don't export from a binary/library). */
+#define DCC_SYMFLAG_INTERNAL   0x00000003 /*< '[[visibility("internal")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
+#define DCC_SYMFLAG_STATIC     0x00000004 /*< 'static': FLAG: Protected symbol (don't export from the compilation unit). */
+#define DCC_SYMFLAG_WEAK       0x00000008 /*< '[[weak]]': FLAG: Weak symbol. A weak symbols can be overwritten at any time by another
+                                           *   symbol, meaning should assumptions may be made about its address, or its relation.
+                                           *   Access to such a symbol should take place exclusively through relocations. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
-#define DCC_SYMFLAG_DLLIMPORT 0x00000010 /*< '[[dllimport]]': On PE targets: explicit dllimport. */
-#define DCC_SYMFLAG_DLLEXPORT 0x00000020 /*< '[[dllexport]]': On PE targets: explicit dllexport. */
-#endif
-#define DCC_SYMFLAG_USED      0x00000040 /*< '[[used]]': FLAG: Don't delete this symbol, even if it appears unused. */
-#define DCC_SYMFLAG_UNUSED    0x00000080 /*< '[[unused]]': FLAG: Don't warn if this symbol is deleted during unused symbol collection. */
-#define DCC_SYMFLAG_VISIBILITY     0x000000ff /*< Mask for visibility symbol flags. */
-#define DCC_SYMFLAG_VISIBILITYBASE 0x00000003 /*< Mask for base visibility. */
+#define DCC_SYMFLAG_DLLIMPORT  0x00000010 /*< '[[dllimport]]': On PE targets: explicit dllimport. */
+#define DCC_SYMFLAG_DLLEXPORT  0x00000020 /*< '[[dllexport]]': On PE targets: explicit dllexport. */
+#endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
+#define DCC_SYMFLAG_USED       0x00000040 /*< '[[used]]': FLAG: Don't delete this symbol, even if it appears unused. */
+#define DCC_SYMFLAG_UNUSED     0x00000080 /*< '[[unused]]': FLAG: Don't warn if this symbol is deleted during unused symbol collection. */
+#define DCC_SYMFLAG_VISIBILITY 0x00000003 /*< Mask for ELF-style symbol visibility. */
 /* TODO: Add more flags for symbol typing (unknown|function|object) */
 
 /* Additional symbol flags only meaningful for section start symbols. */
@@ -202,7 +201,7 @@ struct DCCSym {
  !((self)->sy_flags&DCC_SYMFLAG_USED) && \
     /* Unused symbols with global visibility can only \
      * be removed when they're imported from libraries. */\
-  (((self)->sy_flags&(DCC_SYMFLAG_VISIBILITYBASE|DCC_SYMFLAG_STATIC)) != DCC_SYMFLAG_NONE || \
+  (((self)->sy_flags&(DCC_SYMFLAG_VISIBILITY|DCC_SYMFLAG_STATIC)) != DCC_SYMFLAG_NONE || \
     (DCCSym_ISDEFINED(self) && DCCSection_ISIMPORT(DCCSym_SECTION(self)))))
 #else /* ... */
 #define DCCSym_ISUNUSED(self) \
@@ -1174,9 +1173,9 @@ struct DCCLibDef {
   * >> ld->ld_expsymfo =  (DCC_SYMFLAG_DLLEXPORT); // PE-only (Elf does this by default)
   * Or when statically linking, you could ensure that no symbols are re-exported:
   * >> #ifdef DCC_SYMFLAG_DLLEXPORT
-  * >> ld->ld_expsymfa = ~(DCC_SYMFLAG_VISIBILITYBASE|DCC_SYMFLAG_DLLEXPORT);
+  * >> ld->ld_expsymfa = ~(DCC_SYMFLAG_VISIBILITY|DCC_SYMFLAG_DLLEXPORT);
   * >> #else
-  * >> ld->ld_expsymfa = ~(DCC_SYMFLAG_VISIBILITYBASE);
+  * >> ld->ld_expsymfa = ~(DCC_SYMFLAG_VISIBILITY);
   * >> #endif
   * >> ld->ld_expsymfo =  (DCC_SYMFLAG_PRIVATE);
   * WARNING: Make sure to set 'ld_expsymfa' to '-1' and 'ld_expsymfo' to '0' if 1-to-1 linkage is intended. */

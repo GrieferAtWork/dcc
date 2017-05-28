@@ -469,7 +469,7 @@ skip_sym: sym->sy_elfid = 0; continue;
   if (sym->sy_flags&DCC_SYMFLAG_STATIC) goto skip_sym;
 #endif
 #if 0 /* Only export symbols with default visibility? */
-  if ((sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE) != DCC_SYMFLAG_NONE) goto skip_sym;
+  if ((sym->sy_flags&DCC_SYMFLAG_VISIBILITY) != DCC_SYMFLAG_NONE) goto skip_sym;
 #endif
   if (DCCSym_LoadAddr(sym,&symaddr,0)) {
    /* Handle special sections. */
@@ -516,7 +516,7 @@ skip_sym: sym->sy_elfid = 0; continue;
          esym.st_size = DCCSection_VSIZE(DCCSym_TOSECTION(sym));
   else*/ esym.st_size = sym->sy_size;
   esym.st_info  = ELF(ST_INFO)(st_bind,st_type);
-  esym.st_other = vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITYBASE];
+  esym.st_other = vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITY];
   sym->sy_elfid = dynid++; /* Save symbol index. */
   entry_addr = DCCSection_TADDR(elf.elf_dynsym);
   DCCSection_TWrite(elf.elf_dynsym,&esym,sizeof(esym));
