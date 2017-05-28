@@ -68,6 +68,7 @@ DCCUnit_LoadSrc_ASM(struct DCCLibDef *__restrict def) {
                      TPPLEXER_FLAG_COMMENT_NOOWN_LF|
                      TPPLEXER_FLAG_WANTLF);
  CURRENT.l_extokens = TPPLEXER_TOKEN_LANG_ASM;
+ compiler.c_flags |= DCC_COMPILER_FLAG_INASM;
  load_std_sections();
 
  /* Yield the initial token. */
