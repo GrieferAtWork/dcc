@@ -91,7 +91,8 @@ DCCParse_Function(struct DCCDecl *fun_decl, struct TPPKeyword const *asmname,
  }
  /* Allocate arguments. */
  if (DCCTYPE_GROUP(fun_type->t_type) == DCCTYPE_FUNCTION &&
-     fun_type->t_base->d_kind == DCC_DECLKIND_FUNCTION) {
+    (fun_type->t_base->d_kind == DCC_DECLKIND_FUNCTION ||
+     fun_type->t_base->d_kind == DCC_DECLKIND_OLDFUNCTION)) {
   DCCParse_AllocFunArgs(&function_allocator,fun_type->t_base);
  }
  /* Actually parse the function body. */

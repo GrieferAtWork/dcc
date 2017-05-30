@@ -24,11 +24,10 @@
 #endif
 
 /* Fixed/optimized system header <stdarg.h> for DCC */
-#ifdef __builtin_va_list
-
 #undef va_list
 typedef __builtin_va_list va_list;
 
+/* void va_start(va_list &ap); */
 /* void va_start(va_list &ap, type &last_argument); */
 #define va_start   __builtin_va_start
 
@@ -39,6 +38,7 @@ typedef __builtin_va_list va_list;
 #define va_copy    __builtin_va_copy
 #define __va_copy  __builtin_va_copy
 
-/* type va_arg(va_list &ap, type t); */
+/* t va_arg(va_list &ap, type t); */
 #define va_arg     __builtin_va_arg
-#endif
+
+

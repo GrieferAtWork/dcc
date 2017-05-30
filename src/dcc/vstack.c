@@ -3989,8 +3989,8 @@ after_typefix:
   funty_decl = funty_decl->d_type.t_base;
  }
  if (!funty_decl ||
-      funty_decl->d_kind != DCC_DECLKIND_FUNCTION &&
-      funty_decl->d_kind != DCC_DECLKIND_OLDFUNCTION) {
+     (funty_decl->d_kind != DCC_DECLKIND_FUNCTION &&
+      funty_decl->d_kind != DCC_DECLKIND_OLDFUNCTION)) {
   WARN(W_EXPECTED_FUNCTION_TYPE_FOR_CALL,&function->sv_ctype);
   funty_decl = NULL;
  }
@@ -4005,6 +4005,7 @@ after_typefix:
   if (funty_decl->d_attr) {
    cc = (funty_decl->d_attr->a_flags&DCC_ATTRFLAG_MASK_CALLCONV);
   }
+  /* Ignore argument information when calling an old-style function. */
   if (funty_decl->d_kind != DCC_DECLKIND_OLDFUNCTION) {
    argc = funty_decl->d_tdecl.td_size;
    argv = funty_decl->d_tdecl.td_fieldv;

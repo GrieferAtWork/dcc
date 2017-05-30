@@ -88,7 +88,8 @@ DCCDecl_CalculateFunctionOffsets(struct DCCDecl *__restrict funtydecl) {
  target_siz_t s,a;
  struct DCCStructField *iter,*end;
  assert(funtydecl);
- assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION);
+ assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION ||
+        funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
  end = (iter = funtydecl->d_tdecl.td_fieldv)+
                funtydecl->d_tdecl.td_size;
  for (; iter != end; ++iter) {
@@ -210,7 +211,7 @@ DCCParse_CTypeOldArgumentList(struct DCCDecl *__restrict funtydecl,
  struct DCCStructField *argv,*new_argv;
  size_t argc,arga; int is_first = 1;
  assert(funtydecl);
- assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION);
+ assert(funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
  assert((opt_firstname != NULL) == (opt_firstattr != NULL));
  assert(!opt_firstname || (TOK == ',' || TOK == ')'));
  WARN(W_OLD_STYLE_FUNCTION_IMPLEMENTATION);
@@ -301,8 +302,7 @@ DCCParse_CTypeOldArgumentListDefWithBase(struct DCCDecl *__restrict funtydecl,
  struct DCCAttrDecl attr;
  struct TPPKeyword *arg_name;
  assert(funtydecl);
- assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION ||
-        funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
+ assert(funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
  assert(base_type);
  assert(base_attr);
  DCCType_InitCopy(&type,base_type);
@@ -317,6 +317,10 @@ DCCParse_CTypeOldArgumentListDefWithBase(struct DCCDecl *__restrict funtydecl,
    assert(iter->sf_decl);
    if (iter->sf_decl->d_name == arg_name) {
     if (iter->sf_decl->d_type.t_type == DCCTYPE_INT) {
+     /* Warn about using types that cannot be
+      * properly aligned as old-style arguments. */
+     if (DCCType_Sizeof(&type,NULL,1) > DCC_TARGET_STACKALIGN)
+         WARN(W_OLD_STYLE_ARGUMENT_TYPE_TOO_LARGE,&type);
      iter->sf_decl->d_type = type; /* Inherit object. */
      type.t_base           = NULL;
     } else {
@@ -344,8 +348,7 @@ DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl,
                                  struct DCCAttrDecl *empty_attr) {
  int is_first = 1;
  assert(funtydecl);
- assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION ||
-        funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
+ assert(funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
  for (;;) {
   struct DCCType type;
   struct DCCAttrDecl attr = DCCATTRDECL_INIT;
@@ -359,6 +362,16 @@ DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl,
   DCCType_Quit(&type);
   if (TOK != ';') WARN(W_EXPECTED_SEMICOLON);
   else YIELD();
+  if (TOK == TOK_DOTS) {
+   /* Old-style varargs declaration. */
+   if (funtydecl->d_flag&DCC_DECLFLAG_VARIADIC)
+       WARN(W_OLD_STYLE_FUNCTION_VARARGS_ALREADY);
+   else {
+    funtydecl->d_flag |= (DCC_DECLFLAG_VARIADIC|
+                          DCC_DECLFLAG_VARIADICLAST);
+   }
+   YIELD();
+  }
   is_first = 0;
  }
 }
@@ -375,8 +388,7 @@ DCCParse_CTypeOldArgumentListDefWithFirstBase(struct DCCDecl *__restrict funtyde
                                               struct DCCType     *__restrict firstbase_type,
                                               struct DCCAttrDecl *__restrict firstbase_attr) {
  assert(funtydecl);
- assert(funtydecl->d_kind == DCC_DECLKIND_FUNCTION ||
-        funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
+ assert(funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
  assert(firstbase_type);
  assert(firstbase_attr);
  DCCParse_CTypeOldArgumentListDefWithBase(funtydecl,firstbase_type,firstbase_attr);
@@ -477,22 +489,22 @@ DCCParse_CTypeTrail(struct DCCType     *__restrict self,
  assert(attr);
  DCCParse_Attr(attr);
  if (TOK == '(') {
-  struct DCCDecl *fun_decl;
-  fun_decl = DCCDecl_New(&TPPKeyword_Empty);
-  if unlikely(!fun_decl) return;
+  struct DCCDecl *funtydecl;
+  funtydecl = DCCDecl_New(&TPPKeyword_Empty);
+  if unlikely(!funtydecl) return;
   if (!DCCType_IsComplete(self)) WARN(W_EXPECTED_COMPLETE_TYPE_FOR_FUNCTION_BASE,self);
-  fun_decl->d_type = *self; /* Inherit data. */
-  fun_decl->d_type.t_type &= ~(DCCTYPE_STOREMASK);
+  funtydecl->d_type = *self; /* Inherit data. */
+  funtydecl->d_type.t_type &= ~(DCCTYPE_STOREMASK);
   self->t_type &= (DCCTYPE_FLAGSMASK&~(DCCTYPE_ALTMASK));
   self->t_type |= (DCCTYPE_FUNCTION);
-  self->t_base  = fun_decl; /* Inherit reference. */
+  self->t_base  = funtydecl; /* Inherit reference. */
   YIELD();
   if (TOK == ')') {
    WARN(W_OLD_STYLE_FUNCTION_DECLARATION);
    YIELD();
-   fun_decl->d_kind = DCC_DECLKIND_OLDFUNCTION;
-   assert(fun_decl->d_tdecl.td_size   == 0);
-   assert(fun_decl->d_tdecl.td_fieldv == NULL);
+   funtydecl->d_kind  = DCC_DECLKIND_OLDFUNCTION;
+   assert(funtydecl->d_tdecl.td_size   == 0);
+   assert(funtydecl->d_tdecl.td_fieldv == NULL);
    /* Although any argument specified would be unknown, we must
     * still make sure to handle that case for code integrity. */
    DCCParse_CTypeOldArgumentListDef(self->t_base,attr);
@@ -501,7 +513,6 @@ DCCParse_CTypeTrail(struct DCCType     *__restrict self,
    struct TPPKeyword *firstarg_name;
    struct DCCAttrDecl firstarg_attr = DCCATTRDECL_INIT;
    int is_old_funimpl = 0;
-   fun_decl->d_kind = DCC_DECLKIND_FUNCTION;
    /* Parse a function prototype:
     * #1: >> int add(int x, int y); // New-style declaration with 2 named arguments.
     *     >> int add(int,int);      // New-style declaration with 2 unnamed arguments.
@@ -513,10 +524,12 @@ DCCParse_CTypeTrail(struct DCCType     *__restrict self,
    if (TOK == ',') {
     /* Old-style argument list with an unnamed first argument. */
 oldstyle_arglist:
-    DCCParse_CTypeOldArgumentList(fun_decl,NULL,NULL);
+    funtydecl->d_kind = DCC_DECLKIND_OLDFUNCTION;
+    DCCParse_CTypeOldArgumentList(funtydecl,NULL,NULL);
     is_old_funimpl = 1;
    } else if ((firstarg_name = DCCParse_CType(&firstarg_type,&firstarg_attr)) != NULL) {
-    DCCParse_CTypeNewArgumentList(fun_decl,&firstarg_type,firstarg_name,&firstarg_attr);
+    funtydecl->d_kind = DCC_DECLKIND_FUNCTION;
+    DCCParse_CTypeNewArgumentList(funtydecl,&firstarg_type,firstarg_name,&firstarg_attr);
     DCCType_Quit(&firstarg_type);
    } else {
     /* Fallback: Old-style argument list. */
@@ -528,15 +541,15 @@ oldstyle_arglist:
     /* Parse the type definitions of an old-style argument list. */
     assert(DCCTYPE_GROUP(self->t_type) == DCCTYPE_FUNCTION);
     assert(self->t_base);
-    assert(self->t_base->d_kind == DCC_DECLKIND_FUNCTION);
+    assert(self->t_base->d_kind == DCC_DECLKIND_OLDFUNCTION);
     DCCParse_CTypeOldArgumentListDef(self->t_base,attr);
    }
   }
   DCCParse_Attr(attr);
-  DCCDecl_SetAttr(fun_decl,attr);
-  /* TODO: Only for function types */
+  DCCDecl_SetAttr(funtydecl,attr);
   if (self->t_base &&
-      self->t_base->d_kind == DCC_DECLKIND_FUNCTION) {
+     (self->t_base->d_kind == DCC_DECLKIND_FUNCTION ||
+      self->t_base->d_kind == DCC_DECLKIND_OLDFUNCTION)) {
    DCCDecl_CalculateFunctionOffsets(self->t_base);
   }
  } else if (TOK == '[') {
@@ -681,7 +694,7 @@ oldstyle_arglist:
     oldfun_decl = DCCDecl_New(&TPPKeyword_Empty);
     if likely(oldfun_decl) {
      /* Old-style argument list. */
-     oldfun_decl->d_kind = DCC_DECLKIND_FUNCTION;
+     oldfun_decl->d_kind = DCC_DECLKIND_OLDFUNCTION;
      oldfun_decl->d_type = *self; /* Inherit data. */
      self->t_base  = oldfun_decl; /* Inherit reference. */
      self->t_type &= (DCCTYPE_FLAGSMASK&~(DCCTYPE_ALTMASK));
@@ -701,7 +714,7 @@ oldstyle_arglist:
      oldfun_decl = DCCDecl_New(&TPPKeyword_Empty);
      if likely(oldfun_decl) {
       /* Old-style argument list. */
-      oldfun_decl->d_kind = DCC_DECLKIND_FUNCTION;
+      oldfun_decl->d_kind = DCC_DECLKIND_OLDFUNCTION;
       oldfun_decl->d_type = *self; /* Inherit data. */
       self->t_base  = oldfun_decl; /* Inherit reference. */
       self->t_type &= (DCCTYPE_FLAGSMASK&~(DCCTYPE_ALTMASK));
@@ -735,12 +748,13 @@ inner_end:
    /* Parse the type definitions of an old-style argument list. */
    assert(DCCTYPE_GROUP(self->t_type) == DCCTYPE_FUNCTION);
    assert(self->t_base);
-   assert(self->t_base->d_kind == DCC_DECLKIND_FUNCTION);
+   assert(self->t_base->d_kind == DCC_DECLKIND_OLDFUNCTION);
    DCCParse_CTypeOldArgumentListDef(self->t_base,attr);
   }
   /* Calculate function offsets. */
   if (self->t_base &&
-      self->t_base->d_kind == DCC_DECLKIND_FUNCTION) {
+     (self->t_base->d_kind == DCC_DECLKIND_FUNCTION ||
+      self->t_base->d_kind == DCC_DECLKIND_OLDFUNCTION)) {
    DCCDecl_CalculateFunctionOffsets(self->t_base);
   }
  } else if (TPP_ISKEYWORD(TOK)) {

@@ -76,8 +76,10 @@ INTDEF struct TPPStringEmpty tpp_empty_string;
 
 PUBLIC struct TPPFile TPPFile_Cmd    = SPECIAL_FILE("CMD",22846089lu);
 #if __SIZEOF_SIZE_T__ == 4
+PUBLIC struct TPPFile TPPFile_Merge  = SPECIAL_FILE("MERGE",147485999lu);
 PUBLIC struct TPPFile TPPFile_Linker = SPECIAL_FILE("LINKER",2160376288lu);
 #elif __SIZEOF_SIZE_T__ == 8
+PUBLIC struct TPPFile TPPFile_Merge  = SPECIAL_FILE("MERGE",1627940091183llu);
 PUBLIC struct TPPFile TPPFile_Linker = SPECIAL_FILE("LINKER",426909024696800llu);
 #else
 #   error FIXME

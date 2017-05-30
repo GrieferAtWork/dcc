@@ -141,6 +141,7 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
  struct DCCSection *srcsec;
  assert(other);
  assert(other != &unit);
+ TPPLexer_PushFile(&TPPFile_Merge);
  /* Merge all sections & section data. */
  for (srcsec = other->u_secs; srcsec; srcsec = srcsec->sc_next) {
   struct DCCSection *dstsec;
@@ -579,6 +580,10 @@ merge_symflags:
   *       string in lower memory addresses.
   * NOTE: This kind of merge-optimization should be given its own function
   */
+ assert(TOKEN.t_file == &TPPFile_Merge);
+ TOKEN.t_file = TPPFile_Merge.f_prev;
+ assert(TPPFile_Merge.f_refcnt >= 2);
+ --TPPFile_Merge.f_refcnt;
 }
 
 PUBLIC void

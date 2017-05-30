@@ -573,6 +573,75 @@ default_ffs:
 
 #define VA_SIZE(x) (((x)+(DCC_TARGET_VA_ALIGN-1)) & ~(DCC_TARGET_VA_ALIGN-1))
 
+PRIVATE target_off_t dcc_va_off(void) {
+ target_off_t result = DCC_TARGET_SIZEOF_POINTER*2;
+ if (compiler.c_fun) {
+  struct DCCDecl *funty_decl = compiler.c_fun->d_type.t_base;
+  if (funty_decl &&
+     (funty_decl->d_kind == DCC_DECLKIND_FUNCTION ||
+      funty_decl->d_kind == DCC_DECLKIND_OLDFUNCTION)) {
+   if (!(funty_decl->d_flag&DCC_DECLFLAG_VARIADIC))
+         WARN(W_BUILTIN_VA_START_NO_VARARGS);
+   if (funty_decl->d_tdecl.td_size) {
+    struct DCCStructField *last_field;
+    if (funty_decl->d_flag&DCC_DECLFLAG_VARIADICLAST) {
+     if (funty_decl->d_tdecl.td_size >= 2) {
+      /* Add the Alignment offset of the last argument. */
+      last_field = &funty_decl->d_tdecl.td_fieldv[funty_decl->d_tdecl.td_size-2];
+      assert(last_field->sf_decl);
+      result += VA_SIZE(DCCType_Sizeof(&last_field->sf_decl->d_type,NULL,0));
+      result += last_field->sf_off;
+     }
+    } else {
+     last_field = &funty_decl->d_tdecl.td_fieldv[funty_decl->d_tdecl.td_size-1];
+     assert(last_field->sf_decl);
+     result   += last_field->sf_off;
+     result   += VA_SIZE(DCCType_Sizeof(&last_field->sf_decl->d_type,NULL,0));
+    }
+   }
+   if ((funty_decl->d_attr) &&
+       (funty_decl->d_attr->a_specs&DCC_ATTRSPEC_NAKED))
+        result -= DCC_TARGET_SIZEOF_POINTER;
+  }
+ }
+ return result;
+}
+PRIVATE rc_t dcc_va_base(void) {
+ rc_t result = DCC_RR_XBP;
+ if (compiler.c_fun) {
+  struct DCCDecl *funty_decl = compiler.c_fun->d_type.t_base;
+  if (funty_decl->d_attr &&
+     (funty_decl->d_attr->a_specs&DCC_ATTRSPEC_NAKED))
+      result = DCC_RR_XSP;
+ }
+ return result;
+}
+PRIVATE target_off_t dcc_va_start(void) {
+ target_off_t result = DCC_TARGET_SIZEOF_POINTER*2;
+ if (compiler.c_fun) {
+  struct DCCDecl *funty_decl = compiler.c_fun->d_type.t_base;
+  if (funty_decl &&
+     (funty_decl->d_kind == DCC_DECLKIND_FUNCTION ||
+      funty_decl->d_kind == DCC_DECLKIND_OLDFUNCTION)) {
+   if (!(funty_decl->d_flag&DCC_DECLFLAG_VARIADIC)) {
+    WARN(W_BUILTIN_VA_START_NO_VARARGS);
+   }
+   if (funty_decl->d_tdecl.td_size) {
+    if (funty_decl->d_flag&DCC_DECLFLAG_VARIADICLAST) {
+     if (funty_decl->d_tdecl.td_size >= 2) {
+      result += funty_decl->d_tdecl.td_fieldv[funty_decl->d_tdecl.td_size-2].sf_off;
+     }
+    } else {
+     result += funty_decl->d_tdecl.td_fieldv[funty_decl->d_tdecl.td_size-1].sf_off;
+    }
+   }
+   if ((funty_decl->d_attr) &&
+       (funty_decl->d_attr->a_specs&DCC_ATTRSPEC_NAKED))
+        result -= DCC_TARGET_SIZEOF_POINTER;
+  }
+ }
+ return result;
+}
 
 /*  __builtin_va_start  */
 LEXPRIV void DCC_PARSE_CALL
@@ -582,8 +651,31 @@ DCCParse_BuiltinVaStart(void) {
  YIELD();
  DCCParse_ParPairBegin();
  DCCParse_Expr1();
- if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_Expr1();
+ if (TOK != ',') {
+  /* Load the default location for the va-argument. */
+  struct DCCStackValue vararg;
+  WARN(W_BUILTIN_VA_START_MISSING_SECOND_ARGUMENT);
+  vararg.sv_ctype.t_type = DCCTYPE_VOID;
+  vararg.sv_ctype.t_base = NULL;
+  vararg.sv_flags        = DCC_SFLAG_LVALUE;
+  vararg.sv_reg          = dcc_va_base();
+  vararg.sv_reg2         = DCC_RC_CONST;
+  vararg.sv_const.it     = (int_t)dcc_va_off();
+  vararg.sv_sym          = NULL;
+  vpush(&vararg);
+ } else {
+  target_off_t default_off;
+  YIELD();
+  DCCParse_Expr1();
+  /* Check if the va-argument is the last element before the '...' */
+  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) ||
+       (vbottom->sv_sym != NULL) ||
+       (vbottom->sv_reg != dcc_va_base()) ||
+       ((default_off     = dcc_va_start()) != 0 &&
+        (vbottom->sv_const.offset != default_off))) {
+   WARN(W_BUILTIN_VA_START_NOT_LAST_ARG);
+  }
+ }
  if (TOK == ',') YIELD(),DCCParse_ExprDiscard();
  DCCParse_ParPairEnd();
  alignment = DCCType_Sizeof(&vbottom->sv_ctype,NULL,0);

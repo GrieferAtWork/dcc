@@ -22,10 +22,11 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Output ELF relocatable object files (<b>\*.o</b>)
   - Process and merge multiple source-/object files/static libraries.
   - Compiling DCC is only tested and working in Visual Studio.
-  - Full STD-C compliance up to C99
+  - Full STD-C compliance up to C99.
+  - Full AT&T assembly support with many GNU assembler extensions (see below).
+  - Full ELF binary target support.
 
 ## Planned features:
-  - Full ELF target binary support.
   - Support for X86-64/AMD64 CPU architectures.
   - Compiling DCC under GCC (may already work; won't be too hard if it doesn't).
   - Compiling DCC on linux (most of the work's already there, but nothing's tested yet).
@@ -62,7 +63,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Support for GCC scoped labels: <code>\_\_label\_\_</code>.
   - Support for GCC-style inline assembly: <code>\_\_asm\_\_("ret")</code>.
   - Support for MSVC fixed-length integer types: <code>\_\_int(8|16|32|64)</code>.
-  - Support for GCC <code>\_\_auto\_type</code> (as well as special interpretation of <code>auto</code> when not used as storage class. - <code>auto int x = 42</code> auto is storage class; <code>auto y = 10;</code> auto declares automatic type deduction).
+  - Support for GCC <code>\_\_auto\_type</code> (as well as special interpretation of <code>auto</code> when not used as storage class. - <code>auto int x = 42</code> auto is storage class; <code>auto y = 10;</code> auto denotes automatic type deduction).
   - Support for C99 variable-length arrays: <code>int x = 10; int y[x*2]; assert(sizeof(x) == 80);</code>.
   - Support for old (pre-STDC: K&R-C) function declarations/implementations.
   - Support for new (post-STDC: C90+) function declarations/implementations.

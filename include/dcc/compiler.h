@@ -42,13 +42,14 @@ DCC_DECL_BEGIN
 #define DCC_DECLKIND_STRUCT      (DCC_DECLKIND_TYPE|0x0020) /*< A struct type (aka. 'struct bar { ... };') ('d_type' is a self-reference). */
 #define DCC_DECLKIND_UNION       (DCC_DECLKIND_TYPE|0x0030) /*< A union type (aka. 'union bar { ... };') ('d_type' is a self-reference). */
 #define DCC_DECLKIND_FUNCTION    (DCC_DECLKIND_TYPE|0x0040) /*< A function prototype ('d_type' declares the base). */
-#define DCC_DECLKIND_OLDFUNCTION (DCC_DECLKIND_TYPE|0x0050) /*< An old-style function prototype ('d_type' declares the base; 'td_size' is 0, and 'td_fieldv' is NULL). */
+#define DCC_DECLKIND_OLDFUNCTION (DCC_DECLKIND_TYPE|0x0050) /*< An old-style function prototype ('d_type' declares the base). */
 #define DCC_DECLKIND_ARRAY       (DCC_DECLKIND_TYPE|0x0060) /*< A fixed-length array (The element count is stored in 'd_tdecl.td_size'). */
 #define DCC_DECLKIND_VLA         (DCC_DECLKIND_TYPE|0x0070) /*< A variable-length array (Its absolute, multiplied size is stored as a target-size_t at 'EBP+d_tdecl.td_vlaoff'). */
 
 #define DCC_DECLFLAG_NONE         0x0000
 #define DCC_DECLFLAG_VARIADIC     0x0001 /*< Used by 'DCC_DECLKIND_FUNCTION': Additional arguments are variadic. */
 #define DCC_DECLFLAG_FORWARD      0x0002 /*< Used by forward-type declarations (such as structures, unions or enums). */
+#define DCC_DECLFLAG_VARIADICLAST 0x0004 /*< Set in conjunction with 'DCC_DECLFLAG_VARIADIC': The last argument is the start of the variadic parameter list. */
 #define DCC_DECLFLAG_INTERN       0x1000 /*< Internal declaration symbol (which may not be cleared). */
 struct DCCStructField {
  DCC(target_off_t)      sf_off;    /*< Field offset, or offset from %EBP for function types. */

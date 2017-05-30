@@ -31,6 +31,7 @@
 DCC_DECL_BEGIN
 
 DCCDAT struct TPPFile TPPFile_Cmd;
+DCCDAT struct TPPFile TPPFile_Merge;
 DCCDAT struct TPPFile TPPFile_Linker;
 
 #ifdef __INTELLISENSE__
