@@ -23,6 +23,7 @@
 #include <dcc/unit.h>
 #include <dcc/lexer.h>
 #include <dcc/linker.h>
+#include <dcc/compiler.h>
 
 #include "cmd.h"
 
@@ -271,6 +272,30 @@ INTERN void dcc_help(char const *subject) {
    for (; iter != end; ++iter) fprintf(stderr,"%s\n",(*iter)->s_text);
    goto done;
   }
+  if (!strcmp(subject,"std")) {
+   struct DCCStdName const *iter = DCCCompiler_Std;
+   static char const *const std_help[DCC_COMPILER_STD_COUNT] = {
+    /* [DCC_COMPILER_STD_CURRENT] = */"",
+    /* [DCC_COMPILER_STD_DCC    ] = */"DCC's own C-dialect with all features & extensions enabled (default):\n",
+    /* [DCC_COMPILER_STD_KR     ] = */"K&R-style C-dialect, disabling any warning about use of its deprecated syntax:\n",
+    /* [DCC_COMPILER_STD_C90    ] = */"C90 dialect:\n",
+    /* [DCC_COMPILER_STD_C99    ] = */"C99 dialect:\n",
+    /* [DCC_COMPILER_STD_C11    ] = */"C11 dialect:\n",
+   };
+   for (; iter->sn_nam; ++iter) {
+    if (iter != DCCCompiler_Std &&
+        iter[-1].sn_std != iter->sn_std)
+        fprintf(stderr,"\n");
+    if (iter == DCCCompiler_Std ||
+        iter[-1].sn_std != iter->sn_std) {
+     assert(iter->sn_std < DCC_COMPILER_STD_COUNT);
+     fwrite(std_help[iter->sn_std],sizeof(char),
+            strlen(std_help[iter->sn_std]),stderr);
+    }
+    fprintf(stderr,"\t-std=%s\n",iter->sn_nam);
+   }
+   goto done;
+  }
   fprintf(stderr,"Unknown help subject: '%s'\n",subject);
   goto done;
  }
@@ -311,13 +336,15 @@ INTERN void dcc_help(char const *subject) {
                 INDENT "-W[no-]<warning>            Enable/Disable a given 'warning' group (s.a.: '--help warnings')\n"
               //INDENT "--name <name>               Set the name used for __FILE__ by INFILE (Useful when INFILE is stdin)\n"
                 INDENT "--help [subject]            Display this help and exit. When specified, subject may be one of:\n"
-                INDENT "                            linker|extensions|warnings|include-paths|library-paths|internal-paths\n"
+                INDENT "                            linker|extensions|warnings|include-paths|library-paths|internal-paths|std\n"
                 INDENT "--version                   Display version information and exit\n"
 #ifdef _WIN32
                 INDENT "--message-format={msvc|gcc} Set the format for error message (Default: msvc)\n"
 #else
                 INDENT "--message-format={msvc|gcc} Set the format for error message (Default: gcc)\n"
 #endif
+                INDENT "-ansi                       Same as -std=c90\n"
+                INDENT "-std=name                   Set the effective C dialect to 'name' (s.a.: '--help std')\n"
                 INDENT "-traditional[-cpp]          Emulate traditional C-compiler behavior, not warning about old-style\n"
                 INDENT "                            functions and accepting old-style spelling of inplace operation tokens\n"
               //INDENT "-f[no-]magiclf              Enable/Disable magic linefeeds sometimes used in place of #line (Default: off)\n"

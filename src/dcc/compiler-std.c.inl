@@ -53,7 +53,8 @@ PUBLIC struct DCCStdName const DCCCompiler_Std[] = {
 };
 
 PUBLIC void DCCCompiler_SetStd(int std) {
- if (!DCC_COMPILER_STD_KNOWN(std)) return;
+ if (!DCC_COMPILER_STD_KNOWN(std) ||
+     (std == DCC_COMPILER_STD_CURRENT)) return;
  /* Reset the lexer state to start with the same basis. */
  TPPLexer_Reset(TPPLexer_Current,
                 TPPLEXER_RESET_ESTATE|
