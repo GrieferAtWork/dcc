@@ -1842,9 +1842,7 @@ PUBLIC struct DCCSection DCCSection_Abs = {
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
  /* sc_start.sy_alias       */NULL,
  /* sc_start.sy_sec         */&DCCSection_Abs,
-#if DCC_TARGET_BIN == DCC_BINARY_ELF || 1
  /* sc_start.sy_elfid       */0,
-#endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
  /* sc_start.sy_addr        */0,
  /* sc_start.sy_size        */(target_ptr_t)-1},
  /* sc_symc                 */0,
@@ -1864,6 +1862,9 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_align                */1,
  /* sc_base                 */0, /* Section is based at ZERO(0). */
  /* sc_merge                */0,
+#if DCC_TARGET_BIN == DCC_BINARY_ELF
+ /* sc_elflnk               */NULL,
+#endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
  /* sc_relc                 */0,
  /* sc_rela                 */0,
  /* sc_relv                 */NULL,

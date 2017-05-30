@@ -27,10 +27,15 @@
 #include <dcc/compiler.h>
 
 #include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+
+#if DCC_DEBUG && DCC_HOST_OS == DCC_OS_WINDOWS
+#include <Windows.h>
+#endif
 
 DCC_DECL_BEGIN
 
-#if DCC_DEBUG && (defined(_WIN32) || defined(WIN32))
 PRIVATE void dcc_warnf(char const *fmt, ...) {
  char buffer[1024];
  va_list args;
@@ -44,11 +49,10 @@ PRIVATE void dcc_warnf(char const *fmt, ...) {
  va_end(args);
  bufsiz = strlen(buffer);
  fwrite(buffer,sizeof(char),bufsiz,stderr);
+#if DCC_DEBUG && DCC_HOST_OS == DCC_OS_WINDOWS
  OutputDebugStringA(buffer);
-}
-#else
-#define dcc_warnf(...) fprintf(stderr,__VA_ARGS__)
 #endif
+}
 
 DCC_DECL_END
 

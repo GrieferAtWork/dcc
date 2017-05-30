@@ -28,7 +28,6 @@ Note that DCC is still fairly early in its development, meaning that anything ca
 
 ## Planned features:
   - Support for X86-64/AMD64 CPU architectures.
-  - Compiling DCC under GCC (may already work; won't be too hard if it doesn't).
   - Compiling DCC on linux (most of the work's already there, but nothing's tested yet).
   - Compiling DCC with DCC (because every C compiler must be able to do that!).
   - Generation of debug information (recognizeable by gdb).

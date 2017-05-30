@@ -145,8 +145,8 @@
 #if defined(__ELF__) || \
    (!defined(__GNUC__) && __has_attribute(visibility)) || \
    (defined(__GNUC__) && !defined(_WIN32) && !defined(__CYGWIN__))
-#   define DCC_INTERN  __attribute__((__visibility__("hidden")))
-#   define DCC_INTDEF  __attribute__((__visibility__("hidden")))
+#   define DCC_INTERN         __attribute__((__visibility__("hidden")))
+#   define DCC_INTDEF  extern __attribute__((__visibility__("hidden")))
 #elif defined(_MSC_VER)
 #   define DCC_INTERN  extern
 #   define DCC_INTDEF  extern

@@ -151,9 +151,7 @@ struct DCCSym {
                                             *         to this symbol, this symbol is actually a section and behaves as pointing to the
                                             *         start of that same section.
                                             *   WARNING: This field _must_ be NULL when 'sy_alias' isn't NULL, and the same holds true the other way around. */
-#if DCC_TARGET_BIN == DCC_BINARY_ELF || 1 /* NOTE: Also used when generating object files. */
  uint32_t                  sy_elfid;       /*< Used during binary generation: Elf Symbol ID. */
-#endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
  /* 'sy_addr' acts as an offset in aliased symbols!
   * The ability to do this is required for proper symbol declaration in assembly:
   * >> # 'foobar' must be an alias for 'foo', with an offset of '8'.

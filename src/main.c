@@ -159,14 +159,19 @@ int main(int argc, char *argv[]) {
  if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB) &&
      !(flags&F_COMPILEONLY)) {
   /* Load default libraries. */
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+#define SO(x) x ".dll"
+#else
+#define SO(x) x ".so"
+#endif
 #define STDLIB(name,f) \
    {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
   static struct DCCLibDef default_stdlib[] = {
    STDLIB("crt1.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
 #if DCC_TARGET_OS == DCC_OS_WINDOWS
-   STDLIB("msvcrt.dll",DCC_LIBDEF_FLAG_NOSEARCHEXT),
+   STDLIB(SO("msvcrt"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
 #else
-   STDLIB("libc.so",DCC_LIBDEF_FLAG_NOSEARCHEXT),
+   STDLIB(SO("libc"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
 #endif
    {0,NULL,0,0,0,0,0,NULL},
   };

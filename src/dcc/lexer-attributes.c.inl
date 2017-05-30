@@ -191,8 +191,8 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
    delete_flag = !val; /* Don't set the flag, based on a constant expression. */
   }
 #if DCC_TARGET_BIN != DCC_BINARY_PE
-  if (isspec && (flag == DCC_ATTRFLAG_DLLEXPORT ||
-                 flag == DCC_ATTRFLAG_DLLIMPORT)) {
+  if (isspec && (flag == DCC_ATTRSPEC_DLLIMPORT ||
+                 flag == DCC_ATTRSPEC_DLLEXPORT)) {
    self->a_flags &= ~(DCC_ATTRFLAG_MASK_ELFVISIBILITY);
    self->a_flags |= (delete_flag
                      ? DCC_ATTRFLAG_VIS_HIDDEN
