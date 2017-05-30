@@ -103,6 +103,9 @@ int main(int argc, char *argv[]) {
 
 #define F_COMPILEONLY  0x00000001
 #define F_PREPROCESSOR 0x00000002
+#define F_HELP_INCLUDE 0x10000000
+#define F_HELP_LIBRARY 0x20000000
+#define F_HELP         0xf0000000
  uint32_t flags = 0;
 
  if (!TPP_INITIALIZE()) return 1;
@@ -135,15 +138,21 @@ int main(int argc, char *argv[]) {
     case OPT_o: outfile_name = c.c_val; break;
     case OPT_c: flags |= F_COMPILEONLY; break;
      /* TODO: '-B' changes the internal library path. */
+    case OPT_help:
+          if (!strcmp(c.c_val,"include-paths")) flags |= F_HELP_INCLUDE;
+     else if (!strcmp(c.c_val,"library-paths")) flags |= F_HELP_LIBRARY;
+     else goto defcase;
+     goto done_cmd;
 
-    default: exec_cmd(&c,1); break;
+    default:defcase: exec_cmd(&c,1); break;
     }
    }
+done_cmd:
    argc = c.c_argc;
    argv = c.c_argv;
  }
 
- if unlikely(!argc) WARN(W_LINKER_NO_INPUT_FILES);
+ if unlikely(!argc && !(flags&F_HELP)) WARN(W_LINKER_NO_INPUT_FILES);
  if (!OK) goto end;
 
  if (!outfile_name) {
@@ -184,6 +193,21 @@ int main(int argc, char *argv[]) {
  if (!OK) goto end;
 
  /* TODO: Preprocessor mode ('-E'). */
+
+ if (flags&F_HELP) {
+  struct cmd hc;
+  hc.c_argc  = 0;
+  hc.c_argv  = NULL;
+  hc.c_arg   = NULL;
+  hc.c_grp   = NULL;
+  hc.c_state = 0;
+  hc.c_id    = OPT_help;
+  hc.c_val   = (flags&F_HELP_INCLUDE) ? "include-paths" :
+               (flags&F_HELP_LIBRARY) ? "library-paths" :
+                                        "";
+  exec_cmd(&hc,1);
+ }
+
 
  while (argc) {
   /* Parse the input code. */

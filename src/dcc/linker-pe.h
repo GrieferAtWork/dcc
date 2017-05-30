@@ -38,7 +38,7 @@
 
 DCC_DECL_BEGIN
 
-#if !defined(IMAGE_DOS_SIGNATURE) || 1
+#if !defined(IMAGE_DOS_SIGNATURE)
 
 typedef uint32_t DWORD;
 typedef uint8_t  BYTE;
