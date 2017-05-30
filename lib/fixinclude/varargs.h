@@ -17,12 +17,11 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 #pragma once
-#pragma GCC system_header
-
 #if __has_warning("-Wold-function-decl")
 #warning "<varargs.h> is obsolete; new code should use <stdarg.h> instead"
 #endif
 
+#pragma GCC system_header
 #if __has_include_next(<varargs.h>)
 /* Many standard libraries still implement <varargs.h>, only to
  * emit a #error directive telling you that they actually don't.
