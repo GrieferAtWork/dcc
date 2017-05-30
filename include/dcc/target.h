@@ -51,7 +51,8 @@ DCC_DECL_BEGIN
 
 /* DCC Master CPU target switch. */
 #ifndef DCC_TARGET_CPU
-#define DCC_TARGET_CPU     DCC_HOST_CPU
+#define DCC_TARGET_CPU     DCC_CPU_I686
+//#define DCC_TARGET_CPU     DCC_HOST_CPU
 #endif
 
 /* DCC Master Binary target format switch. */
@@ -135,7 +136,9 @@ DCC_DECL_BEGIN
     defined(_WIN32) || defined(WIN32) || \
     defined(_WIN64) || defined(WIN64) || \
     defined(__WIN32__) || defined(__TOS_WIN__) || \
-    defined(_WIN32_WCE) || defined(WIN32_WCE)
+    defined(_WIN32_WCE) || defined(WIN32_WCE) || \
+    defined(__CYGWIN__) || defined(__CYGWIN32__) || \
+    defined(__MINGW32__)
 #   define DCC_HOST_OS DCC_OS_WINDOWS
 #elif defined(__FreeBSD_kernel__)
 #   define DCC_HOST_OS DCC_OS_FREEBSD_KERNEL
@@ -144,7 +147,7 @@ DCC_DECL_BEGIN
 #elif defined(__linux__) || \
       defined(__linux) || defined(linux)
 #   define DCC_HOST_OS DCC_OS_LINUX
-#elif defined(__unix__) || defined(__unix) \
+#elif defined(__unix__) || defined(__unix) || \
       defined(unix) || defined(__ANDROID__) || \
       defined(__ANDROID) || defined(__android__) || \
       defined(__android) || defined(__MACOS__) || \

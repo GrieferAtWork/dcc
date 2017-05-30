@@ -224,6 +224,7 @@ DCCFUN void DCCLinker_LibPathPop(void);
 DCCFUN void DCCLinker_Make(DCC(stream_t) target);
 
 #if DCC_TARGET_BIN == DCC_BINARY_PE
+struct DCCStackValue;
 /* Fix PE import symbols to use the indirection of the ITA address,
  * instead of generating an indirect call to an ITA wrapper function.
  * >> In addition, this function is a no-op if 'self'

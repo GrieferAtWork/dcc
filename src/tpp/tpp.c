@@ -61,12 +61,18 @@
 #endif
 #ifndef PRIVATE
 #ifdef __ELF__
+#   define PRIVDEF  __attribute__((__visibility__("private")))
 #   define PRIVATE  __attribute__((__visibility__("private")))
-#elif defined(_MSC_VER)
+#elif 0
+#ifdef _MSC_VER
+#   define PRIVDEF  extern
 #   define PRIVATE  extern
-#elif 1
-#   define PRIVATE  /* nothing */
 #else
+#   define PRIVDEF  extern
+#   define PRIVATE  /* nothing */
+#endif
+#else
+#   define PRIVDEF  static
 #   define PRIVATE  static
 #endif
 #endif
@@ -305,7 +311,7 @@ do{struct TPPFile *const _oldeof = current.l_eof_file;\
 #define popeof() \
    current.l_eof_file = _oldeof;\
 }while(FALSE)
-PRIVATE void on_popfile(struct TPPFile *file);
+PRIVDEF void on_popfile(struct TPPFile *file);
 #define popfile() \
 do{ struct TPPFile *_oldfile = token.t_file;\
     assert(_oldfile);\
@@ -2079,7 +2085,7 @@ LOCAL int codewriter_put2(struct codewriter *self, funop_t op, size_t a1, size_t
 }
 
 
-PRIVATE struct TPPKeyword *
+PRIVDEF struct TPPKeyword *
 lookup_escaped_keyword(char const *name, size_t namelen,
                        size_t unescaped_size, int create_missing);
 
@@ -2470,7 +2476,7 @@ err: result = 0; codewriter_quit(&writer); goto done;
 }
 #undef func
 
-PRIVATE void TPPKeyword_Undef(struct TPPKeyword *__restrict self);
+PRIVDEF void TPPKeyword_Undef(struct TPPKeyword *__restrict self);
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -8062,7 +8068,7 @@ seterr_argv: UNUSED_LABEL; TPPLexer_SetErr(); goto err_argv;
 #pragma warning(push)
 #pragma warning(disable: 4701)
 #endif
-PRIVATE void EVAL_CALL eval_question(struct TPPConst *result);
+PRIVDEF void EVAL_CALL eval_question(struct TPPConst *result);
 
 PRIVATE void EVAL_CALL eval_unary(struct TPPConst *result) {
 again_unary:

@@ -25,6 +25,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #else
+#include <fcntl.h>
 #include <unistd.h>
 #endif
 
@@ -43,7 +44,7 @@ typedef uint32_t DCC(soff_t); /* File offset. */
              FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,\
              NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL)
 #define DCC_STREAM_CLOSE(fd) CloseHandle(fd)
-#define DCC_STREAM_SEEK(fd,off,whence) (DCC(ptrdiff_t))SetFilePointer(fd,off,NULL,whence)
+#define DCC_STREAM_SEEK(fd,off,whence) (DCC(soff_t))SetFilePointer(fd,off,NULL,whence)
 DCC_LOCAL ptrdiff_t dcc_win32_stream_read(DCC(stream_t) fd, void *p, size_t s) {
  DWORD result;
  if (!ReadFile(fd,p,s,&result,NULL)) return -1;
@@ -60,7 +61,7 @@ DCC_LOCAL ptrdiff_t dcc_win32_stream_write(DCC(stream_t) fd, void const *p, size
 #define DCC_STREAM_OPEN_R(filename)    open(filename,O_RDONLY)
 #define DCC_STREAM_OPEN_W(filename)    open(filename,O_WRONLY|O_CREAT,0644)
 #define DCC_STREAM_CLOSE(fd)           close(fd)
-#define DCC_STREAM_SEEK(fd,off,whence) seek(fd,off,whence)
+#define DCC_STREAM_SEEK(fd,off,whence) lseek(fd,off,whence)
 #define DCC_STREAM_READ(fd,p,s)        read(fd,p,s)
 #define DCC_STREAM_WRITE(fd,p,s)       write(fd,p,s)
 #endif
@@ -91,7 +92,7 @@ DCCStream_WriteAll(DCC(stream_t) fd, void const *p, size_t s) {
 }
 
 DCCFUN int DCCStream_PadSize(DCC(stream_t) fd, size_t n_bytes);
-DCCFUN int DCCStream_PadAddr(DCC(stream_t) fd, uint32_t offset);
+DCCFUN int DCCStream_PadAddr(DCC(stream_t) fd, DCC(soff_t) offset);
 
 #ifdef DCC_PRIVATE_API
 #define s_openr  DCC_STREAM_OPEN_R

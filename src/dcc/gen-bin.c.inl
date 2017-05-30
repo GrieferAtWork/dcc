@@ -1510,7 +1510,7 @@ DCCDisp_VecBinMem(tok_t op,   void const *__restrict src, target_siz_t src_bytes
        if (common_size >= 4) width = 4,cst.sa_off = (target_off_t)*(int32_t *)src;
   else if (common_size >= 2) width = 2,cst.sa_off = (target_off_t)*(int16_t *)src;
   else                       width = 1,cst.sa_off = (target_off_t)*(int8_t *)src;
-  cst.sa_off = NULL;
+  cst.sa_off = 0;
   DCCDisp_CstBinMem(op,&cst,&dst_iter,width,src_unsigned);
   dst_iter.ml_off    += width;
   *(uintptr_t *)&src += width;
@@ -1569,7 +1569,7 @@ DCCDisp_BytBinMem(tok_t op, int                      src, target_siz_t src_bytes
        if (common_size >= 4) width = 4;
   else if (common_size >= 2) width = 2;
   else                       width = 1;
-  cst.sa_off = NULL;
+  cst.sa_off = 0;
   DCCDisp_CstBinMem(op,&cst,&dst_iter,width,src_unsigned);
   dst_iter.ml_off += width;
   common_size     -= width;

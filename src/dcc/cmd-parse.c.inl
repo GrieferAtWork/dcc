@@ -176,9 +176,9 @@ def_secbase:
   v_copy = (char *)DCC_Malloc((v_len+1)*sizeof(char),0);
   if unlikely(!v_copy) break;
   memcpy(v_copy,v,(v_len+1)*sizeof(char));
-  c->c_id == OPT_Wl_init ? linker.l_init  = v_copy :
-  c->c_id == OPT_Wl_fini ? linker.l_fini  = v_copy :
-                           linker.l_entry = v_copy;
+  c->c_id == OPT_Wl_init ? (void)(linker.l_init  = v_copy) :
+  c->c_id == OPT_Wl_fini ? (void)(linker.l_fini  = v_copy) :
+                           (void)(linker.l_entry = v_copy);
  } break;
 
  case OPT_Wl_image_base:

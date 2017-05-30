@@ -36,7 +36,7 @@
 
 DCC_DECL_BEGIN
 
-PRIVATE char *getline(struct TPPFile *__restrict f) {
+PRIVATE char *def_getline(struct TPPFile *__restrict f) {
  char *result;
  char *line_end;
  size_t file_size;
@@ -83,7 +83,7 @@ DCCUnit_DynLoadDEF2(struct DCCLibDef *__restrict def,
    TOKEN.t_file = f;
 
    /* Read the file line-by-line */
-   while ((line = getline(f)) != NULL) {
+   while ((line = def_getline(f)) != NULL) {
     while (tpp_isspace_nz(*line)) ++line; /* Skip leading whitespace */
     if (!*line || *line == ';') continue; /* Skip comments & empty lines. */
     switch (state) {
@@ -161,7 +161,7 @@ DCCUnit_DynLoadDEF(struct DCCLibDef *__restrict def,
  /* Check for the '.def' file extension. */
  if ((len = strlen(file)) < 4 ||
      memcmp(file+len-4,".def",4*
-     sizeof(char)) != 0) return NULL;
+     sizeof(char)) != 0) return 0;
  return DCCUnit_DynLoadDEF2(def,file,fd,start);
 }
 

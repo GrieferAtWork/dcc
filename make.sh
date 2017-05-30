@@ -1,17 +1,68 @@
 #!/bin/bash
 
-CC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
-F="-ID:\\VisualStudio\\VistualStudio2013\\VC\\include -Iinclude -D_MSC_VER -DDCC_PRIVATE_API"
-out() {
-	echo "build/dcc/$1"
+CC="gcc"
+#CC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
+F="-Iinclude -DDCC_PRIVATE_API"
+build() { echo "build/dcc/$1"; }
+out() { echo "$(build $1).o"; }
+dep() { echo "$(build $1).d"; }
+
+object_list=()
+src_changed() {
+	inf="$1"
+	ouf="$(out $(basename "$inf"))"
+	dpf="$(dep $(basename "$inf"))"
+	[ -f "$ouf" ] || return 1
+	[ -f "$dpf" ] || return 1
+	ddt=`cat "$dpf" | tr -d '\\\\\n'`
+	first=1
+	for dep in $ddt; do
+		if [ "$first" == 1 ]; then first=0; else
+			if [ "$dep" -nt "$ouf" ]; then
+				echo    "Dependency has changed:"
+				echo -e "\tinput file: $inf"
+				echo -e "\tdepends on: $dep"
+				return 1
+			fi
+		fi
+	done
+	return 0
 }
 src() {
-	$CC $F -c -o $(out $(basename "$1")) $1
+	for inf in $*; do
+		ouf="$(out $(basename "$inf"))"
+		object_list+=("$ouf")
+		if ! src_changed "$inf"; then
+			dpf="$(dep $(basename "$inf"))"
+			echo "Compiling: '$inf'"
+			$CC $F -MMD -MF "$dpf" -c -o "$ouf" "$inf" || exit $?
+		else
+			echo "Unchanged: '$inf'"
+		fi
+	done
 }
 
-mkdir $(out "")
+mkdir -p $(build "") || exit $?
 
-src "src/main.c"
+# Compile DCC source files
+src src/*.c
+src src/dcc/*.c
+
+gcc -o bin/dcc ${object_list[@]}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

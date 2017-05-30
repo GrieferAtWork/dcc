@@ -137,14 +137,16 @@
 #endif
 
 
-#define DCCDAT       extern
-#define DCCFUN       extern
-#define DCC_PRIVATE  static
-#define DCC_PUBLIC   /* nothing */
-#define DCC_LOCAL    static __inline
-#if defined(__ELF__) || __has_attribute(visibility)
-#   define DCC_INTERN  __attribute__((__visibility__("private")))
-#   define DCC_INTDEF  __attribute__((__visibility__("private")))
+#define DCCDAT         extern
+#define DCCFUN         extern
+#define DCC_PRIVATE    static
+#define DCC_PUBLIC     /* nothing */
+#define DCC_LOCAL      static __inline
+#if defined(__ELF__) || \
+   (!defined(__GNUC__) && __has_attribute(visibility)) || \
+   (defined(__GNUC__) && !defined(_WIN32) && !defined(__CYGWIN__))
+#   define DCC_INTERN  __attribute__((__visibility__("hidden")))
+#   define DCC_INTDEF  __attribute__((__visibility__("hidden")))
 #elif defined(_MSC_VER)
 #   define DCC_INTERN  extern
 #   define DCC_INTDEF  extern
@@ -154,11 +156,11 @@
 #endif
 
 #ifdef DCC_PRIVATE_API
-#define PRIVATE      DCC_PRIVATE
-#define PUBLIC       DCC_PUBLIC
-#define LOCAL        DCC_LOCAL
-#define INTERN       DCC_INTERN
-#define INTDEF       DCC_INTDEF
+#define PRIVATE        DCC_PRIVATE
+#define PUBLIC         DCC_PUBLIC
+#define LOCAL          DCC_LOCAL
+#define INTERN         DCC_INTERN
+#define INTDEF         DCC_INTDEF
 #endif
 
 #ifdef _MSC_VER
@@ -292,6 +294,7 @@ DCC_DECL_END
 #define DCC_API_VERSION      1 /* Api version (Version of this api). */
 
 #include <stdint.h>
+#include <stddef.h>
 
 DCC_DECL_BEGIN
 

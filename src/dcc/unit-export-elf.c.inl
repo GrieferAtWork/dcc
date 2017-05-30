@@ -27,6 +27,8 @@
 #include <dcc/stream.h>
 #include <dcc/linker.h>
 
+#include <string.h>
+
 #include "unit-export.h"
 #include "linker-elf.h"
 
@@ -127,7 +129,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
  shdr_intc = 3; /* '.shstrtab', '.symtab', '.strtab' */
  if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT)) ++shdr_intc; /* '.DCC.symflg' */
 
- shdr_impc = (def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ? 0 : shdr_impc = unit.u_impc; /* Import section headers. */
+ shdr_impc = (def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ? 0 : unit.u_impc; /* Import section headers. */
  shdrc = 1+shdr_regc+shdr_impc+shdr_relc+shdr_intc;
  shdrv = (struct elf_shdr *)DCC_Calloc(shdrc*sizeof(struct elf_shdr),0);
  if unlikely(!shdrv) return;

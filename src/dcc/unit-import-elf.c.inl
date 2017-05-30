@@ -665,7 +665,7 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
 
 #define SEC_DCCSECI(i) ((i) < secc ? SEC_DCCSEC(&secv[i]) : NULL)
 #define SEC_SYMVECI(i) ((i) < secc ? SEC_SYMVEC(&secv[i]) : NULL)
-#define SEC_SYMCNTI(i) ((i) < secc ? SEC_SYMCNT(&secv[i]) : NULL)
+#define SEC_SYMCNTI(i) ((i) < secc ? SEC_SYMCNT(&secv[i]) : 0)
 
    /* All sections of interest have been loaded.
     * Now, we must load all symbol tables. */

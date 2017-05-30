@@ -25,13 +25,17 @@
 #include <dcc/lexer.h>
 #include <dcc/stream.h>
 
-#ifdef _WIN32
+#ifndef __has_include
+#define __has_include(x) 0
+#endif
+
+#if DCC_HOST_OS == DCC_OS_WINDOWS || __has_include(<Windows.h>)
 #include <Windows.h>
 #endif
 
 DCC_DECL_BEGIN
 
-#ifndef _WIN32
+#ifndef IMAGE_DOS_SIGNATURE
 typedef struct _IMAGE_DOS_HEADER {
   WORD   e_magic;
   WORD   e_cblp;

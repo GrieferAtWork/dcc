@@ -32,7 +32,7 @@
 #include <alloca.h>
 #endif
 
-#ifdef _WIN32
+#if DCC_HOST_OS == DCC_OS_WINDOWS
 #include <Windows.h>
 #endif
 

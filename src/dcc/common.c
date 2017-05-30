@@ -174,8 +174,8 @@ PUBLIC int DCCStream_PadSize(stream_t fd, size_t n_bytes) {
  }
  return 1;
 }
-PUBLIC int DCCStream_PadAddr(stream_t fd, uint32_t offset) {
- DWORD ptr = s_seek(fd,0,SEEK_CUR);
+PUBLIC int DCCStream_PadAddr(stream_t fd, DCC(soff_t) offset) {
+ DCC(soff_t) ptr = s_seek(fd,0,SEEK_CUR);
  if (ptr >= offset) return 0;
  return DCCStream_PadSize(fd,offset-ptr);
 }

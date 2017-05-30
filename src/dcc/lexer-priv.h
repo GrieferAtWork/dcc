@@ -86,10 +86,6 @@ LEXDECL void DCC_PARSE_CALL DCCParse_FixType(struct DCCType *__restrict type);
 LEXDECL void DCC_PARSE_CALL DCCParse_SkipExpr(void);
 LEXDECL void DCC_PARSE_CALL DCCParse_DeadStmt(struct DCCSym *dead_jmp);
 
-LEXPRIV void DCC_PARSE_CALL
-DCCParse_OldFunctionArgument(struct DCCArgAllocator *__restrict allocator,
-                             struct DCCType const *__restrict base_type,
-                             struct DCCAttrDecl const *__restrict base_attr);
 LEXDECL void DCC_PARSE_CALL
 DCCParse_Function(struct DCCDecl *fun_decl, struct TPPKeyword const *asmname,
                   struct DCCType const *__restrict fun_type,

@@ -46,8 +46,8 @@ DCCMemLoc_CompilerAddr_impl(struct DCCMemLoc const *__restrict l,
    /* Directly write to target memory (at compile-time).
     * >> This is used for static initializer of global data. */
    DCCSection_TBEGIN(target_sec);
-   if (update_ptr && (*update_ptr >= target_sec->sc_text.tb_begin &&
-                      *update_ptr <= target_sec->sc_text.tb_end)) {
+   if (update_ptr && ((uint8_t *)*update_ptr >= target_sec->sc_text.tb_begin &&
+                      (uint8_t *)*update_ptr <= target_sec->sc_text.tb_end)) {
     *(uintptr_t *)update_ptr -= (uintptr_t)target_sec->sc_text.tb_begin;
     target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off+
                                                 symaddr.sa_sym->sy_addr+
@@ -90,8 +90,8 @@ DCCMemLoc_CompilerData_impl(struct DCCMemLoc const *__restrict l,
    /* Directly write to target memory (at compile-time).
     * >> This is used for static initializer of global data. */
    DCCSection_TBEGIN(target_sec);
-   if (update_ptr && (*update_ptr >= target_sec->sc_text.tb_begin &&
-                      *update_ptr <= target_sec->sc_text.tb_end)) {
+   if (update_ptr && ((uint8_t *)*update_ptr >= target_sec->sc_text.tb_begin &&
+                      (uint8_t *)*update_ptr <= target_sec->sc_text.tb_end)) {
     *(uintptr_t *)update_ptr -= (uintptr_t)target_sec->sc_text.tb_begin;
     target_data = (uint8_t *)DCCSection_GetText(target_sec,symaddr.sa_off,n_bytes);
     *(uintptr_t *)update_ptr += (uintptr_t)target_sec->sc_text.tb_begin;

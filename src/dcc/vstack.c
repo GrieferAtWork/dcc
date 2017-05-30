@@ -2047,8 +2047,8 @@ DCCStackValue_Promote(struct DCCStackValue *__restrict self) {
   self->sv_flags &= ~(DCC_SFLAG_LVALUE/*|DCC_SFLAG_COPY*/);
   break;
  {
- case DCCTYPE_LVALUE:
   struct DCCType *lv_base;
+ case DCCTYPE_LVALUE:
   assert(self->sv_ctype.t_base);
   lv_base = &self->sv_ctype.t_base->d_type;
   if (DCCTYPE_GROUP(lv_base->t_type) == DCCTYPE_ARRAY ||

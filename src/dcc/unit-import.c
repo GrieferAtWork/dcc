@@ -245,7 +245,7 @@ DCCUnit_ImportWithFilename(struct DCCLibDef *__restrict def,
 #if DCC_HOST_OS == DCC_OS_WINDOWS
   /* TODO: maybe retry with fixed slashes? ('filename.replace("/","\\")') */
 #endif
-  return NULL;
+  return 0;
  }
  result = DCCUnit_DoImportStream(def,filename,s,0);
  s_close(s);

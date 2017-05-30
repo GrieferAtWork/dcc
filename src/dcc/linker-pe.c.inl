@@ -54,7 +54,7 @@ static PE_HEADER const pe_template = {
  /* dhdr.e_oeminfo  */0x0000,
  /* dhdr.e_res2     */{0,0,0,0,0,0,0,0,0,0},
  /* Practically the _only_ important one: Offset from file start: where is the ~real~ header at? */
- /* dhdr.e_lfanew   */(DWORD)&((PE_HEADER *)0)->ntsg},
+ /* dhdr.e_lfanew   */(DWORD)(uintptr_t)&((PE_HEADER *)0)->ntsg},
  /* dcod            */{
  /* code... */0x0e,0x1f,0xba,0x0e,0x00,0xb4,0x09,0xcd,0x21,0xb8,0x01,0x4c,0xcd,0x21,
  /* text... */'T','h','i','s',' ','p','r','o','g','r','a','m',' ','c','a','n','n','o','t',' ','b','e',' ',

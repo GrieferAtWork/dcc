@@ -78,8 +78,8 @@ DCCDisp_UnaryMemWidth(tok_t op, struct DCCMemLoc const *__restrict dst,
   else            t_putb(0xf6);
   asm_modmem(op == '-' ? 3 : 2,dst);
   break;
- case TOK_INC: t_putb(0xfe+(width != 1)); asm_modmem(0,dst); break;
- case TOK_DEC: t_putb(0xfe+(width != 1)); asm_modmem(1,dst); break;
+ case TOK_INC: t_putb((0xfe)+(width != 1)); asm_modmem(0,dst); break;
+ case TOK_DEC: t_putb((0xfe)+(width != 1)); asm_modmem(1,dst); break;
  case '(':
   if (width == 1) {
    /* 8-bit call. */

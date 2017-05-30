@@ -18,6 +18,7 @@
  */
 #ifndef GUARD_DCC_TPP_WRAPPER_C
 #define GUARD_DCC_TPP_WRAPPER_C 1
+#define _GNU_SOURCE /* enable 'memrchr' */
 
 #include <dcc/common.h>
 #include <dcc/target.h>
@@ -89,7 +90,8 @@ case W_UNRESOLVED_REFERENCE: \
 /* Re-define all private declarations as internal,
  * so that other parts of the compiler can re-use
  * some of the more useful helper functions. */
-#define PRIVATE    INTDEF
+#define PRIVDEF    INTDEF
+#define PRIVATE    INTERN
 
 /* Custom warning print callback (used for adding colors). */
 #define TPP_WARNF  dcc_warnf

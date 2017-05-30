@@ -258,7 +258,6 @@ DCCDisp_LargeBytBinMem(tok_t op, int                      src, target_siz_t src_
  struct DCCMemLoc used_src; int filler;
  void *fixed_source_data;
  target_siz_t reqbytes = REQSIZE(op,dst_bytes);
- fixed_source_data = (void *)src;
  if (src_bytes > reqbytes) src_bytes = reqbytes;
  fixed_source_data = malloc(reqbytes);
  if unlikely(!fixed_source_data) goto seterr;

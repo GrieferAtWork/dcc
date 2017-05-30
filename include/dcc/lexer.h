@@ -74,10 +74,9 @@ DCCDAT struct TPPKeyword_Empty_struct TPPKeyword_Empty_data;
 #define OK       DCC_LX_OK
 #endif
 
+struct DCCDecl;
 struct DCCSym;
 struct DCCType;
-struct TPPString;
-
 
 
 struct DCCSymExpr {

@@ -35,9 +35,9 @@ DCC_DECL_BEGIN
 
 INTDEF void dcc_dump_symbols(void);
 
-void def(char const *name, void *addr) {
+INTERN void def(char const *name, target_ptr_t addr) {
  struct DCCSym *sym = DCCUnit_NewSyms(name,DCC_SYMFLAG_NONE);
- if (sym) DCCSym_Define(sym,&DCCSection_Abs,(target_ptr_t)addr,0);
+ if (sym) DCCSym_Define(sym,&DCCSection_Abs,addr,0);
 }
 
 static void add_import(char const *filename) {
@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
   void(*entry)(void);
 
   /* Ugly hack to get minimal stdio in tests. */
-  def("printf",(void *)&printf);
+  def("printf",(target_ptr_t)(uintptr_t)(void *)&printf);
   //def("printf",(void *)0xDEADBEEF);
 
   /* Search for an entry point. */
