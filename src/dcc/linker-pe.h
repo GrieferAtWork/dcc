@@ -352,6 +352,20 @@ typedef struct _IMAGE_BASE_RELOCATION {
 #define IMAGE_REL_BASED_THUMB_MOV32           7
 
 
+typedef struct _IMAGE_IMPORT_DESCRIPTOR {
+    union {
+        DWORD   Characteristics;
+        DWORD   OriginalFirstThunk;
+    };
+    DWORD   TimeDateStamp;
+    DWORD   ForwarderChain;
+    DWORD   Name;
+    DWORD   FirstThunk;
+} IMAGE_IMPORT_DESCRIPTOR;
+typedef IMAGE_IMPORT_DESCRIPTOR *PIMAGE_IMPORT_DESCRIPTOR;
+
+
+
 #endif /* ... */
 
 #if DCC_TARGET_CPU == DCC_CPU_X86_64
