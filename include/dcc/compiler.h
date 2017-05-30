@@ -471,6 +471,36 @@ DCCFUN void DCCCompiler_VisibilityPop(void);
 DCCFUN void DCCCompiler_ClearCache(void);
 
 
+#define DCC_COMPILER_STD_CURRENT  0 /*< Keep the currently selected STD version. */
+#define DCC_COMPILER_STD_DCC      1 /*< DCC's own C-dialect with all features & extensions enabled (default). */
+#define DCC_COMPILER_STD_KR       2 /*< K&R-style C-dialect, disabling any warning about use of its deprecated syntax. */
+#define DCC_COMPILER_STD_C90      3 /*< C90 dialect. */
+#define DCC_COMPILER_STD_C99      4 /*< C99 dialect. */
+#define DCC_COMPILER_STD_C11      5 /*< C11 dialect. */
+#define DCC_COMPILER_STD_COUNT    6
+#define DCC_COMPILER_STD_KNOWN(i) ((unsigned int)(i) < DCC_COMPILER_STD_COUNT)
+
+#define DCC_COMPILER_STD_ANSI     DCC_COMPILER_STD_C90
+
+
+/* Set the STD version of C syntax sub-groups that should be recognized by DCC.
+ * @param: std: One of 'DCC_COMPILER_STD_*'
+ * NOTE: no-op for unknown versions of STD.
+ * WARNING: STD behavior is controlled through extensions and warnings,
+ *          meaning that user-code can re-configure STD behavior using
+ *          '#pragma extension(...)' and '#pragma warning(...)' */
+DCCFUN void DCCCompiler_SetStd(int std);
+
+struct DCCStdName {
+ char const *sn_nam; /*< [1..1|temp(0..0)] Name of this standard configuration. */
+ int         sn_std; /*< STD id. */
+};
+
+/* List of all recognized compiler STD versions (terminated with '!sn_nam' entry) */
+DCCDAT struct DCCStdName const DCCCompiler_Std[];
+
+
+
 #ifdef DCC_PRIVATE_API
 #ifdef __INTELLISENSE__
 DCCDAT struct DCCCompiler compiler;

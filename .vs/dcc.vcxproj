@@ -65,6 +65,7 @@
     <None Include="..\include\dcc\def-keywords.inl" />
     <None Include="..\src\dcc\cmd-def.inl" />
     <None Include="..\src\dcc\cmd-parse.c.inl" />
+    <None Include="..\src\dcc\compiler-std.c.inl" />
     <None Include="..\src\dcc\gen-bin.c.inl" />
     <None Include="..\src\dcc\gen-jmp.c.inl" />
     <None Include="..\src\dcc\gen-large.c.inl" />

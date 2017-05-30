@@ -942,7 +942,10 @@ PUBLIC void DCCCompiler_ClearCache(void) {
 }
 #endif
 
-
 DCC_DECL_END
+
+#ifndef __INTELLISENSE__
+#include "compiler-std.c.inl"
+#endif
 
 #endif /* !GUARD_DCC_COMPILER_C */

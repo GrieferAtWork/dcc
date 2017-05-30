@@ -951,7 +951,7 @@ DEF_WARNING(W_EXPECTED_COMPLETE_TYPE_FOR_FUNCTION_BASE,(WG_TYPE),WSTATE_WARN,TYP
 DEF_WARNING(W_EXPECTED_COMPLETE_TYPE_FOR_ARRAY_BASE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected a complete type " Q("%s") " as array base"))
 DEF_WARNING(W_SIZEOF_INCOMPLETE_TYPE,(WG_SIZEOF,WG_TYPE),WSTATE_WARN,TYPE_WARNING("An imcomplete type " Q("%s") " is not allowed by sizeof()"))
 DEF_WARNING(W_SIZEOF_VOID_OR_FUNCTION,(WG_SIZEOF),WSTATE_WARN,TYPE_WARNING("Sizeof void or function type " Q("%s")))
-DEF_WARNING(W_SIZEOF_VLA_ARRAY_TYPE,(WG_QUALITY,WG_SIZEOF),WSTATE_DISABLE,TYPE_WARNING("Sizeof vla array-type " Q("%s") " can only be determined at runtime"))
+DEF_WARNING(W_SIZEOF_VLA_ARRAY_TYPE,(WG_QUALITY),WSTATE_DISABLE,TYPE_WARNING("Sizeof vla array-type " Q("%s") " can only be determined at runtime"))
 DEF_WARNING(W_ASSIGN_VLA_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Re-assignment VLA type " Q("%s") " pointer is not intended behavior"))
 DEF_WARNING(W_SIGN_MODIFIER_MUST_BE_USED_WITH_ARITH,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("(un)signed modifier cannot be used with non-arithmetic type " Q("%s")))
 DEF_WARNING(W_ASSIGN_INIT_CONSTANT_TYPE,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Assignment of initializer to constant type " Q("%s")))
@@ -1343,6 +1343,7 @@ DEF_WARNING(W_CMD_A_EXPECTED_VALUE,(WG_CMD),WSTATE_ERROR,WARNF("Expected asserti
 DEF_WARNING(W_CMD_WL_SECTION_START_UNKNOWN_SECTION,(WG_CMD,WG_UNDEFINED),WSTATE_ERROR,WARNF("Unknown section " Q("%s") " specified for " Q("-Wl,--section-start"),ARG(char *)))
 DEF_WARNING(W_CMD_FVISIBILITY_UNKNOWN_VISIBILITY,(WG_CMD,WG_VALUE),WSTATE_WARN,WARNF("Unknown visibility " Q("%s") " for " Q("-fvisibility=..."),ARG(char *)))
 DEF_WARNING(W_CMD_MESSAGE_FORMAT_UNKNOWN,(WG_CMD,WG_VALUE),WSTATE_WARN,WARNF("Unknown format in " Q("--message-format=%s"),ARG(char *)))
+DEF_WARNING(W_CMD_STD_UNKNOWN,(WG_CMD,WG_VALUE),WSTATE_WARN,{ char *s = ARG(char *); WARNF("Unknown standard in " Q("-std=%s") " (did you mean " Q("-std=%s") ")",s,ARG(char *)); })
 
 /* Switch to the Linker warning namespace. */
 WARNING_NAMESPACE(WN_LINKER,2000)

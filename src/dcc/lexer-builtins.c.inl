@@ -623,9 +623,8 @@ PRIVATE target_off_t dcc_va_start(void) {
   if (funty_decl &&
      (funty_decl->d_kind == DCC_DECLKIND_FUNCTION ||
       funty_decl->d_kind == DCC_DECLKIND_OLDFUNCTION)) {
-   if (!(funty_decl->d_flag&DCC_DECLFLAG_VARIADIC)) {
-    WARN(W_BUILTIN_VA_START_NO_VARARGS);
-   }
+   if (!(funty_decl->d_flag&DCC_DECLFLAG_VARIADIC))
+         WARN(W_BUILTIN_VA_START_NO_VARARGS);
    if (funty_decl->d_tdecl.td_size) {
     if (funty_decl->d_flag&DCC_DECLFLAG_VARIADICLAST) {
      if (funty_decl->d_tdecl.td_size >= 2) {

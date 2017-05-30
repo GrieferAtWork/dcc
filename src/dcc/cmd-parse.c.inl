@@ -121,6 +121,10 @@ LOCAL char *getval(char *v) {
  return result;
 }
 
+INTDEF size_t /* From 'tpp.c' */
+fuzzy_match(char const *__restrict a, size_t alen,
+            char const *__restrict b, size_t blen);
+
 INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
  char *v = c->c_val;
  switch (c->c_id) {
@@ -337,21 +341,6 @@ def_secbase:
 #undef SETFLAG
  } break;
 
- case OPT_ansi:
-  /* Disable extensions that may interfere with ansi syntax. */
-  //TPPLexer_DisableExtension(EXT_GCC_EXPRSTMT); /* TODO: usercode should be able to override this with '__extension__' */
-  //TPPLexer_DisableExtension(EXT_GCC_LABEL_EXPR); /* TODO: usercode should be able to override this with '__extension__' */
-  TPPLexer_DisableExtension(EXT_CXX11_ATTRIBUTE);
-  TPPLexer_DisableExtension(EXT_ASM_REGISTERS);
-  TPPLexer_DisableExtension(EXT_ASM_ADDRESS);
-  TPPLexer_DisableExtension(EXT_VOID_ARITHMETIC);
-  TPPLexer_DisableExtension(EXT_STRUCT_COMPATIBLE);
-  TPPLexer_DisableExtension(EXT_AUTO_FOR_AUTOTYPE);
-  TPPLexer_DisableExtension(EXT_SHORT_EXT_KEYWORDS);
-  /* Disable C++-style comments. */
-  TPPLexer_Current->l_extokens &= ~(TPPLEXER_TOKEN_CPP_COMMENT);
-  break;
-
  case OPT_traditional:
   /* Enable old-style spelling of inplace operators ('x += 42;' --> 'x =+ 42;') */
   TPPLexer_Current->l_extokens |= TPPLEXER_TOKEN_EQUALBINOP;
@@ -372,6 +361,38 @@ def_secbase:
   else if (!strcmp(v,"gcc"))  CURRENT.l_flags &= ~(TPPLEXER_FLAG_MSVC_MESSAGEFORMAT);
   else WARN(W_CMD_MESSAGE_FORMAT_UNKNOWN,v);
   break;
+
+ case OPT_ansi:
+  DCCCompiler_SetStd(DCC_COMPILER_STD_ANSI);
+  break;
+
+ {
+  struct DCCStdName const *iter;
+  struct DCCStdName const *closest;
+  size_t score,vlen;
+ case OPT_std:
+  for (iter = DCCCompiler_Std; iter->sn_nam; ++iter) {
+   if (!strcmp(iter->sn_nam,v)) {
+    DCCCompiler_SetStd(iter->sn_std);
+    goto done_std;
+   }
+  }
+  iter = DCCCompiler_Std;
+  closest = NULL;
+  score   = (size_t)-1;
+  vlen    = strlen(v);
+  for (; iter->sn_nam; ++iter) {
+   size_t newscore = fuzzy_match(iter->sn_nam,strlen(iter->sn_nam),v,vlen);
+   if (newscore < score || !closest) {
+    closest = iter;
+    score   = newscore;
+   }
+  }
+  assert(closest);
+  WARN(W_CMD_STD_UNKNOWN,v,closest->sn_nam);
+done_std:;
+ } break;
+
 
  case OPT_UNUSED: break;
  case OPT_O: break; /* Current unused. */

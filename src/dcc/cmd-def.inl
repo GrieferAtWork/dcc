@@ -106,6 +106,8 @@ GROUP_BEGIN(grp_main) /* Main options group */
    OPTION_O(OPT_version,OPTION_FLAG_NONE, NULL,"version",NULL) /* --version */
    OPTION_O(OPT_message_format,OPTION_FLAG_EQUAL,NULL,"message-format",NULL) /* --message-format={msvc|gcc} */
 
+   OPTION_O(OPT_std,OPTION_FLAG_EQUAL,"std",NULL,NULL) /* -std=... */
+
    /* GCC extension flags. */
    OPTION_O(OPT_undef,       OPTION_FLAG_NONE,"undef",          NULL,NULL) /* -undef */
    OPTION_O(OPT_trigraphs,   OPTION_FLAG_NONE,"trigraphs",      NULL,NULL) /* -trigraphs */

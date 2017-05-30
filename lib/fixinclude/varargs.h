@@ -19,12 +19,11 @@
 #pragma once
 #pragma GCC system_header
 
-//#if __has_warning("-Wold-function-decl")
-//#warning "<varargs.h> is obsolete; new code should use <stdarg.h> instead"
-//#endif
+#if __has_warning("-Wold-function-decl")
+#warning "<varargs.h> is obsolete; new code should use <stdarg.h> instead"
+#endif
 
 #if __has_include_next(<varargs.h>)
-#ifndef __STRICT_ANSI__
 /* Many standard libraries still implement <varargs.h>, only to
  * emit a #error directive telling you that they actually don't.
  * >> But DCC _does_ implement it! - So in order to shut up
@@ -32,11 +31,8 @@
  *    warning (aka. warnings explicitly emit by user-code). */
 #pragma warning(push)
 #pragma warning("-Wno-user")
-#endif
 #include_next <varargs.h>
-#ifndef __STRICT_ANSI__
 #pragma warning(pop)
-#endif
 #endif
 
 /* Fixed/optimized system header <varargs.h> for DCC */

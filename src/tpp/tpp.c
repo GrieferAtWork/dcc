@@ -433,6 +433,7 @@ do{ tok_t              _old_tok_id    = token.t_id;\
 #define HAVE_EXTENSION_NO_EXPAND_DEFINED TPPLexer_HasExtension(EXT_NO_EXPAND_DEFINED)
 #define HAVE_EXTENSION_IFELSE_IN_EXPR    TPPLexer_HasExtension(EXT_IFELSE_IN_EXPR)
 #define HAVE_EXTENSION_EXTENDED_IDENTS   TPPLexer_HasExtension(EXT_EXTENDED_IDENTS)
+#define HAVE_EXTENSION_TRADITIONAL_MACRO TPPLexer_HasExtension(EXT_TRADITIONAL_MACRO)
 #if TPP_CONFIG_GCCFUNC
 #if TPP_CONFIG_MINGCCFUNC < 2
 #define HAVE_EXTENSION_BUILTIN_FUNCTIONS TPPLexer_HasExtension(EXT_BUILTIN_FUNCTIONS)
@@ -2078,8 +2079,159 @@ LOCAL int codewriter_put2(struct codewriter *self, funop_t op, size_t a1, size_t
 }
 
 
+PRIVATE struct TPPKeyword *
+lookup_escaped_keyword(char const *name, size_t namelen,
+                       size_t unescaped_size, int create_missing);
 
 #define func self->f_macro.m_function
+
+/* Performs traditional parsing of a function-style macro.
+ * @return: * : Text-pointer to the end of the function block.
+ * @return: NULL: An error occurred and a lexer error was set. */
+PRIVATE char *
+macro_function_scan_block_traditional(struct TPPFile *self) {
+ struct codewriter writer = CODEWRITER_INIT;
+ struct arginfo_t *argv_iter,*argv_begin,*argv_end;
+ char *iter,*end,ch,*last_text_pointer;
+ assert(self);
+ assert(self->f_kind == TPPFILE_KIND_MACRO);
+ assert((self->f_macro.m_flags&TPP_MACROFILE_KIND) == TPP_MACROFILE_KIND_FUNCTION);
+ func.f_deltotal  = 0;
+ func.f_n_vacomma = 0;
+ func.f_n_vanargs = 0;
+ argv_end = (argv_begin = func.f_arginfo)+func.f_argc;
+ iter = self->f_begin,end = self->f_end;
+ last_text_pointer = iter;
+ /* Do custom old-style macro parsing: */
+ // #define CAT(a,b) a/**/b
+ // #define STR(x)   "x"
+ /* Basically, old-style macros didn't have tokens.
+  * >> The scanner went through and simply deleted
+  *    comments and replace function-style arguments
+  *    and always expanding them while ignoring where
+  *    strings start or stop. */
+next:
+ while (iter != end) {
+  ch = *iter;
+  if (ch == '/' && (current.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
+   char *comment_start = iter++;
+   while (SKIP_WRAPLF(iter,end));
+   if (*iter == '*') {
+    if likely(iter != end) ++iter;
+    /* Remove comments. */
+skipcom:
+    while (iter != end && *iter++ != '*');
+    while (SKIP_WRAPLF(iter,end));
+    if (iter != end && *iter != '/') goto skipcom;
+    if likely(iter != end) ++iter;
+    /* Delete a comment string from 'comment_start..iter' */
+    assert(last_text_pointer <= comment_start);
+    if (last_text_pointer != comment_start) {
+     if unlikely(!codewriter_put1(&writer,TPP_FUNOP_ADV,
+                                 (size_t)(comment_start-last_text_pointer))
+                 ) goto seterr;
+    }
+    if unlikely(!codewriter_put1(&writer,TPP_FUNOP_DEL,
+                                (size_t)(iter-comment_start))
+                ) goto seterr;
+    func.f_deltotal += (size_t)(iter-comment_start);
+    last_text_pointer = iter;
+   }
+   goto next;
+  }
+  if (tpp_isalpha(ch) || (HAVE_EXTENSION_EXTENDED_IDENTS && tpp_isansi(ch))
+                      || (HAVE_EXTENSION_DOLLAR_IS_ALPHA && ch == '$')) {
+   /* Scan an identifier. */
+   struct TPPKeyword *arg_name;
+   char *keyword_begin = iter++;
+   size_t name_escapesize,name_size = 1;
+   uint8_t chflags = CH_ISALPHA|CH_ISDIGIT;
+   /* Set the ANSI flag if we're supporting those characters. */
+   if (HAVE_EXTENSION_EXTENDED_IDENTS) chflags |= CH_ISANSI;
+   /* keyword: scan until a non-alnum character is found. */
+   if (HAVE_EXTENSION_DOLLAR_IS_ALPHA) for (;;) {
+    while (SKIP_WRAPLF(iter,end));
+    if (!(chrattr[*iter]&chflags)) break;
+    ++iter,++name_size;
+   } else for (;;) {
+    while (SKIP_WRAPLF(iter,end));
+    if (!(chrattr[*iter]&chflags) || *iter == '$') break;
+    ++iter,++name_size;
+   }
+   name_escapesize = (size_t)(iter-keyword_begin);
+   /* Lookup the argument keyword.
+    * NOTE: If we don't find it, we already know that
+    *       this isn't an argument, as the name does not
+    *       appear as a previously recognized keyword. */
+   if (name_size == name_escapesize)
+        arg_name = TPPLexer_LookupKeyword(keyword_begin,name_size,0);
+   else arg_name = lookup_escaped_keyword(keyword_begin,name_escapesize,name_size,0);
+   if (arg_name) {
+    tok_t arg_id = arg_name->k_id;
+    /* Start of identifier. - Check if this is a keyword. */
+    for (argv_iter = argv_begin; argv_iter != argv_end; ++argv_iter) {
+     if (argv_iter->ai_id == arg_id) {
+      /* It does! */
+      if (keyword_begin != last_text_pointer) {
+       /* Advance the text pointer to cover the gap. */
+       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_ADV,
+                                   (size_t)(keyword_begin-last_text_pointer))
+                   ) goto seterr;
+      }
+      /* Always insert argument with expansion. */
+      if unlikely(!codewriter_put2(&writer,TPP_FUNOP_INS_EXP,
+                                  (size_t)(argv_iter-argv_begin),
+                                  (size_t)(iter-keyword_begin))
+                  ) goto seterr;
+      func.f_deltotal += (size_t)(iter-keyword_begin);
+      last_text_pointer = iter;
+      ++argv_iter->ai_ins_exp;
+      goto next;
+     }
+    }
+    /* Still support VA-extensions in traditional macro functions. */
+    if ((arg_id == KWD___VA_COMMA__ && HAVE_EXTENSION_VA_COMMA) ||
+        (arg_id == KWD___VA_NARGS__ && HAVE_EXTENSION_VA_NARGS)) {
+     if (!(self->f_macro.m_flags&TPP_MACROFILE_FLAG_FUNC_VARIADIC)) {
+      if unlikely(!TPPLexer_Warn(W_VA_KEYWORD_IN_REGULAR_MACRO,arg_name)) goto err;
+     } else {
+      if (keyword_begin != last_text_pointer) {
+       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_ADV,
+                                   (size_t)(keyword_begin-last_text_pointer))
+                   ) goto seterr;
+      }
+      if (arg_id == KWD___VA_COMMA__) {
+       /* Replace __VA_COMMA__ with ',' if necessary. */
+       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_VA_COMMA,
+                                   (size_t)(iter-keyword_begin))
+                   ) goto seterr;
+       ++func.f_n_vacomma;
+      } else {
+       /* Replace __VA_NARGS__ with the integral representation of the argument argument size. */
+       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_VA_NARGS,
+                                   (size_t)(iter-keyword_begin))
+                   ) goto seterr;
+       ++func.f_n_vanargs;
+      }
+      func.f_deltotal += (size_t)(iter-keyword_begin);
+      last_text_pointer = iter;
+     }
+    }
+   }
+   goto next;
+  }
+  /* Skip escaped linefeeds. */
+  if (ch == '\\') while (SKIP_WRAPLF(iter,end));
+  if (tpp_islforzero(ch)) break;
+  ++iter;
+ }
+ func.f_expand = codewriter_pack(&writer);
+ if (!func.f_expand) func.f_expand = (funop_t *)empty_code;
+done:
+ return iter;
+seterr: TPPLexer_SetErr();
+err: iter = NULL; codewriter_quit(&writer); goto done;
+}
 PRIVATE int
 macro_function_scan_block(struct TPPFile *self) {
  struct codewriter writer = CODEWRITER_INIT;
@@ -2102,8 +2254,8 @@ macro_function_scan_block(struct TPPFile *self) {
   *       to calculate text pointer offsets, we also
   *       need the original file pointers instead of
   *       the better readable keyword pointers. */
- current.l_flags |= TPPLEXER_FLAG_TERMINATE_STRING_LF|
-                    TPPLEXER_FLAG_NO_SEEK_ON_EOB;
+ current.l_flags |= (TPPLEXER_FLAG_TERMINATE_STRING_LF|
+                     TPPLEXER_FLAG_NO_SEEK_ON_EOB);
  current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS);
  func.f_deltotal = 0;
  func.f_n_vacomma = 0;
@@ -2135,12 +2287,14 @@ strop_normal:
       if (strop_begin != last_text_pointer) {
        /* Advance the text pointer to cover the gap. */
        if unlikely(!codewriter_put1(&writer,TPP_FUNOP_ADV,
-                  (size_t)(strop_begin-last_text_pointer))) goto seterr;
+                                   (size_t)(strop_begin-last_text_pointer))
+                   ) goto seterr;
       }
       last_was_glue = 0;
       if unlikely(!codewriter_put2(&writer,strop,
-                 (size_t)(iter-begin),
-                 (size_t)(token.t_end-strop_begin))) goto seterr;
+                                  (size_t)(iter-begin),
+                                  (size_t)(token.t_end-strop_begin))
+                  ) goto seterr;
       func.f_deltotal += (size_t)(token.t_end-strop_begin);
       last_text_pointer = token.t_end;
       if (strop != TPP_FUNOP_INS) ++iter->ai_ins_str;
@@ -2160,7 +2314,8 @@ strop_normal:
      if (token.t_begin != last_text_pointer) {
       /* Advance the text pointer to cover the gap. */
       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_ADV,
-                 (size_t)(token.t_begin-last_text_pointer))) goto seterr;
+                                  (size_t)(token.t_begin-last_text_pointer))
+                  ) goto seterr;
      }
      namesize = (size_t)(token.t_end-token.t_begin);
      last_text_pointer = token.t_end;
@@ -2198,17 +2353,20 @@ strop_normal:
     } else {
      if (token.t_begin != last_text_pointer) {
       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_ADV,
-                 (size_t)(token.t_begin-last_text_pointer))) goto seterr;
+                                  (size_t)(token.t_begin-last_text_pointer))
+                  ) goto seterr;
      }
      if (TOK == KWD___VA_COMMA__) {
       /* Replace __VA_COMMA__ with ',' if necessary. */
       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_VA_COMMA,
-                 (size_t)(token.t_end-token.t_begin))) goto seterr;
+                                  (size_t)(token.t_end-token.t_begin))
+                  ) goto seterr;
       ++func.f_n_vacomma;
      } else {
       /* Replace __VA_NARGS__ with the integral representation of the argument argument size. */
       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_VA_NARGS,
-                 (size_t)(token.t_end-token.t_begin))) goto seterr;
+                                  (size_t)(token.t_end-token.t_begin))
+                  ) goto seterr;
       ++func.f_n_vanargs;
      }
      func.f_deltotal += (size_t)(token.t_end-token.t_begin);
@@ -2277,22 +2435,26 @@ begin_glue:
     /* Create a GCC-style __VA_COMMA__: ',##__VA_ARGS__' */
     if (preglue_begin != last_text_pointer) {
      if unlikely(!codewriter_put1(&writer,TPP_FUNOP_ADV,
-                (size_t)(preglue_begin-last_text_pointer))) goto seterr;
+                                 (size_t)(preglue_begin-last_text_pointer))
+                 ) goto seterr;
     }
     /* Insert a __VA_COMMA__ and override the ',' and '##'
      * tokens up to the start of whatever follows. */
     if unlikely(!codewriter_put1(&writer,TPP_FUNOP_VA_COMMA,
-               (size_t)(token.t_begin-preglue_begin))) goto seterr;
+                                (size_t)(token.t_begin-preglue_begin))
+                ) goto seterr;
     func.f_deltotal += (size_t)(token.t_begin-preglue_begin);
     ++func.f_n_vacomma;
    } else {
     if (preglue_end != last_text_pointer) {
      /* Delete characters between 'preglue_end' and 'token.t_begin' */
      if unlikely(!codewriter_put1(&writer,TPP_FUNOP_ADV,
-                (size_t)(preglue_end-last_text_pointer))) goto seterr;
+                                 (size_t)(preglue_end-last_text_pointer))
+                 ) goto seterr;
     }
     if unlikely(!codewriter_put1(&writer,TPP_FUNOP_DEL,
-               (size_t)(token.t_begin-preglue_end))) goto seterr;
+                                (size_t)(token.t_begin-preglue_end))
+                ) goto seterr;
     func.f_deltotal += (size_t)(token.t_begin-preglue_end);
    }
    last_text_pointer = token.t_begin;
@@ -2458,10 +2620,23 @@ skip_argument_name:
    result->f_begin = token.t_begin;
   }
   result->f_macro.m_function.f_expansions = 0;
-  /* Scan the entirety of the macro's text block. */
-  if unlikely(!macro_function_scan_block(result)) goto err_arginfo;
-  assert(curfile == token.t_file);
-  result->f_end = token.t_begin;
+  /* Scan the entirety of the macro's text block.
+   * NOTE: If requested to, use traditional scanning. */
+  if (HAVE_EXTENSION_TRADITIONAL_MACRO) {
+   char *macro_end;
+   result->f_end = curfile->f_end;
+   macro_end = macro_function_scan_block_traditional(result);
+   if unlikely(!macro_end) goto err_arginfo;
+   result->f_end = macro_end;
+   assert(curfile == token.t_file);
+   token.t_file->f_pos = macro_end;
+   /* Yield the next token after the macro. */
+   TPPLexer_YieldRaw();
+  } else {
+   if unlikely(!macro_function_scan_block(result)) goto err_arginfo;
+   assert(curfile == token.t_file);
+   result->f_end = token.t_begin;
+  }
   /* NOTE: Because the scan_block function disabled chunk transitions,
    *       it is possible that the token now describes a symbolic EOF.
    *       >> In that case, simply try yielding another token
@@ -3132,12 +3307,11 @@ PRIVATE unsigned int wnum2id(int wnum) {
  return (unsigned int)wnum;
 }
 
-PUBLIC wstate_t TPPLexer_GetWarning(int wnum) {
+PRIVATE wstate_t get_wstate(unsigned int wid) {
  struct TPPWarningState *curstate;
  uint8_t bitset_byte,byte_shift;
- unsigned int wid = wnum2id(wnum);
  assert(TPPLexer_Current);
- if unlikely(!wid_isvalid(wid)) return WSTATE_WARN;
+ assert(wid_isvalid(wid));
  curstate = current.l_warnings.w_curstate;
  assert(curstate);
  assert((curstate == &current.l_warnings.w_basestate) ==
@@ -3146,9 +3320,21 @@ PUBLIC wstate_t TPPLexer_GetWarning(int wnum) {
  byte_shift  = (uint8_t)((wid%(8/TPP_WARNING_BITS))*TPP_WARNING_BITS);
  return (wstate_t)((bitset_byte >> byte_shift)&3);
 }
+PUBLIC wstate_t TPPLexer_GetWarning(int wnum) {
+ unsigned int wid = wnum2id(wnum);
+ if unlikely(!wid_isvalid(wid)) return WSTATE_UNKNOWN;
+ return get_wstate(wid);
+}
 PUBLIC int TPPLexer_SetWarning(int wnum, wstate_t state) {
  unsigned int wid = wnum2id(wnum);
  return unlikely(!wid_isvalid(wid)) ? 2 : set_wstate(wid,state);
+}
+PUBLIC wstate_t TPPLexer_GetWarningGroup(int wgrp) {
+ if unlikely((unsigned int)wgrp >= WG_COUNT) return WSTATE_UNKNOWN;
+ return get_wstate((unsigned int)wgrp);
+}
+PUBLIC int TPPLexer_SetWarningGroup(int wgrp, wstate_t state) {
+ return unlikely((unsigned int)wgrp >= WG_COUNT) ? 2 : set_wstate((unsigned int)wgrp,state);
 }
 PUBLIC int TPPLexer_SetWarnings(char const *__restrict group, wstate_t state) {
  char const *const *iter;
@@ -3158,6 +3344,26 @@ PUBLIC int TPPLexer_SetWarnings(char const *__restrict group, wstate_t state) {
   }
  }
  return 2;
+}
+PUBLIC wstate_t TPPLexer_GetWarnings(char const *__restrict group) {
+ char const *const *iter;
+ assert(TPPLexer_Current);
+ for (iter = wgroup_names; *iter; ++iter) {
+  if (!strcmp(*iter,group)) {
+   struct TPPWarningState *curstate;
+   uint8_t bitset_byte,byte_shift;
+   unsigned int wid = (unsigned int)(iter-wgroup_names);
+   assert(wid_isvalid(wid));
+   curstate = current.l_warnings.w_curstate;
+   assert(curstate);
+   assert((curstate == &current.l_warnings.w_basestate) ==
+          (curstate->ws_prev == NULL));
+   bitset_byte = curstate->ws_state[wid/(8/TPP_WARNING_BITS)];
+   byte_shift  = (uint8_t)((wid%(8/TPP_WARNING_BITS))*TPP_WARNING_BITS);
+   return (wstate_t)((bitset_byte >> byte_shift)&3);
+  }
+ }
+ return WSTATE_UNKNOWN;
 }
 PRIVATE wstate_t do_invoke_wid(int wid) {
  struct TPPWarningState *curstate;
@@ -3369,38 +3575,47 @@ TPPLexer_Reset(struct TPPLexer *__restrict self, uint32_t flags) {
   /* Clear the #ifdef-stack. */
   self->l_ifdef.is_slotc = 0;
  }
- if (flags&TPPLEXER_RESET_EXTENSIONS) {
-  /* Reset extensions. */
+ if (flags&TPPLEXER_RESET_ESTATE) {
+  /* Reset the extension state. */
+  memcpy(self->l_extensions.es_bitset,
+        &default_extensions_state,
+         TPP_EXTENSIONS_BITSETSIZE);
+ }
+ if (flags&TPPLEXER_RESET_ESTACK) {
+  /* Clear the extension stack. */
   struct TPPExtState *iter,*next;
   iter = self->l_extensions.es_prev;
+  self->l_extensions.es_prev = NULL;
   while (iter) {
    next = iter->es_prev;
    assert(iter != next);
    free(iter);
    iter = next;
   }
-  memcpy(self->l_extensions.es_bitset,
-        &default_extensions_state,
-         TPP_EXTENSIONS_BITSETSIZE);
-  self->l_extensions.es_prev = NULL;
  }
- if (flags&TPPLEXER_RESET_WARNINGS) {
-  /* Reset warnings. */
+ if (flags&TPPLEXER_RESET_WSTATE) {
+  /* Reset the warning state. */
+  memcpy(self->l_warnings.w_basestate.ws_state,
+        &default_warnings_state,
+         TPP_WARNING_BITSETSIZE);
+  self->l_warnings.w_basestate.ws_extendeda = 0;
+  free(self->l_warnings.w_basestate.ws_extendedv);
+  self->l_warnings.w_basestate.ws_extendedv = NULL;
+  self->l_warnings.w_basestate.ws_prev      = NULL;
+ }
+ if (flags&TPPLEXER_RESET_WSTACK) {
+  /* Clear the warning stack. */
   struct TPPWarningState *iter,*next;
   iter = self->l_warnings.w_curstate;
   while (iter) {
    next = iter->ws_prev;
    assert(iter != next);
-   free(iter->ws_extendedv);
-   if (iter != &self->l_warnings.w_basestate) free(iter);
+   if (iter != &self->l_warnings.w_basestate) {
+    free(iter->ws_extendedv);
+    free(iter);
+   }
    iter = next;
   }
-  memcpy(self->l_warnings.w_basestate.ws_state,
-        &default_warnings_state,
-         TPP_WARNING_BITSETSIZE);
-  self->l_warnings.w_basestate.ws_extendeda = 0;
-  self->l_warnings.w_basestate.ws_extendedv = NULL;
-  self->l_warnings.w_basestate.ws_prev      = NULL;
   self->l_warnings.w_curstate = &self->l_warnings.w_basestate;
  }
  if (flags&TPPLEXER_RESET_SYSPATHS) {
@@ -3652,6 +3867,26 @@ TPPLexer_SetExtension(char const *__restrict name,
   ++iter;
  }
  return 0;
+}
+PUBLIC int
+TPPLexer_GetExtension(char const *__restrict name) {
+ struct tpp_extension const *iter;
+ size_t name_size,id;
+ assert(TPPLexer_Current);
+ assert(name);
+ name_size = strlen(name);
+ iter = tpp_extensions;
+ while (iter->e_name) {
+  if (iter->e_size == name_size &&
+     !memcmp(iter->e_name,name,name_size*sizeof(char))) {
+   id = (size_t)(iter-tpp_extensions);
+   /* Found it! */
+   return !!TPPLexer_HasExtension(id);
+  }
+  ++iter;
+ }
+ /* Unknown extension. */
+ return -1;
 }
 
 
@@ -5807,8 +6042,11 @@ create_int_file:
    case KWD___has_cpp_attribute:
    case KWD___has_declspec_attribute:
    case KWD___has_extension:
+   case KWD___has_known_extension:
+   case KWD___has_warning:
+   case KWD___has_known_warning:
    case KWD___has_feature:
-    /* Create keywords for these to work around leading/terminating understore quirks. */
+    /* Create keywords for these to work around leading/terminating underscore quirks. */
     create_missing_keyword = 1;
     if (FALSE) { case KWD___is_deprecated:
                  case KWD___is_identifier:
@@ -5828,32 +6066,91 @@ create_int_file:
     if (TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
     keyword_begin = token.t_end,file_end = token.t_file->f_end;
     keyword_begin = skip_whitespace_and_comments(keyword_begin,file_end);
-    keyword_end = keyword_begin;
-    while (keyword_end != file_end) {
-     while (SKIP_WRAPLF(keyword_end,file_end));
-     if (!tpp_isalnum(*keyword_end)) break;
-     ++keyword_end;
-    }
-    file_pos = skip_whitespace_and_comments(keyword_end,file_end);
-    token.t_file->f_pos = file_pos;
-    if (*file_pos != ')') {
-     TPPLexer_Warn(W_EXPECTED_RPAREN);
+    /* Special handling if the next token is a string/number. */
+    if (*keyword_begin == '\"' || tpp_isdigit(*keyword_begin)) {
+     struct TPPConst name;
+     yield_fetch();
+     if (!TPPLexer_Eval(&name)) {
+      name.c_kind       = TPP_CONST_INTEGRAL;
+      name.c_data.c_int = 0;
+     }
+     if (TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
+     /* Special handling for __has_extension("-fname"), etc. */
+     switch (mode) {
+     case KWD___has_extension:
+     case KWD___has_known_extension: /* __has_extension("-fmacro-recursion") */
+      if likely(name.c_kind == TPP_CONST_STRING) {
+       char *n = name.c_data.c_string->s_text;
+       if (*n == '-') ++n;
+       if (*n == 'f') ++n;
+       intval = (int_t)TPPLexer_GetExtension(n);
+       intval = mode == KWD___has_extension ? ((int)intval == 1)
+                                            : ((int)intval >= 0);
+       TPPString_Decref(name.c_data.c_string);
+       goto create_int_file;
+      }
+      break;
+     case KWD___has_warning:
+     case KWD___has_known_warning: /* __has_warning("-Wsyntax") | __has_warning(42) */
+      if (name.c_kind == TPP_CONST_STRING) {
+       char *n = name.c_data.c_string->s_text;
+       if (*n == '-') ++n;
+       if (*n == 'W') ++n;
+       intval = (int_t)TPPLexer_GetWarnings(n);
+       TPPString_Decref(name.c_data.c_string);
+      } else if likely(name.c_kind != TPP_CONST_FLOAT) {
+       intval = (int_t)TPPLexer_GetWarning((int)name.c_data.c_int);
+      } else {
+       intval = (int_t)TPPLexer_GetWarning((int)name.c_data.c_float);
+      }
+      intval = mode == KWD___has_warning ? TPP_WSTATE_ISENABLED((int)intval)
+                                         : intval != WSTATE_UNKNOWN;
+      goto create_int_file;
+     default: break;
+     }
+     /* Fallback: Create a keyword from the constant expression. */
+     if (name.c_kind == TPP_CONST_STRING) {
+      keyword = TPPLexer_LookupKeyword(name.c_data.c_string->s_text,
+                                       name.c_data.c_string->s_size,
+                                       create_missing_keyword);
+      TPPString_Decref(name.c_data.c_string);
+     } else {
+      struct TPPString *cstname;
+      if ((cstname = TPPConst_ToString(&name)) != NULL)
+           keyword = TPPLexer_LookupKeyword(cstname->s_text,
+                                            cstname->s_size,
+                                            create_missing_keyword),
+           TPPString_Decref(cstname);
+      else keyword = NULL;
+     }
+    } else {
      keyword_end = keyword_begin;
-    } else {
-     ++token.t_file->f_pos; /* Skip the ')' character. */
-    }
-    /* Whitespace and comments have been stripped from both ends, and
-     * we can be sure that the keyword only contains alnum characters. */
-    assert(keyword_begin <= keyword_end);
-    keyword_rawsize = (size_t)(keyword_end-keyword_begin);
-    keyword_realsize = wraplf_memlen(keyword_begin,keyword_rawsize);
-    if (keyword_realsize == keyword_rawsize) {
-     keyword = TPPLexer_LookupKeyword(keyword_begin,keyword_rawsize,
-                                      create_missing_keyword);
-    } else {
-     keyword = lookup_escaped_keyword(keyword_begin,keyword_rawsize,
-                                      keyword_realsize,
-                                      create_missing_keyword);
+     while (keyword_end != file_end) {
+      while (SKIP_WRAPLF(keyword_end,file_end));
+      if (!tpp_isalnum(*keyword_end)) break;
+      ++keyword_end;
+     }
+     file_pos = skip_whitespace_and_comments(keyword_end,file_end);
+     token.t_file->f_pos = file_pos;
+     if (*file_pos != ')') {
+      TPPLexer_Warn(W_EXPECTED_RPAREN);
+      keyword_end = keyword_begin;
+     } else {
+      ++token.t_file->f_pos; /* Skip the ')' character. */
+     }
+     /* Whitespace and comments have been stripped from both ends, and
+      * we can be sure that the keyword only contains alnum characters. */
+     assert(keyword_begin <= keyword_end);
+     keyword_rawsize = (size_t)(keyword_end-keyword_begin);
+     keyword_realsize = wraplf_memlen(keyword_begin,keyword_rawsize);
+     if (keyword_realsize == keyword_rawsize) {
+      keyword = TPPLexer_LookupKeyword(keyword_begin,keyword_rawsize,
+                                       create_missing_keyword);
+     } else {
+      keyword = lookup_escaped_keyword(keyword_begin,keyword_rawsize,
+                                       keyword_realsize,
+                                       create_missing_keyword);
+     }
     }
     /* Handle case: Unknown/unused keyword. */
     if (!keyword) {
@@ -5873,6 +6170,17 @@ create_int_file:
       if unlikely(!TPPKeyword_MAKERARE(keyword)) goto seterr;
       intval = keyword->k_rare->kr_counter++;
       break;
+      /* Default behavior: Use the keyword name for lookup. */
+     case KWD___has_warning:
+      intval = TPP_WSTATE_ISENABLED(TPPLexer_GetWarnings(keyword->k_name));
+      break;
+     case KWD___has_known_extension:
+      intval = TPPLexer_GetExtension(keyword->k_name) != -1;
+      break;
+     case KWD___has_known_warning:
+      intval = TPPLexer_GetWarnings(keyword->k_name) != WSTATE_UNKNOWN;
+      break;
+
      case KWD___is_deprecated:
       /* Don't allow leading/terminating underscores here! */
       intval = keyword->k_rare && !!(keyword->k_rare->kr_flags&TPP_KEYWORDFLAG_IS_DEPRECATED);
