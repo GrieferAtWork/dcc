@@ -53,9 +53,9 @@ DCC_DECL_BEGIN
 #define MODRM_GETRM(x)  (((x)&MODRM_RM_MASK) >> MODRM_RM_SHIFT)
 
 
-#define MODRM_REGISTER(reg,rm) (MODRM_MOD(B(11))|MODRM_REG(reg)|MODRM_RM(rm))
-#define MODRM_DISP16(reg)      (MODRM_MOD(B(00))|MODRM_REG(reg)|MODRM_RM(B(110))) /* Uses what would otherwise be displacement from BP. */
-#define MODRM_DISP32(reg)      (MODRM_MOD(B(00))|MODRM_REG(reg)|MODRM_RM(B(101)))
+#define MODRM_REGISTER(reg,rm) ((uint8_t)(MODRM_MOD(B(11))|MODRM_REG(reg)|MODRM_RM(rm)))
+#define MODRM_DISP16(reg)      ((uint8_t)(MODRM_MOD(B(00))|MODRM_REG(reg)|MODRM_RM(B(110)))) /* Uses what would otherwise be displacement from BP. */
+#define MODRM_DISP32(reg)      ((uint8_t)(MODRM_MOD(B(00))|MODRM_REG(reg)|MODRM_RM(B(101))))
 #define MODRM_SIBREGISTER       DCC_ASMREG_ESP /* When used with MOD 00, 01 or 10, an SIB byte follows. */
 #define MODRM_RM_SIB            MODRM_RM(MODRM_SIBREGISTER) /* When used with MOD 00, 01 or 10, an SIB byte follows. */
 #if MODRM_SIBREGISTER != B(100)

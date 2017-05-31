@@ -212,14 +212,17 @@ DCCFUN DCC(rc_t) DCC_VSTACK_CALL DCC_RC_FORTYPE(struct DCCType const *__restrict
 DCC_LOCAL DCC(rc_t) DCC_RC_FORSIZE(size_t n) {
  switch (n) {
 #ifdef DCC_RC_I64
-  default: return DCC_RC_I8|DCC_RC_I16|DCC_RC_I32|DCC_RC_I64;
   case 4:  return DCC_RC_I8|DCC_RC_I16|DCC_RC_I32;
-#else
-  default: return DCC_RC_I8|DCC_RC_I16|DCC_RC_I32;
 #endif
   case 2:  return DCC_RC_I8|DCC_RC_I16;
   case 1:  return DCC_RC_I8;
+  default: break;
  }
+#ifdef DCC_RC_I64
+ return DCC_RC_I8|DCC_RC_I16|DCC_RC_I32|DCC_RC_I64;
+#else
+ return DCC_RC_I8|DCC_RC_I16|DCC_RC_I32;
+#endif
 }
 
 

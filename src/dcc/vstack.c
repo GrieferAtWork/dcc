@@ -3343,8 +3343,12 @@ unsigned_shift:
       (wid == W_CAST_CONST_POINTER || wid == W_CAST_CONST_LVALUE ||
        wid == W_CAST_RVALUE_TO_LVALUE || wid == W_CAST_VOLATILE_POINTER ||
        wid == W_CAST_INTEGRAL_OVERFLOW || wid == W_CAST_INTEGRAL_MAYOVERFLOW ||
-       wid == W_CAST_INTEGRAL_SIGNLOSS || wid == W_CAST_INTEGRAL_MAYSIGNLOSS)
-       ) goto genbinary;
+       wid == W_CAST_INTEGRAL_SIGNLOSS || wid == W_CAST_INTEGRAL_MAYSIGNLOSS))
+       goto genbinary;
+   if ((op == '+' || op == '-') &&
+       (wid == W_CAST_INTEGRAL_SIGNLOSS ||
+        wid == W_CAST_INTEGRAL_MAYSIGNLOSS))
+        goto genbinary;
    WARN(wid,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
   }
  }

@@ -53,7 +53,7 @@ PRIVATE uint8_t asm_parse_register(void) {
  if (TOK >= KWD_ax && TOK <= KWD_edi)
 #endif
  {
-  result = (TOK-KWD_ax) % 8;
+  result = (uint8_t)((TOK-KWD_ax) % 8);
   YIELD();
  } else {
 exp_reg:
@@ -95,7 +95,7 @@ DCCParse_AsmOperand(struct DCCAsmOperand *op) {
    op->ao_type |= 1 << (reg_id >> 3); /* ffs(8) == 3 */
    assert((op->ao_type&0xffff) >= DCC_ASMOP_R_8 &&
           (op->ao_type&0xffff) <= DCC_ASMOP_R_DR);
-   op->ao_reg = reg_id & DCC_BITS(3);
+   op->ao_reg = (int8_t)(reg_id & DCC_BITS(3));
    /* Check for special registers used during overloading. */
    if ((op->ao_type & (DCC_ASMOP_REG)) &&
        (op->ao_reg == 0)) op->ao_type |= DCC_ASMOP_EAX;
@@ -275,7 +275,7 @@ asm_parse_expr_unary(struct DCCSymAddr *v) {
   YIELD();
   /* Current instruction address. */
   if (v) {
-   v->sa_off = (int_t)t_addr;
+   v->sa_off = (target_off_t)t_addr;
    v->sa_sym = &unit.u_curr->sc_start;
   }
   break;
@@ -293,7 +293,7 @@ asm_parse_expr_unary(struct DCCSymAddr *v) {
    int backwards = TOKEN.t_end[-1] == 'b';
    /* Forward/backward label reference. */
    label_kwd = TPPLexer_LookupEscapedKeyword(TOKEN.t_begin,
-                                            (TOKEN.t_end-TOKEN.t_begin)-1,
+                                            (size_t)((TOKEN.t_end-TOKEN.t_begin)-1),
                                              1);
    if unlikely(!label_kwd) break;
    if (backwards) {
@@ -671,7 +671,9 @@ asm_gen_modrm(int8_t reg, struct DCCAsmOperand const *op) {
   /* add offset */
        if (mod == MODRM_MOD(B(01))) t_putb((uint8_t)op->ao_val.sa_off);
   else if (mod == MODRM_MOD(B(10)) || op->ao_reg == -1) {
-   DCCDisp_SymAddr(&op->ao_val,(compiler.c_flags&DCC_COMPILER_FLAG_CODE16) ? 2 : 4);
+   DCCDisp_SymAddr(&op->ao_val,
+                  (compiler.c_flags&DCC_COMPILER_FLAG_CODE16)
+                   ? (width_t)2 : (width_t)4);
   }
  }
 }
@@ -686,7 +688,7 @@ asm_gen_op(struct x86_opcode const *op,
  assert(op);
  assert(argv);
  opcode = op->o_code;
- argc = (op->o_flags&DCC_ASMOPC_ARGCMASK) >> DCC_ASMOPC_ARGCSHIFT;
+ argc = (uint8_t)((op->o_flags&DCC_ASMOPC_ARGCMASK) >> DCC_ASMOPC_ARGCSHIFT);
  /* Opcodes that require special handling. */
  if (opcode == 0xcd) { /* int $imm8 */
   assert(argc == 1);
@@ -716,7 +718,7 @@ asm_gen_op(struct x86_opcode const *op,
  t_putb((uint8_t)opcode);
  if (op->o_flags&DCC_ASMOPC_MODRM) {
   struct DCCAsmOperand const *modrm_op;
-  int8_t reg = (op->o_flags & DCC_ASMOPC_GROUPMASK) >> DCC_ASMOPC_GROUPSHIFT;
+  int8_t reg = (int8_t)((op->o_flags & DCC_ASMOPC_GROUPMASK) >> DCC_ASMOPC_GROUPSHIFT);
   /* Look for an E/A operand. */
   for (i = 0; i < argc; ++i) {
    if (op->o_argv[i]&DCC_ASMOPT_EA) {
@@ -826,8 +828,8 @@ asm_parse_op(struct x86_opcode const *ops, size_t size_override) {
     for (i = 0; i != argc; ++i) {
      uint16_t old_flag = resop->o_argv[i];
      uint16_t new_flag = op   ->o_argv[i];
-     uint8_t old_type = old_flag&0xff;
-     uint8_t new_type = new_flag&0xff;
+     uint8_t old_type = (uint8_t)(old_flag&0xff);
+     uint8_t new_type = (uint8_t)(new_flag&0xff);
      /* If the ambiguity arises because we're using a register-specific
       * operator, don't warn about ambiguity and simply use the specific opcode. */
      if ((old_flag&DCC_ASMOPT_REGSPEC) !=
@@ -862,8 +864,8 @@ asm_parse_op(struct x86_opcode const *ops, size_t size_override) {
        * >> Select the opcode with the smaller address range,
        *    but don't do so if both opcodes have identical ranges.
        */
-      old_size = old_flag&DCC_ASMOPT_AMASK;
-      new_size = new_flag&DCC_ASMOPT_AMASK;
+      old_size = (uint16_t)(old_flag&DCC_ASMOPT_AMASK);
+      new_size = (uint16_t)(new_flag&DCC_ASMOPT_AMASK);
       if (old_size != new_size) {
        if (new_size < old_size) goto select_resop;
        goto next_op;

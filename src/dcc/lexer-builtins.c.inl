@@ -52,7 +52,7 @@ DCCParse_BuiltinTypeStr(void) {
   struct DCCSym *name_sym;
   pushf();
   compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
-  DCCParse_Expr();
+  DCCParse_Expr1();
   popf();
   name_sym = vbottom->sv_sym;
   type_str = DCCType_ToTPPString(&vbottom->sv_ctype,
@@ -76,7 +76,7 @@ DCCParse_BuiltinConstantP(void) {
  DCCParse_ParPairBegin();
  pushf();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
- DCCParse_Expr();
+ DCCParse_Expr1();
  popf();
  DCCParse_ParPairEnd();
  is_constant = DCCStackValue_ISCONST(vbottom);
@@ -94,7 +94,7 @@ DCCParse_BuiltinChooseExpr(void) {
  DCCParse_ParPairBegin();
  pushf();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
- DCCParse_Expr();
+ DCCParse_Expr1();
  popf();
  if (visconst_bool()) {
   is_true = vgtconst_bool();
@@ -104,9 +104,9 @@ DCCParse_BuiltinChooseExpr(void) {
  }
  vpop(1);
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- if (is_true) DCCParse_Expr(); else DCCParse_SkipExpr();
+ if (is_true) DCCParse_Expr1(); else DCCParse_SkipExpr();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- if (is_true) DCCParse_SkipExpr(); else DCCParse_Expr();
+ if (is_true) DCCParse_SkipExpr(); else DCCParse_Expr1();
  DCCParse_ParPairEnd();
 }
 
@@ -168,7 +168,7 @@ DCCParse_BuiltinBSwap(void) {
   if (DCC_MACRO_FALSE) { case KWD___builtin_bswap16: size = 2; }
   if (DCC_MACRO_FALSE) { case KWD___builtin_bswap32: size = 4; }
   if (DCC_MACRO_FALSE) { case KWD___builtin_bswap64: size = 8; }
-  DCCParse_Expr();
+  DCCParse_Expr1();
   vprom();
  } break;
  }
@@ -306,7 +306,7 @@ DCCParse_BuiltinAssume(void) {
  DCCParse_ParPairBegin();
  pushf();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
- DCCParse_Expr();
+ DCCParse_Expr1();
  popf();
  DCCParse_ParPairEnd();
  /* If a compile-time assumption fails, it means
@@ -332,11 +332,11 @@ DCCParse_BuiltinExpect(void) {
  assert(TOK == KWD___builtin_expect);
  YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr();
+ DCCParse_Expr1();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
  pushf();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
- DCCParse_Expr();
+ DCCParse_Expr1();
  vpop(1); /* Simply ignore assumptions. */
  popf();
  DCCParse_ParPairEnd();
