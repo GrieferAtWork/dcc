@@ -181,6 +181,7 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   if (DCC_MACRO_FALSE) { case KWD_cdecl:                   FLAG(DCC_ATTRFLAG_MASK_CALLCONV,DCC_ATTRFLAG_CC_CDECL); }
   if (DCC_MACRO_FALSE) { case KWD_stdcall:                 FLAG(DCC_ATTRFLAG_MASK_CALLCONV,DCC_ATTRFLAG_CC_STDCALL); }
   if (DCC_MACRO_FALSE) { case KWD_thiscall:                FLAG(DCC_ATTRFLAG_MASK_CALLCONV,DCC_ATTRFLAG_CC_THISCALL); }
+  if (DCC_MACRO_FALSE) { case KWD_fastcall:                FLAG(DCC_ATTRFLAG_MASK_CALLCONV,DCC_ATTRFLAG_CC_FASTCALL); }
   if (DCC_MACRO_FALSE) { case KWD_force_align_arg_pointer: SPEC(0,0); } /* TODO */
   delete_flag = 0; YIELD();
   if (HAS(EXT_ATTRIBUTE_CONDITION) && (TOK == '(' || TOK == KWD___pack)) {
