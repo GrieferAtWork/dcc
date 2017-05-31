@@ -519,7 +519,7 @@ WGROUP(WG_DEPRECATED,          "deprecated",          WSTATE_ERROR)
 /*12*/DEF_WARNING(W_TOO_MANY_MACRO_ARGUMENTS,(WG_MACROS),WSTATE_WARN,WARNF("Too many arguments for " Q("%s"),FILENAME())) /*< [struct TPPFile *] OLD( TPPWarn_InvalidMacroArgCount). */
 /*13*/DEF_WARNING(W_EOF_IN_MACRO_ARGUMENT_LIST,(WG_SYNTAX),WSTATE_WARN,WARNF("EOF in macro argument list")) /*< OLD(TPPWarn_UnexpectedEOFInMacroArgList). */
 /*14*/DEF_WARNING(W_EXPECTED_INCLUDE_STRING,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected #include-string, but got " TOK_S,TOK_A)) /*< OLD(TPPWarn_ExpectedIncludeString). */
-/*15*/DEF_WARNING(W_FILE_NOT_FOUND,(WG_ENVIRON),WSTATE_WARN,WARNF("File not found: " Q("%s"),ARG(char *))) /*< [char const *] OLD(TPPWarn_IncludeFileNotFound). */
+/*15*/DEF_WARNING(W_FILE_NOT_FOUND,(WG_ENVIRON),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("File not found: " Q("%.*s"),(int)ARG(size_t),temp); }) /*< [char const *,size_t] OLD(TPPWarn_IncludeFileNotFound). */
 /*16*/WARNING(W_UNUSED_00,(WG_VALUE),WSTATE_DISABLE) /*< OLD(TPPWarn_SysIncludeFileNotFound). */
 /*17*/WARNING(W_UNUSED_01,(WG_VALUE),WSTATE_DISABLE) /*< OLD(TPPWarn_ExpectedLParenAfterTPPCounter). */
 /*18*/WARNING(W_UNUSED_02,(WG_VALUE),WSTATE_DISABLE) /*< OLD(TPPWarn_ExpectedKeywordAfterTPPCounter). */

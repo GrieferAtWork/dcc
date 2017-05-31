@@ -5618,7 +5618,8 @@ skip_block_and_parse:
                                     &kwd_entry);
     if unlikely(!include_file) {
      token.t_begin = include_begin;
-     TPPLexer_Warn(W_FILE_NOT_FOUND,include_begin);
+     TPPLexer_Warn(W_FILE_NOT_FOUND,include_begin,
+                  (size_t)(include_end-include_begin));
      break;
     }
     if unlikely(mode&TPPLEXER_OPENFILE_MODE_IMPORT) {
@@ -6271,7 +6272,8 @@ create_int_file:
                                (size_t)(include_end-include_begin),
                                 NULL);
     if (function == KWD___TPP_LOAD_FILE && !incfile) {
-     TPPLexer_Warn(W_FILE_NOT_FOUND,include_begin);
+     TPPLexer_Warn(W_FILE_NOT_FOUND,include_begin,
+                  (size_t)(include_end-include_begin));
     }
     pushf();
     current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|

@@ -36,9 +36,8 @@ DEF_K(pack)           /* #pragma pack(...) */
 DEF_K(DCC)            /* #pragma DCC ... */
 DEF_K(library_path)   /* #pragma DCC library_path(...) */
 
-#define DEF_BUILTIN(name) \
- KWD(KWD_##name,#name) \
- KWD_FLAGS(KWD_##name,TPP_KEYWORDFLAG_HAS_BUILTIN)
+#define DEF_TPP_BUILTIN(name) KWD(KWD_##name,#name) KWD_FLAGS(KWD_##name,TPP_KEYWORDFLAG_HAS_BUILTIN|TPP_KEYWORDFLAG_HAS_TPP_BUILTIN)
+#define DEF_BUILTIN(name)     KWD(KWD_##name,#name) KWD_FLAGS(KWD_##name,TPP_KEYWORDFLAG_HAS_BUILTIN)
 
 /* C statement keywords. */
 DEF_K(while) DEF_K(do) DEF_K(for)
@@ -91,9 +90,6 @@ DEF_K(_declspec) DEF_K(__declspec)
 DEF_K(__func__)
 DEF_M(__FUNCTION__)
 DEF_M(__PRETTY_FUNCTION__)
-
-#define DEF_TPP_BUILTIN(name) KWD(KWD_##name,#name) KWD_FLAGS(KWD_##name,TPP_KEYWORDFLAG_HAS_BUILTIN|TPP_KEYWORDFLAG_HAS_TPP_BUILTIN)
-#define DEF_BUILTIN(name)     KWD(KWD_##name,#name) KWD_FLAGS(KWD_##name,TPP_KEYWORDFLAG_HAS_BUILTIN)
 
 /* Check if a given expression can be evaluated at compile-time.
  * NOTE: Also available in TPP expressions. */
