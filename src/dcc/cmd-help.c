@@ -266,7 +266,7 @@ INTERN void dcc_help(char const *subject) {
                   INDENT "                            Enabling this option also disabled SPACE and LF tokens, though\n"
                   INDENT "                            they can be re-enabled using the -spc and -lf switches.\n"
                   INDENT "-f[no-]magiclf              Enable/Disable magic linefeeds sometimes used in place of #line (Default: off).\n"
-                  INDENT "-f[(cpp|no)-]line           Enable/Disable emission of #line directives (Default: cpp-compatible).\n"
+                  INDENT "-f[(cpp|no)-]line           Enable/Disable emission of #line directives (Default: '-fcpp-line').\n"
                   INDENT "-f[no-]decode               Enable/Disable decoding of di/tri-graphs, as well as escaped linefeeds in output (Default: on).\n"
                   INDENT "-f[no-]unify-pragma         Unify all unknown pragmas to use the preprocessor-directive syntax before re-emission (Default: on).\n"
                   INDENT "-f[no-]spc                  Enable/Disable SPACE tokens (useful in '--pp'-mode)\n"
@@ -342,9 +342,10 @@ INTERN void dcc_help(char const *subject) {
   fprintf(stderr,"Unknown help subject: '%s'\n",subject);
   goto done;
  }
- fprintf(stderr,"Usage: %s [options...] [-o outfile] [infile...|-llib...]\n"
+ fprintf(stderr,"Usage: %s [options...] [-o outfile] [-|infile...|-llib...]\n"
                 "options:\n"
                 INDENT "-c                          Create a relocatable object file instead of a binary\n"
+                INDENT "-E                          Enable preprocessor mode (s.a.: 'dcc --help pp')\n"
                 INDENT "-o <name>                   Redirect output to a given file (defauls to '" DCC_OUTFILE_STDEXE "'/'" DCC_OUTFILE_STDOBJ "')\n"
                 INDENT "-On                         Set the level of compiler/linker optimizations to 'n'\n"
                 INDENT "-shared                     Create a shared library instead of an executable\n"
@@ -371,7 +372,7 @@ INTERN void dcc_help(char const *subject) {
                 INDENT "-Werror                     Every warning is interpreted as an error\n"
                 INDENT "-Wsystem-headers            Enable warnings in system headers\n"
                 INDENT "-W[no-]<warning>            Enable/Disable a given 'warning' group (s.a.: '--help warnings')\n"
-              //INDENT "--name <name>               Set the name used for __FILE__ by INFILE (Useful when INFILE is stdin)\n"
+                INDENT "--name <name>               Set the name used for __FILE__ by INFILE (Useful when INFILE is stdin)\n"
                 INDENT "--help [subject]            Display this help and exit. When specified, subject may be one of:\n"
                 INDENT "                            linker|extensions|warnings|include-paths|library-paths|internal-paths|std|pp\n"
                 INDENT "--version                   Display version information and exit\n"
@@ -384,6 +385,7 @@ INTERN void dcc_help(char const *subject) {
                 INDENT "-std=name                   Set the effective C dialect to 'name' (s.a.: '--help std')\n"
                 INDENT "-traditional[-cpp]          Emulate traditional C-compiler behavior, not warning about old-style\n"
                 INDENT "                            functions and accepting old-style spelling of inplace operation tokens\n"
+                "-:      Use <stdin> as input source file\n"
                 "infile: A list of input source files intermixed with object files\n"
                 "-llib:  Add 'lib' as a dynamic library dependency\n"
          ,"dcc");

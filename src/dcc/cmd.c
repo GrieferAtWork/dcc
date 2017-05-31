@@ -96,7 +96,7 @@ again:
  end = (arg_iter = c->c_argv)+c->c_argc;
  for (;;) {
   if (arg_iter == end) goto eof;
-  if (arg_iter[0][0] == '-') {
+  if (arg_iter[0][0] == '-' && arg_iter[0][1]) {
    opt = (arg_iter[0][1] == '-') ? find_option(grp,arg_iter[0]+2,1)
                                  : find_option(grp,arg_iter[0]+1,0);
    if (!opt || !(opt->o_flags&OPTION_FLAG_NOOPT)) break;

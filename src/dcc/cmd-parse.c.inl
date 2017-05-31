@@ -334,15 +334,15 @@ def_secbase:
   else if (!strcmp(v,"longstring") || !strcmp(v,"longstrings"))
    SETFLAGI(TPPLexer_Current->l_flags,TPPLEXER_FLAG_TERMINATE_STRING_LF);
   else if (!memcmp(v,"tabstop=",8*sizeof(char))) TPPLexer_Current->l_tabsize = (size_t)atol(v+8);
-  else if (!strcmp(v,"signed-char")) TPPLexer_Current->l_flags |= ~(TPPLEXER_FLAG_CHAR_UNSIGNED);
-  else if (!strcmp(v,"unsigned-char")) TPPLexer_Current->l_flags |= TPPLEXER_FLAG_CHAR_UNSIGNED;
-  else if (!strcmp(v,"cpp-line")) preproc.p_flags = DCC_PREPROCESSOR_SET_LINEMODE(preproc.p_flags,DCC_PREPROCESSOR_FLAG_LINECXX);
+  else if (!strcmp(v,"signed-char")) SETFLAGI(TPPLexer_Current->l_flags,TPPLEXER_FLAG_CHAR_UNSIGNED);
+  else if (!strcmp(v,"unsigned-char")) SETFLAG(TPPLexer_Current->l_flags,TPPLEXER_FLAG_CHAR_UNSIGNED);
+  else if (!strcmp(v,"cpp-line") && enable) preproc.p_flags = DCC_PREPROCESSOR_SET_LINEMODE(preproc.p_flags,DCC_PREPROCESSOR_FLAG_LINECXX);
   else if (!strcmp(v,"line")) preproc.p_flags = DCC_PREPROCESSOR_SET_LINEMODE(preproc.p_flags,enable
-                                                                         ? DCC_PREPROCESSOR_FLAG_LINESTDC
-                                                                         : DCC_PREPROCESSOR_FLAG_LINENONE);
+                                                                              ? DCC_PREPROCESSOR_FLAG_LINESTDC
+                                                                              : DCC_PREPROCESSOR_FLAG_LINENONE);
   else if (!strcmp(v,"magiclf")) SETFLAGI(preproc.p_flags,DCC_PREPROCESSOR_FLAG_NOMAGICLF);
-  else if (!strcmp(v,"decode")) SETFLAG(preproc.p_flags,DCC_PREPROCESSOR_FLAG_DECODETOK);
-  else if (!strcmp(v,"unify-pragma")) SETFLAG(preproc.p_flags,DCC_PREPROCESSOR_FLAG_UNIFYPRGM);
+  else if (!strcmp(v,"decode")) SETFLAGI(preproc.p_flags,DCC_PREPROCESSOR_FLAG_NODECODETOK);
+  else if (!strcmp(v,"unify-pragma")) SETFLAGI(preproc.p_flags,DCC_PREPROCESSOR_FLAG_NOUNIFYPRGM);
   else {
    enable = TPPLexer_SetExtension(v,enable);
    if (!enable) WARN(W_UNKNOWN_EXTENSION,v);
@@ -384,6 +384,13 @@ check_depfile: if (preproc.p_depfd == TPP_STREAM_INVALID) preproc.p_depfd = DCC_
   preproc.p_flags |= DCC_PREPROCESSOR_FLAG_DEPESCAPE;
  case OPT_MT: CMD_ONLY();
   preproc.p_deptarget = v;
+  break;
+
+ case OPT_tok: preproc.p_flags = DCC_PREPROCESSOR_SET_TOKMODE(preproc.p_flags,DCC_PREPROCESSOR_FLAG_TOKOUTLINE); break;
+ case OPT_pp:
+  TPPLexer_Current->l_flags &= ~(TPPLEXER_FLAG_WANTSPACE|
+                                 TPPLEXER_FLAG_WANTLF);
+  preproc.p_flags = DCC_PREPROCESSOR_SET_TOKMODE(preproc.p_flags,DCC_PREPROCESSOR_FLAG_TOKSEPERATE);
   break;
 
  case OPT_name:

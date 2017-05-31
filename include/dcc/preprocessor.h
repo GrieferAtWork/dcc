@@ -28,9 +28,9 @@ DCC_DECL_BEGIN
 
 #define DCC_PREPROCESSOR_FLAG_NONE        0x00000000
 
-#define DCC_PREPROCESSOR_FLAG_LINENONE    0x00000000 /*< Don't emit #line directives. */
+#define DCC_PREPROCESSOR_FLAG_LINECXX     0x00000000 /*< '# <line> [<file>]' */
 #define DCC_PREPROCESSOR_FLAG_LINESTDC    0x00000001 /*< '#line <line> [<file>]' */
-#define DCC_PREPROCESSOR_FLAG_LINECXX     0x00000002 /*< '# <line> [<file>]' */
+#define DCC_PREPROCESSOR_FLAG_LINENONE    0x00000002 /*< Don't emit #line directives. */
 /*                                        0x00000003 */
 #define DCC_PREPROCESSOR_MASK_LINEMODE    0x00000003 /*< Mask for active #line-mode. */
 
@@ -51,8 +51,8 @@ DCC_DECL_BEGIN
 #define DCC_PREPROCESSOR_MASK_HELP        0x00000300 /*< Mask for help flags. */
 
 #define DCC_PREPROCESSOR_FLAG_NOMAGICLF   0x00010000 /*< Disable ~magic~ tokens for small line-shifts to prevent a #line being emit. */
-#define DCC_PREPROCESSOR_FLAG_DECODETOK   0x00020000 /*< Decode stuff like escape sequences and trigraphs before writing to out. */
-#define DCC_PREPROCESSOR_FLAG_UNIFYPRGM   0x00040000 /*< Unify #pragma directives. */
+#define DCC_PREPROCESSOR_FLAG_NODECODETOK 0x00020000 /*< Decode stuff like escape sequences and trigraphs before writing to out. */
+#define DCC_PREPROCESSOR_FLAG_NOUNIFYPRGM 0x00040000 /*< Unify #pragma directives. */
 #define DCC_PREPROCESSOR_FLAG_DEPSYSTEM   0x00080000 /*< Include system headers in dependency information. */
 #define DCC_PREPROCESSOR_FLAG_DEPDUMMY    0x00100000 /*< Emit a dummy target for every dependency. */
 #define DCC_PREPROCESSOR_FLAG_DEPESCAPE   0x00200000 /*< Escape character special to make inside the dependency target name. */
@@ -82,6 +82,7 @@ struct DCCPreprocessor {
  size_t        p_depfc;         /*< Amount of dependencies. */
  size_t        p_depfa;         /*< Allocated amount of dependencies. */
  char        **p_depfv;         /*< [1..1][owned][0..p_depfc|alloc(p_depfa)][owned] Vector of dependency file names. */
+ uint32_t      p_baseflags;     /*< Base lexer flags. */
 };
 
 /* The currently selected preprocessor. */
@@ -114,6 +115,8 @@ DCCFUN void DCCPreprocessor_PrintPP(DCC(stream_t) out);
 /* TPP callbacks for preprocessor hooks. */
 DCCFUN struct TPPFile *DCCPreprocessor_DepUnknown(char *filename, size_t filename_size);
 DCCFUN int DCCPreprocessor_DepNewTextfile(struct TPPFile *file, int is_system_header);
+DCCFUN int DCCPreprocessor_ReemitPragma(void);
+DCCFUN int DCCPreprocessor_ReemitGCCPragma(void);
 
 
 #ifdef DCC_PRIVATE_API

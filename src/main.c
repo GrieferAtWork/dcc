@@ -199,6 +199,8 @@ int main(int argc, char *argv[]) {
   TPPLexer_Current->l_callbacks.c_new_textfile = &DCCPreprocessor_DepNewTextfile;
   DCCPreprocessor_DepFirst();
  }
+ /* Store the initial lexer flags. */
+ preproc.p_baseflags = TPPLexer_Current->l_flags;
 
  assert(preproc.p_outfile);
  switch (DCC_PREPROCESSOR_PPMODE(preproc.p_flags)) {
@@ -214,7 +216,6 @@ int main(int argc, char *argv[]) {
   }
   TPPLexer_Current->l_callbacks.c_parse_pragma     = NULL;
   TPPLexer_Current->l_callbacks.c_parse_pragma_gcc = NULL;
-
   while (argc) {
    struct TPPFile *f;
    char *filename = argv[0];
@@ -233,9 +234,13 @@ int main(int argc, char *argv[]) {
         DCCPreprocessor_DepPrint(f->f_name,f->f_namesize);
     TPPLexer_PushFileInherited(f);
     if (DCC_PREPROCESSOR_PPMODE(preproc.p_flags) ==
-        DCC_PREPROCESSOR_FLAG_PPPREPROC)
-         DCCPreprocessor_PrintPP(pp_out);
-    else while (TPPLexer_Yield() > 0);
+        DCC_PREPROCESSOR_FLAG_PPPREPROC) {
+     if (!(preproc.p_flags&DCC_PREPROCESSOR_FLAG_NOUNIFYPRGM)) {
+      TPPLexer_Current->l_callbacks.c_parse_pragma     = &DCCPreprocessor_ReemitPragma;
+      TPPLexer_Current->l_callbacks.c_parse_pragma_gcc = &DCCPreprocessor_ReemitGCCPragma;
+     }
+     DCCPreprocessor_PrintPP(pp_out);
+    } else while (TPPLexer_Yield() > 0);
    }
    if (!OK) break;
    TPPLexer_Reset(TPPLexer_Current,
@@ -291,8 +296,11 @@ int main(int argc, char *argv[]) {
    *       cleared again by 'DCCLinker_Make' (which is unnecessary) */
   DCCUnit_ClearObsolete();
   save_object(preproc.p_outfile);
+ } else if (!strcmp(preproc.p_outfile,"-")) {
+  DCCLinker_Make(DCC_STREAM_STDOUT);
  } else {
-  stream_t s_out = s_openw(preproc.p_outfile);
+  stream_t s_out;
+  s_out = s_openw(preproc.p_outfile);
   DCCLinker_Make(s_out); /* Generate the binary. */
   s_close(s_out);
  }

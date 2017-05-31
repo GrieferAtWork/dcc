@@ -262,7 +262,7 @@ static void pp_emit_raw(struct pp_state *__restrict s) {
  if (DCC_PREPROCESSOR_TOKMODE(preproc.p_flags) ==
      DCC_PREPROCESSOR_FLAG_TOKOUTLINE)
      s_writea(s->out,"[",sizeof(char));
- if (preproc.p_flags&DCC_PREPROCESSOR_FLAG_DECODETOK) {
+ if (!(preproc.p_flags&DCC_PREPROCESSOR_FLAG_NODECODETOK)) {
   TPP_PrintToken(&out_printer,(void *)s->out);
   if (TPPLexer_Current->l_token.t_id == '\n') ++s->current_line;
  } else {
@@ -296,9 +296,11 @@ static void pp_emit(struct pp_state *__restrict s) {
  pp_emit_raw(s);
 }
 
+PRIVATE struct pp_state *curr_state = NULL;
+
 DCCFUN void
 DCCPreprocessor_PrintPP(stream_t out) {
- struct pp_state s;
+ struct pp_state s,*old_state;
  /* Initial values to simulate the last token
   * ending where the first file starts. */
  s.last_token_file = NULL; // infile; /* Force a line directive at the first token. */
@@ -307,11 +309,14 @@ DCCPreprocessor_PrintPP(stream_t out) {
  s.current_line    = 0;
  s.is_at_linefeed  = 1;
  s.out             = out;
+ old_state = curr_state;
+ curr_state = &s;
  while (TPPLexer_Yield() > 0) pp_emit(&s);
  if (DCC_PREPROCESSOR_TOKMODE(preproc.p_flags) ==
      DCC_PREPROCESSOR_FLAG_TOKSEPERATE) {
   s_writea(out,"\0",sizeof(char));
  }
+ curr_state = old_state;
 }
 
 
@@ -332,6 +337,59 @@ DCCPreprocessor_DepNewTextfile(struct TPPFile *file,
  DCCPreprocessor_DepPrint(file->f_name,file->f_namesize);
  return 1;
 }
+
+PRIVATE int reemit_pragma(int gcc_pragma) {
+#define PRAGMA_COPYMASK  (TPPLEXER_FLAG_WANTCOMMENTS|\
+                          TPPLEXER_FLAG_WANTSPACE|\
+                          TPPLEXER_FLAG_WANTLF)
+#define PRINT(s)   s_writea(curr_state->out,s,sizeof(s)-sizeof(char))
+#define PRINTZ(s)  s_writea(curr_state->out,s,sizeof(s))
+#define PRINTZX(s) s_writea(curr_state->out,s,(DCC_PREPROCESSOR_TOKMODE(preproc.p_flags) == DCC_PREPROCESSOR_FLAG_TOKSEPERATE) ? sizeof(s) : sizeof(s)-sizeof(char))
+ if unlikely(!curr_state) return 0; /*  */
+ if (!curr_state->is_at_linefeed &&
+      DCC_PREPROCESSOR_LINEMODE(preproc.p_flags) !=
+      DCC_PREPROCESSOR_FLAG_LINENONE) {
+  if (DCC_PREPROCESSOR_TOKMODE(preproc.p_flags) ==
+      DCC_PREPROCESSOR_FLAG_TOKOUTLINE)
+       PRINT("[\n]");
+  else PRINTZX("\n");
+  ++curr_state->current_line;
+ }
+ if (DCC_PREPROCESSOR_TOKMODE(preproc.p_flags) ==
+     DCC_PREPROCESSOR_FLAG_TOKOUTLINE) {
+  PRINT("[#][pragma]");
+  if (preproc.p_baseflags&TPPLEXER_FLAG_WANTSPACE) PRINT("[ ]");
+  if (gcc_pragma) {
+   PRINT("[GCC]");
+   if (preproc.p_baseflags&TPPLEXER_FLAG_WANTSPACE) PRINT("[ ]");
+  }
+ } else {
+  if (DCC_PREPROCESSOR_TOKMODE(preproc.p_flags) ==
+      DCC_PREPROCESSOR_FLAG_TOKSEPERATE)
+       PRINTZ("#\0pragma");
+  else PRINT("#pragma");
+  if (preproc.p_baseflags&TPPLEXER_FLAG_WANTSPACE) PRINTZX(" ");
+  if (gcc_pragma) {
+   PRINTZX("GCC");
+   if (preproc.p_baseflags&TPPLEXER_FLAG_WANTSPACE) PRINTZX(" ");
+  }
+ }
+ TPPLexer_Current->l_flags &= ~(PRAGMA_COPYMASK);
+ TPPLexer_Current->l_flags |= (preproc.p_baseflags&PRAGMA_COPYMASK);
+ do pp_emit_raw(curr_state); while (TPPLexer_Yield() > 0);
+ if (DCC_PREPROCESSOR_TOKMODE(preproc.p_flags) ==
+     DCC_PREPROCESSOR_FLAG_TOKOUTLINE)
+      PRINT("[\n]");
+ else PRINTZX("\n");
+ ++curr_state->current_line;
+ curr_state->is_at_linefeed = 1;
+ curr_state->last_token_file = NULL;
+ curr_state->last_token_end  = NULL;
+ return 1;
+}
+PUBLIC int DCCPreprocessor_ReemitPragma(void) { return reemit_pragma(0); }
+PUBLIC int DCCPreprocessor_ReemitGCCPragma(void) { return reemit_pragma(1); }
+
 
 
 
