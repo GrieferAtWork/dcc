@@ -61,7 +61,7 @@ PRIVATE int load_pe_sections(PIMAGE_SECTION_HEADER secv,
   ptrdiff_t    readsiz;
   uint8_t     *sec_data;
   target_ptr_t sec_addr;
-  symflag_t    secflags = DCC_SYMFLAG_USED|DCC_SYMFLAG_SEC_FIXED;
+  symflag_t    secflags = DCC_SYMFLAG_SEC_FIXED|DCC_SYMFLAG_NOCOLL;
   target_siz_t sec_align;
   if (iter->Characteristics&IMAGE_SCN_MEM_SHARED)  secflags |= DCC_SYMFLAG_SEC_S;
   if (iter->Characteristics&IMAGE_SCN_MEM_EXECUTE) secflags |= DCC_SYMFLAG_SEC_X;
@@ -104,7 +104,8 @@ PRIVATE int load_pe_sections(PIMAGE_SECTION_HEADER secv,
   /* Fill everything that shouldn't be read with ZEROes (shouldn't happen...) */
   memset(sec_data+readsiz,0,iter->SizeOfRawData-readsiz);
   /* NOTE: 'sc_base' will (hopefully) be fixed during relocations. */
-  section->sc_base = section->sc_merge = iter->VirtualAddress;
+  section->sc_merge = iter->VirtualAddress;
+  DCCSection_SETBASE(section,iter->VirtualAddress);
  }
  return 1;
 }
@@ -250,8 +251,8 @@ DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def,
    if unlikely(!newsym) break;
    /* Adjust the symbol address. */
    if (!DCCSection_ISIMPORT(symsec))
-        symaddr -= symsec->sc_base;
-   DCCSym_Define(newsym,symsec,symaddr,0);
+        symaddr -= DCCSection_BASE(symsec);
+   DCCSym_Define(newsym,symsec,symaddr,0,1);
   }
   /* TODO: After loading relocations, check back and
    *       remove the export directory if is is unused. */
@@ -301,9 +302,9 @@ noexpdir:
         (size_t)relwordc);
     continue;
    }
-   assert(reladdr >= region_sec->sc_base);
+   assert(reladdr >= DCCSection_BASE(region_sec));
    /* Figure out the adjustment relocation-region addresses and section addresses. */
-   reladj = (reladdr-region_sec->sc_base);
+   reladj = (reladdr-DCCSection_BASE(region_sec));
    assert(reladj <= DCCSection_VSIZE(region_sec));
    for (; relwordv != relword_end; ++relwordv) {
     struct DCCRel rel; uint8_t *reldata;
@@ -350,7 +351,7 @@ ill_reloc:
          ((uintptr_t)relhdr-(uintptr_t)reldat_base));
       continue;
      }
-     relvalue            -= addrtarget->sc_base;
+     relvalue            -= DCCSection_BASE(addrtarget);
      rel.r_sym            = &addrtarget->sc_start;
      *(uint32_t *)reldata = relvalue;
      rel.r_type           = DCC_R_DATA_PTR;
@@ -382,8 +383,9 @@ next_block:
    * delete the section base addresses! */
   { struct DCCSection *sec;
     DCCUnit_ENUMSEC(sec) {
+     assert(!(sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE));
+     DCCSection_SETBASE(sec,0);
      sec->sc_start.sy_flags &= ~(DCC_SYMFLAG_SEC_FIXED);
-     sec->sc_base            = 0;
     }
   }
  }

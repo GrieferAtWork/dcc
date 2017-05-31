@@ -49,12 +49,9 @@ DCCMemLoc_MinAlign(struct DCCMemLoc const *__restrict self) {
  int i; assert(self);
  offset = self->ml_off;
  if (self->ml_sym) {
-  struct DCCSection *sec = DCCSym_SECTION(self->ml_sym);
+  if (DCCSym_SECTION(self->ml_sym))
+      return self->ml_sym->sy_align;
   result = 1;
-  if (sec) {
-   result  = sec->sc_align;
-   offset += self->ml_sym->sy_addr;
-  }
  }
  if (offset) {
   i = 0;
@@ -94,7 +91,7 @@ DCCDisp_LargeBinLLong(tok_t op, int src_unsigned) {
  }
  DCCVStack_KillAll();
  DCCDisp_LocCll(&funloc);
- cleanup.sa_off = 2*DCC_TARGET_SIZEOF_POINTER;
+ cleanup.sa_off = 2*DCC_TARGET_SIZEOF_LONG_LONG;
  cleanup.sa_sym = NULL;
  DCCDisp_AddReg(&cleanup,DCC_RR_XSP);
 }
@@ -108,7 +105,7 @@ DCCDisp_LargeMemBinMem_fixed(tok_t op,
  struct DCCMemLoc funloc;
  struct DCCSymAddr cleanup;
  assert(IS_LARGE_OP(op));
- assert(n_bytes > DCC_TARGET_SIZEOF_POINTER);
+ assert(n_bytes > DCC_TARGET_SIZEOF_ARITH_MAX);
  assert(src),assert(dst);
 #ifdef LARGEMEM_STACK_LLONG
  if (n_bytes == LARGEMEM_STACK_LLONG) {
@@ -171,7 +168,7 @@ DCCDisp_LargeMemsBinRegs(tok_t op, struct DCCMemLoc const *__restrict src,
                          target_siz_t src_bytes, rc_t dst,
                          rc_t dst2, int src_unsigned) {
 #if defined(LARGEMEM_STACK_LLONG) && \
-   (LARGEMEM_STACK_LLONG == DCC_TARGET_SIZEOF_POINTER*2)
+   (LARGEMEM_STACK_LLONG == DCC_TARGET_SIZEOF_GP_REGISTER*2)
  assert(dst2 != DCC_RC_CONST);
  DCCDisp_MemPushs(src,src_bytes,REQSIZE(op,LARGEMEM_STACK_LLONG),src_unsigned);
  DCCDisp_RegPush(dst2|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
@@ -183,12 +180,12 @@ DCCDisp_LargeMemsBinRegs(tok_t op, struct DCCMemLoc const *__restrict src,
  assert(dst2 != DCC_RC_CONST);
  used_dst.ml_sym = NULL;
  used_dst.ml_reg = DCC_RR_XBP;
- used_dst.ml_off = DCCCompiler_HWStackAlloc(DCC_TARGET_SIZEOF_POINTER*2,
-                                        DCC_TARGET_SIZEOF_POINTER*2,0);
- DCCDisp_RegMovMem(dst,&used_dst);  used_dst.ml_off += DCC_TARGET_SIZEOF_POINTER;
- DCCDisp_RegMovMem(dst2,&used_dst); used_dst.ml_off -= DCC_TARGET_SIZEOF_POINTER;
- DCCDisp_LargeMemBinMem(op,src,src_bytes,&used_dst,DCC_TARGET_SIZEOF_POINTER*2,src_unsigned);
- DCCDisp_MemMovReg(&used_dst,dst);  used_dst.ml_off += DCC_TARGET_SIZEOF_POINTER;
+ used_dst.ml_off = DCCCompiler_HWStackAlloc(DCC_TARGET_SIZEOF_GP_REGISTER*2,
+                                            DCC_TARGET_SIZEOF_GP_REGISTER,0);
+ DCCDisp_RegMovMem(dst,&used_dst);  used_dst.ml_off += DCC_TARGET_SIZEOF_GP_REGISTER;
+ DCCDisp_RegMovMem(dst2,&used_dst); used_dst.ml_off -= DCC_TARGET_SIZEOF_GP_REGISTER;
+ DCCDisp_LargeMemBinMem(op,src,src_bytes,&used_dst,DCC_TARGET_SIZEOF_GP_REGISTER*2,src_unsigned);
+ DCCDisp_MemMovReg(&used_dst,dst);  used_dst.ml_off += DCC_TARGET_SIZEOF_GP_REGISTER;
  DCCDisp_MemMovReg(&used_dst,dst2);
 #endif
 }
@@ -293,7 +290,7 @@ PRIVATE void
 DCCDisp_LargeRegsBinRegs(tok_t op, rc_t src, rc_t src2,
                          rc_t dst, rc_t dst2, int src_unsigned) {
 #if defined(LARGEMEM_STACK_LLONG) && \
-   (LARGEMEM_STACK_LLONG == DCC_TARGET_SIZEOF_POINTER*2)
+   (LARGEMEM_STACK_LLONG == DCC_TARGET_SIZEOF_GP_REGISTER*2)
  assert(dst2 != DCC_RC_CONST);
  if (REQSIZE(op,LARGEMEM_STACK_LLONG) > 4) {
   if (src2 != DCC_RC_CONST) {
@@ -310,41 +307,40 @@ DCCDisp_LargeRegsBinRegs(tok_t op, rc_t src, rc_t src2,
  DCCDisp_RegsBinRegs('=',DCC_RR_XAX,DCC_RR_XDX,dst,dst2,1);
 #else
  struct DCCMemLoc src_buf,dst_buf;
- target_siz_t reqbytes = REQSIZE(op,DCC_TARGET_SIZEOF_POINTER*2);
+ target_siz_t reqbytes = REQSIZE(op,DCC_TARGET_SIZEOF_GP_REGISTER*2);
  src_buf.ml_sym = dst_buf.ml_sym = NULL;
  src_buf.ml_reg = dst_buf.ml_reg = DCC_RR_XBP;
  src_buf.ml_off = DCCCompiler_HWStackAlloc(reqbytes,reqbytes,0);
- dst_buf.ml_off = DCCCompiler_HWStackAlloc(DCC_TARGET_SIZEOF_POINTER*2,
-                                       DCC_TARGET_SIZEOF_POINTER*2,0);
+ dst_buf.ml_off = DCCCompiler_HWStackAlloc(DCC_TARGET_SIZEOF_GP_REGISTER*2,
+                                           DCC_TARGET_SIZEOF_GP_REGISTER,0);
  DCCDisp_RegsBinMems('=',src,src2,&src_buf,reqbytes,src_unsigned);
- DCCDisp_RegsBinMems('=',dst,dst2,&dst_buf,DCC_TARGET_SIZEOF_POINTER*2,1);
- DCCDisp_LargeMemBinMem_fixed(op,&src_buf,&src_buf,DCC_TARGET_SIZEOF_POINTER*2,src_unsigned);
- DCCDisp_MemsBinRegs('=',&dst_buf,DCC_TARGET_SIZEOF_POINTER*2,dst,dst2,1);
+ DCCDisp_RegsBinMems('=',dst,dst2,&dst_buf,DCC_TARGET_SIZEOF_GP_REGISTER*2,1);
+ DCCDisp_LargeMemBinMem_fixed(op,&src_buf,&src_buf,DCC_TARGET_SIZEOF_GP_REGISTER*2,src_unsigned);
+ DCCDisp_MemsBinRegs('=',&dst_buf,DCC_TARGET_SIZEOF_GP_REGISTER*2,dst,dst2,1);
 #endif
 }
 
-#if DCC_TARGET_SIZEOF_POINTER < 8
+#if DCC_TARGET_SIZEOF_GP_REGISTER < 8
 PRIVATE void
 DCCDisp_LargeCstBinRegs(tok_t op, struct DCCSymExpr const *__restrict val,
                         rc_t dst, rc_t dst2, int src_unsigned) {
 #if defined(LARGEMEM_STACK_LLONG) && \
-   (LARGEMEM_STACK_LLONG == DCC_TARGET_SIZEOF_POINTER*2)
+   (LARGEMEM_STACK_LLONG == DCC_TARGET_SIZEOF_GP_REGISTER*2)
  struct DCCSymAddr addr;
  addr.sa_off = (target_off_t)val->e_int;
  addr.sa_sym = val->e_sym;
- DCCDisp_CstPush(&addr,DCC_TARGET_SIZEOF_POINTER);
+ DCCDisp_CstPush(&addr,DCC_TARGET_SIZEOF_GP_REGISTER);
  addr.sa_off = (target_off_t)(val->e_int >> 32);
  addr.sa_sym = NULL;
- DCCDisp_CstPush(&addr,DCC_TARGET_SIZEOF_POINTER);
+ DCCDisp_CstPush(&addr,DCC_TARGET_SIZEOF_GP_REGISTER);
  DCCDisp_RegPush(dst2|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
  DCCDisp_RegPush(dst|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
  DCCDisp_LargeBinLLong(op,src_unsigned);
  DCCDisp_RegsBinRegs('=',DCC_RR_XAX,DCC_RR_XDX,dst,dst2,1);
 #else
- struct DCCMemLoc srcval;
- struct DCCSymAddr aval;
- target_siz_t reqbytes = REQSIZE(op,DCC_TARGET_SIZEOF_POINTER*2);
- uint8_t *data;
+ struct DCCMemLoc srcval; struct DCCSymAddr aval;
+ target_siz_t reqbytes; uint8_t *data;
+ reqbytes = REQSIZE(op,DCC_TARGET_SIZEOF_GP_REGISTER*2);
  srcval.ml_reg = DCC_RC_CONST;
  srcval.ml_off = DCCSection_TADDR(unit.u_data);
  srcval.ml_sym = &unit.u_data->sc_start;
@@ -371,7 +367,7 @@ DCCDisp_LargeCstBinRegs(tok_t op, struct DCCSymExpr const *__restrict val,
    memset(data,filler,reqbytes);
   }
  }
- DCCDisp_LargeMemsBinRegs(op,&srcval,DCC_TARGET_SIZEOF_POINTER*2,
+ DCCDisp_LargeMemsBinRegs(op,&srcval,DCC_TARGET_SIZEOF_GP_REGISTER*2,
                           dst,dst2,src_unsigned);
 #endif
 }

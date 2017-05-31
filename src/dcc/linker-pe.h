@@ -29,8 +29,8 @@
 #define __has_include(x) 0
 #endif
 
-#if DCC_HOST_OS == DCC_OS_WINDOWS || \
-    __has_include(<Windows.h>)
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS) || \
+       __has_include(<Windows.h>)
 #include <Windows.h>
 #else
 #include <stdint.h>

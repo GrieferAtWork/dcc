@@ -181,10 +181,16 @@ DCCParse_BuiltinBSwap(void) {
  switch (size) {
  {
   struct DCCType arg_type;
-  if (DCC_MACRO_FALSE) { case 1: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_INT8; }
-  if (DCC_MACRO_FALSE) { case 2: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_INT16; }
-  if (DCC_MACRO_FALSE) { case 4: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_INT32; }
-  if (DCC_MACRO_FALSE) { case 8: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_INT64; }
+#ifdef DCCTYPE_IB1
+  if (DCC_MACRO_FALSE) { case 1: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_IB1; }
+#endif
+#ifdef DCCTYPE_IB2
+  if (DCC_MACRO_FALSE) { case 2: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_IB2; }
+#endif
+#ifdef DCCTYPE_IB4
+  if (DCC_MACRO_FALSE) { case 4: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_IB4; }
+#endif
+  if (DCC_MACRO_FALSE) { case 8: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_IB8; }
   arg_type.t_base = NULL;
   vcast(&arg_type,0);
  } break;
@@ -485,10 +491,18 @@ DCCParse_BuiltinScanner(void) {
  switch (size) {
  {
   struct DCCType arg_type;
-  if (DCC_MACRO_FALSE) { case 1: arg_type.t_type = DCCTYPE_INT8; }
-  if (DCC_MACRO_FALSE) { case 2: arg_type.t_type = DCCTYPE_INT16; }
-  if (DCC_MACRO_FALSE) { case 4: arg_type.t_type = DCCTYPE_INT32; }
-  if (DCC_MACRO_FALSE) { case 8: arg_type.t_type = DCCTYPE_INT64; }
+#ifdef DCCTYPE_IB1
+  if (DCC_MACRO_FALSE) { case 1: arg_type.t_type = DCCTYPE_IB1; }
+#endif
+#ifdef DCCTYPE_IB2
+  if (DCC_MACRO_FALSE) { case 2: arg_type.t_type = DCCTYPE_IB2; }
+#endif
+#ifdef DCCTYPE_IB4
+  if (DCC_MACRO_FALSE) { case 4: arg_type.t_type = DCCTYPE_IB4; }
+#endif
+#ifdef DCCTYPE_IB8
+  if (DCC_MACRO_FALSE) { case 8: arg_type.t_type = DCCTYPE_IB8; }
+#endif
   arg_type.t_base = NULL;
   vcast(&arg_type,0);
  } break;
@@ -785,7 +799,7 @@ DCCParse_BuiltinSetJmp(void) {
  jmpbuf_loc.ml_sym = vbottom->sv_sym;
  for (iter = target_jmpbuf; *iter; ++iter) {
   DCCDisp_RegMovMem(*iter,&jmpbuf_loc);
-  jmpbuf_loc.ml_off += DCC_TARGET_SIZEOF_POINTER;
+  jmpbuf_loc.ml_off += DCC_TARGET_SIZEOF_GP_REGISTER;
  }
  eip.sa_sym = DCCUnit_AllocSym();
  if unlikely(!eip.sa_sym) return;
@@ -867,7 +881,7 @@ fix_zero_signal:
    /* Restore this register. */
    DCCDisp_MemMovReg(&jmpbuf_loc,*iter);
   }
-  jmpbuf_loc.ml_off += DCC_TARGET_SIZEOF_POINTER;
+  jmpbuf_loc.ml_off += DCC_TARGET_SIZEOF_GP_REGISTER;
  }
  if (restore_last_loc.ml_reg != DCC_RC_CONST) {
   /* When restoring a last register, we know that the completion of
@@ -887,7 +901,7 @@ fix_zero_signal:
  }
  /* mark the current branch as dead. */
  compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
-                          DCC_COMPILER_FLAG_DEAD);
+                      DCC_COMPILER_FLAG_DEAD);
  vpushv(); /* void */
 }
 

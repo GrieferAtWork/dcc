@@ -32,7 +32,7 @@
 #include <alloca.h>
 #endif
 
-#if DCC_HOST_OS == DCC_OS_WINDOWS
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
 #include <Windows.h>
 #endif
 
@@ -43,7 +43,7 @@
 #   define PATH_MAX  MAX_PATH
 #elif defined(MAXPATH)
 #   define PATH_MAX  MAXPATH
-#elif DCC_HOST_OS == DCC_OS_WINDOWS
+#elif !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
 #   define PATH_MAX  260
 #else
 #   define PATH_MAX  1024
@@ -229,7 +229,7 @@ LOCAL void linker_add_dirof(char const *__restrict filename) {
  DCC_Free(mbuf);
 }
 
-#if DCC_HOST_OS == DCC_OS_WINDOWS
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS) && !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
 typedef UINT (WINAPI *SYSDIR_FUN)(LPSTR lpBuffer, UINT uSize);
 typedef BOOL (WINAPI *LPISWOW64PROCESS)(HANDLE hProcess, PBOOL Wow64Process);
 
@@ -363,7 +363,8 @@ LOCAL void linker_add_intpath_self(void) {
 
 PUBLIC void
 DCCLinker_AddSysPaths(char const *__restrict outfile_or_basefile) {
-#if DCC_HOST_OS == DCC_OS_WINDOWS && DCC_TARGET_OS == DCC_OS_WINDOWS
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS) && !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+#define DCC_LINKER_HAVE_OSSPEC
  /* For compatibility with windows dll-path resolution,
   * the following locations must be searched by DCC (in that order):
   *    1. <output-directory-of-executable> (binary-output-mode)
@@ -387,9 +388,22 @@ DCCLinker_AddSysPaths(char const *__restrict outfile_or_basefile) {
  }
  /* Setup the default list of internal library paths. */
  linker_add_intpath_self();
-#else
- /* TODO */
 #endif
+#if !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
+#endif
+#ifndef DCC_LINKER_HAVE_OSSPEC
+ struct TPPString **syspathv;
+#define /*SystemIncludePath*/SIP(x) DCCLibPaths_DoAddLibPath(self,path,pathsize)
+#define /*SystemLibraryPath*/SLP(x) DCCLibPaths_DoAddLibPath(&linker.l_intpaths,path,pathsize)
+#define /*  UserLibraryPath*/ULP(x) DCCLibPaths_DoAddLibPath(&linker.l_paths,path,pathsize)
+ syspathv = (struct TPPString **)DCC_Realloc(TPPLexer_Current->l_syspaths.il_pathv,
+                                             TPPLexer_Current->l_syspaths.il_pathc*
+                                             sizeof(struct TPPString *),0);
+ if unlikely(!syspathv) return;
+ /* TODO */
+ TPPString_Incref(str);
+#endif
+#undef DCC_LINKER_HAVE_OSSPEC
 }
 
 

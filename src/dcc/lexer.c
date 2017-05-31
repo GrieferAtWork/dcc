@@ -483,10 +483,10 @@ DCCParse_String(void) {
  return result;
 }
 
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
-#define INVALID_PATH_CHARACTERS "/\\:?*;"
-#elif !!(DCC_TARGET_OS&DCC_OS_UNIX)
-#define INVALID_PATH_CHARACTERS "/\\:?*"
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+#   define INVALID_PATH_CHARACTERS "/\\:?*;"
+#elif !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
+#   define INVALID_PATH_CHARACTERS "/\\:?*"
 #endif
 
 PUBLIC struct TPPKeyword *
@@ -506,31 +506,22 @@ DCCParse_GetLibname(char const *__restrict name, size_t size) {
   buf = mbuf = (char *)malloc((size+1)*sizeof(char));
   if unlikely(!mbuf) { TPPLexer_SetErr(); return NULL; }
  }
-#if DCC_TARGET_OS == DCC_OS_WINDOWS && 0 /* Don't do this... */
- {
-  char *dst,ch;
-  end = (iter = (char *)name)+size;
-  for (dst = buf; iter != end; ) {
-   ch = *iter++;
-   if (ch >= 'a' && ch <= 'z') ch -= 'a'-'A';
-   *dst++ = ch;
-  }
- }
-#else
  memcpy(buf,name,size*sizeof(char));
-#endif
  end = (iter = buf)+size;
+#if defined(INVALID_PATH_CHARACTERS) || \
+  !!(DCC_TARGET_OS&(DCC_OS_F_WINDOWS|DCC_OS_F_UNIX))
  for (; iter != end; ++iter) {
 #ifdef INVALID_PATH_CHARACTERS
   if (strchr(INVALID_PATH_CHARACTERS,*iter))
-   WARN(W_INVALID_LIBRARY_CHARACTER,*iter,name,size);
+      WARN(W_INVALID_LIBRARY_CHARACTER,*iter,name,size);
 #endif
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
   if (*iter == '/') *iter = '\\';
-#elif !!(DCC_TARGET_OS&DCC_OS_UNIX)
+#elif !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
   if (*iter == '\\') *iter = '/';
 #endif
  }
+#endif /* ... */
  result = TPPLexer_LookupKeyword(buf,size,1);
  free(mbuf);
  return result;

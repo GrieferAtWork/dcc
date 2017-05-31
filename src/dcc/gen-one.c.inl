@@ -119,12 +119,12 @@ PRIVATE void
 DCCDisp_UnarySta(tok_t op, void *__restrict dst,
                  target_siz_t dst_bytes) {
  assert(op != '(');
- while (dst_bytes >= DCC_TARGET_SIZEOF_POINTER) {
-  DCCDisp_UnaryStaWidth(op,dst,DCC_TARGET_SIZEOF_POINTER);
-  *(uintptr_t *)&dst += DCC_TARGET_SIZEOF_POINTER;
-  dst_bytes          -= DCC_TARGET_SIZEOF_POINTER;
+ while (dst_bytes >= DCC_TARGET_SIZEOF_ARITH_MAX) {
+  DCCDisp_UnaryStaWidth(op,dst,DCC_TARGET_SIZEOF_ARITH_MAX);
+  *(uintptr_t *)&dst += DCC_TARGET_SIZEOF_ARITH_MAX;
+  dst_bytes          -= DCC_TARGET_SIZEOF_ARITH_MAX;
  }
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
  if (dst_bytes&4) { DCCDisp_UnaryStaWidth(op,dst,4); *(uintptr_t *)&dst += 4; }
 #endif
  if (dst_bytes&2) { DCCDisp_UnaryStaWidth(op,dst,2); *(uintptr_t *)&dst += 2; }
@@ -143,33 +143,33 @@ DCCDisp_UnaryMem(tok_t op, struct DCCMemLoc const *__restrict dst,
   return;
  }
  dst_iter = *dst;
- if (dst_bytes > DCC_TARGET_SIZEOF_POINTER &&
+ if (dst_bytes > DCC_TARGET_SIZEOF_ARITH_MAX &&
      op == TOK_INC || op == TOK_DEC) {
   /* inc/dec for out-of-band memory arguments. */
   struct DCCSymAddr src_val = {1,NULL};
   DCCDisp_CstBinMem(op == TOK_INC ? '+' : '-',&src_val,
-                    &dst_iter,DCC_TARGET_SIZEOF_POINTER,1);
-  dst_iter.ml_off += DCC_TARGET_SIZEOF_POINTER;
-  dst_bytes       -= DCC_TARGET_SIZEOF_POINTER;
+                    &dst_iter,DCC_TARGET_SIZEOF_ARITH_MAX,1);
+  dst_iter.ml_off += DCC_TARGET_SIZEOF_ARITH_MAX;
+  dst_bytes       -= DCC_TARGET_SIZEOF_ARITH_MAX;
   src_val.sa_off = 0;
-  while (dst_bytes >= DCC_TARGET_SIZEOF_POINTER) {
-   DCCDisp_CstBinMem(op,&src_val,&dst_iter,DCC_TARGET_SIZEOF_POINTER,1);
-   dst_iter.ml_off += DCC_TARGET_SIZEOF_POINTER;
-   dst_bytes       -= DCC_TARGET_SIZEOF_POINTER;
+  while (dst_bytes >= DCC_TARGET_SIZEOF_ARITH_MAX) {
+   DCCDisp_CstBinMem(op,&src_val,&dst_iter,DCC_TARGET_SIZEOF_ARITH_MAX,1);
+   dst_iter.ml_off += DCC_TARGET_SIZEOF_ARITH_MAX;
+   dst_bytes       -= DCC_TARGET_SIZEOF_ARITH_MAX;
   }
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
   if (dst_bytes&4) { DCCDisp_CstBinMem(op,&src_val,&dst_iter,4,1); dst_iter.ml_off += 4; }
 #endif
   if (dst_bytes&2) { DCCDisp_CstBinMem(op,&src_val,&dst_iter,2,1); dst_iter.ml_off += 2; }
   if (dst_bytes&1) { DCCDisp_CstBinMem(op,&src_val,&dst_iter,1,1); }
   return;
  }
- while (dst_bytes >= DCC_TARGET_SIZEOF_POINTER) {
-  DCCDisp_UnaryMemWidth(op,&dst_iter,DCC_TARGET_SIZEOF_POINTER);
-  dst_iter.ml_off += DCC_TARGET_SIZEOF_POINTER;
-  dst_bytes       -= DCC_TARGET_SIZEOF_POINTER;
+ while (dst_bytes >= DCC_TARGET_SIZEOF_ARITH_MAX) {
+  DCCDisp_UnaryMemWidth(op,&dst_iter,DCC_TARGET_SIZEOF_ARITH_MAX);
+  dst_iter.ml_off += DCC_TARGET_SIZEOF_ARITH_MAX;
+  dst_bytes       -= DCC_TARGET_SIZEOF_ARITH_MAX;
  }
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
  if (dst_bytes&4) { DCCDisp_UnaryMemWidth(op,&dst_iter,4); dst_iter.ml_off += 4; }
 #endif
  if (dst_bytes&2) { DCCDisp_UnaryMemWidth(op,&dst_iter,2); dst_iter.ml_off += 2; }

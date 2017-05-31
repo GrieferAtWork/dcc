@@ -8950,7 +8950,7 @@ TPPLexer_ParseBuiltinPragma(void) {
      if (mode == KWD_push_macro) {
       if unlikely(!keyword_pushmacro(keyword)) goto seterr;
       /* Delete the macro definition. */
-      if (should_undef) TPPKeyword_Undef(keyword);
+      if (should_undef && keyword->k_macro) TPPKeyword_Undef(keyword);
      } else {
       keyword_popmacro(keyword,should_undef);
      }

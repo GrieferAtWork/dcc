@@ -197,7 +197,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
   if (!(secflags&DCC_SYMFLAG_SEC_NOALLOC)) shdr_iter->s_hdr.sh_flags |= SHF_ALLOC;
   if (secflags&DCC_SYMFLAG_SEC_X) shdr_iter->s_hdr.sh_flags |= SHF_EXECINSTR;
   if (secflags&DCC_SYMFLAG_SEC_M) shdr_iter->s_hdr.sh_flags |= SHF_MERGE;
-  shdr_iter->s_hdr.sh_addralign = sec->sc_align;
+  shdr_iter->s_hdr.sh_addralign = sec->sc_start.sy_align;
   sec->sc_start.sy_addr = ELF_SHDR_IDX(shdr_iter);
   ++shdr_iter;
  }
@@ -234,8 +234,8 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
    }
    symhdr.st_value = symaddr.sa_off+symaddr.sa_sym->sy_addr;
    symhdr.st_size  = symaddr.sa_sym->sy_size;
-   if (sym->sy_flags&(DCC_SYMFLAG_USED|DCC_SYMFLAG_UNUSED))
-       need_symflags = sym->sy_elfid;
+   if ((sym->sy_flags&(DCC_SYMFLAG_USED|DCC_SYMFLAG_UNUSED|DCC_SYMFLAG_NOCOLL)) ||
+       (sym->sy_align > 1)) need_symflags = sym->sy_elfid;
    if (symaddr.sa_sym->sy_sec) {
     if (symaddr.sa_sym->sy_sec == &DCCSection_Abs)
      symhdr.st_shndx = SHN_ABS;
@@ -270,13 +270,16 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
     memset(buf,0,need_symflags*sizeof(Elf(DCCSymFlg)));
     ++buf; /* Skip the first entry, which refers to the NULL-symbol */
     DCCUnit_ENUMALLSYM(sym) {
-#if ELF_DCC_SYMFLAG_F_USED   == DCC_SYMFLAG_USED && \
+#if ELF_DCC_SYMFLAG_F_NOCOLL == DCC_SYMFLAG_NOCOLL && \
+    ELF_DCC_SYMFLAG_F_USED   == DCC_SYMFLAG_USED && \
     ELF_DCC_SYMFLAG_F_UNUSED == DCC_SYMFLAG_UNUSED
-     buf->sf_info = (sym->sy_flags&(DCC_SYMFLAG_USED|DCC_SYMFLAG_UNUSED));
+     buf->sf_info = (sym->sy_flags&(DCC_SYMFLAG_USED|DCC_SYMFLAG_UNUSED|DCC_SYMFLAG_NOCOLL));
 #else
+     if (flags&DCC_SYMFLAG_NOCOLL) buf->sf_info |= ELF_DCC_SYMFLAG_F_NOCOLL;
      if (flags&DCC_SYMFLAG_USED)   buf->sf_info |= ELF_DCC_SYMFLAG_F_USED;
      if (flags&DCC_SYMFLAG_UNUSED) buf->sf_info |= ELF_DCC_SYMFLAG_F_UNUSED;
 #endif
+     buf->sf_align = (Elf(Word))sym->sy_align;
      if (sym->sy_alias) { /* Generate an alias descriptor. */
       buf->sf_info |= ELF(DCC_SYMFLAG)(sym->sy_alias->sy_elfid,
                                        ELF_DCC_SYMFLAG_F_ALIAS);

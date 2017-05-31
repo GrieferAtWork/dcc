@@ -75,15 +75,18 @@ DCC_DECL_BEGIN
 #define SHT_DCC_SYMFLG (SHT_LOUSER+0x0306)
 
 typedef struct {
-  Elf32_Word sf_info; /*< Extended symbol information. */
+  Elf32_Word sf_info;  /*< Extended symbol information. */
+  Elf32_Word sf_align; /*< Minimum alignment required by this symbol. */
 } Elf32_DCCSymFlg;
 
 typedef struct {
-  Elf64_Word sf_info; /*< Extended symbol information. */
+  Elf64_Word sf_info;  /*< Extended symbol information. */
+  Elf64_Word sf_align; /*< Minimum alignment required by this symbol. */
 } Elf64_DCCSymFlg;
 
 #define ELF_DCC_SYMFLAG_F_ALIAS  0x01 /*< The symbol is aliasing another symbol retrievable through 'ELF(32|64)_DCC_SYMFLAG_SYM(...)'.
                                        *  The symbol id being aliased is apart of the same symbol table extended by the associated section. */
+#define ELF_DCC_SYMFLAG_F_NOCOLL 0x20 /*< Don't allow this symbol to be collapsed during late symbol merging. */
 #define ELF_DCC_SYMFLAG_F_USED   0x40 /*< The symbol is used and shall not be removed, even when it appears unused. */
 #define ELF_DCC_SYMFLAG_F_UNUSED 0x80 /*< The symbol is intended to be unused and no warning shall be emit when it is removed. */
 
@@ -120,6 +123,7 @@ struct DCCLibPaths {
                                                  * 'ntdll.dll' on windows, which happens to export its own version of 'strlen' (which is probably already linked against 'msvcrt.dll')
                                                  *  NOTE: This flag is implicitly set for the definition of a symbol with a [[lib(...)]] attribute.
                                                  *  NOTE: Depending on this flag an import-redefinition emits 'W_SYMBOL_ALREADY_DEFINED_IMP_IMP/W_SYMBOL_ALREADY_DEFINED_IMP_IMP_NOT'. */
+#define DCC_LINKER_FLAG_NOCOLL       0x00000200 /*< Don't collapse symbols. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #define DCC_LINKER_FLAG_PEDYNAMIC     0x10000000 /*< On PE binary targets: Consider C/ELF visibility when generating an export table.
                                                   *  >> When this flag is set, any non-static definition matching '__attribute__((visibility("default")))'
@@ -197,7 +201,7 @@ DCCFUN int DCCLinker_DelLibPath(char *__restrict path, size_t pathsize);
  * @return: 0 : Either no paths were added, or a lexer error was set.
  * @return: * : The amount of added library paths. */
 DCCFUN size_t DCCLinker_AddLibPaths(char *__restrict list, size_t listsize);
-#if DCC_HOST_OS == DCC_OS_WINDOWS
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
 #   define DCCLINKER_PATHS_SEP ';'
 #else
 #   define DCCLINKER_PATHS_SEP ':'

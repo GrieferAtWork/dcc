@@ -62,11 +62,11 @@ struct struct_DCCTypeDecl {
 PRIVATE struct struct_DCCTypeDecl t_int = BUILTIN_TYPE(DCCTYPE_INT);
 PRIVATE struct struct_DCCTypeDecl t_byte = BUILTIN_TYPE(DCCTYPE_BYTE);
 PRIVATE struct struct_DCCTypeDecl t_word = BUILTIN_TYPE(DCCTYPE_WORD);
-PRIVATE struct struct_DCCTypeDecl t_llong = BUILTIN_TYPE(DCCTYPE_LLONG);
+PRIVATE struct struct_DCCTypeDecl t_ib8 = BUILTIN_TYPE(DCCTYPE_IB8);
 PRIVATE struct struct_DCCTypeDecl t_uint = BUILTIN_TYPE(DCCTYPE_UNSIGNED|DCCTYPE_INT);
 PRIVATE struct struct_DCCTypeDecl t_ubyte = BUILTIN_TYPE(DCCTYPE_UNSIGNED|DCCTYPE_BYTE);
 PRIVATE struct struct_DCCTypeDecl t_uword = BUILTIN_TYPE(DCCTYPE_UNSIGNED|DCCTYPE_WORD);
-PRIVATE struct struct_DCCTypeDecl t_ullong = BUILTIN_TYPE(DCCTYPE_UNSIGNED|DCCTYPE_LLONG);
+PRIVATE struct struct_DCCTypeDecl t_uib8 = BUILTIN_TYPE(DCCTYPE_UNSIGNED|DCCTYPE_IB8);
 PRIVATE struct struct_DCCTypeDecl t_float = BUILTIN_TYPE(DCCTYPE_FLOAT);
 PRIVATE struct struct_DCCTypeDecl t_double = BUILTIN_TYPE(DCCTYPE_DOUBLE);
 PRIVATE struct struct_DCCTypeDecl t_ldouble = BUILTIN_TYPE(DCCTYPE_LDOUBLE);
@@ -75,11 +75,11 @@ PRIVATE struct struct_DCCTypeDecl t_void = BUILTIN_TYPE(DCCTYPE_VOID);
 PRIVATE struct struct_DCCTypeDecl t_const_int = BUILTIN_TYPE(DCCTYPE_INT|DCCTYPE_CONST);
 PRIVATE struct struct_DCCTypeDecl t_const_byte = BUILTIN_TYPE(DCCTYPE_BYTE|DCCTYPE_CONST);
 PRIVATE struct struct_DCCTypeDecl t_const_word = BUILTIN_TYPE(DCCTYPE_WORD|DCCTYPE_CONST);
-PRIVATE struct struct_DCCTypeDecl t_const_llong = BUILTIN_TYPE(DCCTYPE_LLONG|DCCTYPE_CONST);
+PRIVATE struct struct_DCCTypeDecl t_const_ib8 = BUILTIN_TYPE(DCCTYPE_IB8|DCCTYPE_CONST);
 PRIVATE struct struct_DCCTypeDecl t_const_uint = BUILTIN_TYPE(DCCTYPE_UNSIGNED|DCCTYPE_INT|DCCTYPE_CONST);
 PRIVATE struct struct_DCCTypeDecl t_const_ubyte = BUILTIN_TYPE(DCCTYPE_UNSIGNED|DCCTYPE_BYTE|DCCTYPE_CONST);
 PRIVATE struct struct_DCCTypeDecl t_const_uword = BUILTIN_TYPE(DCCTYPE_UNSIGNED|DCCTYPE_WORD|DCCTYPE_CONST);
-PRIVATE struct struct_DCCTypeDecl t_const_ullong = BUILTIN_TYPE(DCCTYPE_UNSIGNED|DCCTYPE_LLONG|DCCTYPE_CONST);
+PRIVATE struct struct_DCCTypeDecl t_const_uib8 = BUILTIN_TYPE(DCCTYPE_UNSIGNED|DCCTYPE_IB8|DCCTYPE_CONST);
 PRIVATE struct struct_DCCTypeDecl t_const_float = BUILTIN_TYPE(DCCTYPE_FLOAT|DCCTYPE_CONST);
 PRIVATE struct struct_DCCTypeDecl t_const_double = BUILTIN_TYPE(DCCTYPE_DOUBLE|DCCTYPE_CONST);
 PRIVATE struct struct_DCCTypeDecl t_const_ldouble = BUILTIN_TYPE(DCCTYPE_LDOUBLE|DCCTYPE_CONST);
@@ -92,11 +92,11 @@ PUBLIC struct DCCType const DCCType_BuiltinPointers[16] = {
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_int},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_byte},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_word},
- {DCCTYPE_POINTER,(struct DCCDecl *)&t_llong},
+ {DCCTYPE_POINTER,(struct DCCDecl *)&t_ib8},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_uint},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_ubyte},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_uword},
- {DCCTYPE_POINTER,(struct DCCDecl *)&t_ullong},
+ {DCCTYPE_POINTER,(struct DCCDecl *)&t_uib8},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_float},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_double},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_ldouble},
@@ -110,11 +110,11 @@ PUBLIC struct DCCType const DCCType_BuiltinConstPointers[16] = {
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_int},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_byte},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_word},
- {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_llong},
+ {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_ib8},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_uint},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_ubyte},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_uword},
- {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_ullong},
+ {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_uib8},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_float},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_double},
  {DCCTYPE_POINTER,(struct DCCDecl *)&t_const_ldouble},
@@ -469,10 +469,10 @@ imcomplete:
  { /* Size of a basic/builtin type. */
  default:
   switch (self->t_type&DCCTYPE_BASICMASK) {
-  case DCCTYPE_INT8: case DCCTYPE_UNSIGNED|DCCTYPE_INT8: result = 1; break;
-  case DCCTYPE_INT16: case DCCTYPE_UNSIGNED|DCCTYPE_INT16: result = 2; break;
-  case DCCTYPE_INT32: case DCCTYPE_UNSIGNED|DCCTYPE_INT32: result = 4; break;
-  case DCCTYPE_INT64: case DCCTYPE_UNSIGNED|DCCTYPE_INT64: result = 8; break;
+  case DCCTYPE_INT : case DCCTYPE_UNSIGNED|DCCTYPE_INT : result = DCC_TARGET_SIZEOF_INT; break;
+  case DCCTYPE_BYTE: case DCCTYPE_UNSIGNED|DCCTYPE_BYTE: result = DCC_TARGET_SIZEOF_BYTE; break;
+  case DCCTYPE_WORD: case DCCTYPE_UNSIGNED|DCCTYPE_WORD: result = DCC_TARGET_SIZEOF_WORD; break;
+  case DCCTYPE_IB8 : case DCCTYPE_UNSIGNED|DCCTYPE_IB8 : result = 8; break;
   case DCCTYPE_FLOAT: result = DCC_TARGET_SIZEOF_FLOAT; break;
   case DCCTYPE_DOUBLE: result = DCC_TARGET_SIZEOF_DOUBLE; break;
   case DCCTYPE_LDOUBLE: result = DCC_TARGET_SIZEOF_LONG_DOUBLE; break;
@@ -709,8 +709,16 @@ DCCType_PutPrefix(char *buf, size_t buflen,
    case DCCTYPE_BYTE: basic_name = (TPPLexer_Current->l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED) ? "signed char" : "char"; break;
    case DCCTYPE_UNSIGNED|DCCTYPE_WORD: basic_name = "unsigned short"; break;
    case DCCTYPE_WORD: basic_name = "short"; break;
-   case DCCTYPE_UNSIGNED|DCCTYPE_LLONG: basic_name = "unsigned long long";  break;
-   case DCCTYPE_LLONG: basic_name = "long long"; break;
+#if DCC_TARGET_SIZEOF_LONG_LONG == 8
+   case DCCTYPE_UNSIGNED|DCCTYPE_IB8: basic_name = "unsigned long long";  break;
+   case DCCTYPE_IB8: basic_name = "long long"; break;
+#elif DCC_TARGET_BITPERBYTE == 8
+   case DCCTYPE_UNSIGNED|DCCTYPE_IB8: basic_name = "unsigned __int64";  break;
+   case DCCTYPE_IB8: basic_name = "__int64"; break;
+#else
+   case DCCTYPE_UNSIGNED|DCCTYPE_IB8: basic_name = "unsigned <int-8-byte>";  break;
+   case DCCTYPE_IB8: basic_name = "<int-8-byte>"; break;
+#endif
    case DCCTYPE_FLOAT: basic_name = "float"; break;
    case DCCTYPE_DOUBLE: basic_name = "double"; break;
    case DCCTYPE_LDOUBLE: basic_name = "long double"; break;

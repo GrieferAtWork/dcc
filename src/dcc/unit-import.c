@@ -242,7 +242,7 @@ DCCUnit_ImportWithFilename(struct DCCLibDef *__restrict def,
  int result; stream_t s = s_openr(filename);
  //printf("Checking: '%s'\n",filename);
  if (s == TPP_STREAM_INVALID) {
-#if DCC_HOST_OS == DCC_OS_WINDOWS
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
   /* TODO: maybe retry with fixed slashes? ('filename.replace("/","\\")') */
 #endif
   return 0;
@@ -262,13 +262,12 @@ search_extensions[] = {
  {{'.','o'}},
  {{'.','a'}},
  {{'.','l','i','b'}},
-#if DCC_HOST_OS == DCC_OS_WINDOWS
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
  {{'.','d','l','l'}},
  {{'.','e','x','e'}},
 #endif
-#if DCC_HOST_OS == DCC_OS_LINUX
+#if !!(DCC_HOST_OS&DCC_OS_F_UNIX)
  {{'.','s','o'}},
- //{{'.','o','u','t'}},
 #endif
  {{'.','d','e','f'}},
 };

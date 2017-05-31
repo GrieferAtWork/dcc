@@ -200,7 +200,9 @@ struct DCCElfInfo {
 
 PRIVATE struct DCCElfInfo elf;
 PRIVATE void elf_mk_entry(void);
+#ifdef DCC_TARGET_ELFINTERP
 PRIVATE void elf_mk_interp(void);
+#endif /* DCC_TARGET_ELFINTERP */
 PRIVATE void elf_mk_relsec(void);           /* Generate stub relocation sections. */
 PRIVATE void elf_mk_secvec(void);           /* Generate the vector of sections, calculation their groups and basic header data. */
 PRIVATE void elf_mk_relinfo(void);          /* Generate 'sh_info' links for relocation sections. */
@@ -227,12 +229,6 @@ PRIVATE struct phinfo *elf_mk_phdr(void);
 /* Return the section index of a given section, or 'SHN_UNDEF' if not known. */
 PRIVATE Elf(Half) elf_get_secidx(struct DCCSection const *__restrict sec);
 PRIVATE struct secinfo *elf_get_secinfo(struct DCCSection const *__restrict sec);
-
-#ifndef DCC_TARGET_ELFINTERP
-#define DCC_TARGET_ELFINTERP  "/lib/ld-linux.so.2"
-#endif
-
-
 
 
 
@@ -346,6 +342,7 @@ found:
 
 }
 
+#ifdef DCC_TARGET_ELFINTERP
 PRIVATE void elf_mk_interp(void) {
  char *itp; size_t itp_len;
  if (!elf.elf_interp) return;
@@ -363,6 +360,7 @@ PRIVATE void elf_mk_interp(void) {
                      (itp_len+1)*sizeof(char),
                       1,0);
 }
+#endif /* DCC_TARGET_ELFINTERP */
 
 PRIVATE uint8_t const vismap[4] = {
  /* [DCC_SYMFLAG_NONE     ] = */STV_DEFAULT,
@@ -622,7 +620,7 @@ elf_mk_secinfo(struct secinfo *__restrict info,
 #if SHN_UNDEF != 0
  info->si_hdr.sh_link = SHN_UNDEF;
 #endif
- info->si_hdr.sh_addralign = (Elf(Word))section->sc_align;
+ info->si_hdr.sh_addralign = (Elf(Word))section->sc_start.sy_align;
 }
 
 PRIVATE void elf_mk_secvec(void) {
@@ -832,7 +830,7 @@ PRIVATE void elf_mk_reladj(void) {
   reldata = (Elf(Rel) *)DCCSection_GetText(iter->si_rel,iter->si_rdat,
                                            iter->si_rcnt*sizeof(Elf(Rel)));
   if unlikely(!reldata) break;
-  secbase   = iter_sec->sc_base;
+  secbase   = DCCSection_BASE(iter_sec);
   relend    = reldata+iter->si_rcnt;
   text_data = iter->si_sec->sc_text.tb_begin;
   for (; reldata != relend; ++reldata) {
@@ -964,10 +962,10 @@ elf_mk_dynfll(void) {
  end = iter+elf.elf_dync;
  for (; iter != end; ++iter) {
   switch (iter->d_tag) {
-  case DT_HASH:   if (!elf.elf_hash)   goto def; iter->d_un.d_ptr = elf.elf_hash  ->sc_base; break;
-  case DT_SYMTAB: if (!elf.elf_dynsym) goto def; iter->d_un.d_ptr = elf.elf_dynsym->sc_base; break;
+  case DT_HASH:   if (!elf.elf_hash)   goto def; iter->d_un.d_ptr = DCCSection_BASE(elf.elf_hash); break;
+  case DT_SYMTAB: if (!elf.elf_dynsym) goto def; iter->d_un.d_ptr = DCCSection_BASE(elf.elf_dynsym); break;
   case DT_SYMENT: if (!elf.elf_dynsym) goto def; iter->d_un.d_ptr = sizeof(Elf(Sym)); break;
-  case DT_STRTAB: if (!elf.elf_dynstr) goto def; iter->d_un.d_ptr = elf.elf_dynstr->sc_base; break;
+  case DT_STRTAB: if (!elf.elf_dynstr) goto def; iter->d_un.d_ptr = DCCSection_BASE(elf.elf_dynstr); break;
   case DT_STRSZ:  if (!elf.elf_dynstr) goto def;
    iter->d_un.d_ptr = (Elf(Addr))(elf.elf_dynstr->sc_text.tb_max-
                                   elf.elf_dynstr->sc_text.tb_begin);
@@ -1309,7 +1307,7 @@ again:
    sec_vaddr  = (sec_vaddr+(iter->si_hdr.sh_addralign-1)) & ~(iter->si_hdr.sh_addralign-1);
    iter->si_hdr.sh_offset = sec_faddr;
    iter->si_hdr.sh_addr   = sec_vaddr;
-   iter->si_sec->sc_base  = sec_vaddr;
+   DCCSection_SetBaseTo(iter->si_sec,sec_vaddr);
    sec_vsize = secinfo_vsize(iter);
    sec_faddr += sec_vsize;
    sec_vaddr += sec_vsize;
@@ -1389,7 +1387,7 @@ elf_mk_outfile(stream_t fd) {
    entryaddr.sa_off = 0;
   }
   ehdr.e_entry = (Elf(Addr))(entryaddr.sa_sym->sy_addr+entryaddr.sa_off+
-                             entryaddr.sa_sym->sy_sec->sc_base);
+                             DCCSection_BASE(entryaddr.sa_sym->sy_sec));
  }
  ehdr.e_shstrndx = elf_get_secidx(elf.elf_shstr);
  ehdr.e_phnum    = (Elf(Half))elf.elf_phdc;
@@ -1491,6 +1489,8 @@ DCCLinker_Make(stream_t target) {
   DCCUnit_ClearUnused();
   DCCUnit_ClearUnusedLibs();
  }
+ DCCUnit_CollapseSections();
+ DCCUnit_ResolveDisp();
 
  CC(elf_mk_relsec());        /* Create stub relocation sections. Must be done now
                               * because later we can no longer create new sections. */
@@ -1506,6 +1506,7 @@ DCCLinker_Make(stream_t target) {
  CC(elf_mk_dyndat());        /* Generate general-purpose dynamic information. */
  CC(elf_mk_delsecunused(SECGP_DYNAMIC)); /* Delete all unused dynamic sections. */
  elf_clr_unused(&elf.elf_dynamic);
+#ifdef DCC_TARGET_ELFINTERP
  if (elf.elf_dynamic) {
  /* WARNING: ___NEVER___ generate a '.interp' section for static objects!
   *       >> It took me forever to figure it out, but the linux linker
@@ -1513,6 +1514,7 @@ DCCLinker_Make(stream_t target) {
   *          relocations. (At least my $h1tty version does...) */
   CC(elf_mk_interp());       /* Create and fill the '.interp' section. */
  }
+#endif /* DCC_TARGET_ELFINTERP */
  CC(elf_mk_secnam());        /* Allocate section names. */
  CC(elf_mk_seclnk());        /* Fix section links. */
  CC(elf_mk_delsecunused(SECGP_INTERP)); /* Delete _ALL_ sections still unused. */

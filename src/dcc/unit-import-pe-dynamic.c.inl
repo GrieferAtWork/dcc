@@ -252,9 +252,9 @@ found_section:
 #endif
      if (sym && sym->sy_sec != ressec) { /* Ignore double exports? */
 #if PE_PROCESS_HINTS
-      DCCSym_Define(sym,ressec,(target_ptr_t)hint,0);
+      DCCSym_Import(sym,ressec,(target_ptr_t)hint);
 #else /* PE_PROCESS_HINTS */
-      DCCSym_Define(sym,ressec,0,0);
+      DCCSym_Import(sym,ressec,0);
 #endif /* !PE_PROCESS_HINTS */
 #ifdef DCC_SYMFLAG_PE_ITA_IND
       /* Since this is a PE symbol, try to use ITA indirection. */

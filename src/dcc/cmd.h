@@ -24,7 +24,7 @@
 
 DCC_DECL_BEGIN
 
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
 #define DCC_OUTFILE_STDEXE "a.exe"
 #else
 #define DCC_OUTFILE_STDEXE "a.out"

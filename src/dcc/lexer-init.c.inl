@@ -182,10 +182,11 @@ lvalue_initial:
     DCCSection_TAlign(target_section,type_a,0);
     base_target.ml_reg = DCC_RC_CONST;
     base_target.ml_sym = &target_section->sc_start;
-    base_target.ml_off = (target_off_t)DCCSection_TADDR(target_section);
     if (kind != KIND_VARRAY) {
-     void *p = DCCSection_TAlloc(target_section,type_s);
-     if (p) memset(p,0,type_s); /* Pre-initialize everything to ZEROes. */
+     base_target.ml_off = (target_off_t)DCCSection_DAlloc(target_section,
+                                                          type_s,type_a,0);
+    } else {
+     base_target.ml_off = 0;
     }
     DCCSection_TEND(target_section);
    } else if (kind == KIND_VARRAY) {
@@ -457,7 +458,7 @@ update_elem_target_off:
     /* Merge section data (This is a no-op if the section doesn't allow merging). */
     base_target.ml_off = (target_off_t)DCCSection_DMerge(target_section,
                                                         (target_ptr_t)base_target.ml_off,
-                                                         final_size,elem_align);
+                                                         final_size,elem_align,1);
     /* Allocate a data symbol within the section.
      * >> Allocating the symbol here is not ~really~ required, but if
      *    we fail to do so, the section data associated with this initializer
@@ -469,7 +470,7 @@ update_elem_target_off:
      /* This symbol inherits all section data from the initializer. */
      DCCSym_Define(base_target.ml_sym,target_section,
                   (target_ptr_t)base_target.ml_off,
-                   final_size);
+                   final_size,elem_align);
      base_target.ml_off = 0; /* Now stored in the symbol. */
     }
    }

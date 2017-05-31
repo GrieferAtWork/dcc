@@ -28,8 +28,8 @@
 DCC_DECL_BEGIN
 
 
-/* One of '1', '2', '4' or (if DCC_TARGET_SIZEOF_POINTER >= 8) '8'
- * >> A multiple of '2' <= 'DCC_TARGET_SIZEOF_POINTER' */
+/* One of '1', '2', '4' or (if DCC_TARGET_SIZEOF_IMM_MAX >= 8) '8'
+ * >> A multiple of '2' <= 'DCC_TARGET_SIZEOF_IMM_MAX' */
 typedef unsigned int DCC(width_t);
 struct DCCMemLoc;
 
@@ -189,7 +189,7 @@ DCCFUN void DCCDisp_CstBinReg(DCC(tok_t) op, struct DCCSymAddr const *__restrict
                               DCC(rc_t) dst, int src_unsigned);
 DCCFUN void DCCDisp_RegsBinRegs(DCC(tok_t) op, DCC(rc_t) src, DCC(rc_t) src2,
                                 DCC(rc_t) dst, DCC(rc_t) dst2, int src_unsigned);
-#if DCC_TARGET_SIZEOF_POINTER < 8
+#if DCC_TARGET_SIZEOF_ARITH_MAX < 8
 DCCFUN void DCCDisp_CstBinRegs(DCC(tok_t) op, struct DCCSymExpr const *__restrict val,
                                DCC(rc_t) dst, DCC(rc_t) dst2, int src_unsigned);
 #endif

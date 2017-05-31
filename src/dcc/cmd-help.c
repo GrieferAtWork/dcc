@@ -57,12 +57,10 @@ INTERN void dcc_dump_symbols(void) {
    if (sym->sy_flags&DCC_SYMFLAG_SEC_U) *iter++ = 'U';
    *iter = '\0';
    if (DCCSection_ISIMPORT(DCCSym_TOSECTION(sym))) {
-    printf("%s: LIBRARY('%s','%s')\n",
-           sym->sy_name->k_name,
+    printf("%s: LIBRARY('%s')\n",
            sym->sy_name->k_name,flags);
    } else {
-    printf("%s: SECTION('%s','%s')\n",
-           sym->sy_name->k_name,
+    printf("%s: SECTION('%s')\n",
            sym->sy_name->k_name,flags);
    }
   } else if (sym->sy_alias) {
@@ -75,10 +73,23 @@ INTERN void dcc_dump_symbols(void) {
     printf("%s: ABS(%#lx)\n",sym->sy_name->k_name,
           (unsigned long)sym->sy_addr);
    } else if (sym->sy_size) {
-    printf("%s: '%s'+%lu (%lu bytes)\n",sym->sy_name->k_name,
+    if (sym->sy_align != 1) {
+     printf("%s: '%s'+%lu (%lu align, %lu bytes)\n",sym->sy_name->k_name,
+            sym->sy_sec->sc_start.sy_name->k_name,
+           (unsigned long)sym->sy_addr,
+           (unsigned long)sym->sy_align,
+           (unsigned long)sym->sy_size);
+    } else {
+     printf("%s: '%s'+%lu (%lu bytes)\n",sym->sy_name->k_name,
+            sym->sy_sec->sc_start.sy_name->k_name,
+           (unsigned long)sym->sy_addr,
+           (unsigned long)sym->sy_size);
+    }
+   } else if (sym->sy_align != 1) {
+    printf("%s: '%s'+%lu (%lu align)\n",sym->sy_name->k_name,
            sym->sy_sec->sc_start.sy_name->k_name,
           (unsigned long)sym->sy_addr,
-          (unsigned long)sym->sy_size);
+          (unsigned long)sym->sy_align);
    } else {
     printf("%s: '%s'+%lu\n",sym->sy_name->k_name,
            sym->sy_sec->sc_start.sy_name->k_name,
@@ -144,13 +155,15 @@ DCC_HOST_COMPILER
 "|"
 #if DCC_TARGET_OS == DCC_OS_WINDOWS
 "windows"
+#elif DCC_TARGET_OS == DCC_OS_CYGWIN
+"cygwin"
 #elif DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
 "FreeBSD-kernel"
 #elif DCC_TARGET_OS == DCC_OS_FREEBSD
 "FreeBSD"
 #elif DCC_TARGET_OS == DCC_OS_LINUX
 "linux"
-#elif !!(DCC_TARGET_OS&DCC_OS_UNIX)
+#elif !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
 "unix"
 #else
 "UNKNOWN(" DCC_PP_STR(DCC_TARGET_OS) ")"
@@ -196,7 +209,7 @@ INTERN void dcc_help(char const *subject) {
                   INDENT "-Wl,--defsym,sym=val        Define an absolute symbol 'sym' pointing at 'val'\n"
                   INDENT "                            Note, that 'val' may contain arithmetic and depend on additional symbols\n"
                   INDENT "-Wl,--section-start=sec=val Define the start address of 'sec' to be fixed at 'val'\n"
-#if DCC_TARGET_BIN == DCC_BINARY_PE && DCC_TARGET_OS == DCC_OS_WINDOWS
+#if DCC_TARGET_BIN == DCC_BINARY_PE && !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
                   INDENT "                            Note, that the windows PE loader will likely refuse to load illegal values\n"
 #endif
                   INDENT "-Wl,-Tbss=val               Same as '-Wl,--section-start=.bss=val'\n"

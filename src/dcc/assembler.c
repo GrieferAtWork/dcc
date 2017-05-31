@@ -147,8 +147,12 @@ done_register:;
    if (op->ao_val.sa_off == 1) op->ao_type |= DCC_ASMOP_ONE;
   } else if (op->ao_val.sa_off == (target_off_t)(uint8_t)op->ao_val.sa_off) op->ao_type |= DCC_ASMOP_IMM_8;
   else if (op->ao_val.sa_off == (target_off_t)(uint16_t)op->ao_val.sa_off) op->ao_type |= DCC_ASMOP_IMM_16;
+#ifdef DCC_ASMOP_IMM_64
   else if (op->ao_val.sa_off == (target_off_t)(uint32_t)op->ao_val.sa_off) op->ao_type |= DCC_ASMOP_IMM_32;
-  else def_imm: op->ao_type |= DCC_PP_CAT(DCC_ASMOP_IMM_,DCC_MUL8(DCC_TARGET_SIZEOF_POINTER));
+  else def_imm: op->ao_type |= DCC_ASMOP_IMM_64;
+#else
+  else def_imm: op->ao_type |= DCC_ASMOP_IMM_32;
+#endif
  } else {
   op->ao_type |= DCC_ASMOP_EA;
   op->ao_shift = 0;
@@ -941,7 +945,7 @@ again:
     DCCParse_AsmExpr(&v);
     if (v.sa_sym)
          DCCSym_Alias(sym,v.sa_sym,(target_ptr_t)v.sa_off);
-    else DCCSym_Define(sym,&DCCSection_Abs,(target_ptr_t)v.sa_off,0);
+    else DCCSym_Define(sym,&DCCSection_Abs,(target_ptr_t)v.sa_off,0,1);
     goto again;
    } else {
     t_defsym(sym);
@@ -1028,7 +1032,8 @@ PUBLIC void DCCParse_AsmDirective(void) {
    if (v & (v-1)) WARN(W_ASM_INVALID_ALIGNMENT,v);
    else if (DCCCompiler_ISCGEN()) {
     /* Make sure the current text section can sustain this alignment. */
-    if (v > unit.u_curr->sc_align) unit.u_curr->sc_align = v;
+    if (unit.u_curr->sc_start.sy_align < v)
+        unit.u_curr->sc_start.sy_align = v;
    }
    aligned_addr = t_addr;
    aligned_addr = (aligned_addr+(v-1))&~(v-1);
@@ -1282,7 +1287,7 @@ fill_data:
   if unlikely(!sym) break;
   if (v.sa_sym)
        DCCSym_Alias(sym,v.sa_sym,(target_ptr_t)v.sa_off);
-  else DCCSym_Define(sym,&DCCSection_Abs,(target_ptr_t)v.sa_off,0);
+  else DCCSym_Define(sym,&DCCSection_Abs,(target_ptr_t)v.sa_off,0,1);
  } break;
 
  {

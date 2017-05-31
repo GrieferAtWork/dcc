@@ -444,7 +444,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprIf(void) {
     * WARNING: Since not everything can fit into register storage,
     *          sadly we must sometimes allocate a copy on the stack.
     */
-   if (DCCType_Sizeof(&vbottom->sv_ctype,NULL,1) <= DCC_TARGET_SIZEOF_POINTER) {
+   if (DCCType_Sizeof(&vbottom->sv_ctype,NULL,1) <= DCC_TARGET_SIZEOF_GP_REGISTER) {
     DCCStackValue_Load(vbottom);
    } else {
     /* Use the stack for shared storage.
@@ -511,10 +511,18 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
   switch (int_kind&TPP_ATOI_TYPE_MASK) {
    case TPP_ATOI_TYPE_LONG    : tyid |= DCCTYPE_ALTLONG|DCCTYPE_LONG; break;
    case TPP_ATOI_TYPE_LONGLONG: tyid |= DCCTYPE_LLONG; break;
+#ifdef DCCTYPE_INT8
    case TPP_ATOI_TYPE_INT8    : tyid |= DCCTYPE_INT8; break;
+#endif
+#ifdef DCCTYPE_INT16
    case TPP_ATOI_TYPE_INT16   : tyid |= DCCTYPE_INT16; break;
+#endif
+#ifdef DCCTYPE_INT32
    case TPP_ATOI_TYPE_INT32   : tyid |= DCCTYPE_INT32; break;
+#endif
+#ifdef DCCTYPE_INT64
    case TPP_ATOI_TYPE_INT64   : tyid |= DCCTYPE_INT64; break;
+#endif
    default:
     if (TOK == TOK_CHAR) {
      /* Character constant. */
@@ -1214,7 +1222,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
      *          sadly we must sometimes allocate a copy on the stack.
      */
     if ((vbottom->sv_flags&DCC_SFLAG_LVALUE) ||
-        (DCCType_Sizeof(&vbottom->sv_ctype,NULL,1) <= DCC_TARGET_SIZEOF_POINTER)) {
+        (DCCType_Sizeof(&vbottom->sv_ctype,NULL,1) <= DCC_TARGET_SIZEOF_GP_REGISTER)) {
      DCCStackValue_Load(vbottom);
     } else {
      /* Use the stack for shared storage.

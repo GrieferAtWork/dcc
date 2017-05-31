@@ -78,11 +78,14 @@ PRIVATE void DCC_VSTACK_CALL DCCStackValue_LodTest(struct DCCStackValue *__restr
 PUBLIC tyid_t DCC_VSTACK_CALL DCC_RC_GETTYPE(rc_t rc) {
  tyid_t result;
 #ifdef DCC_RC_I64
- if (rc&DCC_RC_I64) result = DCCTYPE_INT64;
- else
+ if (rc&DCC_RC_I64) result = DCCTYPE_INT64; else
 #endif
       if (rc&DCC_RC_I32) result = DCCTYPE_INT32;
+#ifdef DCCTYPE_INT16
  else if (rc&DCC_RC_I16) result = DCCTYPE_INT16;
+#else
+ else if (rc&DCC_RC_I16) result = DCCTYPE_INTPTR;
+#endif
  else if (rc&DCC_RC_I8) result = DCCTYPE_INT8;
  else {
   result = 0; /* TODO: Floating point registers? */
@@ -103,7 +106,7 @@ DCC_RC_SIZE(rc_t rc) {
  else switch (rc&DCC_RC_MASK) {
  case DCC_RC_SEG: result = 2; break;
   /* Fallback case: applies to most other registers. */
- default: result = DCC_TARGET_SIZEOF_POINTER; break;
+ default: result = DCC_TARGET_SIZEOF_GP_REGISTER; break;
  }
  return result;
 }
@@ -207,7 +210,7 @@ DCCStackValue_Kill(struct DCCStackValue *__restrict self) {
   target_sym     = DCCUnit_AllocSym();
   if unlikely(!target_sym) goto alloc_stack;
   target_ptr     = DCCSection_DAlloc(target_section,s,a,0);
-  DCCSym_Define(target_sym,target_section,target_ptr,s);
+  DCCSym_Define(target_sym,target_section,target_ptr,s,a);
   local_target.sv_reg = DCC_RC_CONST;
   local_target.sv_sym = target_sym;
   DCCSym_Incref(target_sym);
@@ -231,7 +234,7 @@ DCCStackValue_Load(struct DCCStackValue *__restrict self) {
  /* Figure out how much space is required. */
  local_target.sv_ctype = self->sv_ctype;
  local_target.sv_flags = DCC_SFLAG_NONE;
-#if DCC_TARGET_SIZEOF_POINTER < 8
+#if DCC_TARGET_SIZEOF_GP_REGISTER < 8
  if (DCCTYPE_ISSIGNLESSBASIC(self->sv_ctype.t_type,DCCTYPE_INT64)) {
   local_target.sv_reg  = DCCVStack_GetReg(DCC_RC_I32|DCC_R64_PREFLO,1);
   local_target.sv_reg2 = DCCVStack_GetReg(DCC_RC_I32|DCC_R64_PREFHI,1);
@@ -698,7 +701,7 @@ DCCStackValue_Dup(struct DCCStackValue *__restrict self) {
  } else {
   copy.sv_flags = DCC_SFLAG_NONE;
   copy.sv_reg   = DCCVStack_GetReg(DCC_RC_FORTYPE(source_type),1);
-#if DCC_TARGET_SIZEOF_POINTER < 8
+#if DCC_TARGET_SIZEOF_GP_REGISTER < 8
   if (DCCTYPE_ISSIGNLESSBASIC(source_type->t_type,DCCTYPE_INT64)) {
    /* Need a second 32-bit register for this. */
    copy.sv_reg2 = DCCVStack_GetRegOf(DCC_RC_I32,
@@ -1043,7 +1046,7 @@ DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
   DCCDisp_MemsBinRegs(op,&src,DCCType_Sizeof(&self->sv_ctype,NULL,1),
                       dst,dst2,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
  } else if (source_reg == DCC_RC_CONST) {
-#if DCC_TARGET_SIZEOF_POINTER < 8
+#if DCC_TARGET_SIZEOF_ARITH_MAX < 8
   struct DCCSymExpr temp;
   temp.e_int = self->sv_const.it;
   temp.e_sym = self->sv_sym;
@@ -1059,8 +1062,8 @@ DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
  } else {
   /* *op %source_reg, target */
   DCCStackValue_FixRegOffset(self);
-  DCCDisp_RegsBinRegs(op,self->sv_reg,self->sv_reg2,
-                      dst,dst2,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
+  DCCDisp_RegsBinRegs(op,self->sv_reg,self->sv_reg2,dst,dst2,
+                      DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
  }
 }
 
@@ -2098,9 +2101,9 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
   case DCCTYPE_WORD:
   case DCCTYPE_UNSIGNED|DCCTYPE_WORD:
 #endif
-#if DCC_TARGET_SIZEOF_LONG_LONG < DCC_TARGET_SIZEOF_INT
-  case DCCTYPE_LLONG:
-  case DCCTYPE_UNSIGNED|DCCTYPE_LLONG:
+#if 8 < DCC_TARGET_SIZEOF_INT
+  case DCCTYPE_IB8:
+  case DCCTYPE_UNSIGNED|DCCTYPE_IB8:
 #endif
    /* Nothing else to do here.
     * The actual effect of this is handled once the value is used! */
@@ -3426,10 +3429,10 @@ donepop:
 
 
 static target_ptr_t const basic_type_weights[] = {
- DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_INT,       /* DCCTYPE_INT */
- DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_CHAR,      /* DCCTYPE_BYTE */
- DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_SHORT,     /* DCCTYPE_SHORT */
- DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_LONG_LONG, /* DCCTYPE_LLONG */
+ DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_INT,   /* DCCTYPE_INT */
+ DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_CHAR,  /* DCCTYPE_BYTE */
+ DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_SHORT, /* DCCTYPE_SHORT */
+ DCC_TARGET_BITPERBYTE*8,                       /* DCCTYPE_IB8 */
 };
 
 PRIVATE int DCC_VSTACK_CALL
@@ -3542,8 +3545,8 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
    if (explicit_cast) return 0; /* Always OK for explicit casts. */
    if (DCCTYPE_ISFLOATT(tid)) return W_CAST_POINTER_TO_FLOAT;
    if (tid >= 8) return W_CAST_INCOMPATIBLE_TYPES;
-   if (basic_type_weights[tid&3] != DCC_TARGET_SIZEOF_POINTER*8)
-    return W_CAST_POINTER_TO_INT_SIZ;
+   if (basic_type_weights[tid&3] != DCC_TARGET_SIZEOF_POINTER*DCC_TARGET_BITPERBYTE)
+       return W_CAST_POINTER_TO_INT_SIZ;
    return W_CAST_POINTER_TO_INT;
   }
   if (DCCTYPE_GROUP(vid) == DCCTYPE_STRUCTURE &&
@@ -3554,7 +3557,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
    /* arith-structure --> integral. */
    if (tid == DCCTYPE_BOOL) tweight = 1;
    else tweight = basic_type_weights[tid&3];
-   if (tweight < DCCType_Sizeof(&value->sv_ctype,NULL,1)*8) return W_CAST_INTEGRAL_MAYOVERFLOW;
+   if (tweight < DCCType_Sizeof(&value->sv_ctype,NULL,1)*DCC_TARGET_BITPERBYTE) return W_CAST_INTEGRAL_MAYOVERFLOW;
    /* Warn if the target type isn't signed, but the source type was. */
    if ((tid&DCCTYPE_UNSIGNED) && !(vid&DCCTYPE_UNSIGNED)) return W_CAST_INTEGRAL_MAYSIGNLOSS;
    return 0;
@@ -3573,8 +3576,8 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
    /* Check for non-integral basic type. */
    if (vid >= 8) return W_CAST_TO_POINTER;
    /* Check for int2ptr of different size. */
-   if (basic_type_weights[vid&3] != DCC_TARGET_SIZEOF_POINTER*8
-       ) return W_CAST_INT_TO_POINTER_SIZ;
+   if (basic_type_weights[vid&3] != DCC_TARGET_SIZEOF_POINTER*DCC_TARGET_BITPERBYTE)
+       return W_CAST_INT_TO_POINTER_SIZ;
    return W_CAST_INT_TO_POINTER;
   } else if (vid&DCCTYPE_POINTER) {
    int is_void;
@@ -3650,7 +3653,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
     if (explicit_cast) return 0; /* Always OK for explicit casts. */
     vid &= DCCTYPE_BASICMASK;
     if (DCCTYPE_ISFLOATT(vid)) return W_CAST_FLOAT_TO_INT; /* Implicit cast of floating-point to integer. */
-    tweight = DCCType_Sizeof(type,NULL,1)*8;
+    tweight = DCCType_Sizeof(type,NULL,1)*DCC_TARGET_BITPERBYTE;
     if (is_const) {
      /* Special case: We know the value at compile-time
       * and can better decide what it really needs. */
@@ -3681,7 +3684,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
     /* Pointer --> integral. */
     if (explicit_cast) return 0; /* Always OK for explicit casts. */
     if (DCCType_Sizeof(type,NULL,1) != DCC_TARGET_SIZEOF_POINTER)
-     return W_CAST_POINTER_TO_INT_SIZ;
+        return W_CAST_POINTER_TO_INT_SIZ;
     return W_CAST_POINTER_TO_INT;
    }
    if (DCCTYPE_GROUP(vid) == DCCTYPE_STRUCTURE &&
@@ -3747,11 +3750,11 @@ DCCVStack_PromInt2(void) {
   tyid_t common_type;
   DCCStackValue_PromoteInt(&vbottom[0]);
   DCCStackValue_PromoteInt(&vbottom[1]);
-#if DCC_TARGET_SIZEOF_LONG_LONG >= DCC_TARGET_SIZEOF_INT
+#if 8 >= DCC_TARGET_SIZEOF_INT
   /* propagate long-long integeral width modifiers. */
-  if ((vbottom[0].sv_ctype.t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_LLONG ||
-      (vbottom[1].sv_ctype.t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_LLONG)
-       common_type = DCCTYPE_LLONG;
+  if ((vbottom[0].sv_ctype.t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_IB8 ||
+      (vbottom[1].sv_ctype.t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_IB8)
+       common_type = DCCTYPE_IB8;
   else
 #endif
 #if DCC_TARGET_SIZEOF_LONG >= DCC_TARGET_SIZEOF_INT
@@ -3858,10 +3861,10 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
   r1 = self->sv_reg,r2 = self->sv_reg2;
   register_memory = DCC_RC_SIZE(r1);
   if (r2 != DCC_RC_CONST) register_memory += DCC_RC_SIZE(r2);
-  assert(register_memory <= DCC_TARGET_SIZEOF_POINTER*2);
+  assert(register_memory <= DCC_TARGET_SIZEOF_GP_REGISTER*2);
   sign_memory = 0;
   if (register_memory > result) {
-   if (result <= DCC_TARGET_SIZEOF_POINTER) r2 = DCC_RC_CONST;
+   if (result <= DCC_TARGET_SIZEOF_GP_REGISTER) r2 = DCC_RC_CONST;
 #ifdef DCC_RC_I64
    if (result <= 4) r1 &= ~(DCC_RC_I64);
 #endif

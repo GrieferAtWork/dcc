@@ -88,7 +88,9 @@
 #define DCC_PP_STR(x)  DCC_PRIVATE_PP_STR(x)
 
 #define DCC_PRIVATE_PP_CAT(a,b) a##b
-#define DCC_PP_CAT(a,b) DCC_PRIVATE_PP_CAT(a,b)
+#define DCC_PRIVATE_PP_CAT3(a,b,c) a##b##c
+#define DCC_PP_CAT(a,b)    DCC_PRIVATE_PP_CAT(a,b)
+#define DCC_PP_CAT3(a,b,c) DCC_PRIVATE_PP_CAT3(a,b,c)
 
 
 #define DCC_TPP_FILE(x)  DCC_PP_STR(DCC_TPP_PATH/x)

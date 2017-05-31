@@ -35,10 +35,10 @@ struct TPPFile;
 struct DCCDecl;
 
 /* Basic type IDs. */
-#define DCCTYPE_INT                 0x00000000 /* 32-bit integer 'int' (Must always be '0') */
-#define DCCTYPE_BYTE                0x00000001 /* 8-bit integer 'char' */
-#define DCCTYPE_WORD                0x00000002 /* 16-bit integer 'short' */
-#define DCCTYPE_LLONG               0x00000003 /* 64-bit integer 'long long' */
+#define DCCTYPE_INT                 0x00000000 /* Builtin type 'int' (Must always be '0') */
+#define DCCTYPE_BYTE                0x00000001 /* CPU byte. */
+#define DCCTYPE_WORD                0x00000002 /* CPU word. */
+#define DCCTYPE_IB8                 0x00000003 /* 8-byte long-long integer. */
 #define DCCTYPE_UNSIGNED            0x00000004 /* FLAG: Unsigned type (applicable to 'DCCTYPE_INT', 'DCCTYPE_BYTE', 'DCCTYPE_WORD' and 'DCCTYPE_LLONG') */
 #define DCCTYPE_ISBUILTIN(x) (!((x)&0x00000ff0))
 #define DCCTYPE_FLOAT               0x00000008 /* Builtin type: 'float' */
@@ -61,30 +61,55 @@ struct DCCDecl;
 #define DCCTYPE_ISUNSIGNED_OR_PTR(t) (DCCTYPE_ISUNSIGNED(t) || (t)&DCCTYPE_POINTER)
 
 /* Fixed-length names. */
-#if DCC_TARGET_BITPERBYTE == 8
-#define DCCTYPE_INT8       DCCTYPE_BYTE
+#if DCC_TARGET_SIZEOF_BYTE == 1
+#   define DCCTYPE_IB1      DCCTYPE_BYTE
+#elif DCC_TARGET_SIZEOF_WORD == 1
+#   define DCCTYPE_IB1      DCCTYPE_WORD
+#elif DCC_TARGET_SIZEOF_INT == 1
+#   define DCCTYPE_IB1      DCCTYPE_INT
 #endif
-#if DCC_TARGET_SIZEOF_INT == 4
-#define DCCTYPE_INT32      DCCTYPE_INT
+#if DCC_TARGET_SIZEOF_BYTE == 2
+#   define DCCTYPE_IB2      DCCTYPE_BYTE
+#elif DCC_TARGET_SIZEOF_WORD == 2
+#   define DCCTYPE_IB2      DCCTYPE_WORD
 #elif DCC_TARGET_SIZEOF_INT == 2
-#define DCCTYPE_INT16      DCCTYPE_WORD
+#   define DCCTYPE_IB2      DCCTYPE_INT
 #endif
-#if DCC_TARGET_SIZEOF_SHORT == 2
-#define DCCTYPE_INT16      DCCTYPE_WORD
-#elif DCC_TARGET_SIZEOF_ITN == 2
-#define DCCTYPE_INT16      DCCTYPE_INT
+#if DCC_TARGET_SIZEOF_BYTE == 4
+#   define DCCTYPE_IB4      DCCTYPE_BYTE
+#elif DCC_TARGET_SIZEOF_WORD == 4
+#   define DCCTYPE_IB4      DCCTYPE_WORD
+#elif DCC_TARGET_SIZEOF_INT == 4
+#   define DCCTYPE_IB4      DCCTYPE_INT
 #endif
-#define DCCTYPE_INT64      DCCTYPE_LLONG
+#define DCCTYPE_IBN(bytes)  DCC_PRIVATE_PP_CAT(DCCTYPE_IB,bytes)
+
+
+#if DCC_TARGET_BITPERBYTE == 8
+#ifdef DCCTYPE_IB1
+#   define DCCTYPE_INT8     DCCTYPE_IB1
+#endif
+#ifdef DCCTYPE_IB2
+#   define DCCTYPE_INT16    DCCTYPE_IB2
+#endif
+#ifdef DCCTYPE_IB4
+#   define DCCTYPE_INT32    DCCTYPE_IB4
+#endif
+#   define DCCTYPE_INT64    DCCTYPE_IB8
+#else
+#   error FIXME
+#endif
 #define DCCTYPE_PRIVATE_INTN(bits) DCC_PRIVATE_PP_CAT(DCCTYPE_INT,bits)
-#define DCCTYPE_INTN(bytes)        DCCTYPE_PRIVATE_INTN(DCC_MUL8(bytes))
+#define DCCTYPE_INTN(bits) DCC_PRIVATE_PP_CAT(DCCTYPE_INT,bits)
 
 /* Target names. */
-#define DCCTYPE_LONG      DCCTYPE_INTN(DCC_TARGET_SIZEOF_LONG)
-#define DCCTYPE_SHORT     DCCTYPE_INTN(DCC_TARGET_SIZEOF_SHORT)
-#define DCCTYPE_CHAR      DCCTYPE_INTN(DCC_TARGET_SIZEOF_CHAR)
-#define DCCTYPE_PTRDIFF   DCCTYPE_INTN(DCC_TARGET_SIZEOF_PTRDIFF_T)
-#define DCCTYPE_SIZE      DCCTYPE_INTN(DCC_TARGET_SIZEOF_SIZE_T)
-#define DCCTYPE_INTPTR    DCCTYPE_INTN(DCC_TARGET_SIZEOF_POINTER)
+#define DCCTYPE_LONG      DCCTYPE_IBN(DCC_TARGET_SIZEOF_LONG)
+#define DCCTYPE_SHORT     DCCTYPE_IBN(DCC_TARGET_SIZEOF_SHORT)
+#define DCCTYPE_CHAR      DCCTYPE_IBN(DCC_TARGET_SIZEOF_CHAR)
+#define DCCTYPE_PTRDIFF   DCCTYPE_IBN(DCC_TARGET_SIZEOF_PTRDIFF_T)
+#define DCCTYPE_SIZE      DCCTYPE_IBN(DCC_TARGET_SIZEOF_SIZE_T)
+#define DCCTYPE_INTPTR    DCCTYPE_IBN(DCC_TARGET_SIZEOF_POINTER)
+#define DCCTYPE_LLONG     DCCTYPE_IBN(DCC_TARGET_SIZEOF_LONG_LONG)
 
 /* Type groups. */
 #define DCCTYPE_BUILTIN   0x00000000 /* Type group: builtin type ('t_base' must be NULL)

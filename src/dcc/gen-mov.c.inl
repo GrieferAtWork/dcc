@@ -58,7 +58,7 @@ DCCDisp_MemsMovReg(struct DCCMemLoc const *__restrict src,
  target_siz_t dst_siz = DCC_RC_SIZE(dst); assert(src);
  if unlikely(!src_bytes) { DCCDisp_RegBinReg('^',dst,dst,1); return; }
  if (src_bytes >= dst_siz) { DCCDisp_MemMovReg(src,dst); return; } /* Simply copy from src. */
- assert(src_bytes < DCC_TARGET_SIZEOF_POINTER);
+ assert(src_bytes < DCC_TARGET_SIZEOF_GP_REGISTER);
  /* use movsx/movzx to extend the source memory location into 'dst'. */
  if ((dst&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) {
   assert(src_bytes == 1); /* movsx/movzx m8, r16 */
@@ -84,7 +84,7 @@ DCCDisp_RegMovMems(rc_t src, struct DCCMemLoc const *__restrict dst,
  struct DCCMemLoc newdst;
  target_siz_t src_siz = DCC_RC_SIZE(src); assert(dst);
  if (src_siz >= dst_bytes) {
-  assert(dst_bytes <= DCC_TARGET_SIZEOF_POINTER);
+  assert(dst_bytes <= DCC_TARGET_SIZEOF_GP_REGISTER);
   switch (dst_bytes) {
   case 0: return;
   case 1: src = DCCVStack_CastReg(src,src_unsigned,DCC_RC_I8); break;
@@ -123,7 +123,7 @@ DCCDisp_RegMovMems(rc_t src, struct DCCMemLoc const *__restrict dst,
 
 PRIVATE void
 DCCDisp_SIMovDI(target_siz_t n_bytes) {
- if (n_bytes <= DCC_TARGET_SIZEOF_POINTER*2) {
+ if (n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*2) {
   /* Special case for small movs. */
   while (n_bytes >= 4) asm_op_movsl(),n_bytes -= 4;
   if (n_bytes & 2) asm_op_movsw();
@@ -133,13 +133,13 @@ DCCDisp_SIMovDI(target_siz_t n_bytes) {
  DCCVStack_GetRegExact(DCC_RR_XCX);
  if (n_bytes % 4) {
   /* Special cases for situations in which the given byte count is unaligned! */
-  if (!(n_bytes % 2) && n_bytes <= DCC_TARGET_SIZEOF_POINTER*8) {
+  if (!(n_bytes % 2) && n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*8) {
    /* Use 'rep movsw' */
    DCCDisp_IntMovReg((target_off_t)(n_bytes / 2),DCC_RR_XCX),n_bytes %= 2;
    asm_op_cld();
    asm_op_rep();
    asm_op_movsw();
-  } else if (n_bytes <= DCC_TARGET_SIZEOF_POINTER*4) {
+  } else if (n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*4) {
    /* Use 'rep movsb' */
    DCCDisp_IntMovReg((target_off_t)n_bytes,DCC_RR_XCX),n_bytes = 0;
    asm_op_cld();
@@ -161,7 +161,7 @@ use_movsl:
 PRIVATE void
 DCCDisp_AXMovDI(width_t max_width, target_siz_t n_bytes) {
  assert(CHECK_WIDTH(max_width));
- if (n_bytes <= DCC_TARGET_SIZEOF_POINTER*2) {
+ if (n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*2) {
   /* Special case for small stos. */
   if (max_width >= 4) while (n_bytes >= 4) asm_op_stosl(),n_bytes -= 4;
   if (max_width >= 2) while (n_bytes >= 2) asm_op_stosw(),n_bytes -= 2;
@@ -171,14 +171,14 @@ DCCDisp_AXMovDI(width_t max_width, target_siz_t n_bytes) {
  DCCVStack_GetRegExact(DCC_RR_XCX);
  if (n_bytes % max_width) {
   /* Special cases for situations in which the given byte count is unaligned! */
-  if (!(n_bytes % 2) && n_bytes <= DCC_TARGET_SIZEOF_POINTER*8) {
+  if (!(n_bytes % 2) && n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*8) {
 use_stosw:
    /* Use 'rep stosw' */
    DCCDisp_IntMovReg((target_off_t)(n_bytes / 2),DCC_RR_XCX),n_bytes %= 2;
    asm_op_cld();
    asm_op_rep();
    asm_op_stosw();
-  } else if (n_bytes <= DCC_TARGET_SIZEOF_POINTER*4) {
+  } else if (n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*4) {
 use_stosb:
    /* Use 'rep stosb' */
    DCCDisp_IntMovReg((target_off_t)n_bytes,DCC_RR_XCX),n_bytes = 0;
@@ -394,9 +394,9 @@ DCCDisp_DoMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_byt
  common_size = src_bytes < dst_bytes ? src_bytes : dst_bytes;
  max_block = size_iter = common_size;
  /* The mov must be performed at run-time. */
- if (max_block >= DCC_TARGET_SIZEOF_POINTER)
-  max_block = DCC_TARGET_SIZEOF_POINTER;
-#if DCC_TARGET_SIZEOF_POINTER > 4
+ if (max_block >= DCC_TARGET_SIZEOF_GP_REGISTER)
+     max_block  = DCC_TARGET_SIZEOF_GP_REGISTER;
+#if DCC_TARGET_SIZEOF_GP_REGISTER > 4
  else if (max_block >= 4) max_block = 4;
 #endif
  else if (max_block >= 2) max_block = 2;
@@ -424,7 +424,7 @@ DCCDisp_DoMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_byt
   dst_iter.ml_off += max_block;
   size_iter       -= max_block;
  }
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_GP_REGISTER > 4
  if (size_iter&4) {
   temp_register &= ~(DCC_RC_I64);
   assert(temp_register&DCC_RC_I32);
@@ -575,14 +575,14 @@ DCCDisp_VecMovMem_fixed(void const *__restrict src,
  struct DCCSymAddr cst;
  struct DCCMemLoc dst_iter = *dst;
  cst.sa_sym = DCC_RC_CONST;
- while (n_bytes >= DCC_TARGET_SIZEOF_POINTER) {
+ while (n_bytes >= DCC_TARGET_SIZEOF_IMM_MAX) {
   cst.sa_off = *(target_off_t *)src;
-  DCCDisp_DoCstMovMem(&cst,&dst_iter,DCC_TARGET_SIZEOF_POINTER);
-  *(uintptr_t *)&src += DCC_TARGET_SIZEOF_POINTER;
-  dst_iter.ml_off    += DCC_TARGET_SIZEOF_POINTER;
-  n_bytes            -= DCC_TARGET_SIZEOF_POINTER;
+  DCCDisp_DoCstMovMem(&cst,&dst_iter,DCC_TARGET_SIZEOF_IMM_MAX);
+  *(uintptr_t *)&src += DCC_TARGET_SIZEOF_IMM_MAX;
+  dst_iter.ml_off    += DCC_TARGET_SIZEOF_IMM_MAX;
+  n_bytes            -= DCC_TARGET_SIZEOF_IMM_MAX;
  }
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_IMM_MAX > 4
  if (n_bytes&4) {
   cst.sa_off = (target_off_t)*(uint32_t *)src;
   DCCDisp_DoCstMovMem(&cst,&dst_iter,4);
@@ -608,17 +608,17 @@ DCCDisp_BytMovMem_fixed(int src,
  struct DCCSymAddr cst;
  struct DCCMemLoc dst_iter = *dst;
  cst.sa_sym = NULL;
-#if DCC_TARGET_SIZEOF_POINTER == 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
  cst.sa_off = 0x0101010101010101ull*src;
 #else
  cst.sa_off = 0x01010101*src;
 #endif
- while (n_bytes >= DCC_TARGET_SIZEOF_POINTER) {
-  DCCDisp_DoCstMovMem(&cst,&dst_iter,DCC_TARGET_SIZEOF_POINTER);
-  dst_iter.ml_off += DCC_TARGET_SIZEOF_POINTER;
-  n_bytes         -= DCC_TARGET_SIZEOF_POINTER;
+ while (n_bytes >= DCC_TARGET_SIZEOF_IMM_MAX) {
+  DCCDisp_DoCstMovMem(&cst,&dst_iter,DCC_TARGET_SIZEOF_IMM_MAX);
+  dst_iter.ml_off += DCC_TARGET_SIZEOF_IMM_MAX;
+  n_bytes         -= DCC_TARGET_SIZEOF_IMM_MAX;
  }
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_IMM_MAX > 4
  if (n_bytes&4) {
   DCCDisp_DoCstMovMem(&cst,&dst_iter,4);
   dst_iter.ml_off += 4;
@@ -910,7 +910,7 @@ def_reloc(struct DCCSymAddr const *__restrict expr,
      * >> We don't need to emit a relocation, because
      *    we can simply add the base value here! */
     xval += (target_off_t)xsym->sy_addr;
-    xval += (target_off_t)(target_ptr_t)DCCSym_SECTION(xsym)->sc_base;
+    xval += (target_off_t)DCCSection_BASE(DCCSym_SECTION(xsym));
     rel   = DCC_R_NONE; /* Place an empty relocation for dependency mapping. */
    }
   }
@@ -949,7 +949,7 @@ DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict val,
    {
     /* Add a relocation and store the symbol. */
     rel_t rel =
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
                 width == 8 ? DCC_R_DATA_64 :
 #endif
                 width == 4 ? DCC_R_DATA_32 :
@@ -957,7 +957,7 @@ DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict val,
                              DCC_R_DATA_8;
     target_off_t v = def_reloc(val,target_sec,target_addr.sa_off,rel);
     /* Store the initial value inside the target data. */
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
          if (width == 8) *(int64_t *)target_data = (int64_t)v;
     else
 #endif
@@ -978,7 +978,7 @@ PUBLIC void
 DCCDisp_LocPush(struct DCCMemLoc const *__restrict addr) {
  assert(addr);
  if (addr->ml_reg)
-  DCCDisp_RegPush(DCCDisp_AddProtReg(&addr->ml_sad,addr->ml_reg));
+      DCCDisp_RegPush(DCCDisp_AddProtReg(&addr->ml_sad,addr->ml_reg));
  else DCCDisp_CstPush(&addr->ml_sad,DCC_TARGET_SIZEOF_POINTER);
 }
 PUBLIC void

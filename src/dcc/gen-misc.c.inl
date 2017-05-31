@@ -72,9 +72,9 @@ DCCDisp_MemXchMem(struct DCCMemLoc const *__restrict a,
  a_iter = *a,b_iter = *b;
  for (;;) {
   target_siz_t part;
-  if (n_bytes >= DCC_TARGET_SIZEOF_POINTER)
-   part = DCC_TARGET_SIZEOF_POINTER;
-#if DCC_TARGET_SIZEOF_POINTER > 4
+  if (n_bytes >= DCC_TARGET_SIZEOF_ARITH_MAX)
+      part = DCC_TARGET_SIZEOF_ARITH_MAX;
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
   else if (n_bytes >= 4) part = 4,temp &= ~(DCC_RC_I64);
 #endif
   else if (n_bytes >= 2) part = 2,temp &= ~(DCC_RC_I32);
@@ -155,11 +155,11 @@ DCCDisp_BSwapMem(struct DCCMemLoc const *__restrict dst,
  temp = DCCVStack_GetReg(DCC_RC_PTR,1);
  while (n_bytes >= 2) {
   target_siz_t part = n_bytes/2;
-  if (part > DCC_TARGET_SIZEOF_POINTER)
-   part = DCC_TARGET_SIZEOF_POINTER;
+  if (part > DCC_TARGET_SIZEOF_ARITH_MAX)
+      part = DCC_TARGET_SIZEOF_ARITH_MAX;
        if (part < 2) temp &= ~(DCC_RC_I3264|DCC_RC_I16);
   else if (part < 4) temp &= ~(DCC_RC_I3264);
-#ifdef DCC_RC_I64
+#if DCC_TARGET_SIZEOF_ARITH_MAX >= 8
   else if (part < 8) temp &= ~(DCC_RC_I64);
 #endif
   b.ml_off -= part;

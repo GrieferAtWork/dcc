@@ -160,8 +160,9 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
   } else {
    other_sec_size = DCCSection_VSIZE(srcsec);
    /* Allocate space in the destination section. */
-   if (srcsec->sc_start.sy_flags&DCC_SYMFLAG_SEC_U) srcsec->sc_align = 1;
-   other_sec_base = DCCSection_DAlloc(dstsec,other_sec_size,srcsec->sc_align,0);
+   if (srcsec->sc_start.sy_flags&DCC_SYMFLAG_SEC_U) srcsec->sc_start.sy_align = 1;
+   other_sec_base = DCCSection_DAlloc(dstsec,other_sec_size,
+                                      srcsec->sc_start.sy_align,0);
    other_sec_size = DCCSection_MSIZE(srcsec);
    if (other_sec_size) {
     dst_buffer = (uint8_t *)DCCSection_GetText(dstsec,other_sec_base,other_sec_size);
@@ -434,7 +435,8 @@ fix_alias:
      if (src_sym->sy_sec) {
       /* Section merge adjustments were already made above! */
       DCCSym_Define(dst_sym,src_sym->sy_sec,
-                    src_sym->sy_addr,0);
+                    src_sym->sy_addr,0,
+                    src_sym->sy_align);
       /* Really hacky: inherit all data.
        * Since we've already inherited all section references,
        * we must not create new ones when inheriting symbol data!
@@ -643,7 +645,11 @@ DCCUnit_Restore(struct DCCUnit *__restrict other) {
  }
 }
 
-
 DCC_DECL_END
+
+#ifndef __INTELLISENSE__
+#include "unit-seccoll.c.inl"
+#endif
+
 
 #endif /* !GUARD_DCC_UNIT_MERGE_C */

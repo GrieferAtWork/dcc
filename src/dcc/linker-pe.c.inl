@@ -325,7 +325,7 @@ pe_mk_imptab(struct DCCSection *__restrict thunk) {
  target_ptr_t thunk_ptr,entry_ptr;
  target_siz_t total_size;
  PIMAGE_IMPORT_DESCRIPTOR hdr;
- DWORD thunk_base = thunk->sc_base-pe.pe_imgbase;
+ DWORD thunk_base = DCCSection_BASE(thunk)-pe.pe_imgbase;
  assert(thunk);
  assert(!DCCSection_ISIMPORT(thunk));
  /* Count the total number of import symbols. */
@@ -389,15 +389,15 @@ pe_mk_imptab(struct DCCSection *__restrict thunk) {
       entry_data += 2;
       memcpy(entry_data,entry_name->k_name,entry_name->k_size*sizeof(char));
       /* Allow the entry memory to be merged. */
-      entry_addr = DCCSection_DMerge(thunk,entry_addr,entry_size,1);
+      entry_addr = DCCSection_DMerge(thunk,entry_addr,entry_size,1,1);
 
       /* Patch the library symbols to point into the thunk. */
       if likely((iat_sym = sym->sy_peind) != NULL) {
        /* 'sy_size' contains the address of the ITA wrapper (s.a.: 'pe_mk_buildita()') */
        import_addr = iat_sym->sy_size;
-       DCCSym_Define(iat_sym,thunk,thunk_ptr,0); /* Point the ITA symbol into the thunk table. */
+       DCCSym_Define(iat_sym,thunk,thunk_ptr,0,1); /* Point the ITA symbol into the thunk table. */
        DCCSym_ClrDef(sym);
-       DCCSym_Define(sym,linker.l_text,import_addr,0); /* Point the library symbol to the ITA code. */
+       DCCSym_Define(sym,linker.l_text,import_addr,0,1); /* Point the library symbol to the ITA code. */
       } else {
        /* We shouldn't really get here because the only way we could would be if
         * the symbol was never accessed, either through PE:ITA-Indirection,
@@ -407,9 +407,8 @@ pe_mk_imptab(struct DCCSection *__restrict thunk) {
         * because the below code assigns the symbol pointer to the PE object itself. */
        WARN(W_INVALID_PE_SYMBOL_LINKAGE,entry_name);
        DCCSym_ClrDef(sym);
-       DCCSym_Define(sym,thunk,thunk_ptr,0);
+       DCCSym_Define(sym,thunk,thunk_ptr,0,1);
       }
-
       entry_addr += thunk_base; /* Patch the entry address. */
       *(target_ptr_t *)(thunk->sc_text.tb_begin+thunk_ptr) =
       *(target_ptr_t *)(thunk->sc_text.tb_begin+entry_ptr) = entry_addr;
@@ -607,7 +606,7 @@ pe_mk_exptab(struct DCCSection *__restrict thunk) {
  target_ptr_t ord_addr;     /* Vector of WORD identifying function ordinals used as import hints. */
  assert(thunk);
  /* generate the export directory */
- thunk_base = thunk->sc_base-pe.pe_imgbase;
+ thunk_base = DCCSection_BASE(thunk)-pe.pe_imgbase;
  /* Allocate section memory for the export directory, function pointers and function IDS.
   * NOTE: Memory for the function names must be allocated dynamically later! */
  expdir_addr = DCCSection_DAlloc(thunk,sizeof(IMAGE_EXPORT_DIRECTORY),16,0);
@@ -731,14 +730,13 @@ PRIVATE void pe_mk_secvec(void) {
    addr = pe_alignsec(addr);
    if (!(section->sc_start.sy_flags&DCC_SYMFLAG_SEC_U)) {
     /* Now align it again by the requirements of the section. */
-    addr = (addr+(section->sc_align-1)) & ~(section->sc_align-1);
+    addr = (addr+(section->sc_start.sy_align-1)) & ~(section->sc_start.sy_align-1);
    }
 
    if (section->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED) {
-    info->si_addr = section->sc_base;
+    info->si_addr = DCCSection_BASE(section);
    } else {
     info->si_addr = addr;
-    assert(!section->sc_base);
     /* Set the section base address when it isn't a fixed section. */
     DCCSection_SetBaseTo(section,addr);
    }
@@ -774,7 +772,7 @@ PRIVATE void pe_mk_secvec(void) {
 #elif 0
     addr += info->si_vsize;
 #else
-    addr = section->sc_base+info->si_vsize;
+    addr = DCCSection_BASE(section)+info->si_vsize;
 #endif
     ++info;
    }
@@ -812,7 +810,7 @@ pe_mk_relrva(struct secinfo *__restrict info) {
     if (ptr >= data && ptr <= data_end) {
      target_ptr_t sym_base_offset;
      sym_base_offset = (relsym->sy_addr+reladdr+
-                        relsym->sy_sec->sc_base)-
+                        DCCSection_BASE(relsym->sy_sec))-
                         pe.pe_imgbase;
      *(target_ptr_t *)ptr += sym_base_offset;
     } else {
@@ -905,7 +903,7 @@ pe_mk_writefile(stream_t fd) {
   { /* Fill in section characteristics. */
     struct DCCSection *sec = iter->si_sec;
     symflag_t section_flags = iter->si_sec->sc_start.sy_flags;
-    target_ptr_t sec_align = sec->sc_align;
+    target_ptr_t sec_align = sec->sc_start.sy_align;
     iter->si_hdr.Characteristics = 0;
 #ifndef IMAGE_SCN_TYPE_NOLOAD
 #define IMAGE_SCN_TYPE_NOLOAD 0x00000002
@@ -967,7 +965,7 @@ pe_mk_writefile(stream_t fd) {
     entryaddr.sa_off = 0;
    }
    hdr.ohdr.AddressOfEntryPoint = (entryaddr.sa_sym->sy_addr+entryaddr.sa_off+
-                                   entryaddr.sa_sym->sy_sec->sc_base)-
+                                   DCCSection_BASE(entryaddr.sa_sym->sy_sec))-
                                    pe.pe_imgbase;
  }
  hdr.fhdr.NumberOfSections = (WORD)pe.pe_secc;
@@ -1081,7 +1079,7 @@ pe_getitasym(struct DCCSym *__restrict basesym) {
 #if 1 /* Name the symbol for unique linkage between object files. */
  {
   size_t namelen = basesym->sy_name->k_size;
-  char *buf,*mbuf;
+  char *buf,*mbuf; struct DCCSym *result;
   if (namelen < 64) {
    buf = (char *)alloca((namelen+1+DCC_COMPILER_STRLEN(ITA_PREFIX))*sizeof(char));
    mbuf = NULL;
@@ -1093,7 +1091,9 @@ pe_getitasym(struct DCCSym *__restrict basesym) {
   buf[DCC_COMPILER_STRLEN(ITA_PREFIX)+namelen] = '\0';
   memcpy(buf+DCC_COMPILER_STRLEN(ITA_PREFIX),
          basesym->sy_name->k_name,namelen*sizeof(char));
-  return DCCUnit_NewSyms(buf,DCC_SYMFLAG_PRIVATE);
+  result = DCCUnit_NewSyms(buf,DCC_SYMFLAG_PRIVATE);
+  free(mbuf);
+  return result;
  }
 #else
  return DCCUnit_AllocSym();
@@ -1149,7 +1149,7 @@ PRIVATE void pe_mk_buildita(void) {
    iat_addr = DCCSection_TADDR(linker.l_text);
    iat_code = (uint8_t *)DCCSection_TAlloc(linker.l_text,6);
    if unlikely(!iat_code) return;
-   /* jmp *$(thunk->sc_base + thunk_ptr) */
+   /* jmp *$(DCCSection_BASE(thunk) + thunk_ptr) */
    *iat_code++           = 0xff;
    *iat_code++           = 0x25;
    *(uint32_t *)iat_code = 0;
@@ -1226,6 +1226,8 @@ DCCLinker_Make(stream_t fd) {
   DCCUnit_ClearUnused();
   DCCUnit_ClearUnusedLibs();
  }
+ DCCUnit_CollapseSections();
+ DCCUnit_ResolveDisp();
  
  /* Build ITA wrapper functions for all symbols still in use. */
  pe_mk_buildita();

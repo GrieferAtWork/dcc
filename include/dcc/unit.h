@@ -86,35 +86,36 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 #define DCC_SYMFLAG_PROTECTED  0x00000001 /*< '[[visibility("protected")]]': Protected symbol (don't export from the compilation unit). */
 #define DCC_SYMFLAG_PRIVATE    0x00000002 /*< '[[visibility("hidden")]]': Private symbol (don't export from a binary/library). */
 #define DCC_SYMFLAG_INTERNAL   0x00000003 /*< '[[visibility("internal")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
+#define DCC_SYMFLAG_VISIBILITY 0x00000003 /*< Mask for ELF-style symbol visibility. */
 #define DCC_SYMFLAG_STATIC     0x00000004 /*< 'static': FLAG: Protected symbol (don't export from the compilation unit). */
 #define DCC_SYMFLAG_WEAK       0x00000008 /*< '[[weak]]': FLAG: Weak symbol. A weak symbols can be overwritten at any time by another
                                            *   symbol, meaning should assumptions may be made about its address, or its relation.
                                            *   Access to such a symbol should take place exclusively through relocations. */
-#if DCC_TARGET_BIN == DCC_BINARY_PE
-#define DCC_SYMFLAG_DLLIMPORT  0x00000010 /*< '[[dllimport]]': On PE targets: explicit dllimport. */
-#define DCC_SYMFLAG_DLLEXPORT  0x00000020 /*< '[[dllexport]]': On PE targets: explicit dllexport. */
-#endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
+#define DCC_SYMFLAG_NOCOLL     0x00000020 /*< '[[nocoll]]': Don't allow this symbol to be collapsed. */
 #define DCC_SYMFLAG_USED       0x00000040 /*< '[[used]]': FLAG: Don't delete this symbol, even if it appears unused. */
 #define DCC_SYMFLAG_UNUSED     0x00000080 /*< '[[unused]]': FLAG: Don't warn if this symbol is deleted during unused symbol collection. */
-#define DCC_SYMFLAG_VISIBILITY 0x00000003 /*< Mask for ELF-style symbol visibility. */
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+#define DCC_SYMFLAG_DLLIMPORT  0x00000100 /*< '[[dllimport]]': On PE targets: explicit dllimport. */
+#define DCC_SYMFLAG_DLLEXPORT  0x00000200 /*< '[[dllexport]]': On PE targets: explicit dllexport. */
+#endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
 /* TODO: Add more flags for symbol typing (unknown|function|object) */
 
 /* Additional symbol flags only meaningful for section start symbols. */
-#define DCC_SYMFLAG_SEC_R     0x01000000 /*< The section is readable. */
-#define DCC_SYMFLAG_SEC_W     0x02000000 /*< The section is writable. */
-#define DCC_SYMFLAG_SEC_X     0x04000000 /*< The section is executable. */
-#define DCC_SYMFLAG_SEC_S     0x08000000 /*< The section is shared between multiple instances of a running binary (NOTE: May not be available for some targets). */
-#define DCC_SYMFLAG_SEC_M     0x10000000 /*< Symbols in this section can be merged. */
-#define DCC_SYMFLAG_SEC_U     0x20000000 /*< This section has no alignment requirements (sc_align is ignored and interpreted as '1'). */
+#define DCC_SYMFLAG_SEC_R     0x00010000 /*< The section is readable. */
+#define DCC_SYMFLAG_SEC_W     0x00020000 /*< The section is writable. */
+#define DCC_SYMFLAG_SEC_X     0x00040000 /*< The section is executable. */
+#define DCC_SYMFLAG_SEC_S     0x00080000 /*< The section is shared between multiple instances of a running binary (NOTE: May not be available for some targets). */
+#define DCC_SYMFLAG_SEC_M     0x00100000 /*< Symbols in this section can be merged. */
+#define DCC_SYMFLAG_SEC_U     0x00200000 /*< This section has no alignment requirements ('sc_start.sy_align' is ignored and interpreted as '1'). */
 #define DCC_SYMFLAG_SEC(r,w,x,s,m,u) \
  (((r)?DCC_SYMFLAG_SEC_R:0)|((w)?DCC_SYMFLAG_SEC_W:0)\
  |((x)?DCC_SYMFLAG_SEC_X:0)|((s)?DCC_SYMFLAG_SEC_S:0)\
  |((m)?DCC_SYMFLAG_SEC_M:0)|((u)?DCC_SYMFLAG_SEC_U:0))
-#define DCC_SYMFLAG_SEC_ISIMPORT 0x00000100 /*< The section is not known at compile-time, but is linked as a shared library at run-time (The library name is used as section name). */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
-#define DCC_SYMFLAG_PE_ITA_IND   0x00000200 /*< Try to perform PE:ITA-indirection on this symbol. */
+#define DCC_SYMFLAG_PE_ITA_IND   0x08000000 /*< Try to perform PE:ITA-indirection on this symbol. */
 #endif
-#define DCC_SYMFLAG_SEC_FIXED    0x20000000 /*< The section must be loaded to a fixed address already specified by 'sc_base'. (Currently not implemented...)
+#define DCC_SYMFLAG_SEC_ISIMPORT 0x10000100 /*< The section is not known at compile-time, but is linked as a shared library at run-time (The library name is used as section name). */
+#define DCC_SYMFLAG_SEC_FIXED    0x20000000 /*< The section must be loaded to a fixed address already specified by 'sy_addr'.
                                              *  When multiple sections overlap at the same virtual address, it is the linker's job to solve such problems. */
 #define DCC_SYMFLAG_SEC_NOALLOC  0x40000000 /*< The runtime linker is not required to allocate this section. */
 #if DCC_HOST_CPU == DCC_TARGET_CPU
@@ -130,8 +131,8 @@ struct DCCSym {
                                             *  Self-pointer within the 'sy_sec_next...' linked list used by section symbol tables. */
  struct DCCSym            *sy_sec_next;    /*< [0..1] Next section symbol with the same modulated 'sy_name' address. */
  struct DCCSym            *sy_unit_next;   /*< [0..1] Next declaration symbol with the same modulated 'sy_name' address, within the same unit. */
- /*ref*/struct DCCSym     *sy_unit_before; /*< [0..1][->sy_name == sy_name] Used for redefining symbols: previous version of this
-                                            *              symbol within the same unit (e.g.: when defining local assembly labels). */
+ /*ref*/struct DCCSym     *sy_unit_before; /*< [0..1][->sy_name == sy_name] Used for redefining symbols: previous version of this symbol
+                                            *                               within the same unit (e.g.: when defining local assembly labels). */
  struct TPPKeyword const  *sy_name;        /*< [1..1][const] Symbol name (When set to '&TPPKeyword_Empty', the 'DCC_SYMFLAG_STATIC' flag must be set).
                                             *   NOTE: This name is also known as the assembly name (because it is what can be set with '__asm__'
                                             *         after a static-duration definition, as well as from assembly and during linkage)
@@ -175,15 +176,29 @@ struct DCCSym {
   * WARNING: In the event of 'sy_sec' being an import section, this behavior will not take place.
   * WARNING: For this reason, 'sy_addr' and 'sy_size' may only be modified through
   *          symbol re-definitions with calls to 'DCCSym_Define', 'DCCSym_Alias' and 'DCCSym_SetSize' */
+union{
  target_ptr_t              sy_addr;        /*< [const_if(sy_sec != NULL)] Symbol address (offset from associated section; undefined if 'sy_sec == NULL')
-                                            *   NOTE: When this symbol depends on a library, this field may be used as a linker hint. */
+                                            *   NOTE: When this symbol depends on a library, this field may be used as a linker hint.
+                                            *   NOTE: Base address of this section (or ZERO(0) if &DCCSection_Abs, or not relocated) */
+ target_off_t              sy_off;         /*< [if(DCCSym_ISALIAS(self))] Offset added to the address of the aliased symbol. */
+ target_ptr_t              sy_base;        /*< [if(DCCSym_ISSECTION(self))] Base address of this section (or ZERO(0) if &DCCSection_Abs, or not relocated) */
+};
  target_siz_t              sy_size;        /*< Symbol size, or 0 if unknown (used for generating better debug information & tracking free section data)
                                             *  >> When a symbol who's size is known is deleted, the freed memory becomes available for future allocations within the accompaning section. */
+ target_siz_t              sy_align;       /*< [!0] Minimum symbol alignment (Unused for symbol alias declarations).
+                                            *  NOTE: For section symbols, this is the alignment of the section. */
 #else
+union{
  DCC(target_ptr_t)         sy_addr;        /*< [const_if(sy_sec != NULL)] Symbol address (offset from associated section; undefined if 'sy_sec == NULL')
-                                            *   NOTE: When this symbol depends on a library, this field may be used as a linker hint. */
+                                            *   NOTE: When this symbol depends on a library, this field may be used as a linker hint.
+                                            *   NOTE: Base address of this section (or ZERO(0) if &DCCSection_Abs, or not relocated) */
+ DCC(target_off_t)         sy_off;         /*< [if(DCCSym_ISALIAS(self))] Offset added to the address of the aliased symbol. */
+ DCC(target_ptr_t)         sy_base;        /*< [if(DCCSym_ISSECTION(self))] Base address of this section (or ZERO(0) if &DCCSection_Abs, or not relocated) */
+};
  DCC(target_siz_t)         sy_size;        /*< Symbol size, or 0 if unknown (used for generating better debug information & tracking free section data)
                                             *  >> When a symbol who's size is known is deleted, the freed memory becomes available for future allocations within the accompaning section. */
+ DCC(target_siz_t)         sy_align;       /*< [!0] Minimum symbol alignment (Unused for symbol alias declarations).
+                                            *  NOTE: For section symbols, this is the alignment of the section. */
 #endif
 };
 #define DCCSym_HASH(self) ((self)->sy_name->k_id)
@@ -302,7 +317,9 @@ DCCSym_New(struct TPPKeyword const *__restrict name, DCC(symflag_t) flags);
  *     symbol data reference counts! */
 DCCFUN void DCCSym_Define(struct DCCSym *__restrict self,
                           struct DCCSection *__restrict section,
-                          DCC(target_ptr_t) addr, DCC(target_siz_t) size);
+                          DCC(target_ptr_t) addr,
+                          DCC(target_siz_t) size,
+                          DCC(target_siz_t) align);
 DCCFUN void DCCSym_Alias(struct DCCSym *__restrict self,
                          struct DCCSym *__restrict alias_sym,
                          DCC(target_ptr_t) offset);
@@ -310,7 +327,9 @@ DCCFUN void DCCSym_Alias(struct DCCSym *__restrict self,
 /* Same as 'DCCSym_Define', but no redefinition warnings are emit. */
 DCCFUN void DCCSym_Redefine(struct DCCSym *__restrict self,
                             struct DCCSection *__restrict section,
-                            DCC(target_ptr_t) addr, DCC(target_siz_t) size);
+                            DCC(target_ptr_t) addr,
+                            DCC(target_siz_t) size,
+                            DCC(target_siz_t) align);
 
 /* Set the size of a given symbol to 'size', updating
  * the reference counter of potentially mapped data.
@@ -333,7 +352,7 @@ DCCFUN void DCCSym_ClrDef(struct DCCSym *__restrict self);
 /* Explicitly import a given symbol from a specific 'import_sec' */
 #define DCCSym_Import(self,import_sec,hint) \
        (assert(DCCSection_ISIMPORT(import_sec)),\
-        DCCSym_Define(self,import_sec,hint,0))
+        DCCSym_Define(self,import_sec,hint,0,1))
 
 /* Returns TRUE (non-zero) if the given symbols are equal
  * (that is: both are declared to point to the same location in memory)
@@ -420,16 +439,28 @@ DCCFreeData_InitCopy(struct DCCFreeData *__restrict self,
 /* Acquires/releases free memory with.
  * @return: DCC_FREEDATA_INVPTR: No free memory area compliant to the
  *                               given specifications could be found. */
-DCCFUN DCC(target_ptr_t)
-DCCFreeData_Acquire(struct DCCFreeData *__restrict self,
-                    DCC(target_siz_t) size, DCC(target_siz_t) align,
-                    DCC(target_siz_t) offset);
+#define DCCFreeData_Acquire(self,size,align,offset) \
+        DCCFreeData_AcquireBelow(self,(DCC(target_ptr_t))-1,size,align,offset)
+
+DCCFUN DCC(target_ptr_t) /* Only acquire pointers below 'below_addr' */
+DCCFreeData_AcquireBelow(struct DCCFreeData *__restrict self,
+                         DCC(target_ptr_t) below_addr,
+                         DCC(target_siz_t) size, DCC(target_siz_t) align,
+                         DCC(target_siz_t) offset);
 DCCFUN DCC(target_ptr_t)
 DCCFreeData_AcquireAt(struct DCCFreeData *__restrict self,
                       DCC(target_ptr_t) addr, DCC(target_siz_t) size);
 DCCFUN void
 DCCFreeData_Release(struct DCCFreeData *__restrict self,
                     DCC(target_ptr_t) addr, DCC(target_siz_t) size);
+
+/* Check if a given address range is part of the free data.
+ * @return: 0 : No address within the range is marked as free.
+ * @return: 1 : Some portion of the given range is marked.
+ * @return: 2 : The entirety of the given range is marked. */
+DCCFUN int
+DCCFreeData_Has(struct DCCFreeData *__restrict self,
+                DCC(target_ptr_t) addr, DCC(target_siz_t) size);
 
 
 struct DCCAllocRange {
@@ -487,12 +518,6 @@ struct DCCSection {
   * >> CRASH!
   * ALSO: This will be required for object-file hard aliases. */
  struct DCCAllocRange *sc_alloc; /*< [0..1][chain(->ar_next->...)] Reference-counted tracking of section text. */
-#ifdef DCC_PRIVATE_API
- target_ptr_t          sc_align; /*< Minimum section alignment (ignored & interpreted as '1' when 'DCC_SYMFLAG_SEC_U' is set) */
-#else
- DCC(target_ptr_t)     sc_align; /*< Minimum section alignment (ignored & interpreted as '1' when 'DCC_SYMFLAG_SEC_U' is set) */
-#endif
- target_ptr_t          sc_base;  /*< Base address of this section (or NULL if &DCCSection_Abs, or not runtime-relocated) */
  target_ptr_t          sc_merge; /*< Used during merging: Base address of merge destination. */
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
  struct DCCSection    *sc_elflnk; /*< [0..1] Used by ELF: Link section. */
@@ -513,17 +538,23 @@ DCCDAT struct DCCSection DCCSection_Abs;
 #define DCCSection_XIncref(self)    ((self) ? DCCSection_Incref(self) : (void)0)
 #define DCCSection_XDecref(self)    ((self) ? DCCSection_Decref(self) : (void)0)
 
+#define DCCSection_BASE(self)             ((self)->sc_start.sy_addr)
+#define DCCSection_SETBASE(self,v)  (void)((self)->sc_start.sy_addr=(v))
 #define DCCSection_VSIZE(self) ((DCC(target_siz_t))((self)->sc_text.tb_max-(self)->sc_text.tb_begin))
 #define DCCSection_MSIZE(self) ((DCC(target_siz_t))(((self)->sc_text.tb_end < (self)->sc_text.tb_max ? \
                                                      (self)->sc_text.tb_end : (self)->sc_text.tb_max)-\
                                                      (self)->sc_text.tb_begin))
-#if 1
-#define DCCSection_HASBASE(self) \
- ((self)->sc_base || ((self)->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED))
+
+#ifdef DCC_SYMFLAG_SEC_OWNSBASE
+#define DCCSection_TEXTBASE(self) \
+ ((self)->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE) \
+  ? (uint8_t *)DCCSection_BASE(self) : ((self)->sc_text.tb_begin)
 #else
-#define DCCSection_HASBASE(self) \
- ((self) == &DCCSection_Abs || (!DCCSection_ISIMPORT(self) && (self)->sc_base))
+#define DCCSection_TEXTBASE(self) ((self)->sc_text.tb_begin)
 #endif
+
+#define DCCSection_HASBASE(self) \
+ (DCCSection_BASE(self) || ((self)->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED))
 
 #define DCCSection_ENUMSYM(sym,self) \
  for (struct DCCSym **sym_iter = (self)->sc_symv,\
@@ -586,6 +617,57 @@ do{ DCC_ASSERT(!DCCSection_ISIMPORT(self));\
 }while(DCC_MACRO_FALSE)
 #endif
 
+
+/* Looking at the reference counters of section data,
+ * mark all regions of section memory not in use as free.
+ * All free memory regions that existed before a call to
+ * this function will be dropped, meaning that after a
+ * call to this function, free memory will map perfectly
+ * against refcnt=0 regions.
+ * NOTE: Calling this function is the first step to performing
+ *       late section collapsing, where unused section memory
+ *       is dropped and used memory is moved downwards in order
+ *       to keep unused memory regions as small as possible,
+ *       as well as get rid of any defined, but in the end
+ *       unused constructs, such as unused static/inline
+ *       functions in headers.
+ * NOTE: This step of code generation of completely optional! */
+DCCFUN void DCCSection_FreeUnused(struct DCCSection *__restrict self);
+
+/* Similar to 'DCCSection_CollapseSymbols', but instead of collapsing
+ * symbols to re-use free memory regions at lower addresses, merge
+ * symbols that describe the same data.
+ * Using this function, symbol data can be merged very late, allowing
+ * for whole-program optimization for same strings, such as when
+ * two source files use the same string constant, or a string
+ * is used to initialize a static variable inside a header.
+ * NOTE: Symbol addresses and relocations will be updated accordingly.
+ * NOTE: Per-symbol alignment is respected.
+ * @return: * : The amount of symbols merged into the data locations of others. */
+DCCFUN size_t DCCSection_MergeSymbols(struct DCCSection *__restrict self);
+
+/* Looking at all symbols defined in the section, as well as all
+ * regions of memory marked as free, try to move symbols to lower
+ * memory locations, thereby allowing for late removal of unused
+ * data, as well as erasure of associated references.
+ * NOTE: Symbol addresses and relocations will be updated accordingly.
+ * NOTE: Per-symbol alignment is respected.
+ * @return: * : The amount of symbols that were moved. */
+DCCFUN size_t DCCSection_CollapseSymbols(struct DCCSection *__restrict self);
+
+/* Check if the section contains a free address range at its end, and
+ * if so: trim the section's text to not include that last portion.
+ * HINT: To fully optimize symbol memory usage within
+ *       a section, the following calls are performed:
+ *       #1: DCCSection_FreeUnused(sec);
+ *       #2: DCCSection_MergeSymbols(sec);
+ *       #3: DCCSection_CollapseSymbols(sec);
+ *       #4: DCCSection_TrimFree(sec);
+ * @return: * : The amount of bytes successfully trimmed from the end.
+ */
+DCCFUN DCC(target_siz_t) DCCSection_TrimFree(struct DCCSection *__restrict self);
+
+
 /* Add a new relocation
  * NOTE: The given 'relo' is copied, meaning
  *       its symbol reference is _NOT_ inherited.
@@ -599,7 +681,63 @@ DCCFUN void DCCSection_Putrelo(struct DCCSection *__restrict self,
  * @return: NULL: Failed to allocate more relocations (A lexer error was set). */
 DCCFUN struct DCCRel *
 DCCSection_Allocrel(struct DCCSection *__restrict self,
-                    size_t n_relocs, target_ptr_t min_addr);
+                    size_t n_relocs, DCC(target_ptr_t) min_addr);
+
+/* Delete all relocations inside 'addr...+=size'
+ * @return: * : The amount of deleted relocations.
+ * @requires: !DCCSection_ISIMPORT(self) */
+DCCFUN size_t
+DCCSection_Delrel(struct DCCSection *__restrict self,
+                  DCC(target_ptr_t) addr,
+                  DCC(target_siz_t) size);
+
+/* Check if there are relocations within the given address range.
+ * @return: 0 : No relocations where found.
+ * @return: !0 : At least one relocation was found.
+ * @requires: !DCCSection_ISIMPORT(self) */
+DCCFUN int
+DCCSection_Hasrel(struct DCCSection *__restrict self,
+                  DCC(target_ptr_t) addr,
+                  DCC(target_siz_t) size);
+
+/* Retrieve a vector relocations inside the given address range.
+ * WARNING: This function returning NULL does not necessarily
+ *          coincide with '*relc' being set to ZERO.
+ *          To handle no-relocations, the caller must check '*relc'. */
+DCCFUN struct DCCRel *
+DCCSection_Getrel(struct DCCSection *__restrict self,
+                  DCC(target_ptr_t) addr,
+                  DCC(target_siz_t) size,
+                  size_t *__restrict relc);
+
+DCC_LOCAL void
+DCCSection_Putrel(struct DCCSection *__restrict self,
+                  DCC(target_ptr_t) addr, DCC(rel_t) type,
+                  struct DCCSym *__restrict sym) {
+ struct DCCRel rel;
+ rel.r_addr = addr;
+ rel.r_type = type;
+ rel.r_sym = sym;
+ DCCSection_Putrelo(self,&rel);
+}
+
+/* Move all relocations within the address
+ * range 'old_addr..+=n_bytes' to a new
+ * memory location at 'new_addr'.
+ * This function is internally called
+ * when section data is re-sized.
+ * @return: * : The amount of relocations moved.
+ * WARNING: When both relocations & data must be moved,
+ *          relocations must be shifted first, as DISP
+ *          relocations have to be adjusted to a new
+ *          section offset.
+ */
+DCCFUN size_t
+DCCSection_Movrel(struct DCCSection *__restrict self,
+                  DCC(target_ptr_t) new_addr,
+                  DCC(target_ptr_t) old_addr,
+                  DCC(target_siz_t) n_bytes);
+
 
 /* Try to resolve disposition relocations.
  * >> This function handles any redundant relocation
@@ -644,44 +782,6 @@ DCCFUN void DCCSection_SetBaseTo(struct DCCSection *__restrict self, target_ptr_
  * @requires: !DCCSection_ISIMPORT(self) */
 DCCFUN void DCCSection_SetBase(struct DCCSection *__restrict self);
 #endif /* DCC_HOST_CPU == DCC_TARGET_CPU */
-
-/* Delete all relocations inside 'addr...+=size'
- * @return: * : The amount of deleted relocations.
- * @requires: !DCCSection_ISIMPORT(self) */
-DCCFUN size_t
-DCCSection_Delrel(struct DCCSection *__restrict self,
-                  DCC(target_ptr_t) addr,
-                  DCC(target_siz_t) size);
-
-/* Check if there are relocations within the given address range.
- * @return: 0 : No relocations where found.
- * @return: !0 : At least one relocation was found.
- * @requires: !DCCSection_ISIMPORT(self) */
-DCCFUN int
-DCCSection_Hasrel(struct DCCSection *__restrict self,
-                  DCC(target_ptr_t) addr,
-                  DCC(target_siz_t) size);
-
-/* Retrieve a vector relocations inside the given address range.
- * WARNING: This function returning NULL does not necessarily
- *          coincide with '*relc' being set to ZERO.
- *          To handle no-relocations, the caller must check '*relc'. */
-DCCFUN struct DCCRel *
-DCCSection_Getrel(struct DCCSection *__restrict self,
-                  DCC(target_ptr_t) addr,
-                  DCC(target_siz_t) size,
-                  size_t *__restrict relc);
-
-DCC_LOCAL void
-DCCSection_Putrel(struct DCCSection *__restrict self,
-                  DCC(target_ptr_t) addr, DCC(rel_t) type,
-                  struct DCCSym *__restrict sym) {
- struct DCCRel rel;
- rel.r_addr = addr;
- rel.r_type = type;
- rel.r_sym = sym;
- DCCSection_Putrelo(self,&rel);
-}
 
 /* Returns a symbol 'name' apart of the given section 'self'
  * WARNING: If the section contains multiple symbols named 'name', which symbol
@@ -751,7 +851,7 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
 DCCFUN DCC(target_ptr_t)
 DCCSection_DMerge(struct DCCSection *__restrict self,
                   DCC(target_ptr_t) addr, DCC(target_siz_t) size,
-                  DCC(target_siz_t) min_align);
+                  DCC(target_siz_t) min_align, int free_old);
 
 /* Same as 'DCCSection_DAlloc', but if the 'DCC_SYMFLAG_SEC_M' flag is set in
  * the given section, symbol data may be merged with equivalent, already-existing data.
@@ -1022,6 +1122,25 @@ do{ struct DCCUnit _old_unit; \
  * >> Essentially, this function performs unused symbol elimination */
 DCCFUN size_t DCCUnit_ClearUnused(void);
 
+/* Clear all libraries without any used functions. */
+DCCFUN size_t DCCUnit_ClearUnusedLibs(void);
+
+/* Collapse symbols in all sections, re-claiming unused memory.
+ * NOTE: When the 'DCC_LINKER_FLAG_NOCOLL' linker flag is set,
+ *       this function is a no-op and always returns ZERO(0)
+ * WARNING: This optimization must be performed
+ *          before DISP relocations are resolved!
+ * HINT: For best results, perform this optimization after
+ *       unused symbols and libraries have been removed.
+ * @return: * : The sum of bytes that could be trimmed from sections. */
+DCCFUN DCC(target_siz_t) DCCUnit_CollapseSections(void);
+
+/* Resolve disposition relocations in all sections. */
+DCC_LOCAL void DCCUnit_ResolveDisp(void) {
+ struct DCCSection *sec;
+ DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);
+}
+
 /* Clear all unused symbols that were defined as static,
  * essentially removing all unused static declaration. */
 DCCFUN size_t DCCUnit_ClearStatic(void);
@@ -1058,9 +1177,6 @@ DCCFUN size_t DCCUnit_ClearStatic(void);
  *       invoked as well. - All that this function can ever do is also
  *       performed by 'DCCUnit_ClearUnused'! */
 DCCFUN size_t DCCUnit_ClearObsolete(void);
-
-/* Clear all libraries without any used functions. */
-DCCFUN size_t DCCUnit_ClearUnusedLibs(void);
 
 /* Lookup/Create a new symbol/section 'name'.
  * Note, that every section is implicitly a symbol!
@@ -1283,7 +1399,7 @@ DCC_LOCAL void DCCUnit_TPutq(uint64_t qword) { DCCUnit_TWrite(&qword,8); }
 #define DCCUnit_TADDR()  DCCTextBuf_ADDR(&DCCUnit_Current.u_tbuf)
 
 /* Define a given symbol 'sym' to point to the current text address. */
-#define DCCUnit_DEFSYM(sym) DCCSym_Define(sym,DCCUnit_Current.u_curr,DCCUnit_TADDR(),0)
+#define DCCUnit_DEFSYM(sym) DCCSym_Define(sym,DCCUnit_Current.u_curr,DCCUnit_TADDR(),0,1)
 
 /* Clear the cache of pre-allocated symbols. */
 DCCFUN void DCCUnit_ClearCache(void);

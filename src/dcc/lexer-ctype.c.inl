@@ -33,10 +33,18 @@ DCCType_SetTypeMode(struct DCCType *__restrict self,
  tyid_t modeid;
  switch (mode_flags/*&DCC_ATTRFLAG_MASK_MODE*/) {
  {
-  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_QI: modeid = DCCTYPE_INTN(1); }
-  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_HI: modeid = DCCTYPE_INTN(2); }
-  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_SI: modeid = DCCTYPE_INTN(4); }
-  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_DI: modeid = DCCTYPE_INTN(8); }
+#ifdef DCCTYPE_IB1
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_QI: modeid = DCCTYPE_IB1; }
+#endif
+#ifdef DCCTYPE_IB2
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_HI: modeid = DCCTYPE_IB2; }
+#endif
+#ifdef DCCTYPE_IB4
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_SI: modeid = DCCTYPE_IB4; }
+#endif
+#ifdef DCCTYPE_IB8
+  if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_DI: modeid = DCCTYPE_IB8; }
+#endif
 #if DCC_TARGET_SIZEOF_FLOAT == 4
   if (DCC_MACRO_FALSE) { case DCC_ATTRFLAG_MODE_SF: modeid = DCCTYPE_FLOAT; }
 #elif DCC_TARGET_SIZEOF_DOUBLE == 4
@@ -826,7 +834,7 @@ do{ if (flags&F_AUTO) {\
 again:
  DCCParse_Attr(attr);
  switch (TOK) {
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
  case KWD___w64: goto next;
 #endif
 
@@ -909,7 +917,7 @@ again:
  } break;
 
 
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
   /* Letting DCC chew through the windows headers, I came across a ~very~ strange construct:
    * >> #define WTF_BOOL /##/
    * >> typedef WTF_BOOL bool;
@@ -936,7 +944,7 @@ again:
 
  { /* Special builtin types. */
   tyid_t newflags;
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
   if (DCC_MACRO_FALSE) { case KWD__Bool: WARN(W_BUILTIN_TYPE_BOOL_C99); w32_bool: newflags = DCCTYPE_BOOL; }
 #else
   if (DCC_MACRO_FALSE) { case KWD__Bool: WARN(W_BUILTIN_TYPE_BOOL_C99);           newflags = DCCTYPE_BOOL; }

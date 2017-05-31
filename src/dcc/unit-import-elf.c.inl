@@ -489,7 +489,7 @@ no_dynhash:
          if (sym && sym->sy_sec != libsec &&
             (!(flags&DCC_SYMFLAG_WEAK) && DCCSym_ISFORWARD(sym))) {
 #if 1 /* Don't include symbol value/size information (cannot rely on either) */
-          DCCSym_Define(sym,libsec,0,0);
+          DCCSym_Import(sym,libsec,0);
 #else
           DCCSym_Define(sym,libsec,sym_iter->st_value,sym_iter->st_size);
 #endif
@@ -631,6 +631,10 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
          (size_t)(shstr_text.tb_end-shstr_text.tb_begin));
      goto sec_unused;
     }
+    /* Because non-relocatable binaries probably don't export proper symbol
+     * sizes (and since we could only hope that they do), don't allow
+     * sections linked from static binaries to be collapsed. */
+    if (ehdr.e_type != ET_REL)        secflags |= DCC_SYMFLAG_NOCOLL;
     if (iter->sh_flags&SHF_ALLOC)     secflags |= DCC_SYMFLAG_SEC_R;
     if (iter->sh_flags&SHF_WRITE)     secflags |= DCC_SYMFLAG_SEC_W;
     if (iter->sh_flags&SHF_EXECINSTR) secflags |= DCC_SYMFLAG_SEC_X;
@@ -645,10 +649,11 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
     if (!(secflags&DCC_SYMFLAG_SEC_ISIMPORT)) {
      if (sec->sc_text.tb_begin != sec->sc_text.tb_end)
          WARN(W_LIB_ELF_STATIC_SECNAME_REUSED,file,name);
+     assert(!(sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE));
      free(sec->sc_text.tb_begin);
      elf_loadsection(iter,&sec->sc_text,fd,start);
-     sec->sc_align = iter->sh_addralign;
-     sec->sc_base  = iter->sh_addr;
+     sec->sc_start.sy_align = iter->sh_addralign;
+     DCCSection_SETBASE(sec,iter->sh_addr);
     }
     /* Save the section in the header (very hacky; don't look). */
     SEC_DCCSEC(iter) = sec;
@@ -758,7 +763,7 @@ skip_symdef:
      }
      if (sym_iter->st_shndx == SHN_ABS) sec = &DCCSection_Abs;
      else sec = SEC_DCCSECI(sym_iter->st_shndx);
-     if (sec) DCCSym_Define(sym,sec,sym_iter->st_value,sym_iter->st_size);
+     if (sec) DCCSym_Define(sym,sec,sym_iter->st_value,sym_iter->st_size,1);
      else sym->sy_size = sym_iter->st_value; /* Temporary storage for alias offsets. */
      *symdef = sym;
     }
@@ -833,6 +838,8 @@ done_symvec:
      struct DCCSym *sym = *sym_iter;
      uint8_t  flags = ELF(DCC_SYMFLAG_FLAGS)(flg_iter->sf_info);
      if unlikely(!sym) continue;
+     if (sym->sy_align < flg_iter->sf_align)
+         sym->sy_align = flg_iter->sf_align;
 #if ELF_DCC_SYMFLAG_F_USED   == DCC_SYMFLAG_USED && \
     ELF_DCC_SYMFLAG_F_UNUSED == DCC_SYMFLAG_UNUSED
      sym->sy_flags |= flags&(ELF_DCC_SYMFLAG_F_USED|
@@ -1034,8 +1041,9 @@ absrel:
   /* With all relocations loaded, we can now
    * delete the section base addresses! */
   DCCUnit_ENUMSEC(sec) {
+   assert(!(sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE));
+   DCCSection_SETBASE(sec,0);
    sec->sc_start.sy_flags &= ~(DCC_SYMFLAG_SEC_FIXED);
-   sec->sc_base            = 0;
   }
 #endif
   /* TODO: Load dynamic library dependencies ('DT_NEEDED' program header entires) */

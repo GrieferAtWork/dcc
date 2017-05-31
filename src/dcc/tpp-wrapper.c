@@ -24,13 +24,14 @@
 #include <dcc/target.h>
 #include <dcc/linker.h>
 #include <dcc/unit.h>
+#include <dcc/type.h>
 #include <dcc/compiler.h>
 
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
 
-#if DCC_DEBUG && DCC_HOST_OS == DCC_OS_WINDOWS
+#if DCC_DEBUG && !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
 #include <Windows.h>
 #endif
 
@@ -49,7 +50,7 @@ PRIVATE void dcc_warnf(char const *fmt, ...) {
  va_end(args);
  bufsiz = strlen(buffer);
  fwrite(buffer,sizeof(char),bufsiz,stderr);
-#if DCC_DEBUG && DCC_HOST_OS == DCC_OS_WINDOWS
+#if DCC_DEBUG && !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
  OutputDebugStringA(buffer);
 #endif
 }

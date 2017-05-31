@@ -345,7 +345,7 @@ forward_decl:
     /* Special case: Define an explicit lib-import symbol. */
     uint32_t oldf = linker.l_flags;
     linker.l_flags |= DCC_LINKER_FLAG_LIBSYMREDEF;
-    DCCSym_Define(forward_sym,attr->a_section,0,0);
+    DCCSym_Define(forward_sym,attr->a_section,0,0,1);
     linker.l_flags = oldf;
 #if DCC_TARGET_BIN == DCC_BINARY_PE
     forward_sym->sy_flags |= DCC_SYMFLAG_PE_ITA_IND;
@@ -418,7 +418,7 @@ reload_size:
     /* Special case: Define an explicit dll-import symbol. */
     uint32_t oldf = linker.l_flags;
     linker.l_flags |= DCC_LINKER_FLAG_LIBSYMREDEF;
-    DCCSym_Define(decl_sym,storage_section,0,0);
+    DCCSym_Define(decl_sym,storage_section,0,0,1);
     linker.l_flags = oldf;
 #if DCC_TARGET_BIN == DCC_BINARY_PE
     decl_sym->sy_flags |= DCC_SYMFLAG_PE_ITA_IND;
@@ -456,7 +456,7 @@ reload_size:
   } else {
    return;
   }
-  DCCSym_Define(decl_sym,storage_section,symaddr,s);
+  DCCSym_Define(decl_sym,storage_section,symaddr,s,a);
   return;
  }
  if (!has_init && DCCDecl_FixLValue(self)) goto reload_size;

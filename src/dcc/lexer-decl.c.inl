@@ -284,9 +284,13 @@ init_after_equals:
      newaddr = DCCSection_DMerge(decl_sym->sy_sec,
                                  decl_sym->sy_addr,
                                  decl_sym->sy_size,
-                                 type_align);
-     DCCSym_Redefine(decl_sym,decl_sym->sy_sec,
-                     newaddr,decl_sym->sy_size);
+                                 type_align,0);
+     if (newaddr != decl_sym->sy_addr) {
+      /* Update the symbol address. */
+      DCCSection_DIncref(decl_sym->sy_sec,newaddr,decl_sym->sy_size);
+      DCCSection_DDecref(decl_sym->sy_sec,decl_sym->sy_addr,decl_sym->sy_size);
+      decl_sym->sy_addr = newaddr;
+     }
     }
    }
   }

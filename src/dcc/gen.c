@@ -180,13 +180,13 @@ DCCDisp_PutAddrRel(struct DCCSymAddr const *__restrict addr, rel_t rel) {
   struct DCCSymAddr xsymaddr;
   if (DCCSym_LoadAddr(xsym,&xsymaddr,0)) {
    xval += (target_off_t)xsymaddr.sa_off;
-   xsym  = xsymaddr.sa_sym;
+   xsym  =  xsymaddr.sa_sym;
    if (DCCSection_HASBASE(DCCSym_SECTION(xsym))) {
     /* The associated section has a fixed base associated with it.
      * >> We don't need to emit a relocation, because
      *    we can simply add the base value here! */
     xval += (target_off_t)xsym->sy_addr;
-    xval += (target_off_t)(target_ptr_t)DCCSym_SECTION(xsym)->sc_base;
+    xval += (target_off_t)DCCSection_BASE(DCCSym_SECTION(xsym));
     rel   = DCC_R_NONE; /* Place an empty relocation for dependency mapping. */
    }
   }
@@ -206,11 +206,13 @@ DCCDisp_PutDispRel(struct DCCSymAddr const *__restrict addr, rel_t rel) {
   if (DCCSym_LoadAddr(xsym,&xsymaddr,0)) {
    xval += (target_off_t)xsymaddr.sa_off;
    xsym  = xsymaddr.sa_sym;
+#if 0
    if (DCCSym_SECTION(xsym) == unit.u_curr) {
     /* Emit to current section (no relocation required). */
     xval += xsym->sy_addr;
     rel   = DCC_R_NONE; /* Place an empty relocation for dependency mapping. */
    }
+#endif
   }
   t_putrel(rel,xsym);
   xval -= t_addr;
@@ -238,7 +240,7 @@ PRIVATE void DCCDisp_SymAddr16(struct DCCSymAddr const *__restrict expr) { t_put
 PRIVATE void DCCDisp_SymDisp16(struct DCCSymAddr const *__restrict expr) { t_putw((uint16_t)((int16_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_16)-2)); }
 PRIVATE void DCCDisp_SymAddr32(struct DCCSymAddr const *__restrict expr) { t_putl((uint32_t)DCCDisp_PutAddrRel(expr,DCC_R_DATA_32)); }
 PRIVATE void DCCDisp_SymDisp32(struct DCCSymAddr const *__restrict expr) { t_putl((uint32_t)((int32_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_32)-4)); }
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
 PRIVATE void DCCDisp_SymAddr64(struct DCCSymAddr const *__restrict expr) { t_putq((uint64_t)DCCDisp_PutAddrRel(expr,DCC_R_DATA_64)); }
 PRIVATE void DCCDisp_SymDisp64(struct DCCSymAddr const *__restrict expr) { t_putq((uint64_t)((int64_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_64)-8)); }
 #endif
@@ -250,7 +252,7 @@ DCCDisp_SymAddr(struct DCCSymAddr const *__restrict expr,
  switch (width) {
  case 1:  DCCDisp_SymAddr8(expr); break;
  case 2:  DCCDisp_SymAddr16(expr); break;
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
  case 4:  DCCDisp_SymAddr32(expr); break;
  default: DCCDisp_SymAddr64(expr); break;
 #else
@@ -265,7 +267,7 @@ DCCDisp_SymDisp(struct DCCSymAddr const *__restrict expr,
  switch (width) {
  case 1:  DCCDisp_SymDisp8(expr); break;
  case 2:  DCCDisp_SymDisp16(expr); break;
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
  case 4:  DCCDisp_SymDisp32(expr); break;
  default: DCCDisp_SymDisp64(expr); break;
 #else
@@ -281,7 +283,7 @@ readw(void const *__restrict p, width_t width, int is_unsigned) {
  if (is_unsigned) switch (width) {
  case 1:  result = (target_off_t)*(uint8_t  *)p; break;
  case 2:  result = (target_off_t)*(uint16_t *)p; break;
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
  case 4:  result = (target_off_t)*(uint32_t *)p; break;
  default: result = (target_off_t)*(uint64_t *)p; break;
 #else
@@ -290,7 +292,7 @@ readw(void const *__restrict p, width_t width, int is_unsigned) {
  } else switch (width) {
  case 1:  result = (target_off_t)*(int8_t  *)p; break;
  case 2:  result = (target_off_t)*(int16_t *)p; break;
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
  case 4:  result = (target_off_t)*(int32_t *)p; break;
  default: result = (target_off_t)*(int64_t *)p; break;
 #else
@@ -306,7 +308,7 @@ writew(void const *__restrict p, target_off_t v, width_t width) {
  switch (width) {
  case 1:  *(int8_t  *)p = (int8_t)v;  break;
  case 2:  *(int16_t *)p = (int16_t)v; break;
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
  case 4:  *(int32_t *)p = (int32_t)v; break;
  default: *(int64_t *)p = (int64_t)v; break;
 #else

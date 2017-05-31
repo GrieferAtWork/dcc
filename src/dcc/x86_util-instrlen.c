@@ -646,7 +646,7 @@ x86_mkrel_textdisp(struct DCCSection *__restrict text_section,
  assert(text_section->sc_start.sy_flags&DCC_SYMFLAG_SEC_X);
  oldmax = text_section->sc_text.tb_max-text_section->sc_text.tb_begin;
  if unlikely(!oldmax) return; /* Skip empty sections. */
- textend = text_section->sc_base+oldmax;
+ textend = DCCSection_BASE(text_section)+oldmax;
  oldpos = text_section->sc_text.tb_pos-text_section->sc_text.tb_begin;
  text_section->sc_text.tb_pos = text_section->sc_text.tb_max;
  trail = (uint8_t *)DCCSection_TAlloc(text_section,NOP_TRAIL_SIZE);
@@ -656,7 +656,7 @@ x86_mkrel_textdisp(struct DCCSection *__restrict text_section,
  memset(trail,0x90,NOP_TRAIL_SIZE);
  iter = begin = text_section->sc_text.tb_begin;
 #if INSTRLEN_DEBUG
- instrlen_offset = text_section->sc_base+image_base;
+ instrlen_offset = DCCSection_BASE(text_section)+image_base;
  instrlen_base   = begin;
 #endif /* INSTRLEN_DEBUG */
  while (iter < trail) {
@@ -729,11 +729,11 @@ gendisp:
    default           : disp_offset = *(int32_t *)dispaddr; instr_end = dispaddr+4; break;
    }
    disp_target      = (target_ptr_t)(instr_end-begin)+disp_offset;
-   disp_target     += text_section->sc_base;
+   disp_target     += DCCSection_BASE(text_section);
    if (disp_target <= textend) goto adv; /* No need for relocations into the same section. */
    if ((disp_target_sec  = dcc_getsec(disp_target)) == NULL) {
     WARN(W_STA_PE_UNMAPPED_DISP_TARGET,
-        (target_ptr_t)(image_base+((iter-begin)+text_section->sc_base)),
+        (target_ptr_t)(image_base+((iter-begin)+DCCSection_BASE(text_section))),
         (target_ptr_t)(image_base+disp_target));
     goto adv;
    }
@@ -742,13 +742,13 @@ gendisp:
    DCCSection_Putrel(text_section,(target_ptr_t)(dispaddr-begin),type,
                     &disp_target_sec->sc_start);
    /* Adjust the old text address:
-    * >> *dispaddr -= text_section->sc_base;
-    * >> *dispaddr += disp_target_sec->sc_base;
+    * >> *dispaddr -= DCCSection_BASE(text_section);
+    * >> *dispaddr += DCCSection_BASE(disp_target_sec);
     */
    switch (type) {
-   case DCC_R_DISP_8 : *(int8_t  *)dispaddr += (int8_t )(disp_target_sec->sc_base-text_section->sc_base); break;
-   case DCC_R_DISP_16: *(int16_t *)dispaddr += (int16_t)(disp_target_sec->sc_base-text_section->sc_base); break;
-   default           : *(int32_t *)dispaddr += (int32_t)(disp_target_sec->sc_base-text_section->sc_base); break;
+   case DCC_R_DISP_8 : *(int8_t  *)dispaddr += (int8_t )(DCCSection_BASE(disp_target_sec)-DCCSection_BASE(text_section)); break;
+   case DCC_R_DISP_16: *(int16_t *)dispaddr += (int16_t)(DCCSection_BASE(disp_target_sec)-DCCSection_BASE(text_section)); break;
+   default           : *(int32_t *)dispaddr += (int32_t)(DCCSection_BASE(disp_target_sec)-DCCSection_BASE(text_section)); break;
    }
   }
 adv:

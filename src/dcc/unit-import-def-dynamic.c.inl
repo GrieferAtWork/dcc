@@ -135,9 +135,8 @@ expect_exports:
 #else
       export_sym = DCCUnit_NewSym(export_kwd,DCCLibDef_EXPFLAGS(def,DCC_SYMFLAG_NONE));
 #endif
-      if (export_sym && export_sym->sy_sec != ressec) {
-       DCCSym_Define(export_sym,ressec,0,0);
-      }
+      if (export_sym && export_sym->sy_sec != ressec)
+          DCCSym_Import(export_sym,ressec,0);
      }
     } break;
     }

@@ -37,7 +37,7 @@ INTDEF void dcc_dump_symbols(void);
 
 INTERN void def(char const *name, target_ptr_t addr) {
  struct DCCSym *sym = DCCUnit_NewSyms(name,DCC_SYMFLAG_NONE);
- if (sym) DCCSym_Define(sym,&DCCSection_Abs,addr,0);
+ if (sym) DCCSym_Define(sym,&DCCSection_Abs,addr,0,1);
 }
 
 static void add_import(char const *filename) {
@@ -165,34 +165,17 @@ done_cmd:
  /*_CrtSetBreakAlloc(33398);*/
  DCCLinker_AddSysPaths(outfile_name);
 
- if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB) &&
-     !(flags&F_COMPILEONLY)) {
-  /* Load default libraries. */
-#if DCC_TARGET_BIN == DCC_BINARY_PE
-#define SO(x) x ".dll"
-#else
-#define SO(x) x ".so"
-#endif
-#define STDLIB(name,f) \
-   {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
-  static struct DCCLibDef default_stdlib[] = {
-   STDLIB("crt1.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
-   STDLIB(SO("msvcrt"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
-#else
-   STDLIB(SO("libc"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
-#endif
-   {0,NULL,0,0,0,0,0,NULL},
-  };
-#undef STDLIB
-  struct DCCLibDef *chain = default_stdlib;
-  for (; chain->ld_name; ++chain) DCCUnit_Import(chain);
- }
 
- //dcc_dump_symbols();
- if (!OK) goto end;
-
- /* TODO: Preprocessor mode ('-E'). */
+ /* TODO: When defining a text symbol, all free ranges from the definition area must be deleted.
+  *       Otherwise, the symbol's data may be re-allocated as
+  *       free data  and the data may be shared inadvertently.
+  *       WARNING: I'm not really sure if this must really be done...
+  *             >> Start out by adding assertion for this!
+  * NOTE: Without this, data ranges may be be freed again:
+  *    >> a = t_alloc(8); // 0x16
+  *    >> b = d_alloc(8); // 0x0
+  *    >> incref(a,8)
+  */
 
  if (flags&F_HELP) {
   struct cmd hc;
@@ -208,6 +191,35 @@ done_cmd:
   exec_cmd(&hc,1);
  }
 
+ if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB) &&
+     !(flags&F_COMPILEONLY)) {
+  /* Load default libraries. */
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+#define SO(x) x ".dll"
+#else
+#define SO(x) x ".so"
+#endif
+#define STDLIB(name,f) \
+   {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
+  static struct DCCLibDef default_stdlib[] = {
+   STDLIB("crt1.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
+#if DCC_TARGET_OS == DCC_OS_WINDOWS || \
+    DCC_TARGET_OS == DCC_OS_CYGWIN
+   STDLIB(SO("msvcrt"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+#else
+   STDLIB(SO("libc"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+#endif
+   {0,NULL,0,0,0,0,0,NULL},
+  };
+#undef STDLIB
+  struct DCCLibDef *chain = default_stdlib;
+  for (; chain->ld_name; ++chain) DCCUnit_Import(chain);
+ }
+
+ //dcc_dump_symbols();
+ if (!OK) goto end;
+
+ /* TODO: Preprocessor mode ('-E'). */
 
  while (argc) {
   /* Parse the input code. */
@@ -239,9 +251,7 @@ done_cmd:
   save_object(outfile_name);
  } else {
   stream_t s_out;
-  struct DCCSection *sec;
   /* Prepare generated code for output to file. */
-  DCCUnit_ENUMSEC(sec) DCCSection_ResolveDisp(sec);
   s_out = s_openw(outfile_name);
   DCCLinker_Make(s_out); /* Generate the binary. */
   s_close(s_out);
@@ -287,9 +297,8 @@ done_cmd:
    if (!OK) goto end;
 
    assert(DCCSym_SECTION(entryaddr.sa_sym));
-   *(void **)&entry = (void *)(entryaddr.sa_off+
-                               entryaddr.sa_sym->sy_addr+
-                               DCCSym_SECTION(entryaddr.sa_sym)->sc_base);
+   *(void **)&entry = (void *)(entryaddr.sa_off+entryaddr.sa_sym->sy_addr+
+                               DCCSection_BASE(DCCSym_SECTION(entryaddr.sa_sym)));
   }
 
   /* Execute the generated code. */

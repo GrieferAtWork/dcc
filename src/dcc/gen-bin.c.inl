@@ -49,7 +49,7 @@ DCCDisp_RegBinMems(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst,
  if (op == '=') { DCCDisp_RegMovMems(src,dst,dst_bytes,src_unsigned); return; }
  src_siz = DCC_RC_SIZE(src); assert(dst);
  if (src_siz >= dst_bytes) {
-  assert(dst_bytes <= DCC_TARGET_SIZEOF_POINTER);
+  assert(dst_bytes <= DCC_TARGET_SIZEOF_IMM_MAX);
   switch (dst_bytes) {
   case 0: return;
   case 1: src = DCCVStack_CastReg(src,src_unsigned,DCC_RC_I8); break;
@@ -115,7 +115,7 @@ DCCDisp_RegsBinMems(tok_t op, rc_t src, rc_t src2,
                     target_siz_t dst_bytes, int src_unsigned) {
  struct DCCMemLoc dst2;
  if unlikely(!dst_bytes) return;
- if (dst_bytes > DCC_TARGET_SIZEOF_POINTER && IS_LARGE_OP(op)) {
+ if (dst_bytes > DCC_TARGET_SIZEOF_ARITH_MAX && IS_LARGE_OP(op)) {
   DCCDisp_LargeRegsBinMems(op,src,src2,dst,dst_bytes,src_unsigned);
   return;
  }
@@ -584,7 +584,7 @@ modreg:
  asm_modreg(src&7,dst&7);
 }
 
-#if DCC_TARGET_SIZEOF_POINTER < 8
+#if DCC_TARGET_SIZEOF_ARITH_MAX < 8
 PUBLIC void
 DCCDisp_CstBinRegs(tok_t op, struct DCCSymExpr const *__restrict val,
                    rc_t dst, rc_t dst2, int src_unsigned) {
@@ -945,15 +945,15 @@ DCCDisp_StaBinSta(tok_t op,
  target_off_t filler;
  target_siz_t common_size,iter_size;
  iter_size = common_size = src_bytes < dst_bytes ? src_bytes : dst_bytes;
- while (iter_size >= DCC_TARGET_SIZEOF_POINTER) {
+ while (iter_size >= DCC_TARGET_SIZEOF_ARITH_MAX) {
   DCCDisp_StaBinStaWidth(op,src,dst,src_unsigned,
-                         DCC_TARGET_SIZEOF_POINTER,
+                         DCC_TARGET_SIZEOF_ARITH_MAX,
                         &flags);
-  *(uintptr_t *)&src += DCC_TARGET_SIZEOF_POINTER;
-  *(uintptr_t *)&dst += DCC_TARGET_SIZEOF_POINTER;
-  iter_size          -= DCC_TARGET_SIZEOF_POINTER;
+  *(uintptr_t *)&src += DCC_TARGET_SIZEOF_ARITH_MAX;
+  *(uintptr_t *)&dst += DCC_TARGET_SIZEOF_ARITH_MAX;
+  iter_size          -= DCC_TARGET_SIZEOF_ARITH_MAX;
  }
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
  if (iter_size&4) {
   DCCDisp_StaBinStaWidth(op,src,dst,src_unsigned,4,&flags);
   *(uintptr_t *)&src += 4;
@@ -972,20 +972,20 @@ DCCDisp_StaBinSta(tok_t op,
  }
  filler = 0;
  if (src_bytes && !src_unsigned && ((uint8_t *)src)[-1]&0x80) {
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
   filler = 0xffffffffffffffffll;
 #else
-  filler = 0xffffffff;
+  filler = 0xffffffffl;
 #endif
  }
  assert(dst_bytes >= common_size);
  common_size = dst_bytes-common_size;
- while (common_size > DCC_TARGET_SIZEOF_POINTER) {
-  DCCDisp_BytBinStaWidth(op,filler,dst,DCC_TARGET_SIZEOF_POINTER,&flags);
-  *(uintptr_t *)&dst += DCC_TARGET_SIZEOF_POINTER;
-  common_size        -= DCC_TARGET_SIZEOF_POINTER;
+ while (common_size > DCC_TARGET_SIZEOF_ARITH_MAX) {
+  DCCDisp_BytBinStaWidth(op,filler,dst,DCC_TARGET_SIZEOF_ARITH_MAX,&flags);
+  *(uintptr_t *)&dst += DCC_TARGET_SIZEOF_ARITH_MAX;
+  common_size        -= DCC_TARGET_SIZEOF_ARITH_MAX;
  }
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
  if (common_size&4) {
   DCCDisp_BytBinStaWidth(op,filler,dst,4,&flags);
   *(uintptr_t *)&src += 4;
@@ -1010,19 +1010,19 @@ DCCDisp_BytBinSta(tok_t op, int          src, target_siz_t src_bytes,
  target_off_t filler;
  target_siz_t common_size,iter_size;
  extended_src = (target_off_t)(src & 0xff);
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
  extended_src *= 0x0101010101010101ll;
 #else
  extended_src *= 0x01010101;
 #endif
 
  iter_size = common_size = src_bytes < dst_bytes ? src_bytes : dst_bytes;
- while (iter_size >= DCC_TARGET_SIZEOF_POINTER) {
-  DCCDisp_BytBinStaWidth(op,extended_src,dst,DCC_TARGET_SIZEOF_POINTER,&flags);
-  *(uintptr_t *)&dst += DCC_TARGET_SIZEOF_POINTER;
-  iter_size          -= DCC_TARGET_SIZEOF_POINTER;
+ while (iter_size >= DCC_TARGET_SIZEOF_ARITH_MAX) {
+  DCCDisp_BytBinStaWidth(op,extended_src,dst,DCC_TARGET_SIZEOF_ARITH_MAX,&flags);
+  *(uintptr_t *)&dst += DCC_TARGET_SIZEOF_ARITH_MAX;
+  iter_size          -= DCC_TARGET_SIZEOF_ARITH_MAX;
  }
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
  if (iter_size&4) {
   DCCDisp_BytBinStaWidth(op,extended_src,dst,4,&flags);
   *(uintptr_t *)&dst += 4;
@@ -1038,18 +1038,18 @@ DCCDisp_BytBinSta(tok_t op, int          src, target_siz_t src_bytes,
  }
  filler = 0;
  if (src_bytes && !src_unsigned && (src&0x80)) {
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
   filler = 0xffffffffffffffffll;
 #else
   filler = 0xffffffff;
 #endif
  }
  common_size = dst_bytes-common_size;
- while (common_size > DCC_TARGET_SIZEOF_POINTER) {
-  DCCDisp_BytBinStaWidth(op,filler,dst,DCC_TARGET_SIZEOF_POINTER,&flags);
-  *(uintptr_t *)&dst += DCC_TARGET_SIZEOF_POINTER;
+ while (common_size > DCC_TARGET_SIZEOF_ARITH_MAX) {
+  DCCDisp_BytBinStaWidth(op,filler,dst,DCC_TARGET_SIZEOF_ARITH_MAX,&flags);
+  *(uintptr_t *)&dst += DCC_TARGET_SIZEOF_ARITH_MAX;
  }
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
  if (common_size&4) {
   DCCDisp_BytBinStaWidth(op,filler,dst,4,&flags);
   *(uintptr_t *)&src += 4;
@@ -1071,7 +1071,7 @@ PRIVATE void
 DCCDisp_AXCmpDI(width_t max_width, target_siz_t n_bytes,
                 struct DCCMemLoc const *__restrict nejmp) {
  assert(CHECK_WIDTH(max_width));
- if (n_bytes <= DCC_TARGET_SIZEOF_POINTER*2) {
+ if (n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*2) {
   /* Special case for small scas. */
   if (max_width >= 4 && n_bytes >= 4) for (;;) {
    asm_op_scasl(); n_bytes -= 4;
@@ -1093,14 +1093,14 @@ DCCDisp_AXCmpDI(width_t max_width, target_siz_t n_bytes,
  DCCVStack_GetRegExact(DCC_RR_XCX);
  if (n_bytes % max_width) {
   /* Special cases for situations in which the given byte count is unaligned! */
-  if (!(n_bytes % 2) && n_bytes <= DCC_TARGET_SIZEOF_POINTER*8) {
+  if (!(n_bytes % 2) && n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*8) {
 use_scasw:
    /* Use 'repe stosw' */
    DCCDisp_IntMovReg((target_off_t)(n_bytes / 2),DCC_RR_XCX),n_bytes %= 2;
    asm_op_cld();
    asm_op_repe();
    asm_op_scasw();
-  } else if (n_bytes <= DCC_TARGET_SIZEOF_POINTER*4) {
+  } else if (n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*4) {
 use_scasb:
    /* Use 'repe stosb' */
    DCCDisp_IntMovReg((target_off_t)n_bytes,DCC_RR_XCX),n_bytes = 0;
@@ -1120,7 +1120,7 @@ use_scasauto:
   asm_op_scasl();
  }
  if (n_bytes) {
-  assert(n_bytes < DCC_TARGET_SIZEOF_POINTER);
+  assert(n_bytes < DCC_TARGET_SIZEOF_ARITH_MAX);
   DCCDisp_LocJcc(DCC_TEST_NE,nejmp);
   /* Fix any overflow still remaining. */
   if (n_bytes >= 2 && max_width >= 2) {
@@ -1165,7 +1165,7 @@ DCCDisp_DoRepBytCmpMem_impl(int src, struct DCCMemLoc const *__restrict dst,
  else                     max_width = 1,ax = DCC_RC_I8|DCC_ASMREG_AL;
  ax = DCCVStack_GetRegExact(ax);
  filler = (target_off_t)(src & 0xff);
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
  filler *= 0x0101010101010101ll;
 #else
  filler *= 0x01010101;
@@ -1211,14 +1211,14 @@ DCCDisp_BytCmpMem_impl(int src, struct DCCMemLoc const *__restrict dst,
  dst_iter.ml_off += dst_bytes;
  filler.sa_sym = NULL;
  filler.sa_off = (target_off_t)(src & 0xff);
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
  filler.sa_off *= 0x0101010101010101ll;
 #else
  filler.sa_off *= 0x01010101;
 #endif
  for (;;) {
   target_siz_t part;
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
        if (dst_bytes >= 8) part = 8;
   else
 #endif
@@ -1249,7 +1249,7 @@ DCCDisp_ByrCmpMem_impl(rc_t src, width_t max_width, struct DCCMemLoc const *__re
  for (;;) {
   target_siz_t part = max_width;
   if (part > dst_bytes) {
-#if DCC_TARGET_SIZEOF_POINTER > 4
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
    if (dst_bytes <= 7 &&
        dst_bytes >= 5) part = 4;
    else
@@ -1274,7 +1274,7 @@ DCCDisp_ByrCmpMem_impl(rc_t src, width_t max_width, struct DCCMemLoc const *__re
 PRIVATE void
 DCCDisp_SICmpDI(target_siz_t n_bytes,
                 struct DCCMemLoc const *__restrict nejmp) {
- if (n_bytes <= DCC_TARGET_SIZEOF_POINTER*2) {
+ if (n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*2) {
   /* Special case for small compares. */
   while (n_bytes >= 4) {
    asm_op_cmpsl();
@@ -1291,13 +1291,13 @@ DCCDisp_SICmpDI(target_siz_t n_bytes,
  DCCVStack_GetRegExact(DCC_RR_XCX);
  if (n_bytes % 4) {
   /* Special cases for situations in which the given byte count is unaligned! */
-  if (!(n_bytes % 2) && n_bytes <= DCC_TARGET_SIZEOF_POINTER*8) {
+  if (!(n_bytes % 2) && n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*8) {
    /* Use 'repe cmpsw' */
    DCCDisp_IntMovReg((target_off_t)(n_bytes / 2),DCC_RR_XCX),n_bytes %= 2;
    asm_op_cld();
    asm_op_repe();
    asm_op_cmpsw();
-  } else if (n_bytes <= DCC_TARGET_SIZEOF_POINTER*4) {
+  } else if (n_bytes <= DCC_TARGET_SIZEOF_ARITH_MAX*4) {
    /* Use 'repe cmpsb' */
    DCCDisp_IntMovReg((target_off_t)n_bytes,DCC_RR_XCX),n_bytes = 0;
    asm_op_cld();
@@ -1396,7 +1396,7 @@ DCCDisp_MemBinMem(tok_t op,
   DCCDisp_VecBinMem(op,csrc,src_bytes,dst,dst_bytes,src_unsigned);
   return;
  }
- if (dst_bytes > DCC_TARGET_SIZEOF_POINTER && IS_LARGE_OP(op)) {
+ if (dst_bytes > DCC_TARGET_SIZEOF_ARITH_MAX && IS_LARGE_OP(op)) {
   DCCDisp_LargeMemBinMem(op,src,src_bytes,
                             dst,dst_bytes,
                          src_unsigned);
@@ -1451,8 +1451,8 @@ DCCDisp_MemBinMem(tok_t op,
  }
  dst_bytes -= common_size;
  while (common_size) {
-  part = common_size >= DCC_TARGET_SIZEOF_POINTER ? DCC_TARGET_SIZEOF_POINTER :
-#if DCC_TARGET_SIZEOF_POINTER > 4
+  part = common_size >= DCC_TARGET_SIZEOF_ARITH_MAX ? DCC_TARGET_SIZEOF_ARITH_MAX :
+#if DCC_TARGET_SIZEOF_ARITH_MAX > 4
          common_size >= 4 ? 4 :
 #endif
          common_size >= 2 ? 2 :
@@ -1488,7 +1488,7 @@ DCCDisp_VecBinMem(tok_t op,   void const *__restrict src, target_siz_t src_bytes
  }
  if (op == '=') { DCCDisp_VecMovMem(src,src_bytes,dst,dst_bytes,src_unsigned); return; }
  if (!src_bytes) { DCCDisp_BytBinMem(op,0,dst_bytes,dst,dst_bytes,src_unsigned); return; }
- if (dst_bytes > DCC_TARGET_SIZEOF_POINTER && IS_LARGE_OP(op)) {
+ if (dst_bytes > DCC_TARGET_SIZEOF_ARITH_MAX && IS_LARGE_OP(op)) {
   DCCDisp_LargeVecBinMem(op,src,src_bytes,
                             dst,dst_bytes,
                          src_unsigned);
@@ -1503,7 +1503,7 @@ DCCDisp_VecBinMem(tok_t op,   void const *__restrict src, target_siz_t src_bytes
  dst_iter = *dst;
  while (common_size) {
   width_t width;
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_ARITH_MAX >= 8
        if (common_size >= 8) width = 8,cst.sa_off = (target_off_t)*(int64_t *)src;
   else
 #endif
@@ -1541,7 +1541,7 @@ DCCDisp_BytBinMem(tok_t op, int                      src, target_siz_t src_bytes
   return;
  }
  if (op == '=') { DCCDisp_BytMovMem(src,src_bytes,dst,dst_bytes,src_unsigned); return; }
- if (dst_bytes > DCC_TARGET_SIZEOF_POINTER && IS_LARGE_OP(op)) {
+ if (dst_bytes > DCC_TARGET_SIZEOF_ARITH_MAX && IS_LARGE_OP(op)) {
   DCCDisp_LargeBytBinMem(op,src,src_bytes,
                             dst,dst_bytes,
                          src_unsigned);
@@ -1554,7 +1554,7 @@ DCCDisp_BytBinMem(tok_t op, int                      src, target_siz_t src_bytes
  dst_bytes -= common_size;
  cst.sa_sym = NULL;
  cst.sa_off = (target_off_t)(src & 0xff);
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_ARITH_MAX >= 8
  cst.sa_off *= 0x0101010101010101ll;
 #else
  cst.sa_off *= 0x01010101;
@@ -1562,7 +1562,7 @@ DCCDisp_BytBinMem(tok_t op, int                      src, target_siz_t src_bytes
  dst_iter = *dst;
  while (common_size) {
   width_t width;
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_ARITH_MAX >= 8
        if (common_size >= 8) width = 8;
   else
 #endif
@@ -1601,7 +1601,7 @@ DCCDisp_ByrBinMem(tok_t op, rc_t                     src, target_siz_t src_bytes
  target_siz_t common_size;
  struct DCCMemLoc new_dst;
  if (op == '=') { DCCDisp_ByrMovMem(src,src_bytes,dst,dst_bytes,src_unsigned); return; }
- if (dst_bytes > DCC_TARGET_SIZEOF_POINTER && IS_LARGE_OP(op)) {
+ if (dst_bytes > DCC_TARGET_SIZEOF_ARITH_MAX && IS_LARGE_OP(op)) {
   DCCDisp_LargeByrBinMem(op,src,src_bytes,
                             dst,dst_bytes,
                          src_unsigned);

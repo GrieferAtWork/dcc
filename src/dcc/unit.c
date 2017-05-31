@@ -117,9 +117,6 @@ PUBLIC size_t const DCC_relsize[DCC_R_NUM] = {
 #endif
 };
 
-
-
-LOCAL struct DCCFreeRange *DCCFreeRange_New(target_ptr_t addr, target_siz_t size);
 LOCAL void DCCSection_Destroy(struct DCCSection *__restrict self);
 INTDEF void DCCSection_InsSym(struct DCCSection *__restrict self, struct DCCSym *__restrict sym);
 LOCAL void DCCSection_CheckRehash(struct DCCSection *__restrict self);
@@ -182,210 +179,6 @@ DCCSymflag_FromString(struct TPPString const *__restrict text) {
  default: break;
  }
  return (symflag_t)-1;
-}
-
-
-
-
-
-
-
-
-
-
-PUBLIC int
-DCCFreeData_InitCopy(struct DCCFreeData *__restrict self,
-                     struct DCCFreeData const *__restrict right) {
- struct DCCFreeRange *iter,**ptarget,*range_copy;
- assert(self);
- assert(right);
- ptarget = &self->fd_begin;
- iter = right->fd_begin;
- while (iter) {
-  range_copy = (struct DCCFreeRange *)malloc(sizeof(struct DCCFreeRange));
-  if unlikely(!range_copy) goto err;
-  range_copy->fr_addr = iter->fr_addr;
-  range_copy->fr_size = iter->fr_size;
-  *ptarget = range_copy;
-  ptarget = &range_copy->fr_next;
-  iter = iter->fr_next;
- }
- *ptarget = NULL;
- return 1;
-err:
- if (ptarget != &self->fd_begin) {
-  range_copy = self->fd_begin;
-  for (;;) {
-   iter = range_copy->fr_next;
-   free(range_copy);
-   /* The following isn't really a dereference, because of the section reference! */
-   if (ptarget != &range_copy->fr_next) break;
-   range_copy = iter;
-  }
- }
- return 0;
-}
-
-PUBLIC void
-DCCFreeData_Quit(struct DCCFreeData *__restrict self) {
- struct DCCFreeRange *iter,*next;
- assert(self);
- iter = self->fd_begin;
- while (iter) {
-  next = iter->fr_next;
-  free(iter);
-  iter = next;
- }
-}
-
-PUBLIC target_ptr_t
-DCCFreeData_Acquire(struct DCCFreeData *__restrict self,
-                    target_siz_t size, target_siz_t align,
-                    target_siz_t offset) {
- struct DCCFreeRange *iter,**piter,*newrange;
- target_ptr_t result;
- assert(self);
- piter = &self->fd_begin;
- while ((iter = *piter) != NULL) {
-  if (iter->fr_size >= size) {
-   target_siz_t upper_overflow;
-   upper_overflow = (iter->fr_size-size);
-   result  =   iter->fr_addr;
-   result +=   upper_overflow;
-   result +=  (align-1);
-   result &= ~(align-1);
-   result +=   offset;
-   if (result      >= iter->fr_addr &&
-       result+size <= iter->fr_addr+iter->fr_size) {
-    upper_overflow = (iter->fr_addr+iter->fr_size)-(result+size);
-    /* Re-use this free block of data. */
-    iter->fr_size = result-iter->fr_addr;
-    if (!iter->fr_size) {
-     assert(!upper_overflow);
-     /* Delete this block. */
-     *piter = iter->fr_next;
-     free(iter);
-    } else if (upper_overflow) {
-     /* Create a new range for the upper overflow. */
-     newrange = DCCFreeRange_New(result+size,upper_overflow);
-     if likely(newrange) {
-      newrange->fr_next = iter->fr_next;
-      iter->fr_next = newrange;
-     }
-    }
-    return result;
-   }
-  }
-  piter = &iter->fr_next;
- }
- return DCC_FREEDATA_INVPTR;
-}
-PUBLIC target_ptr_t
-DCCFreeData_AcquireAt(struct DCCFreeData *__restrict self,
-                      target_ptr_t addr, target_siz_t size) {
- struct DCCFreeRange *iter,**piter;
- target_ptr_t addr_end = addr+size;
- assert(self);
- piter = &self->fd_begin;
- while ((iter = *piter) != NULL) {
-  if (iter->fr_addr >= addr_end) break;
-  if (addr     >= iter->fr_addr &&
-      addr_end <= iter->fr_addr+iter->fr_size) {
-   /* The requested address range lies within this part. */
-   assert(iter->fr_size >= size);
-   if (addr == iter->fr_addr) {
-    /* Allocate at the front. */
-    iter->fr_addr += size;
-    iter->fr_size -= size;
-    if (!iter->fr_size) {
-     /* Delete this part. */
-     *piter = iter->fr_next;
-     free(iter);
-    }
-   } else if (addr_end == iter->fr_addr+iter->fr_size) {
-    /* Allocate at the back. */
-    iter->fr_size -= size;
-   } else {
-    struct DCCFreeRange *newpart;
-    /* Split the part. */
-    newpart = DCCFreeRange_New(addr_end,(iter->fr_addr+iter->fr_size)-addr_end);
-    if unlikely(!newpart) break;
-    newpart->fr_next = iter->fr_next;
-    iter->fr_next = newpart;
-    assert(addr > iter->fr_addr);
-    iter->fr_size = addr-iter->fr_addr;
-   }
-   return addr;
-  }
-  piter = &iter->fr_next;
- }
- return DCC_FREEDATA_INVPTR;
-}
-
-
-LOCAL struct DCCFreeRange *
-DCCFreeRange_New(target_ptr_t addr, target_siz_t size) {
- struct DCCFreeRange *result;
- result = (struct DCCFreeRange *)malloc(sizeof(struct DCCFreeRange));
- if likely(result) {
-  result->fr_addr = addr;
-  result->fr_size = size;
- }
- return result;
-}
-
-PUBLIC void
-DCCFreeData_Release(struct DCCFreeData *__restrict self,
-                    target_ptr_t addr, target_siz_t size) {
- struct DCCFreeRange *prev,*iter,*newslot;
- target_ptr_t addr_end = addr+size;
- prev = NULL,iter = self->fd_begin;
- while (iter) {
-  if (addr_end <= iter->fr_addr) {
-   if (addr_end == iter->fr_addr) {
-    /* Extend this free range below. */
-    iter->fr_addr -= size;
-    iter->fr_size += size;
-check_merge:
-    assert(!prev || iter->fr_addr >= prev->fr_addr+
-                                     prev->fr_size);
-    if (prev &&
-        iter->fr_addr == prev->fr_addr+
-                         prev->fr_size) {
-     /* Merge the two ranges. */
-     prev->fr_next = iter->fr_next;
-     prev->fr_size += iter->fr_size;
-     free(iter);
-    }
-   } else if (!prev) {
-    /* Create a new range at the front. */
-    newslot = DCCFreeRange_New(addr,size);
-    if unlikely(!newslot) return;
-    assert(iter == self->fd_begin);
-    newslot->fr_next = iter;
-    self->fd_begin = newslot;
-   } else if (addr == prev->fr_addr+prev->fr_size) {
-    /* Extend the previous range above. */
-    prev->fr_size += size;
-    goto check_merge;
-   } else {
-    /* Create a new range. */
-    newslot = DCCFreeRange_New(addr,size);
-    if unlikely(!newslot) return;
-    newslot->fr_next = iter;
-    prev->fr_next = newslot;
-   }
-   return;
-  }
-  prev = iter;
-  iter = iter->fr_next;
- }
- /* Append at the end. */
- newslot = DCCFreeRange_New(addr,size);
- if unlikely(!newslot) return;
- newslot->fr_next = NULL;
- if (prev) prev->fr_next = newslot;
- else      self->fd_begin = newslot;
 }
 
 
@@ -539,12 +332,12 @@ DCCSection_Destroy(struct DCCSection *__restrict self) {
 #ifdef DCC_SYMFLAG_SEC_OWNSBASE
   if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE) {
 #ifdef _WIN32
-   VirtualFree((LPVOID)self->sc_base,
+   VirtualFree((LPVOID)DCCSection_BASE(self),
                (size_t)(self->sc_text.tb_end-
                         self->sc_text.tb_begin),
                 MEM_DECOMMIT);
 #else
-   munmap((void *)self->sc_base,
+   munmap((void *)DCCSection_BASE(self),
           (size_t)(self->sc_text.tb_end-
                    self->sc_text.tb_begin));
 #endif
@@ -619,6 +412,8 @@ DCCSection_Clear(struct DCCSection *__restrict self) {
    for (; biter != bend; ++biter) {
     iter = *biter;
     while (iter) {
+     assert(iter->sy_align);
+     assert(iter->sy_align <= self->sc_start.sy_align);
      next = iter->sy_sec_next;
      assert(iter->sy_sec == self);
      assert(self->sc_start.sy_refcnt);
@@ -755,15 +550,19 @@ DCCSym_ClrDef(struct DCCSym *__restrict self) {
 PUBLIC void
 DCCSym_Define(struct DCCSym *__restrict self,
               struct DCCSection *__restrict section,
-              target_ptr_t addr, target_siz_t size) {
+              target_ptr_t addr,
+              target_siz_t size,
+              target_siz_t align) {
  DCCSym_ASSERT(self);
  assert(section);
+ assertf(!(align&(align-1)),"Invalid alignment: %lu",(unsigned long)align);
  /*  Don't warn when re-declared at the same location
   * (Can happen for multiple lib-import declarations). */
  if (self->sy_sec) {
-  if (self->sy_sec == section &&
-      self->sy_addr == addr &&
-      self->sy_size == size) return;
+  if (self->sy_sec   == section &&
+      self->sy_addr  == addr &&
+      self->sy_size  == size &&
+      self->sy_align == align) return;
   if (DCCSection_ISIMPORT(section)) {
    /* Don't allow library symbols re-defining local symbols. */
    WARN(!DCCSection_ISIMPORT(self->sy_sec)
@@ -782,24 +581,28 @@ DCCSym_Define(struct DCCSym *__restrict self,
  if (!DCCSection_ISIMPORT(section))
       DCCSection_DIncref(section,addr,size);
  DCCSym_ClearDef(self,1);
- self->sy_addr = addr;
- self->sy_size = size;
- self->sy_sec  = section; /* Inherit reference. */
+ self->sy_addr  = addr;
+ self->sy_size  = size;
+ self->sy_align = align;
+ self->sy_sec   = section; /* Inherit reference. */
  DCCSection_Incref(section); /* Create reference for above. */
  DCCSection_InsSym(section,self);
 }
 PUBLIC void
 DCCSym_Redefine(struct DCCSym *__restrict self,
                 struct DCCSection *__restrict section,
-                target_ptr_t addr, target_siz_t size) {
+                target_ptr_t addr, target_siz_t size,
+                target_siz_t align) {
  DCCSym_ASSERT(self);
  assert(section);
+ assertf(!(align&(align-1)),"Invalid alignment: %lu",(unsigned long)align);
  /*  Don't warn when re-declared at the same location
   * (Can happen for multiple lib-import declarations). */
  if (self->sy_sec) {
-  if (self->sy_sec == section &&
-      self->sy_addr == addr &&
-      self->sy_size == size) return;
+  if (self->sy_sec   == section &&
+      self->sy_addr  == addr &&
+      self->sy_size  == size &&
+      self->sy_align == align) return;
   if (DCCSection_ISIMPORT(self->sy_sec) &&
       DCCSection_ISIMPORT(section) &&
     !(linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)) return;
@@ -808,9 +611,10 @@ DCCSym_Redefine(struct DCCSym *__restrict self,
  if (!DCCSection_ISIMPORT(section))
       DCCSection_DIncref(section,addr,size);
  DCCSym_ClearDef(self,0);
- self->sy_addr = addr;
- self->sy_size = size;
- self->sy_sec  = section; /* Inherit reference. */
+ self->sy_addr  = addr;
+ self->sy_size  = size;
+ self->sy_align = align;
+ self->sy_sec   = section; /* Inherit reference. */
  DCCSection_Incref(section); /* Create reference for above. */
  DCCSection_InsSym(section,self);
 }
@@ -866,7 +670,7 @@ DCCSym_DefAddr(struct DCCSym *__restrict self,
  assert(symaddr);
  if (!symaddr->sa_sym) {
   DCCSym_Define(self,&DCCSection_Abs,
-               (target_ptr_t)symaddr->sa_off,0);
+               (target_ptr_t)symaddr->sa_off,0,1);
   return;
  }
  if (!DCCSym_LoadAddr(symaddr->sa_sym,&load_addr,0))
@@ -876,7 +680,7 @@ DCCSym_DefAddr(struct DCCSym *__restrict self,
  if (load_addr.sa_sym->sy_sec) {
   DCCSym_Define(self,load_addr.sa_sym->sy_sec,
                (target_ptr_t)(load_addr.sa_sym->sy_addr+
-                              load_addr.sa_off),0);
+                              load_addr.sa_off),0,1);
  } else {
   DCCSym_Alias(self,load_addr.sa_sym,
                     load_addr.sa_off);
@@ -989,8 +793,8 @@ DCCSection_New(struct TPPKeyword const *__restrict name,
  } else {
   result = (struct DCCSection *)calloc(1,sizeof(struct DCCSection));
   if unlikely(!result) goto seterr;
-  result->sc_align          = 1;
  }
+ result->sc_start.sy_align  = 1;
  result->sc_start.sy_refcnt = 1;
  result->sc_start.sy_name   = name;
  result->sc_start.sy_sec    = result; /* Inherit reference (indirect loop). */
@@ -1147,6 +951,39 @@ DCCSection_Getrel(struct DCCSection *__restrict self,
  if (rel_begin == rel_end) rel_begin = NULL;
  return rel_begin;
 }
+PUBLIC size_t
+DCCSection_Movrel(struct DCCSection *__restrict self,
+                  target_ptr_t new_addr,
+                  target_ptr_t old_addr,
+                  target_siz_t n_bytes) {
+ struct DCCRel *relv,*temp; size_t relc,mov;
+ assert(self),DCCSECTION_ASSERT_NOTANIMPORT(self);
+ if unlikely(old_addr == new_addr || !n_bytes) return 0;
+ relv = DCCSection_Getrel(self,old_addr,n_bytes,&relc);
+ if (relc) {
+  struct DCCRel *iter,*end;
+  target_off_t addr_off = (target_off_t)(new_addr-old_addr);
+  end = (iter = relv)+relc;
+  for (; iter != end; ++iter) iter->r_addr += addr_off;
+  end = (iter = self->sc_relv)+self->sc_relc;
+  while (iter != end && iter->r_addr < new_addr) ++iter;
+  if (iter > relv) {
+   mov  = (size_t)((iter/*+relc*/)-(relv/*+relc*/));
+   temp = (struct DCCRel *)alloca(mov*sizeof(struct DCCRel));
+   memcpy(temp,relv+relc,mov*sizeof(struct DCCRel));
+   memmove(iter,relv,relc*sizeof(struct DCCRel));
+   memcpy(relv,temp,mov*sizeof(struct DCCRel));
+  } else if (iter < relv) {
+   mov  = (size_t)(relv-iter);
+   temp = (struct DCCRel *)alloca(mov*sizeof(struct DCCRel));
+   memcpy(temp,iter,mov*sizeof(struct DCCRel));
+   memmove(iter,relv,relc*sizeof(struct DCCRel));
+   memcpy(relv+relc,temp,mov*sizeof(struct DCCRel));
+  }
+ }
+ return relc;
+}
+
 
 
 
@@ -1159,18 +996,18 @@ DCCSection_SetBaseTo(struct DCCSection *__restrict self,
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE) {
   self->sc_start.sy_flags &= ~(DCC_SYMFLAG_SEC_OWNSBASE);
 #ifdef _WIN32
-  VirtualFree((LPVOID)self->sc_base,
+  VirtualFree((LPVOID)DCCSection_BASE(self),
               (size_t)(self->sc_text.tb_end-
                        self->sc_text.tb_begin),
                MEM_DECOMMIT);
 #else
-  munmap((void *)self->sc_base,
+  munmap((void *)DCCSection_BASE(self),
          (size_t)(self->sc_text.tb_end-
                   self->sc_text.tb_begin));
 #endif
  }
 #endif /* DCC_SYMFLAG_SEC_OWNSBASE */
- self->sc_base = address;
+ DCCSection_SETBASE(self,address);
 }
 
 PUBLIC size_t
@@ -1184,11 +1021,9 @@ DCCSection_ResolveDisp(struct DCCSection *__restrict self) {
  base_address = self->sc_text.tb_begin;
 #ifdef DCC_SYMFLAG_SEC_OWNSBASE
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE)
-     base_address = (uint8_t *)self->sc_base;
+     base_address = (uint8_t *)DCCSection_BASE(self);
 #endif
- goto begin;
-next: ++iter;
-begin: while (iter != end) {
+ while (iter != end) {
   uint8_t *rel_addr; target_ptr_t rel_value;
   struct DCCSymAddr symaddr;
   /* We're only resolving relocations pointing back into our section. */
@@ -1214,6 +1049,8 @@ begin: while (iter != end) {
    * done this way to keep the dependency graph alive). */
   iter->r_type = DCC_R_NONE;
   ++result;
+next:
+  ++iter;
  }
  return result;
 }
@@ -1228,8 +1065,8 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
  assert(self->sc_text.tb_max >= self->sc_text.tb_pos);
  /* Special case: Don't need to do anything if there are no relocations! */
  if unlikely(!self->sc_relc) return 0;
- base_address = self->sc_base;
- assert(base_address || (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED));
+ base_address = DCCSection_BASE(self);
+ assert(base_address || !(self->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED));
  relbase = self->sc_text.tb_begin;
 #ifdef DCC_SYMFLAG_SEC_OWNSBASE
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE) {
@@ -1259,7 +1096,7 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
            "Section '%s' is missing its base",
            symaddr.sa_sym->sy_sec->sc_start.sy_name->k_name);
    rel_value  = symaddr.sa_off+symaddr.sa_sym->sy_addr;
-   rel_value += (target_ptr_t)symaddr.sa_sym->sy_sec->sc_base;
+   rel_value += DCCSection_BASE(symaddr.sa_sym->sy_sec);
   }
   assert(reldata >= relbase);
   assert(reldata <  relbase+(self->sc_text.tb_end-
@@ -1299,18 +1136,20 @@ DCCSection_SetBase(struct DCCSection *__restrict self) {
  void *codebase; size_t codesize;
  assert(self),DCCSECTION_ASSERT_TEXT_FLUSHED(self);
  assert(self->sc_text.tb_max >= self->sc_text.tb_pos);
+ /* Cannot assign the base of a fixed section. */
+ if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED) return;
  /* Make sure the entire text is allocated. */
  if (!DCCSection_GetText(self,0,(size_t)(self->sc_text.tb_max-
                                          self->sc_text.tb_begin))
      ) return;
  codesize = (size_t)(self->sc_text.tb_max-self->sc_text.tb_begin);
  /* Fix alignment requirements. */
- if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_U) self->sc_align = 1;
+ if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_U) self->sc_start.sy_align = 1;
  /* When we don't need execute permissions, and the
   * code is already properly aligned, we can simply
   * re-use the pre-allocated buffer! */
  if (!(self->sc_start.sy_flags&DCC_SYMFLAG_SEC_X) &&
-     !((uintptr_t)self->sc_text.tb_begin&(self->sc_align-1))) {
+     !((uintptr_t)self->sc_text.tb_begin&(self->sc_start.sy_align-1))) {
   DCCSection_SetBaseTo(self,(target_ptr_t)self->sc_text.tb_begin);
   return;
  }
@@ -1343,7 +1182,8 @@ DCCSection_SetBase(struct DCCSection *__restrict self) {
  if unlikely(!codebase) goto seterr; /* Prevent problems... */
  memcpy(codebase,self->sc_text.tb_begin,codesize);
  DCCSection_SetBaseTo(self,(target_ptr_t)codebase);
- self->sc_start.sy_flags |= DCC_SYMFLAG_SEC_OWNSBASE;
+ self->sc_start.sy_flags |= (DCC_SYMFLAG_SEC_OWNSBASE|
+                             DCC_SYMFLAG_SEC_FIXED);
  return;
 seterr:
  TPPLexer_SetErr();
@@ -1412,8 +1252,8 @@ DCCSection_DAlloc(struct DCCSection *__restrict self,
  target_ptr_t result;
  assert(self);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- if (self->sc_align < align)
-     self->sc_align = align;
+ if (self->sc_start.sy_align < align)
+     self->sc_start.sy_align = align;
  /* Try to re-use previously allocated memory. */
  result = DCCFreeData_Acquire(&self->sc_free,size,align,offset);
  if (result == DCC_FREEDATA_INVPTR)
@@ -1500,6 +1340,9 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
     if unlikely(!oldvec) goto end;
     newvec = (uint8_t *)DCCSection_GetText(self,aligned_result,new_size);
     if unlikely(!newvec) goto end;
+    /* Move relocations. */
+    DCCSection_Movrel(self,aligned_result,old_addr,new_size);
+    /* Move memory. */
     memmove(newvec,oldvec,new_size);
     DCCSection_DFree(self,old_addr,alignment_offset);
    }
@@ -1526,6 +1369,8 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
    if unlikely(!oldvec) goto end;
    newvec = (uint8_t *)DCCSection_GetText(self,result,old_size);
    if unlikely(!newvec) goto end;
+   /* Move relocations. */
+   DCCSection_Movrel(self,result,old_addr,old_size);
    /* Move the common memory to the new location. */
    memmove(newvec,oldvec,old_size);
    /* Free overlap/the old vector. */
@@ -1548,7 +1393,7 @@ end:
 PUBLIC target_ptr_t
 DCCSection_DMerge(struct DCCSection *__restrict self,
                   target_ptr_t addr, target_siz_t size,
-                  target_siz_t min_align) {
+                  target_siz_t min_align, int free_old) {
  target_ptr_t result = addr;
  assert(self);
  assertf(!size || min_align,"Invalid alignment");
@@ -1556,46 +1401,58 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
          "The given addr %lx isn't aligned by %lx",
         (unsigned long)addr,(unsigned long)min_align);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
+ assert(!DCCFreeData_Has(&self->sc_free,addr,size));
+ if unlikely(!size) goto end;
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_M) {
+  struct DCCRel *relv; size_t relc;
+  struct DCCRel *new_relv; size_t new_relc;
   uint8_t *addr_data,*search_iter,*search_end;
-  target_siz_t allocated_size;
-  target_ptr_t alloc_end;
+  relv = DCCSection_Getrel(self,addr,size,&relc);
   search_end = self->sc_text.tb_end;
-  if (self->sc_text.tb_max < search_end) search_end = self->sc_text.tb_max;
-  alloc_end = (target_ptr_t)(search_end-self->sc_text.tb_begin);
+  if (search_end > self->sc_text.tb_max)
+      search_end = self->sc_text.tb_max;
   /* Search for previous iterations. */
   search_iter = self->sc_text.tb_begin;
-  if (addr >= alloc_end) {
-   addr_data      = NULL;
-   allocated_size = 0;
-   search_end     = self->sc_text.tb_end;
-  } else {
-   addr_data      = self->sc_text.tb_begin+addr;
-   allocated_size = alloc_end-addr;
-   search_end     = search_iter+addr;
-  }
-  search_end -= size;
-  if (search_end > self->sc_text.tb_end) goto check_bss;
+  addr_data   = self->sc_text.tb_begin+addr;
+  if (addr_data >= search_end) goto end;
+  search_end     = (search_iter+addr)-size;
   while (search_iter <= search_end) {
    if (!memcmp(search_iter,addr_data,size)) {
-    /* We've got a match! */
-    result = (target_ptr_t)(search_iter-self->sc_text.tb_begin);
+    target_ptr_t new_result; /* We've got a match! */
+    new_result = (target_ptr_t)(search_iter-self->sc_text.tb_begin);
+    /* Make sure the match is actually allocated. */
+    if (DCCFreeData_Has(&self->sc_free,new_result,size)) goto next;
+    /* Make sure that the relocations in the
+     * new area match those from the old. */
+    new_relv = DCCSection_Getrel(self,new_result,size,&new_relc);
+    if (new_relc != relc) goto next;
+    if (relc && new_relv != relv) {
+     struct DCCRel *rel_iter,*rel_end;
+     rel_end = (rel_iter = relv)+relc;
+     for (; rel_iter != rel_end; ++rel_iter,++new_relv) {
+      if (rel_iter->r_type != new_relv->r_type) goto next;
+      if ((rel_iter->r_addr-addr) != (new_relv->r_addr-new_result)) goto next;
+      if (!DCCSym_Equal(rel_iter->r_sym,new_relv->r_sym)) goto next;
+     }
+    }
+    result = new_result;
+    /* Free the old data is requested, to. */
+    if (free_old) DCCSection_DFree(self,addr,size);
     goto end;
    }
+next:
    /* Advance the source pointer by the given alignment.
     * >> That way, we simply skip checking unalignment pointers. */
    search_iter += min_align;
-  }
-check_bss:
-  if (!allocated_size) {
-   /* Special case: Move the result address as close
-    *               to the allocated end as possible. */
-   result = (alloc_end+(min_align-1)) & ~(min_align-1);
   }
  }
 end:
  /* TODO: (ab-)use this function for transferring
   *        data to lower, free memory regions? */
+ assert(result == addr || !DCCFreeData_Has(&self->sc_free,result,size));
+ assertf(!size || !(addr&(min_align-1)),
+         "The given addr %lx isn't aligned by %lx",
+        (unsigned long)addr,(unsigned long)min_align);
  return result;
 }
 
@@ -1623,8 +1480,8 @@ DCCSection_DAllocMem(struct DCCSection *__restrict self,
  assert(mem_size <= size);
  assertf(align,"Invalid alignment");
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- if (self->sc_align < align)
-     self->sc_align = align;
+ if (self->sc_start.sy_align < align)
+     self->sc_start.sy_align = align;
  /* Optimize away trailing ZERO-bytes, instead using bss-trailing memory. */
  while (mem_size && ((uint8_t *)memory)[mem_size-1] == 0) --mem_size;
  if (!(self->sc_start.sy_flags&DCC_SYMFLAG_SEC_M)) goto alloc_normal;
@@ -1684,7 +1541,7 @@ DCCSection_DAllocSym(struct DCCSection *__restrict self,
  result = DCCSym_New(&TPPKeyword_Empty,DCC_SYMFLAG_STATIC);
  if unlikely(!result) return NULL;
  addr = DCCSection_DAllocMem(self,memory,mem_size,size,align,offset);
- DCCSym_Define(result,self,addr,size);
+ DCCSym_Define(result,self,addr,size,align);
  DCCUnit_InsSym(result); /* Inherit reference. */
  DCCSym_ASSERT(result);
  return result;
@@ -1843,8 +1700,9 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_start.sy_alias       */NULL,
  /* sc_start.sy_sec         */&DCCSection_Abs,
  /* sc_start.sy_elfid       */0,
- /* sc_start.sy_addr        */0,
- /* sc_start.sy_size        */(target_ptr_t)-1},
+ /* sc_start.sy_addr        */{0}, /* Base address. */
+ /* sc_start.sy_size        */(target_ptr_t)-1,
+ /* sc_start.sy_align       */1},
  /* sc_symc                 */0,
  /* sc_syma                 */0,
  /* sc_symv                 */NULL,
@@ -1859,8 +1717,6 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_free                 */{
  /* sc_free.fd_begin        */NULL},
  /* sc_alloc                */NULL,
- /* sc_align                */1,
- /* sc_base                 */0, /* Section is based at ZERO(0). */
  /* sc_merge                */0,
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
  /* sc_elflnk               */NULL,
@@ -1882,8 +1738,8 @@ DCCSection_TAlign(struct DCCSection *__restrict self,
                   target_siz_t align, target_siz_t offset) {
  assert(self);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- if (self->sc_align < align)
-     self->sc_align = align;
+ if (self->sc_start.sy_align < align)
+     self->sc_start.sy_align = align;
  DCCTextBuf_TAlign(&self->sc_text,align,offset);
 }
 PUBLIC void
@@ -2107,6 +1963,28 @@ DCCUnit_ClearUnusedLibs(void) {
  return result;
 }
 
+PUBLIC target_siz_t
+DCCUnit_CollapseSections(void) {
+ target_siz_t result = 0;
+ struct DCCSection *sec;
+ struct DCCSection *old_prev;
+ /* If symbol collapsing is disabled, don't do anything. */
+ if (linker.l_flags&DCC_LINKER_FLAG_NOCOLL) goto end;
+ old_prev = unit.u_prev;
+ DCCUnit_SetCurr(NULL);
+ DCCUnit_ENUMSEC(sec) {
+  DCCSection_FreeUnused(sec);
+  DCCSection_MergeSymbols(sec);
+  DCCSection_CollapseSymbols(sec);
+  result += DCCSection_TrimFree(sec);
+ }
+ DCCUnit_SetCurr(unit.u_prev);
+ unit.u_prev = old_prev;
+end:
+ return result;
+}
+
+
 PUBLIC void
 DCCUnit_Init(struct DCCUnit *__restrict self) {
  assert(self);
@@ -2259,8 +2137,8 @@ PUBLIC void DCCUnit_TPutb(uint8_t byte) {
 PUBLIC void DCCUnit_TAlign(target_siz_t align, target_siz_t offset) {
  assertf(unit.u_curr,"No current section selected");
  if (DCCCompiler_ISCGEN()) {
-  if (unit.u_curr->sc_align < align)
-      unit.u_curr->sc_align = align;
+  if (unit.u_curr->sc_start.sy_align < align)
+      unit.u_curr->sc_start.sy_align = align;
   DCCTextBuf_TAlign(&unit.u_tbuf,align,offset);
  }
 }
@@ -2452,6 +2330,7 @@ PUBLIC void DCCUnit_ClearCache(void) {
 DCC_DECL_END
 
 #ifndef __INTELLISENSE__
+#include "unit-freedat.c.inl"
 #include "unit-secmem.c.inl"
 #endif
 

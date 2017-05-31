@@ -99,6 +99,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
  int result = 1;
  assert(self);
  assert(!DCCSection_ISIMPORT(self));
+ assert(!DCCFreeData_Has(&self->sc_free,addr,size));
  assert(n_refcnt);
  if unlikely(!OK) goto err; /* Don't do anything if an error occurred. */
  if unlikely(!size) goto end; /* nothing to do here! */
@@ -167,7 +168,6 @@ merge_curr_prev:
     if unlikely(!newrange) goto err;
     newrange->ar_next = range;
     *prange           = newrange;
-    range             = newrange;
     prange = &newrange->ar_next;
    }
    ASSERT_RELATION();
@@ -625,6 +625,7 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
  assert(self);
  assert(!DCCSection_ISIMPORT(self));
  if unlikely(!OK) goto err; /* Don't do anything if an error occurred. */
+ assert(!DCCFreeData_Has(&self->sc_free,addr,size));
  prange   = &self->sc_alloc;
  REFLOG(("--- decref('%s',%#lx,%lu)\n",self->sc_start.sy_name->k_name,
         (unsigned long)addr,(unsigned long)size));

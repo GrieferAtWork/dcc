@@ -75,7 +75,7 @@ DCC_DECL_BEGIN
 #define MODRM_B16_DISP16 6 /* May only be used with MOD = 00 */
 
 #ifdef X86_UTIL_GENERATOR_SOURCE
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
 #define CHECK_WIDTH(w) ((w) == 1 || (w) == 2 || (w) == 4 || (w) == 8)
 #else
 #define CHECK_WIDTH(w) ((w) == 1 || (w) == 2 || (w) == 4)
@@ -91,7 +91,7 @@ PRIVATE void DCCDisp_SymAddr16(struct DCCSymAddr const *__restrict expr);
 PRIVATE void DCCDisp_SymDisp16(struct DCCSymAddr const *__restrict expr);
 PRIVATE void DCCDisp_SymAddr32(struct DCCSymAddr const *__restrict expr);
 PRIVATE void DCCDisp_SymDisp32(struct DCCSymAddr const *__restrict expr);
-#if DCC_TARGET_SIZEOF_POINTER >= 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
 PRIVATE void DCCDisp_SymAddr64(struct DCCSymAddr const *__restrict expr);
 PRIVATE void DCCDisp_SymDisp64(struct DCCSymAddr const *__restrict expr);
 #define      DCCDisp_SymAddrI  DCCDisp_SymAddr64
@@ -138,7 +138,7 @@ PRIVATE void DCCDisp_LargeByrBinMem(tok_t op, rc_t           src, target_siz_t s
                                     int src_unsigned);
 PRIVATE void DCCDisp_LargeRegsBinRegs(tok_t op, rc_t src, rc_t src2,
                                       rc_t dst, rc_t dst2, int src_unsigned);
-#if DCC_TARGET_SIZEOF_POINTER < 8
+#if DCC_TARGET_SIZEOF_GP_REGISTER < 8
 PRIVATE void DCCDisp_LargeCstBinRegs(tok_t op, struct DCCSymExpr const *__restrict val,
                                      rc_t dst, rc_t dst2, int src_unsigned);
 #endif
@@ -147,10 +147,10 @@ PRIVATE void DCCDisp_LargeCstBinRegs(tok_t op, struct DCCSymExpr const *__restri
 
 
 /* Use 'rep mov' / 'rep stos' / 'rep cmps' for transfer/store/compare of data. */
-#define REPMOV_THRESHOLD(score) ((score)*(DCC_TARGET_SIZEOF_POINTER*2))
+#define REPMOV_THRESHOLD(score) ((score)*(DCC_TARGET_SIZEOF_ARITH_MAX*2))
 
 /* Allocate memory & copy data into it, instead of pushing data individually. */
-#define PUSHMEM_MOV_THRESHOLD (DCC_TARGET_SIZEOF_POINTER*4)
+#define PUSHMEM_MOV_THRESHOLD (DCC_TARGET_SIZEOF_ARITH_MAX*4)
 
 
 #define asm_op_cld()  ((compiler.c_flags&DCC_COMPILER_FLAG_NODFLAG)?(void)0:t_putb(0xfc))

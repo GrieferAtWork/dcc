@@ -26,40 +26,47 @@
 DCC_DECL_BEGIN
 
 /* Known CPU names. */
-#define DCC_CPU_UNKNOWN 0
-#define DCC_CPU_I386    1
-#define DCC_CPU_I486    2
-#define DCC_CPU_I586    3
-#define DCC_CPU_I686    4
-#define DCC_CPU_X86_64  5
+#define DCC_CPU_UNKNOWN  0x00000000
+#define DCC_CPU_F_INTEL  0x00000001
+#define DCC_CPU_F_AMD    0x00000002
+/*                       0x0000fffc */
+#define DCC_CPU_I386    (0x00010000|DCC_CPU_F_INTEL)
+#define DCC_CPU_I486    (0x00020000|DCC_CPU_F_INTEL)
+#define DCC_CPU_I586    (0x00030000|DCC_CPU_F_INTEL)
+#define DCC_CPU_I686    (0x00040000|DCC_CPU_F_INTEL)
+#define DCC_CPU_X86_64  (0x00050000|DCC_CPU_F_INTEL|DCC_CPU_F_AMD)
 
 /* Known OS names. */
-#define DCC_OS_UNKNOWN         0x00
-#define DCC_OS_WINDOWS         0x01
-#define DCC_OS_UNIX            0x02
-#define DCC_OS_LINUX          (DCC_OS_UNIX)
-#define DCC_OS_FREEBSD        (0x10|DCC_OS_UNIX)
-#define DCC_OS_FREEBSD_KERNEL (0x20|DCC_OS_FREEBSD|DCC_OS_UNIX)
-#define DCC_OS_GENERIC         DCC_OS_UNIX /* If you don't know that it is, it's probably based on unix. */
+#define DCC_OS_UNKNOWN         0x00000000
+#define DCC_OS_F_UNIX          0x00000001
+#define DCC_OS_F_KERNEL        0x00000002
+#define DCC_OS_F_WINDOWS       0x00000004
+/*                             0x0000fff8 */
+#define DCC_OS_GENERIC        (0x00000000)
+#define DCC_OS_GENERIC_UNIX   (0x00000000|DCC_OS_F_UNIX) /* If you don't know that it is, it's probably based on unix. */
+#define DCC_OS_WINDOWS        (0x00010000|DCC_OS_F_WINDOWS)
+#define DCC_OS_CYGWIN         (0x00020000|DCC_OS_F_WINDOWS)
+#define DCC_OS_LINUX          (0x00030000|DCC_OS_F_UNIX)
+#define DCC_OS_FREEBSD        (0x00040000|DCC_OS_F_UNIX)
+#define DCC_OS_FREEBSD_KERNEL (0x00040000|DCC_OS_F_UNIX|DCC_OS_F_KERNEL)
+#define DCC_OS_KOS            (0x00050000|DCC_OS_F_UNIX)
 
 /* Known BINARY output format names.
  * NOTE: Does not affect recognized input formats, which
  *       are configured below with 'DCC_LIBFORMAT_*'. */
-#define DCC_BINARY_UNKNOWN 0x00
-#define DCC_BINARY_PE      0x01
-#define DCC_BINARY_ELF     0x02
+/*                         0x0000ffff */
+#define DCC_BINARY_UNKNOWN 0x00000000
+#define DCC_BINARY_PE      0x00010000
+#define DCC_BINARY_ELF     0x00020000
 
 /* DCC Master CPU target switch. */
 #ifndef DCC_TARGET_CPU
-#define DCC_TARGET_CPU     DCC_CPU_I686
-//#define DCC_TARGET_CPU     DCC_HOST_CPU
+#define DCC_TARGET_CPU     DCC_HOST_CPU
 #endif
 
 /* DCC Master Binary target format switch. */
 #ifndef DCC_TARGET_BIN
-//#define DCC_TARGET_BIN     DCC_HOST_BIN
-#define DCC_TARGET_BIN     DCC_BINARY_PE
-//#define DCC_TARGET_BIN     DCC_BINARY_ELF
+#define DCC_TARGET_BIN     DCC_HOST_BIN
 #endif
 
 /* DCC Master OS target switch. */
@@ -138,13 +145,16 @@ DCC_DECL_BEGIN
     defined(_WIN64) || defined(WIN64) || \
     defined(__WIN32__) || defined(__TOS_WIN__) || \
     defined(_WIN32_WCE) || defined(WIN32_WCE) || \
-    defined(__CYGWIN__) || defined(__CYGWIN32__) || \
     defined(__MINGW32__)
 #   define DCC_HOST_OS DCC_OS_WINDOWS
+#elif defined(__CYGWIN__) || defined(__CYGWIN32__)
+#   define DCC_HOST_OS DCC_OS_CYGWIN
 #elif defined(__FreeBSD_kernel__)
 #   define DCC_HOST_OS DCC_OS_FREEBSD_KERNEL
 #elif defined(__FreeBSD__)
 #   define DCC_HOST_OS DCC_OS_FREEBSD
+#elif defined(__KOS__)
+#   define DCC_HOST_OS DCC_OS_KOS
 #elif defined(__linux__) || \
       defined(__linux) || defined(linux)
 #   define DCC_HOST_OS DCC_OS_LINUX
@@ -153,9 +163,9 @@ DCC_DECL_BEGIN
       defined(__ANDROID) || defined(__android__) || \
       defined(__android) || defined(__MACOS__) || \
       defined(__MACOSX__) || defined(__POSIX__)
-#   define DCC_HOST_OS DCC_OS_UNIX
+#   define DCC_HOST_OS DCC_OS_GENERIC_UNIX
 #else
-#   define DCC_HOST_OS DCC_OS_UNKNOWN
+#   define DCC_HOST_OS DCC_OS_GENERIC
 #endif
 #endif /* !DCC_HOST_OS */
 
@@ -164,9 +174,9 @@ DCC_DECL_BEGIN
 #   define DCC_HOST_BIN    DCC_BINARY_ELF
 #elif defined(__PE__)
 #   define DCC_HOST_BIN    DCC_BINARY_PE
-#elif DCC_HOST_OS == DCC_OS_WINDOWS
+#elif !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
 #   define DCC_HOST_BIN    DCC_BINARY_PE
-#elif DCC_HOST_OS == DCC_OS_UNIX || \
+#elif DCC_HOST_OS == DCC_OS_F_UNIX || \
       DCC_HOST_OS == DCC_OS_FREEBSD || \
       DCC_HOST_OS == DCC_OS_FREEBSD_KERNEL
 #   define DCC_HOST_BIN    DCC_BINARY_ELF
@@ -215,7 +225,12 @@ DCC_DECL_BEGIN
 #ifndef DCC_TARGET_ELFINTERP
 /* Determine the apropriate target ELF interpreter name. */
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
-#if DCC_TARGET_OS == DCC_OS_FREEBSD
+#if DCC_TARGET_OS == DCC_OS_KOS
+/* KOS implements the runtime linker in
+ * kernel-space, meaning no interpreter
+ * is necessary. */
+/* #define DCC_TARGET_ELFINTERP <NOTHING> */
+#elif DCC_TARGET_OS == DCC_OS_FREEBSD
 #   define DCC_TARGET_ELFINTERP "/libexec/ld-elf.so.1"
 #elif DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
 #   define DCC_TARGET_ELFINTERP "/lib/ld.so.1"
@@ -228,26 +243,30 @@ DCC_DECL_BEGIN
 #endif
 
 
-#   define DCC_TARGET_STACKDOWN        1 /* 0/1 indicating stack growth direction. */
-#   define DCC_TARGET_BYTEORDER        1234
-#   define DCC_TARGET_FLOAT_WORD_ORDER 1234
+#   define DCC_TARGET_STACKDOWN            1 /* 0/1 indicating stack growth direction. */
+#   define DCC_TARGET_BYTEORDER            1234
+#   define DCC_TARGET_FLOAT_WORD_ORDER     1234
 #if DCC_TARGET_CPU == DCC_CPU_X86_64
-#   define DCC_TARGET_SIZEOF_POINTER   8
+#   define DCC_TARGET_SIZEOF_POINTER       8
 #else
-#   define DCC_TARGET_SIZEOF_POINTER   4
+#   define DCC_TARGET_SIZEOF_POINTER       4
 #endif
-
-#   define DCC_TARGET_SIZEOF_BOOL          1
-#   define DCC_TARGET_SIZEOF_CHAR          1
-#   define DCC_TARGET_SIZEOF_SHORT         2
+#   define DCC_TARGET_SIZEOF_GP_REGISTER   DCC_TARGET_SIZEOF_POINTER /* Greatest size of a general-purpose register. */
+#   define DCC_TARGET_SIZEOF_ARITH_MAX     DCC_TARGET_SIZEOF_POINTER /* Size of the a greatest-width arithmetic operation. */
+#   define DCC_TARGET_SIZEOF_IMM_MAX       DCC_TARGET_SIZEOF_POINTER /* Size of the greatest possible immediate value in assembly. */
+#   define DCC_TARGET_SIZEOF_BYTE          1
+#   define DCC_TARGET_SIZEOF_WORD          2
 #   define DCC_TARGET_SIZEOF_INT           4
+#   define DCC_TARGET_SIZEOF_BOOL          DCC_TARGET_SIZEOF_BYTE
+#   define DCC_TARGET_SIZEOF_CHAR          DCC_TARGET_SIZEOF_BYTE
+#   define DCC_TARGET_SIZEOF_SHORT         DCC_TARGET_SIZEOF_WORD
 #   define DCC_TARGET_SIZEOF_LONG          DCC_TARGET_SIZEOF_POINTER
 #   define DCC_TARGET_SIZEOF_LONG_LONG     8
 #   define DCC_TARGET_SIZEOF_FLOAT         4
 #   define DCC_TARGET_SIZEOF_DOUBLE        8
 #   define DCC_TARGET_SIZEOF_LONG_DOUBLE   12
 #   define DCC_TARGET_SIZEOF_SIZE_T        DCC_TARGET_SIZEOF_POINTER
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
 #   define DCC_TARGET_SIZEOF_WCHAR_T       2
 #else
 #   define DCC_TARGET_SIZEOF_WCHAR_T       4
@@ -286,6 +305,45 @@ DCC_DECL_BEGIN
 #   define DCC_TARGET_TLS                  DCC_TARGET_TLSMODE_NONE
 
 
+#if !(DCC_TARGET_SIZEOF_GP_REGISTER >= DCC_TARGET_SIZEOF_ARITH_MAX)
+#error "Invalid collellation between sizeof(GP_REGISTER) and sizeof(ARITH_MAX)"
+#endif
+#if !(DCC_TARGET_SIZEOF_IMM_MAX >= DCC_TARGET_SIZEOF_GP_REGISTER)
+#error "Invalid collellation between sizeof(IMM_MAX) and sizeof(GP_REGISTER)"
+#endif
+
+#if ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_BYTE) == 8) || \
+    ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_WORD) == 8) || \
+    ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_INT)  == 8)
+#   define DCC_TARGET_HAVE_INT8  1
+#else
+#   define DCC_TARGET_HAVE_INT8  0
+#endif
+#if ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_BYTE) == 16) || \
+    ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_WORD) == 16) || \
+    ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_INT)  == 16)
+#   define DCC_TARGET_HAVE_INT16 1
+#else
+#   define DCC_TARGET_HAVE_INT16 0
+#endif
+#if ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_BYTE) == 32) || \
+    ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_WORD) == 32) || \
+    ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_INT)  == 32)
+#   define DCC_TARGET_HAVE_INT32 1
+#else
+#   define DCC_TARGET_HAVE_INT32 0
+#endif
+#if ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_BYTE) == 64) || \
+    ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_WORD) == 64) || \
+    ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_INT)  == 64) || \
+    ((DCC_TARGET_BITPERBYTE*8)                      == 64)
+#   define DCC_TARGET_HAVE_INT64 1
+#else
+#   define DCC_TARGET_HAVE_INT64 0
+#endif
+
+
+
 #ifdef DCC_TARGET_X86
 /* 6: %EBX, %EDI, %ESI, %ESP, %EBP, %EIP */
 #if DCC_TARGET_SIZEOF_POINTER == 4
@@ -310,14 +368,74 @@ DCC_DECL_BEGIN
 #define DCC_TARGET_ATOMIC_SEQ_CST 5
 
 
-#define DCC_TARGET_TYPE_S1   "signed char"
-#define DCC_TARGET_TYPE_S2   "short"
-#define DCC_TARGET_TYPE_S4   "int"
-#define DCC_TARGET_TYPE_S8   "long long"
-#define DCC_TARGET_TYPE_U1   "unsigned char"
-#define DCC_TARGET_TYPE_U2   "unsigned short"
-#define DCC_TARGET_TYPE_U4   "unsigned int"
-#define DCC_TARGET_TYPE_U8   "unsigned long long"
+#if DCC_TARGET_SIZEOF_CHAR == 1
+#    define DCC_TARGET_TYPE_S1   "signed char"
+#    define DCC_TARGET_TYPE_U1   "unsigned char"
+#elif DCC_TARGET_SIZEOF_SHORT == 1
+#    define DCC_TARGET_TYPE_S1   "short"
+#    define DCC_TARGET_TYPE_U1   "unsigned short"
+#elif DCC_TARGET_SIZEOF_INT == 1
+#    define DCC_TARGET_TYPE_S1   "int"
+#    define DCC_TARGET_TYPE_U1   "unsigned int"
+#elif DCC_TARGET_SIZEOF_LONG == 1
+#    define DCC_TARGET_TYPE_S1   "long"
+#    define DCC_TARGET_TYPE_U1   "unsigned long"
+#elif DCC_TARGET_SIZEOF_LONG_LONG == 1
+#    define DCC_TARGET_TYPE_S1   "long long"
+#    define DCC_TARGET_TYPE_U1   "unsigned long long"
+#endif
+
+#if DCC_TARGET_SIZEOF_CHAR == 2
+#    define DCC_TARGET_TYPE_S2   "signed char"
+#    define DCC_TARGET_TYPE_U2   "unsigned char"
+#elif DCC_TARGET_SIZEOF_SHORT == 2
+#    define DCC_TARGET_TYPE_S2   "short"
+#    define DCC_TARGET_TYPE_U2   "unsigned short"
+#elif DCC_TARGET_SIZEOF_INT == 2
+#    define DCC_TARGET_TYPE_S2   "int"
+#    define DCC_TARGET_TYPE_U2   "unsigned int"
+#elif DCC_TARGET_SIZEOF_LONG == 2
+#    define DCC_TARGET_TYPE_S2   "long"
+#    define DCC_TARGET_TYPE_U2   "unsigned long"
+#elif DCC_TARGET_SIZEOF_LONG_LONG == 2
+#    define DCC_TARGET_TYPE_S2   "long long"
+#    define DCC_TARGET_TYPE_U2   "unsigned long long"
+#endif
+
+#if DCC_TARGET_SIZEOF_CHAR == 4
+#    define DCC_TARGET_TYPE_S4   "signed char"
+#    define DCC_TARGET_TYPE_U4   "unsigned char"
+#elif DCC_TARGET_SIZEOF_SHORT == 4
+#    define DCC_TARGET_TYPE_S4   "short"
+#    define DCC_TARGET_TYPE_U4   "unsigned short"
+#elif DCC_TARGET_SIZEOF_INT == 4
+#    define DCC_TARGET_TYPE_S4   "int"
+#    define DCC_TARGET_TYPE_U4   "unsigned int"
+#elif DCC_TARGET_SIZEOF_LONG == 4
+#    define DCC_TARGET_TYPE_S4   "long"
+#    define DCC_TARGET_TYPE_U4   "unsigned long"
+#elif DCC_TARGET_SIZEOF_LONG_LONG == 4
+#    define DCC_TARGET_TYPE_S4   "long long"
+#    define DCC_TARGET_TYPE_U4   "unsigned long long"
+#endif
+
+#if DCC_TARGET_SIZEOF_CHAR == 8
+#    define DCC_TARGET_TYPE_S8   "signed char"
+#    define DCC_TARGET_TYPE_U8   "unsigned char"
+#elif DCC_TARGET_SIZEOF_SHORT == 8
+#    define DCC_TARGET_TYPE_S8   "short"
+#    define DCC_TARGET_TYPE_U8   "unsigned short"
+#elif DCC_TARGET_SIZEOF_INT == 8
+#    define DCC_TARGET_TYPE_S8   "int"
+#    define DCC_TARGET_TYPE_U8   "unsigned int"
+#elif DCC_TARGET_SIZEOF_LONG == 8
+#    define DCC_TARGET_TYPE_S8   "long"
+#    define DCC_TARGET_TYPE_U8   "unsigned long"
+#elif DCC_TARGET_SIZEOF_LONG_LONG == 8
+#    define DCC_TARGET_TYPE_S8   "long long"
+#    define DCC_TARGET_TYPE_U8   "unsigned long long"
+#endif
+
 #define DCC_TARGET_TYPE_S(b) DCC_PRIVATE_PP_CAT(DCC_TARGET_TYPE_S,b)
 #define DCC_TARGET_TYPE_U(b) DCC_PRIVATE_PP_CAT(DCC_TARGET_TYPE_U,b)
 
@@ -330,53 +448,73 @@ DCC_DECL_BEGIN
 #define DCC_PRIVATE_MUL8(x) DCC_PRIVATE_MUL8_##x
 #define DCC_MUL8(x) DCC_PRIVATE_MUL8(x)
 
-#define DCC_TARGET_MIN_S1   "(-127-1)"
-#define DCC_TARGET_MIN_S2   "(-32767-1)"
-#define DCC_TARGET_MIN_S4   "(-2147483647-1)"
-#if DCC_TARGET_SIZEOF_LONG == 8
-#define DCC_TARGET_MIN_S8   "(-9223372036854775807l-1)"
-#else
-#define DCC_TARGET_MIN_S8   "(-9223372036854775807ll-1)"
+#if DCC_TARGET_SIZEOF_INT >= 1
+#define DCC_TARGET_SFX_I1  ""
+#elif DCC_TARGET_SIZEOF_LONG >= 1
+#define DCC_TARGET_SFX_I1  "l"
+#elif DCC_TARGET_SIZEOF_LONG_LONG >= 1
+#define DCC_TARGET_SFX_I1  "ll"
 #endif
+#if DCC_TARGET_SIZEOF_INT >= 2
+#define DCC_TARGET_SFX_I2  ""
+#elif DCC_TARGET_SIZEOF_LONG >= 2
+#define DCC_TARGET_SFX_I2  "l"
+#elif DCC_TARGET_SIZEOF_LONG_LONG >= 2
+#define DCC_TARGET_SFX_I2  "ll"
+#endif
+#if DCC_TARGET_SIZEOF_INT >= 4
+#define DCC_TARGET_SFX_I4  ""
+#elif DCC_TARGET_SIZEOF_LONG >= 4
+#define DCC_TARGET_SFX_I4  "l"
+#elif DCC_TARGET_SIZEOF_LONG_LONG >= 4
+#define DCC_TARGET_SFX_I4  "ll"
+#endif
+#if DCC_TARGET_SIZEOF_INT >= 8
+#define DCC_TARGET_SFX_I8  ""
+#elif DCC_TARGET_SIZEOF_LONG >= 8
+#define DCC_TARGET_SFX_I8  "l"
+#elif DCC_TARGET_SIZEOF_LONG_LONG >= 8
+#define DCC_TARGET_SFX_I8  "ll"
+#endif
+
+#ifdef DCC_TARGET_SFX_I1
+#define DCC_TARGET_MIN_S1  "(-127" DCC_TARGET_SFX_I1 "-1" DCC_TARGET_SFX_I1 ")"
+#define DCC_TARGET_MAX_S1    "127" DCC_TARGET_SFX_I1
+#define DCC_TARGET_MIN_U1    "0u" DCC_TARGET_SFX_I1
+#define DCC_TARGET_MAX_U1    "0xffu" DCC_TARGET_SFX_I1
+#endif
+#ifdef DCC_TARGET_SFX_I2
+#define DCC_TARGET_MIN_S2  "(-32767" DCC_TARGET_SFX_I2 "-1" DCC_TARGET_SFX_I2 ")"
+#define DCC_TARGET_MAX_S2    "32767" DCC_TARGET_SFX_I2
+#define DCC_TARGET_MIN_U2    "0u" DCC_TARGET_SFX_I2
+#define DCC_TARGET_MAX_U2    "0xffffu" DCC_TARGET_SFX_I2
+#endif
+
+#ifdef DCC_TARGET_SFX_I4
+#define DCC_TARGET_MIN_S4  "(-2147483647" DCC_TARGET_SFX_I4 "-1" DCC_TARGET_SFX_I4 ")"
+#define DCC_TARGET_MAX_S4    "2147483647" DCC_TARGET_SFX_I4
+#define DCC_TARGET_MIN_U4    "0u" DCC_TARGET_SFX_I4
+#define DCC_TARGET_MAX_U4    "0xffffffffu" DCC_TARGET_SFX_I4
+#endif
+
+#ifdef DCC_TARGET_SFX_I8
+#define DCC_TARGET_MIN_S8   "(-9223372036854775807" DCC_TARGET_SFX_I8 "-1" DCC_TARGET_SFX_I8 ")"
+#define DCC_TARGET_MAX_S8    "9223372036854775807" DCC_TARGET_SFX_I8
+#define DCC_TARGET_MIN_U8    "0u" DCC_TARGET_SFX_I8
+#define DCC_TARGET_MAX_U8    "0xffffffffffffffffu" DCC_TARGET_SFX_I8
+#endif
+
 #define DCC_TARGET_MIN_S(b)  DCC_PRIVATE_PP_CAT(DCC_TARGET_MIN_S,b)
-
-#define DCC_TARGET_MAX_S1    "127"
-#define DCC_TARGET_MAX_S2    "32767"
-#define DCC_TARGET_MAX_S4    "2147483647"
-#if DCC_TARGET_SIZEOF_LONG == 8
-#define DCC_TARGET_MAX_S8    "9223372036854775807l"
-#else
-#define DCC_TARGET_MAX_S8    "9223372036854775807ll"
-#endif
 #define DCC_TARGET_MAX_S(b)  DCC_PRIVATE_PP_CAT(DCC_TARGET_MAX_S,b)
-
-#define DCC_TARGET_MAX_U1    "0xffu"
-#define DCC_TARGET_MAX_U2    "0xffffu"
-#define DCC_TARGET_MAX_U4    "0xffffffffu"
-#if DCC_TARGET_SIZEOF_LONG == 8
-#define DCC_TARGET_MAX_U8    "0xfffffffffffffffful"
-#else
-#define DCC_TARGET_MAX_U8    "0xffffffffffffffffull"
-#endif
+#define DCC_TARGET_MIN_U(b)  DCC_PRIVATE_PP_CAT(DCC_TARGET_MIN_U,b)
 #define DCC_TARGET_MAX_U(b)  DCC_PRIVATE_PP_CAT(DCC_TARGET_MAX_U,b)
 
 
-#if DCC_TARGET_SIZEOF_POINTER == 1
-typedef  int8_t  DCC(target_off_t);
-typedef uint8_t  DCC(target_ptr_t);
-#elif DCC_TARGET_SIZEOF_POINTER == 2
-typedef  int16_t DCC(target_off_t);
-typedef uint16_t DCC(target_ptr_t);
-#elif DCC_TARGET_SIZEOF_POINTER == 4
-typedef  int32_t DCC(target_off_t);
-typedef uint32_t DCC(target_ptr_t);
-#elif DCC_TARGET_SIZEOF_POINTER == 8
-typedef  int64_t DCC(target_off_t);
-typedef uint64_t DCC(target_ptr_t);
-#else
-#   error FIXME
-#endif
-typedef DCC(target_ptr_t) DCC(target_siz_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_POINTER),    _t) DCC(target_off_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_POINTER),    _t) DCC(target_ptr_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_SIZE_T),     _t) DCC(target_siz_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_GP_REGISTER),_t) DCC(target_reg_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_IMM_MAX),    _t) DCC(target_imm_t);
 
 
 /* Register class/descriptor:
