@@ -29,14 +29,14 @@ typedef __SIZE_TYPE__ size_t;
 #if defined(_WIN32) || defined(__CYGWIN32__)
 typedef __int64 fpos_t;
 typedef struct {
-	char *__msvcrt_ptr;
-	int   __msvcrt_cnt;
-	char *__msvcrt_base;
-	int   __msvcrt_flag;
-	int   __msvcrt_file;
-	int   __msvcrt_charbuf;
-	int   __msvcrt_bufsiz;
-	char *__msvcrt_tmpfname;
+	char   *__msvcrt_ptr;
+	__int32 __msvcrt_cnt;
+	char   *__msvcrt_base;
+	__int32 __msvcrt_flag;
+	__int32 __msvcrt_file;
+	__int32 __msvcrt_charbuf;
+	__int32 __msvcrt_bufsiz;
+	char   *__msvcrt_tmpfname;
 } *FILE;
 
 #define BUFSIZ  512
