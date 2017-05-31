@@ -1285,13 +1285,14 @@ TPPFUN int TPPLexer_GetExtension(char const *__restrict name);
  * @return: NULL: File not found. */
 TPPFUN struct TPPFile *TPPLexer_OpenFile(int mode, char *filename, size_t filename_size,
                                          struct TPPKeyword **pkeyword_entry);
-#define TPPLEXER_OPENFILE_MODE_NORMAL      0 /* Normal open (simply pass the given filename to TPPFile_Open, but still sanitize and cache the filename) */
-#define TPPLEXER_OPENFILE_MODE_RELATIVE    1 /* #include "foo.h" (Search for the file relative to the path of every text file on the #include-stack in reverse. - If this fails, search in system folders). */
-#define TPPLEXER_OPENFILE_MODE_SYSTEM      2 /* #include <stdlib.h> (Search through system folders usually specified with '-I' on the commandline). */
-#define TPPLEXER_OPENFILE_FLAG_NEXT        4 /* FLAG: Only open a file not already part of the #include-stack
-                                              * WARNING: May not be used for 'TPPLEXER_OPENFILE_MODE_NORMAL'! */
-#define TPPLEXER_OPENFILE_FLAG_NOCASEWARN  8 /* FLAG: Don't warn about filename casing on windows. */
-#define TPPLEXER_OPENFILE_FLAG_NOCALLBACK 16 /* FLAG: Don't invoke the unknown-file callback when set. */
+#define TPPLEXER_OPENFILE_MODE_NORMAL     0x00 /* Normal open (simply pass the given filename to TPPFile_Open, but still sanitize and cache the filename) */
+#define TPPLEXER_OPENFILE_MODE_RELATIVE   0x01 /* #include "foo.h" (Search for the file relative to the path of every text file on the #include-stack in reverse. - If this fails, search in system folders). */
+#define TPPLEXER_OPENFILE_MODE_SYSTEM     0x02 /* #include <stdlib.h> (Search through system folders usually specified with '-I' on the commandline). */
+#define TPPLEXER_OPENFILE_FLAG_NEXT       0x04 /* FLAG: Only open a file not already part of the #include-stack
+                                                * WARNING: May not be used for 'TPPLEXER_OPENFILE_MODE_NORMAL'! */
+#define TPPLEXER_OPENFILE_FLAG_NOCASEWARN 0x08 /* FLAG: Don't warn about filename casing on windows. */
+#define TPPLEXER_OPENFILE_FLAG_NOCALLBACK 0x10 /* FLAG: Don't invoke the unknown-file callback when set. */
+#define TPPLEXER_OPENFILE_FLAG_CONSTNAME  0x20 /* FLAG: The given 'filename' may not be modified. */
 
 /* Push a given file into the #include-stack of the current lexer.
  * NOTE: These functions never fail and return void.

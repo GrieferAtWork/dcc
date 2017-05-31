@@ -4349,12 +4349,21 @@ struct TPPFile *
 TPPLexer_OpenFile(int mode, char *filename, size_t filename_size,
                   struct TPPKeyword **pkeyword_entry) {
  struct TPPFile *result;
- char *buffer = NULL,*newbuffer;
+ char *buffer = NULL,*newbuffer,*mfilename = NULL;
  int checked_empty_path = 0;
  size_t buffersize,newbuffersize;
  assert(mode != (TPPLEXER_OPENFILE_MODE_NORMAL|TPPLEXER_OPENFILE_FLAG_NEXT));
  /* Fix broken/distorted filenames to prevent ambiguity. */
- if (HAVE_EXTENSION_CANONICAL_HEADERS) fix_filename(filename,&filename_size);
+ if (HAVE_EXTENSION_CANONICAL_HEADERS) {
+  if (mode&TPPLEXER_OPENFILE_FLAG_CONSTNAME) {
+   /* Create a copy that will be modified below. */
+   mfilename = (char *)malloc((filename_size+1)*sizeof(char));
+   if unlikely(!mfilename) return NULL;
+   memcpy(mfilename,filename,(filename_size+1)*sizeof(char));
+   filename = mfilename;
+  }
+  fix_filename(filename,&filename_size);
+ }
  if ((mode&3) == TPPLEXER_OPENFILE_MODE_NORMAL) {
   result = open_normal_file(filename,filename_size,pkeyword_entry,0);
   if unlikely(!result) goto check_unknown_file;
@@ -4363,7 +4372,7 @@ TPPLexer_OpenFile(int mode, char *filename, size_t filename_size,
       !check_path_spelling(filename,filename_size)
        ) {err_r: TPPFile_Decref(result); result = NULL; }
 #endif
-  return result;
+  goto end;
  }
  buffer = NULL,buffersize = 0;
  if (mode&TPPLEXER_OPENFILE_MODE_RELATIVE) {
@@ -4480,6 +4489,7 @@ check_unknown_file:
   result = (*current.l_callbacks.c_unknown_file)(filename,filename_size);
  }
 end_buffer: free(buffer);
+end: free(mfilename);
  return result;
 err_buffer: result = NULL; goto end_buffer;
 }
@@ -5182,7 +5192,8 @@ PRIVATE int parse_include_string(char **begin, char **end) {
                        (size_t)(token.t_file->f_end-token.t_end));
   if (!*end) *end = token.t_end;
   else {
-   token.t_file->f_pos = *end;
+   /* Continue parsing _AFTER_ the '>' character! */
+   token.t_file->f_pos = (*end)+1;
    --end;
   }
   assert(*end > *begin);
@@ -5571,7 +5582,7 @@ skip_block_and_parse:
     goto def_skip_until_lf;
    } break;
 
-#define TPPLEXER_OPENFILE_MODE_IMPORT   8
+#define TPPLEXER_OPENFILE_MODE_IMPORT   0x100
    { /* Include a file. */
     int mode; struct TPPKeyword *kwd_entry;
     struct TPPFile *curfile,*include_file,*final_file;
@@ -5596,7 +5607,13 @@ skip_block_and_parse:
      mode |= TPPLEXER_OPENFILE_MODE_SYSTEM; /* #include <stdlib.h> */
     }
     ++include_begin;
-    include_file = TPPLexer_OpenFile(mode&0x7,include_begin,
+    assert(include_begin >= token.t_file->f_begin);
+    assert(include_end   <= token.t_file->f_end);
+    /* When the filename originates from something
+     * other than a textfile, we must not modify it. */
+    if (token.t_file->f_kind != TPPFILE_KIND_TEXT)
+        mode |= TPPLEXER_OPENFILE_FLAG_CONSTNAME;
+    include_file = TPPLexer_OpenFile(mode&0xff,include_begin,
                                     (size_t)(include_end-include_begin),
                                     &kwd_entry);
     if unlikely(!include_file) {
@@ -5617,7 +5634,7 @@ skip_block_and_parse:
     if (include_file->f_textfile.f_guard &&
         TPPKeyword_ISDEFINED(include_file->f_textfile.f_guard)) {
      /* File is guarded by an active preprocessor macro (Don't #include it). */
-     LOG(LOG_LEGACYGUARD,("Skip include for file '%s' is guarded by active guard '%s'\n",
+     LOG(LOG_LEGACYGUARD,("Skip include for file '%s' guarded by active guard '%s'\n",
                           include_file->f_name,include_file->f_textfile.f_guard->k_name));
      break;
     }
@@ -5629,6 +5646,10 @@ skip_block_and_parse:
     final_file = TPPFile_CopyForInclude(include_file);
     if unlikely(!final_file) goto seterr;
     pushfile_inherited(final_file);
+    /* Parse the next token from this file. */
+    breakeob();
+    breakf();
+    goto again;
    } break;
 
    { /* Define/delete an assertion. */
@@ -6237,6 +6258,12 @@ create_int_file:
      mode |= TPPLEXER_OPENFILE_MODE_SYSTEM; /* #include <stdlib.h> */
     }
     ++include_begin;
+    assert(include_begin >= token.t_file->f_begin);
+    assert(include_end   <= token.t_file->f_end);
+    /* When the filename originates from something
+     * other than a textfile, we must not modify it. */
+    if (token.t_file->f_kind != TPPFILE_KIND_TEXT)
+        mode |= TPPLEXER_OPENFILE_FLAG_CONSTNAME;
     /* Try to open the file described.
      * NOTE: If we do manage to open it, it will already
      *       be cached when a #include tries to use it. */

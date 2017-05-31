@@ -291,7 +291,7 @@ PREDEFINED_MACRO(__TPP_VERSION__,TPP_PP_STR(TPP_PREPROCESSOR_VERSION))
 #endif /* !TPP_CONFIG_MINMACRO */
 
 #if TPP_CONFIG_GCCFUNC
-#if !TPP_CONFIG_MINGCCFUNC
+#if TPP_CONFIG_MINGCCFUNC == 0
 /* Builtin functions recognized in expressions. */
 #ifdef DECLARE_BUILTIN_FUNCTIONS
 PRIVATE int_t tpp_ffs(int_t i) {
@@ -334,7 +334,7 @@ PRIVATE int_t tpp_parity(int_t i) {
  return result;
 }
 #endif
-#endif /* !TPP_CONFIG_MINGCCFUNC */
+#endif /* TPP_CONFIG_MINGCCFUNC == 0 */
 
 #if TPP_CONFIG_MINGCCFUNC < 2
 /* Special functions that require designated preprocessor support.
@@ -343,7 +343,7 @@ HAS_BUILTIN_IF(__builtin_constant_p,TPPLexer_HasExtension(EXT_BUILTIN_FUNCTIONS)
 HAS_BUILTIN_IF(__builtin_choose_expr,TPPLexer_HasExtension(EXT_BUILTIN_FUNCTIONS))
 #endif
 
-#if !TPP_CONFIG_MINGCCFUNC
+#if TPP_CONFIG_MINGCCFUNC == 0
 /* Define regular builtin functions. */
 PREDEFINED_BUILTIN_FUNCTION(__builtin_ffs,1,{ RETURN_INT(tpp_ffs(INT(0)&((int)-1))); })
 PREDEFINED_BUILTIN_FUNCTION(__builtin_ffsl,1,{ RETURN_INT(tpp_ffs(INT(0)&((long)-1))); })
@@ -418,7 +418,7 @@ PREDEFINED_BUILTIN_FUNCTION(__builtin_isxdigit,1,{ RETURN_INT(isxdigit((int)INT(
 PREDEFINED_BUILTIN_FUNCTION(__builtin_toascii,1,{ RETURN_INT(toascii((int)INT(0))); })
 PREDEFINED_BUILTIN_FUNCTION(__builtin_tolower,1,{ RETURN_INT(tolower((int)INT(0))); })
 PREDEFINED_BUILTIN_FUNCTION(__builtin_toupper,1,{ RETURN_INT(toupper((int)INT(0))); })
-#endif /* !TPP_CONFIG_MINGCCFUNC */
+#endif /* TPP_CONFIG_MINGCCFUNC == 0 */
 #endif /* TPP_CONFIG_GCCFUNC */
 
 /* Declare builtin extensions. */
