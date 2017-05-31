@@ -23,10 +23,10 @@
 #include "target.h"
 #include "lexer.h"
 #include "stream.h"
+#include "../elf.h"
 
 #include <stddef.h>
 #include <stdint.h>
-#include <elf.h>
 
 DCC_DECL_BEGIN
 
@@ -518,7 +518,7 @@ struct DCCSection {
   * >> CRASH!
   * ALSO: This will be required for object-file hard aliases. */
  struct DCCAllocRange *sc_alloc; /*< [0..1][chain(->ar_next->...)] Reference-counted tracking of section text. */
- target_ptr_t          sc_merge; /*< Used during merging: Base address of merge destination. */
+ DCC(target_ptr_t)     sc_merge; /*< Used during merging: Base address of merge destination. */
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
  struct DCCSection    *sc_elflnk; /*< [0..1] Used by ELF: Link section. */
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
@@ -773,7 +773,7 @@ DCCFUN size_t DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_w
 
 /* Set the base address of a given section.
  * @requires: !DCCSection_ISIMPORT(self) */
-DCCFUN void DCCSection_SetBaseTo(struct DCCSection *__restrict self, target_ptr_t address);
+DCCFUN void DCCSection_SetBaseTo(struct DCCSection *__restrict self, DCC(target_ptr_t) address);
 
 #if DCC_HOST_CPU == DCC_TARGET_CPU
 /* Allocate a base address for the given section.

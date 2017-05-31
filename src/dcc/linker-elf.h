@@ -22,7 +22,6 @@
 #include <dcc/common.h>
 #include <dcc/target.h>
 #include <dcc/lexer.h>
-
 #include <elf.h>
 
 DCC_DECL_BEGIN

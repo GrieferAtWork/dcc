@@ -1354,12 +1354,15 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
   if (DCCSection_DAllocAt(self,old_addr+old_size,more_mem) == DCC_FREEDATA_INVPTR) {
    uint8_t *oldvec,*newvec;
    int old_new_overlap = 1;
+   /* Make sure not to allocate out-of-bounds. */
+   if (old_addr < more_mem) goto alloc_newblock;
    /* Can't allocate immediately after! (Try immediately before) */
    result  = old_addr-more_mem;
    result &= ~(new_align-1);
    result += new_offset;
    result  = DCCSection_DAllocAt(self,result,more_mem);
    if (result == DCC_FREEDATA_INVPTR) {
+alloc_newblock:
     /* Just allocate new data. */
     result = DCCSection_DAlloc(self,new_size,new_align,new_offset);
     old_new_overlap = 0;

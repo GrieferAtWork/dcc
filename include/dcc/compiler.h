@@ -25,10 +25,10 @@
 #include "type.h"
 #include "vstack.h"
 #include "unit.h"
+#include "../elf.h"
 
 #include <stddef.h>
 #include <stdint.h>
-#include <elf.h>
 
 DCC_DECL_BEGIN
 
