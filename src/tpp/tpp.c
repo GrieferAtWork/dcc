@@ -5584,7 +5584,7 @@ skip_block_and_parse:
     curfile = token.t_file; assert(curfile);
     end_of_line = string_find_eol_after_comments(curfile->f_pos,curfile->f_end);
     /* Locate the end of the current line and place the file pointer there. */
-    if unlikely(!parse_include_string(&include_begin,&include_end)) break;
+    if unlikely(!parse_include_string(&include_begin,&include_end)) goto def_skip_until_lf;
     assert(end_of_line >= curfile->f_begin);
     assert(end_of_line >= curfile->f_pos);
     assert(end_of_line <= curfile->f_end);
