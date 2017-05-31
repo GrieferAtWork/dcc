@@ -48,7 +48,7 @@ mkdir -p $(build "") || exit $?
 src src/*.c
 src src/dcc/*.c
 
-gcc -o bin/dcc ${object_list[@]}
+$CC -o bin/dcc ${object_list[@]}
 
 
 

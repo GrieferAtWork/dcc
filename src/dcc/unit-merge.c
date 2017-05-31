@@ -71,8 +71,10 @@ found_sec:
    sec_size = (target_siz_t)(sym->sy_sec->sc_text.tb_max-
                              sym->sy_sec->sc_text.tb_begin);
    DCCSection_TEND(sym->sy_sec);
-   assert(sym->sy_addr+sym->sy_size >= sym->sy_addr);
-   assertf(sym->sy_addr+sym->sy_size <= sec_size,
+   assert(DCCSym_ISSECTION(sym) ||
+          sym->sy_addr+sym->sy_size >= sym->sy_addr);
+   assertf(DCCSym_ISSECTION(sym) ||
+           sym->sy_addr+sym->sy_size <= sec_size,
            "Symbol '%s' address range %lu..%lu is out-of-bounds of section '%s' range 0..%lu",
            sym->sy_name->k_name,
           (unsigned long)sym->sy_addr,
