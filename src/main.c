@@ -91,7 +91,7 @@ static void tpp_clrfile(void) {
  TOKEN.t_begin =
  TOKEN.t_end   = TOKEN.t_file->f_pos;
  TOKEN.t_kwd   = NULL;
- TOKEN.t_id    = TOK_EOF;
+ if (TOKEN.t_id > 0) TOKEN.t_id = TOK_EOF;
 }
 
 

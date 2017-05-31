@@ -250,20 +250,25 @@ DCCUnit_ImportWithFilename(struct DCCLibDef *__restrict def,
                            char const *__restrict filename) {
  int result; stream_t s;
  if (!strcmp(filename,"-")) {
+  struct DCCLibDef newdef = *def;
+  /* Don't allow anything but source files to be read from <stdin>! */
+  newdef.ld_flags |= DCC_LIBDEF_FLAG_ONLY_SOURCE;
   /* Read from stdin. */
-  return DCCUnit_DoImportStream(def,"<stdin>",
-                                DCC_STREAM_STDIN,0);
- }
- s = s_openr(filename);
- //printf("Checking: '%s'\n",filename);
- if (s == TPP_STREAM_INVALID) {
+  result = DCCUnit_DoImportStream(&newdef,"<stdin>",
+                                  DCC_STREAM_STDIN,0);
+  def->ld_dynlib = newdef.ld_dynlib;
+ } else {
+  s = s_openr(filename);
+  //printf("Checking: '%s'\n",filename);
+  if (s == TPP_STREAM_INVALID) {
 #if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
-  /* TODO: maybe retry with fixed slashes? ('filename.replace("/","\\")') */
+   /* TODO: maybe retry with fixed slashes? ('filename.replace("/","\\")') */
 #endif
-  return 0;
+   return 0;
+  }
+  result = DCCUnit_DoImportStream(def,filename,s,0);
+  s_close(s);
  }
- result = DCCUnit_DoImportStream(def,filename,s,0);
- s_close(s);
  return result;
 }
 
