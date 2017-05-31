@@ -1239,6 +1239,7 @@ DCCLinker_Make(stream_t fd) {
 
  /* Execute relocations. */
  pe_mk_relocate();
+ if (!OK) goto end;
 
  /* Write everything to file. */
  pe_mk_writefile(fd);
