@@ -19,31 +19,37 @@
 #pragma once
 #pragma GCC system_header
 
-#pragma push_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
-                         "realloc","cfree","memalign","aligned_alloc","pvalloc",\
-                         "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
-#if __has_include_next(<string.h>)
-#include_next <string.h>
-#endif
-#pragma pop_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
-                        "realloc","cfree","memalign","aligned_alloc","pvalloc",\
-                        "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
+#include "__stdinc.h"
 
-/* Fixed/optimized system header <string.h> for DCC */
 #undef size_t
 typedef __SIZE_TYPE__ size_t;
 
 #define NULL  __NULL__
 
-/* Use compiler-optimized versions for string operations.
- * NOTE: Unlike other builtins, these will generate regular function
- *       calls to if no special optimizations can be performed. */
-#define memcpy(dst,src,size)  __builtin_memcpy((dst),(src),(size))
-#define memmove(dst,src,size) __builtin_memmove((dst),(src),(size))
-#define memset(dst,byt,size)  __builtin_memset((dst),(byt),(size))
-#define memcmp(a,b,size)      __builtin_memcmp((a),(b),(size))
-#define strlen(str)           __builtin_strlen((str))
+__IMP void *(memcpy)(void *,void const *,size_t);
+__IMP void *(memmove)(void *,void const *,size_t);
+__IMP char *(strcpy)(char *,char const *);
+__IMP char *(strncpy)(char *,char const *,size_t);
 
+__IMP char *(strcat)(char *,char const *);
+__IMP char *(strncat)(char *,char const *,size_t);
 
+__IMP __WUNUSED int (memcmp)(void const *,void const *,size_t);
+__IMP __WUNUSED int (strcmp)(char const *,char const *);
+__IMP __WUNUSED int (strcoll)(char const *,char const *);
+__IMP __WUNUSED int (strncmp)(char const *,char const *,size_t);
+__IMP __WUNUSED size_t (strxfrm)(char const *,char const *,size_t);
 
+__IMP __WUNUSED void *(memchr)(void const *,int,size_t);
+__IMP __WUNUSED char *(strchr)(char const *,int);
+__IMP __WUNUSED size_t (strcspn)(char const *,char const *);
+__IMP __WUNUSED char *(strpbrk)(char const *,char const *);
+__IMP __WUNUSED char *(strrchr)(char const *,int);
+__IMP __WUNUSED size_t (strspn)(char const *,char const *);
+__IMP __WUNUSED char *(strstr)(char const *,char const *);
+__IMP __WUNUSED char *(strtok)(char *,char const *);
+
+__IMP void *(memset)(void *,int,size_t);
+__IMP __WUNUSED char *(strerror)(int);
+__IMP __WUNUSED size_t (strlen)(char const *);
 

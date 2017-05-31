@@ -19,31 +19,15 @@
 #pragma once
 #pragma GCC system_header
 
-#pragma push_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
-                         "realloc","cfree","memalign","aligned_alloc","pvalloc",\
-                         "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
-#if __has_include_next(<string.h>)
-#include_next <string.h>
+#if __has_include_next(<stdio.h>)
+#include_next <stdio.h>
 #endif
-#pragma pop_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
-                        "realloc","cfree","memalign","aligned_alloc","pvalloc",\
-                        "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
 
-/* Fixed/optimized system header <string.h> for DCC */
+/* Fixed/optimized system header <stdio.h> for DCC */
+
 #undef size_t
 typedef __SIZE_TYPE__ size_t;
 
-#define NULL  __NULL__
-
-/* Use compiler-optimized versions for string operations.
- * NOTE: Unlike other builtins, these will generate regular function
- *       calls to if no special optimizations can be performed. */
-#define memcpy(dst,src,size)  __builtin_memcpy((dst),(src),(size))
-#define memmove(dst,src,size) __builtin_memmove((dst),(src),(size))
-#define memset(dst,byt,size)  __builtin_memset((dst),(byt),(size))
-#define memcmp(a,b,size)      __builtin_memcmp((a),(b),(size))
-#define strlen(str)           __builtin_strlen((str))
-
-
+#define NULL   __NULL__
 
 

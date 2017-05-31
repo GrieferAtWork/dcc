@@ -363,7 +363,7 @@ def_secbase:
  case OPT_M: CMD_ONLY(); preproc.p_flags |= DCC_PREPROCESSOR_FLAG_DEPSYSTEM; /* fallthrough. */
  case OPT_MM: CMD_ONLY(); /* Enable dependency mode. */
 set_dep_mode:  preproc.p_flags = DCC_PREPROCESSOR_SET_PPMODE(preproc.p_flags,DCC_PREPROCESSOR_FLAG_PPDEP);
-               TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_NO_WARNINGS);
+               /*TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_NO_WARNINGS);*/
 check_depfile: if (preproc.p_depfd == TPP_STREAM_INVALID) preproc.p_depfd = DCC_STREAM_STDOUT;
   break;
  case OPT_MD:  CMD_ONLY(); preproc.p_flags |= DCC_PREPROCESSOR_FLAG_DEPSYSTEM;

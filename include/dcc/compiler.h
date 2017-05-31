@@ -283,11 +283,11 @@ do{ struct DCCHWStack const _old_hw_stack = *(self);\
 
 struct DCCPackStack {
  /* Structure packing stack for '#pragma pack(push|pop)' */
- size_t        ps_stackc; /*< Amount of pushed pack-values currently in use
-                           *  NOTE: The next pop-value is located in 'ps_stackv[ps_stackc-1]'. */
- size_t        ps_stacka; /*< Allocated amount of old pack-values. */
- target_siz_t *ps_stackv; /*< [0..ps_stackc|alloc(ps_stacka)][owned] Vector of old pack-values. */
- target_siz_t  ps_pack;   /*< Current packing value. NOTE: When ZERO(0), ignore this modifier. */
+ size_t             ps_stackc; /*< Amount of pushed pack-values currently in use
+                                *  NOTE: The next pop-value is located in 'ps_stackv[ps_stackc-1]'. */
+ size_t             ps_stacka; /*< Allocated amount of old pack-values. */
+ DCC(target_siz_t) *ps_stackv; /*< [0..ps_stackc|alloc(ps_stacka)][owned] Vector of old pack-values. */
+ DCC(target_siz_t)  ps_pack;   /*< Current packing value. NOTE: When ZERO(0), ignore this modifier. */
 };
 
 struct DCCVisibilityStack {
