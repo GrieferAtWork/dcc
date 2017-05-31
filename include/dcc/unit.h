@@ -1119,14 +1119,16 @@ do{ struct DCCUnit _old_unit; \
  * WARNING: The caller is required to ensure that no such symbols are currently in use,
  *          and simply pending to-be being defined, such as a jump-symbol in an if-statement.
  *       >> By default, this function is called after compilation is done, and before linking is performed.
- * >> Essentially, this function performs unused symbol elimination */
+ * >> Essentially, this function performs unused symbol elimination
+ * NOTE: When the 'DCC_LINKER_FLAG_O_CLRUNUSED'
+ */
 DCCFUN size_t DCCUnit_ClearUnused(void);
 
 /* Clear all libraries without any used functions. */
 DCCFUN size_t DCCUnit_ClearUnusedLibs(void);
 
 /* Collapse symbols in all sections, re-claiming unused memory.
- * NOTE: When the 'DCC_LINKER_FLAG_NOCOLL' linker flag is set,
+ * NOTE: When the 'DCC_LINKER_FLAG_O_COLLSEC' linker flag isn't set,
  *       this function is a no-op and always returns ZERO(0)
  * WARNING: This optimization must be performed
  *          before DISP relocations are resolved!

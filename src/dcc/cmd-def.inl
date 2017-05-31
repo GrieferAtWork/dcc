@@ -58,10 +58,10 @@ GROUP_BEGIN(grp_Wl)
    OPTION_O(OPT_Wl_no_warn_search_mismatch,OPTION_FLAG_NONE,NULL,"no-warn-search-mismatch",NULL) /* -Wl,--no-warn-search-mismatch */
 
    /* DCC Extensions: control deletion of unused symbols in binary/library and object files. */
-   OPTION_O(OPT_Wl_no_clear_unused_obj,OPTION_FLAG_NONE,NULL,"no-clear-unused-obj",NULL) /* -Wl,--no-clear-unused-obj */
-   OPTION_O(OPT_Wl_clear_unused_obj,OPTION_FLAG_NONE,NULL,"clear-unused-obj",NULL) /* -Wl,--clear-unused-obj */
    OPTION_O(OPT_Wl_no_clear_unused,OPTION_FLAG_NONE,NULL,"no-clear-unused",NULL) /* -Wl,--no-clear-unused */
    OPTION_O(OPT_Wl_clear_unused,OPTION_FLAG_NONE,NULL,"clear-unused",NULL) /* -Wl,--clear-unused */
+   OPTION_O(OPT_Wl_no_collapse,OPTION_FLAG_NONE,NULL,"no-collapse",NULL) /* -Wl,--no-collapse */
+   OPTION_O(OPT_Wl_collapse,OPTION_FLAG_NONE,NULL,"collapse",NULL) /* -Wl,--collapse */
 
    OPTION_A(OPT_o,                   OPTION_FLAG_VALUE,"o",NULL,                NULL) /* -Wl,-o,a.out */
    OPTION_A(OPT_o,                   OPTION_FLAG_EQUAL,NULL,"output",           NULL) /* -Wl,--output=a.out */

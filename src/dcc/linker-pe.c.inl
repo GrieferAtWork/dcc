@@ -1196,7 +1196,7 @@ PRIVATE void pe_mk_buildita(void) {
    iat_sym->sy_size = iat_addr;
    DCCSection_Putrel(linker.l_text,iat_addr+2,DCC_R_DATA_PTR,iat_sym);
 
-   /* These must are done later to keep the library symbols inside! */
+   /* These calls must be done later to keep the library symbols inside! */
    // DCCSym_ClrDef(sym);
    // DCCSym_Define(sym,linker.l_text,iat_addr,0);
   }
@@ -1222,10 +1222,8 @@ DCCLinker_Make(stream_t fd) {
  
  /* Everything that is externally visible has been collected,
   * meaning that everything that's still unused can be removed. */
- if (!(linker.l_flags&DCC_LINKER_FLAG_NOCLRUNUSED)) {
-  DCCUnit_ClearUnused();
-  DCCUnit_ClearUnusedLibs();
- }
+ DCCUnit_ClearUnused();
+ DCCUnit_ClearUnusedLibs();
  DCCUnit_CollapseSections();
  DCCUnit_ResolveDisp();
  

@@ -1484,11 +1484,9 @@ DCCLinker_Make(stream_t target) {
  if unlikely(!OK) goto end;
  CC(elf_mk_entry());
 
- if (!(linker.l_flags&DCC_LINKER_FLAG_NOCLRUNUSED)) {
-  /* Delete unused stuff. */
-  DCCUnit_ClearUnused();
-  DCCUnit_ClearUnusedLibs();
- }
+ /* Delete unused stuff. */
+ DCCUnit_ClearUnused();
+ DCCUnit_ClearUnusedLibs();
  DCCUnit_CollapseSections();
  DCCUnit_ResolveDisp();
 

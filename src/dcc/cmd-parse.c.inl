@@ -137,10 +137,10 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
                              linker.l_flags &= ~(DCC_LINKER_FLAG_SHARED);
                              break;
 
- case OPT_Wl_clear_unused:        linker.l_flags &= ~(DCC_LINKER_FLAG_NOCLRUNUSED); break;
- case OPT_Wl_no_clear_unused:     linker.l_flags |=  (DCC_LINKER_FLAG_NOCLRUNUSED); break;
- case OPT_Wl_clear_unused_obj:    linker.l_flags |=  (DCC_LINKER_FLAG_OBJCLRUNUSED); break;
- case OPT_Wl_no_clear_unused_obj: linker.l_flags &= ~(DCC_LINKER_FLAG_OBJCLRUNUSED); break;
+ case OPT_Wl_no_clear_unused:     linker.l_flags &= ~(DCC_LINKER_FLAG_O_CLRUNUSED); break;
+ case OPT_Wl_clear_unused:        linker.l_flags |=  (DCC_LINKER_FLAG_O_CLRUNUSED); break;
+ case OPT_Wl_no_collapse:         linker.l_flags &= ~(DCC_LINKER_FLAG_O_COLLSEC); break;
+ case OPT_Wl_collapse:            linker.l_flags |=  (DCC_LINKER_FLAG_O_COLLSEC); break;
 
  {
   struct DCCSection *sec;
@@ -393,9 +393,17 @@ def_secbase:
 done_std:;
  } break;
 
+ {
+  int level;
+ case OPT_O:
+  level = atoi(v);
+  linker.l_flags &= ~(DCC_LINKER_FLAG_O_CLRUNUSED|
+                      DCC_LINKER_FLAG_O_COLLSEC);
+  if (level >= 1) linker.l_flags |= DCC_LINKER_FLAG_O_CLRUNUSED;
+  if (level >= 2) linker.l_flags |= DCC_LINKER_FLAG_O_COLLSEC;
+ } break;
 
  case OPT_UNUSED: break;
- case OPT_O: break; /* Current unused. */
 
   /* NOTE: The 'help' and 'version' callbacks are noreturn,
    *       so no need to guard against fall-through */

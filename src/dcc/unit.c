@@ -1840,6 +1840,11 @@ PUBLIC size_t DCCUnit_ClearUnused(void) {
  struct DCCSym **piter,*iter;
  struct DCCSym **biter,**bend;
  size_t result = 0;
+ if (!(linker.l_flags&DCC_LINKER_FLAG_O_CLRUNUSED)) {
+  /* Only clear obsolete symbols. */
+  result += DCCUnit_ClearObsolete();
+  goto end;
+ }
  piter = &unit.u_nsym;
  while ((iter = *piter) != NULL) {
   if (DCCSym_ISUNUSED(iter)) {
@@ -1881,6 +1886,7 @@ PUBLIC size_t DCCUnit_ClearUnused(void) {
    }
   }
  }
+end:
  return result;
 }
 
@@ -1969,7 +1975,7 @@ DCCUnit_CollapseSections(void) {
  struct DCCSection *sec;
  struct DCCSection *old_prev;
  /* If symbol collapsing is disabled, don't do anything. */
- if (linker.l_flags&DCC_LINKER_FLAG_NOCOLL) goto end;
+ if (!(linker.l_flags&DCC_LINKER_FLAG_O_COLLSEC)) goto end;
  old_prev = unit.u_prev;
  DCCUnit_SetCurr(NULL);
  DCCUnit_ENUMSEC(sec) {

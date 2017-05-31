@@ -75,10 +75,6 @@ static void add_library(char const *filename) {
 
 static void save_object(char const *filename) {
  struct DCCExpDef def;
- if (linker.l_flags&DCC_LINKER_FLAG_OBJCLRUNUSED) {
-  DCCUnit_ClearUnused();
-  DCCUnit_ClearUnusedLibs();
- }
  def.ed_fmt   = DCC_EXPFMT_ELF;
  def.ed_flags = DCC_EXPFLAG_NONE;
  DCCUnit_Export(&def,filename);
@@ -165,18 +161,6 @@ done_cmd:
  /*_CrtSetBreakAlloc(33398);*/
  DCCLinker_AddSysPaths(outfile_name);
 
-
- /* TODO: When defining a text symbol, all free ranges from the definition area must be deleted.
-  *       Otherwise, the symbol's data may be re-allocated as
-  *       free data  and the data may be shared inadvertently.
-  *       WARNING: I'm not really sure if this must really be done...
-  *             >> Start out by adding assertion for this!
-  * NOTE: Without this, data ranges may be be freed again:
-  *    >> a = t_alloc(8); // 0x16
-  *    >> b = d_alloc(8); // 0x0
-  *    >> incref(a,8)
-  */
-
  if (flags&F_HELP) {
   struct cmd hc;
   hc.c_argc  = 0;
@@ -245,7 +229,7 @@ done_cmd:
 #endif
 
  if (flags&F_COMPILEONLY) {
-  /* NOTE: Only clear obsolete here, as they'd otherwise be
+  /* NOTE: Only clear obsolete symbols here, as they'd otherwise be
    *       cleared again by 'DCCLinker_Make' (which is unnecessary) */
   DCCUnit_ClearObsolete();
   save_object(outfile_name);

@@ -124,6 +124,10 @@ DCCSection_CollapseSymbols(struct DCCSection *__restrict self) {
   assert(sym->sy_sec == self);
   if (!sym->sy_size || (sym->sy_flags&DCC_SYMFLAG_NOCOLL)) continue;
   /* Try to allocate free memory below. */
+  /* TODO: This acquire call should consider the memory region
+   *      'sym->sy_addr..sym->sy_size' as available.
+   *       Otherwise, we can't move large functions just a bit
+   *       when a small area of memory becomes available below. */
   below_addr = DCCFreeData_AcquireBelow(&self->sc_free,sym->sy_addr,
                                         sym->sy_size,sym->sy_align,0);
   if (below_addr != DCC_FREEDATA_INVPTR) {

@@ -116,14 +116,13 @@ struct DCCLibPaths {
 #define DCC_LINKER_FLAG_PIC          0x00000008 /*< Generate relocations, meaning that a generated image will not be position-independent. */
 #define DCC_LINKER_FLAG_SYMBOLIC     0x00000010 /*< Set if '-Wl,-Bsymbolic' was passed on the commandline. */
 #define DCC_LINKER_FLAG_IMGBASE      0x00000020 /*< Set when an explicit image base has been stored in 'l_imgbase'. */
-#define DCC_LINKER_FLAG_NOCLRUNUSED  0x00000040 /*< Don't clear unused symbols from executable/library files. */
-#define DCC_LINKER_FLAG_OBJCLRUNUSED 0x00000080 /*< Clear unused symbols from object files. */
-#define DCC_LINKER_FLAG_LIBSYMREDEF  0x00000100 /*< When linking against multiple libraries exporting the same symbol, still allow redefinition of use the newest version.
+#define DCC_LINKER_FLAG_LIBSYMREDEF  0x00000040 /*< When linking against multiple libraries exporting the same symbol, still allow redefinition of use the newest version.
                                                  *  This option is not normally set, as it usually just widens the scope of library dependencies, such as when linking against
                                                  * 'ntdll.dll' on windows, which happens to export its own version of 'strlen' (which is probably already linked against 'msvcrt.dll')
                                                  *  NOTE: This flag is implicitly set for the definition of a symbol with a [[lib(...)]] attribute.
                                                  *  NOTE: Depending on this flag an import-redefinition emits 'W_SYMBOL_ALREADY_DEFINED_IMP_IMP/W_SYMBOL_ALREADY_DEFINED_IMP_IMP_NOT'. */
-#define DCC_LINKER_FLAG_NOCOLL       0x00000200 /*< Don't collapse symbols. */
+#define DCC_LINKER_FLAG_O_CLRUNUSED  0x00010000 /*< OPTIMIZATION: Clear unused symbols during the last phases of linking (whole-program optimization). */
+#define DCC_LINKER_FLAG_O_COLLSEC    0x00020000 /*< OPTIMIZATION: Collapse section symbols to reclaim unused memory. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #define DCC_LINKER_FLAG_PEDYNAMIC     0x10000000 /*< On PE binary targets: Consider C/ELF visibility when generating an export table.
                                                   *  >> When this flag is set, any non-static definition matching '__attribute__((visibility("default")))'
