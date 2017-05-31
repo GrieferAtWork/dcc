@@ -141,6 +141,8 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
  case OPT_Wl_clear_unused:        linker.l_flags |=  (DCC_LINKER_FLAG_O_CLRUNUSED); break;
  case OPT_Wl_no_collapse:         linker.l_flags &= ~(DCC_LINKER_FLAG_O_COLLSEC); break;
  case OPT_Wl_collapse:            linker.l_flags |=  (DCC_LINKER_FLAG_O_COLLSEC); break;
+ case OPT_Wl_no_merge_sym:        linker.l_flags |=  (DCC_LINKER_FLAG_O_NOMERGESYM); break;
+ case OPT_Wl_merge_sym:           linker.l_flags &= ~(DCC_LINKER_FLAG_O_NOMERGESYM); break;
 
  {
   struct DCCSection *sec;
@@ -397,8 +399,10 @@ done_std:;
   int level;
  case OPT_O:
   level = atoi(v);
-  linker.l_flags &= ~(DCC_LINKER_FLAG_O_CLRUNUSED|
+  linker.l_flags &= ~(DCC_LINKER_FLAG_O_NOMERGESYM|
+                      DCC_LINKER_FLAG_O_CLRUNUSED|
                       DCC_LINKER_FLAG_O_COLLSEC);
+  if (level <= 0) linker.l_flags |= DCC_LINKER_FLAG_O_NOMERGESYM;
   if (level >= 1) linker.l_flags |= DCC_LINKER_FLAG_O_CLRUNUSED;
   if (level >= 2) linker.l_flags |= DCC_LINKER_FLAG_O_COLLSEC;
  } break;

@@ -234,6 +234,7 @@ INTERN void dcc_help(char const *subject) {
                   INDENT "-Wl,--no-warn-search-mismatch Don't warn when incompatible object files are encountered when searching for dependencies\n"
                   INDENT "-Wl,--[no-]clear-unused     Delete unused symbols from binaries (enabled for -On>=1; default: off)\n"
                   INDENT "-Wl,--[no-]collapse         Collapse section data to generate more compact binaries (enabled for -On>=2; default: off)\n"
+                  INDENT "-Wl,--[no-]merge-sym        Merge identical symbols such as strings during compilation (disabled for -On<=0; default: on)\n"
                   INDENT "-Wl,-o,outfile\n"
                   INDENT "-Wl,--output=outfile        Same as '-o outfile'\n"
                   INDENT "-Wl,-L,path\n"

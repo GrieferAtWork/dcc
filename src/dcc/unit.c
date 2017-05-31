@@ -1402,7 +1402,9 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
         (unsigned long)addr,(unsigned long)min_align);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
  assert(!DCCFreeData_Has(&self->sc_free,addr,size));
- if unlikely(!size) goto end;
+ if unlikely(!size || (linker.l_flags&DCC_LINKER_FLAG_O_NOMERGESYM)) goto end;
+ if (self->sc_start.sy_align < min_align)
+     self->sc_start.sy_align = min_align;
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_M) {
   struct DCCRel *relv; size_t relc;
   struct DCCRel *new_relv; size_t new_relc;
@@ -1482,6 +1484,9 @@ DCCSection_DAllocMem(struct DCCSection *__restrict self,
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
  if (self->sc_start.sy_align < align)
      self->sc_start.sy_align = align;
+ /* When symbol merging is disabled, always allocate new storage. */
+ if (linker.l_flags&DCC_LINKER_FLAG_O_NOMERGESYM) goto alloc_normal;
+
  /* Optimize away trailing ZERO-bytes, instead using bss-trailing memory. */
  while (mem_size && ((uint8_t *)memory)[mem_size-1] == 0) --mem_size;
  if (!(self->sc_start.sy_flags&DCC_SYMFLAG_SEC_M)) goto alloc_normal;

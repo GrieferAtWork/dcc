@@ -62,6 +62,8 @@ GROUP_BEGIN(grp_Wl)
    OPTION_O(OPT_Wl_clear_unused,OPTION_FLAG_NONE,NULL,"clear-unused",NULL) /* -Wl,--clear-unused */
    OPTION_O(OPT_Wl_no_collapse,OPTION_FLAG_NONE,NULL,"no-collapse",NULL) /* -Wl,--no-collapse */
    OPTION_O(OPT_Wl_collapse,OPTION_FLAG_NONE,NULL,"collapse",NULL) /* -Wl,--collapse */
+   OPTION_O(OPT_Wl_no_merge_sym,OPTION_FLAG_NONE,NULL,"no-merge-sym",NULL) /* -Wl,--no-merge-sym */
+   OPTION_O(OPT_Wl_merge_sym,OPTION_FLAG_NONE,NULL,"merge-sym",NULL) /* -Wl,--merge-sym */
 
    OPTION_A(OPT_o,                   OPTION_FLAG_VALUE,"o",NULL,                NULL) /* -Wl,-o,a.out */
    OPTION_A(OPT_o,                   OPTION_FLAG_EQUAL,NULL,"output",           NULL) /* -Wl,--output=a.out */

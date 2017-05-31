@@ -845,6 +845,7 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
 /* Tries to merge data data location with an identical instance
  * of the same memory located at a lower memory address range.
  * If such an instance is found, 
+ * WARNING: When the 'DCC_LINKER_FLAG_O_NOMERGESYM' linker flag is set, no data merging is performed!
  * NOTE: If the 'DCC_SYMFLAG_SEC_M' flag isn't set, this function returns 'addr' immediately.
  * @requires: !DCCSection_ISIMPORT(self)
  */
@@ -856,6 +857,7 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
 /* Same as 'DCCSection_DAlloc', but if the 'DCC_SYMFLAG_SEC_M' flag is set in
  * the given section, symbol data may be merged with equivalent, already-existing data.
  * >> This is equal to calling 'DCCSection_DAlloc()', 'DCCSection_GetText()' and 'DCCSection_DMerge()'
+ * WARNING: When the 'DCC_LINKER_FLAG_O_NOMERGESYM' linker flag is set, no data merging is performed!
  * @param: mem_size: The size of 'memory' in bytes (Must be <= 'size')
  * @param: size:     The size of the allocated memory within the section
  *                  (Any difference between this and 'mem_size' is filled with ZEROes)
