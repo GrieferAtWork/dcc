@@ -57,6 +57,9 @@ DCC_LOCAL ptrdiff_t dcc_win32_stream_write(DCC(stream_t) fd, void const *p, size
 }
 #define DCC_STREAM_READ(fd,p,s)  dcc_win32_stream_read(fd,p,s)
 #define DCC_STREAM_WRITE(fd,p,s) dcc_win32_stream_write(fd,p,s)
+#define DCC_STREAM_STDIN         GetStdHandle(STD_INPUT_HANDLE)
+#define DCC_STREAM_STDOUT        GetStdHandle(STD_OUTPUT_HANDLE)
+#define DCC_STREAM_STDERR        GetStdHandle(STD_ERROR_HANDLE)
 #else
 #define DCC_STREAM_OPEN_R(filename)    open(filename,O_RDONLY)
 #define DCC_STREAM_OPEN_W(filename)    open(filename,O_WRONLY|O_CREAT,0644)
@@ -64,6 +67,9 @@ DCC_LOCAL ptrdiff_t dcc_win32_stream_write(DCC(stream_t) fd, void const *p, size
 #define DCC_STREAM_SEEK(fd,off,whence) lseek(fd,off,whence)
 #define DCC_STREAM_READ(fd,p,s)        read(fd,p,s)
 #define DCC_STREAM_WRITE(fd,p,s)       write(fd,p,s)
+#define DCC_STREAM_STDIN               STDIN_FILENO
+#define DCC_STREAM_STDOUT              STDOUT_FILENO
+#define DCC_STREAM_STDERR              STDERR_FILENO
 #endif
 
 

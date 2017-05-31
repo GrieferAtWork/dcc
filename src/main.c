@@ -25,6 +25,7 @@
 #include <dcc/linker.h>
 #include <dcc/stream.h>
 #include <dcc/unit.h>
+#include <dcc/preprocessor.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -93,18 +94,43 @@ static void tpp_clrfile(void) {
  TOKEN.t_id    = TOK_EOF;
 }
 
-int main(int argc, char *argv[]) {
- char const *outfile_name = NULL;
- int result = 0;
 
-#define F_COMPILEONLY  0x00000001
-#define F_PREPROCESSOR 0x00000002
-#define F_HELP_INCLUDE 0x10000000
-#define F_HELP_LIBRARY 0x20000000
-#define F_HELP         0xf0000000
- uint32_t flags = 0;
+static void load_stdlib(void) {
+ if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB) &&
+     !(preproc.p_flags&DCC_PREPROCESSOR_FLAG_COMPILEONLY)) {
+  /* Load default libraries. */
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+#define SO(x) x ".dll"
+#else
+#define SO(x) x ".so"
+#endif
+#define STDLIB(name,f) \
+   {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
+  static struct DCCLibDef default_stdlib[] = {
+   STDLIB("crt1.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
+#if DCC_TARGET_OS == DCC_OS_WINDOWS || \
+    DCC_TARGET_OS == DCC_OS_CYGWIN
+   STDLIB(SO("msvcrt"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+#else
+   STDLIB(SO("libc"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+#endif
+   {0,NULL,0,0,0,0,0,NULL},
+  };
+#undef STDLIB
+  struct DCCLibDef *chain = default_stdlib;
+  for (; chain->ld_name; ++chain) DCCUnit_Import(chain);
+ }
+}
+
+
+
+
+int main(int argc, char *argv[]) {
+ int result = 0;
+ /*_CrtSetBreakAlloc(33398);*/
 
  if (!TPP_INITIALIZE()) return 1;
+ DCCPreprocessor_Init(&preproc);
 
  /* Initialize TPP callback hooks. */
  TPPLexer_Current->l_callbacks.c_parse_pragma     = &DCCParse_Pragma;
@@ -128,40 +154,28 @@ int main(int argc, char *argv[]) {
    cmd_init(&c,argc,argv);
    while (OK && cmd_yield(&c)) {
     /* True commandline options allow for a few more settings. */
-    switch (c.c_id) {
-
-    case OPT_E: flags |= F_PREPROCESSOR; break;
-    case OPT_o: outfile_name = c.c_val; break;
-    case OPT_c: flags |= F_COMPILEONLY; break;
-     /* TODO: '-B' changes the internal library path. */
-    case OPT_help:
-          if (!strcmp(c.c_val,"include-paths")) flags |= F_HELP_INCLUDE;
-     else if (!strcmp(c.c_val,"library-paths")) flags |= F_HELP_LIBRARY;
-     else goto defcase;
-     goto done_cmd;
-
-    default:defcase: exec_cmd(&c,1); break;
-    }
+    exec_cmd(&c,1);
    }
-done_cmd:
    argc = c.c_argc;
    argv = c.c_argv;
  }
-
- if unlikely(!argc && !(flags&F_HELP)) WARN(W_LINKER_NO_INPUT_FILES);
  if (!OK) goto end;
 
- if (!outfile_name) {
-  /* TODO: deduce default output name from first source file? */
-  if (!(flags&F_COMPILEONLY))
-       outfile_name = DCC_OUTFILE_STDEXE;
-  else outfile_name = DCC_OUTFILE_STDOBJ;
+ if (!preproc.p_outfile) {
+  char **first_infile,**end,*name;
+  end = (first_infile = argv)+argc;
+  /* Deduce default output name from first source file. */
+  while (first_infile != end &&
+        (*first_infile)[0] == '-' &&
+        (*first_infile)[1] == 'l') ++first_infile;
+  if (first_infile == end ||
+     (name = *first_infile,
+     !strcmp(name,"-"))) name = NULL;
+  DCCPreprocessor_OutAuto(name);
  }
-
- /*_CrtSetBreakAlloc(33398);*/
- DCCLinker_AddSysPaths(outfile_name);
-
- if (flags&F_HELP) {
+ if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB))
+       DCCLinker_AddSysPaths(preproc.p_outfile);
+ if (preproc.p_flags&DCC_PREPROCESSOR_MASK_HELP) {
   struct cmd hc;
   hc.c_argc  = 0;
   hc.c_argv  = NULL;
@@ -169,53 +183,97 @@ done_cmd:
   hc.c_grp   = NULL;
   hc.c_state = 0;
   hc.c_id    = OPT_help;
-  hc.c_val   = (flags&F_HELP_INCLUDE) ? "include-paths" :
-               (flags&F_HELP_LIBRARY) ? "library-paths" :
-                                        "";
-  exec_cmd(&hc,1);
+  hc.c_val   = (preproc.p_flags&DCC_PREPROCESSOR_FLAG_HELPINC) ? "include-paths" :
+               (preproc.p_flags&DCC_PREPROCESSOR_FLAG_HELPLIB) ? "library-paths" :
+                                                                 "";
+  exec_cmd(&hc,2);
  }
+ if unlikely(!argc) WARN(W_LINKER_NO_INPUT_FILES);
+ if (!OK) goto end;
 
- if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB) &&
-     !(flags&F_COMPILEONLY)) {
-  /* Load default libraries. */
-#if DCC_TARGET_BIN == DCC_BINARY_PE
-#define SO(x) x ".dll"
-#else
-#define SO(x) x ".so"
-#endif
-#define STDLIB(name,f) \
-   {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
-  static struct DCCLibDef default_stdlib[] = {
-   STDLIB("crt1.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
-#if DCC_TARGET_OS == DCC_OS_WINDOWS || \
-    DCC_TARGET_OS == DCC_OS_CYGWIN
-   STDLIB(SO("msvcrt"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
-#else
-   STDLIB(SO("libc"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
-#endif
-   {0,NULL,0,0,0,0,0,NULL},
-  };
-#undef STDLIB
-  struct DCCLibDef *chain = default_stdlib;
-  for (; chain->ld_name; ++chain) DCCUnit_Import(chain);
- }
 
  //dcc_dump_symbols();
  if (!OK) goto end;
 
- /* TODO: Preprocessor mode ('-E'). */
-
- while (argc) {
-  /* Parse the input code. */
-  if (!memcmp(argv[0],"-l",2*sizeof(char)))
-       add_library(argv[0]+2);
-  else add_import(argv[0]);
-  if (!OK) goto end;
-  ++argv,--argc;
+ if (preproc.p_depfd != TPP_STREAM_INVALID) {
+  TPPLexer_Current->l_callbacks.c_new_textfile = &DCCPreprocessor_DepNewTextfile;
+  DCCPreprocessor_DepFirst();
  }
 
+ assert(preproc.p_outfile);
+ switch (DCC_PREPROCESSOR_PPMODE(preproc.p_flags)) {
+ { /* Only generate dependencies/preprocessed code. */
+  stream_t pp_out;
+ case DCC_PREPROCESSOR_FLAG_PPDEP:
+  pp_out = TPP_STREAM_INVALID;
+  if (DCC_MACRO_FALSE) {
+ case DCC_PREPROCESSOR_FLAG_PPPREPROC:
+   if (!strcmp(preproc.p_outfile,"-"))
+        pp_out = DCC_STREAM_STDOUT;
+   else pp_out = s_openw(preproc.p_outfile);
+  }
+  TPPLexer_Current->l_callbacks.c_parse_pragma     = NULL;
+  TPPLexer_Current->l_callbacks.c_parse_pragma_gcc = NULL;
+
+  while (argc) {
+   struct TPPFile *f;
+   char *filename = argv[0];
+   /* Parse the input code. */
+   if (!strcmp(filename,"-"))
+        f = TPPFile_OpenStream(DCC_STREAM_STDIN,"<stdin>");
+   else f = TPPFile_Open(filename);
+   if unlikely(!f) WARN(W_LIB_NOT_FOUND,filename,strlen(filename));
+   else {
+    assert(!f->f_textfile.f_usedname);
+    if (preproc.p_srcname) {
+     f->f_textfile.f_usedname = TPPString_New(preproc.p_srcname,
+                                              strlen(preproc.p_srcname));
+    }
+    if (preproc.p_depfd != TPP_STREAM_INVALID)
+        DCCPreprocessor_DepPrint(f->f_name,f->f_namesize);
+    TPPLexer_PushFileInherited(f);
+    if (DCC_PREPROCESSOR_PPMODE(preproc.p_flags) ==
+        DCC_PREPROCESSOR_FLAG_PPPREPROC)
+         DCCPreprocessor_PrintPP(pp_out);
+    else while (TPPLexer_Yield() > 0);
+   }
+   if (!OK) break;
+   TPPLexer_Reset(TPPLexer_Current,
+                  TPPLEXER_RESET_MACRO|TPPLEXER_RESET_ASSERT|
+                  TPPLEXER_RESET_KWDFLAGS|TPPLEXER_RESET_COUNTER|
+                  TPPLEXER_RESET_FONCE);
+   ++argv,--argc;
+  }
+  if (pp_out != TPP_STREAM_INVALID &&
+      pp_out != DCC_STREAM_STDOUT)
+      s_close(pp_out);
+ } break;
+
+ { /* DEFAULT: Actually compile stuff. */
+ default:
+  load_stdlib();
+  while (argc) {
+   /* Parse the input code. */
+   if (!memcmp(argv[0],"-l",2*sizeof(char)))
+        add_library(argv[0]+2);
+   else add_import(argv[0]);
+   if (!OK) break;
+   ++argv,--argc;
+  }
+ } break;
+
+ }
+ if (preproc.p_depfd != TPP_STREAM_INVALID)
+     DCCPreprocessor_DepDummy();
+
  tpp_clrfile();
+
+ if (DCC_PREPROCESSOR_PPMODE(preproc.p_flags) == DCC_PREPROCESSOR_FLAG_PPPREPROC ||
+     DCC_PREPROCESSOR_PPMODE(preproc.p_flags) == DCC_PREPROCESSOR_FLAG_PPDEP)
+     goto end;
+
  TPPLexer_PushFile(&TPPFile_Linker);
+ if (!OK) goto end;
 
  /* Cleanup unused stuff. */
  DCCUnit_ClearStatic();
@@ -228,15 +286,13 @@ done_cmd:
  linker.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 #endif
 
- if (flags&F_COMPILEONLY) {
+ if (preproc.p_flags&DCC_PREPROCESSOR_FLAG_COMPILEONLY) {
   /* NOTE: Only clear obsolete symbols here, as they'd otherwise be
    *       cleared again by 'DCCLinker_Make' (which is unnecessary) */
   DCCUnit_ClearObsolete();
-  save_object(outfile_name);
+  save_object(preproc.p_outfile);
  } else {
-  stream_t s_out;
-  /* Prepare generated code for output to file. */
-  s_out = s_openw(outfile_name);
+  stream_t s_out = s_openw(preproc.p_outfile);
   DCCLinker_Make(s_out); /* Generate the binary. */
   s_close(s_out);
  }
@@ -298,6 +354,7 @@ end:
  DCCUnit_Quit(&unit);
  DCCLinker_Quit(&linker);
  DCCUnit_ClearCache();
+ DCCPreprocessor_Quit(&preproc);
  TPP_FINALIZE();
 #ifdef _CRTDBG_MAP_ALLOC
  _CrtDumpMemoryLeaks();

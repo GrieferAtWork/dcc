@@ -26,6 +26,7 @@
 #include <dcc/compiler.h>
 #include <dcc/unit.h>
 #include <dcc/linker.h>
+#include <dcc/preprocessor.h>
 
 #include "cmd.h"
 
@@ -125,6 +126,7 @@ INTDEF size_t /* From 'tpp.c' */
 fuzzy_match(char const *__restrict a, size_t alen,
             char const *__restrict b, size_t blen);
 
+#define CMD_ONLY() do{if (!from_cmd) goto illegal; }while(DCC_MACRO_FALSE)
 INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
  char *v = c->c_val;
  switch (c->c_id) {
@@ -332,9 +334,15 @@ def_secbase:
   else if (!strcmp(v,"longstring") || !strcmp(v,"longstrings"))
    SETFLAGI(TPPLexer_Current->l_flags,TPPLEXER_FLAG_TERMINATE_STRING_LF);
   else if (!memcmp(v,"tabstop=",8*sizeof(char))) TPPLexer_Current->l_tabsize = (size_t)atol(v+8);
-  else if (!strcmp(v,"-fsigned-char")) TPPLexer_Current->l_flags |= ~(TPPLEXER_FLAG_CHAR_UNSIGNED);
-  else if (!strcmp(v,"-funsigned-char")) TPPLexer_Current->l_flags |= TPPLEXER_FLAG_CHAR_UNSIGNED;
-   //TPPLEXER_TOKEN_EQUALBINOP
+  else if (!strcmp(v,"signed-char")) TPPLexer_Current->l_flags |= ~(TPPLEXER_FLAG_CHAR_UNSIGNED);
+  else if (!strcmp(v,"unsigned-char")) TPPLexer_Current->l_flags |= TPPLEXER_FLAG_CHAR_UNSIGNED;
+  else if (!strcmp(v,"cpp-line")) preproc.p_flags = DCC_PREPROCESSOR_SET_LINEMODE(preproc.p_flags,DCC_PREPROCESSOR_FLAG_LINECXX);
+  else if (!strcmp(v,"line")) preproc.p_flags = DCC_PREPROCESSOR_SET_LINEMODE(preproc.p_flags,enable
+                                                                         ? DCC_PREPROCESSOR_FLAG_LINESTDC
+                                                                         : DCC_PREPROCESSOR_FLAG_LINENONE);
+  else if (!strcmp(v,"magiclf")) SETFLAGI(preproc.p_flags,DCC_PREPROCESSOR_FLAG_NOMAGICLF);
+  else if (!strcmp(v,"decode")) SETFLAG(preproc.p_flags,DCC_PREPROCESSOR_FLAG_DECODETOK);
+  else if (!strcmp(v,"unify-pragma")) SETFLAG(preproc.p_flags,DCC_PREPROCESSOR_FLAG_UNIFYPRGM);
   else {
    enable = TPPLexer_SetExtension(v,enable);
    if (!enable) WARN(W_UNKNOWN_EXTENSION,v);
@@ -342,6 +350,60 @@ def_secbase:
 #undef SETFLAGI
 #undef SETFLAG
  } break;
+
+ /* Preprocessor flags. */
+ case OPT_o: CMD_ONLY(); preproc.p_outfile = v; break;
+ case OPT_c: CMD_ONLY(); preproc.p_flags |= DCC_PREPROCESSOR_FLAG_COMPILEONLY; break;
+ case OPT_E: CMD_ONLY();
+  preproc.p_flags = DCC_PREPROCESSOR_SET_PPMODE(preproc.p_flags,DCC_PREPROCESSOR_FLAG_PPPREPROC);
+  TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_WANTSPACE|
+                                TPPLEXER_FLAG_WANTLF);
+  break;
+ case OPT_P: CMD_ONLY(); preproc.p_flags = DCC_PREPROCESSOR_SET_LINEMODE(preproc.p_flags,DCC_PREPROCESSOR_FLAG_LINENONE); break;
+ case OPT_M: CMD_ONLY(); preproc.p_flags |= DCC_PREPROCESSOR_FLAG_DEPSYSTEM; /* fallthrough. */
+ case OPT_MM: CMD_ONLY(); /* Enable dependency mode. */
+set_dep_mode:  preproc.p_flags = DCC_PREPROCESSOR_SET_PPMODE(preproc.p_flags,DCC_PREPROCESSOR_FLAG_PPDEP);
+               TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_NO_WARNINGS);
+check_depfile: if (preproc.p_depfd == TPP_STREAM_INVALID) preproc.p_depfd = DCC_STREAM_STDOUT;
+  break;
+ case OPT_MD:  CMD_ONLY(); preproc.p_flags |= DCC_PREPROCESSOR_FLAG_DEPSYSTEM;
+ case OPT_MMD: CMD_ONLY(); goto check_depfile;
+ case OPT_MG:  CMD_ONLY();
+  TPPLexer_Current->l_callbacks.c_unknown_file = &DCCPreprocessor_DepUnknown;
+  TPPLexer_SetWarning(TPP(W_FILE_NOT_FOUND),TPP(WSTATE_DISABLE));
+  goto set_dep_mode;
+ case OPT_MP: CMD_ONLY(); preproc.p_flags |= DCC_PREPROCESSOR_FLAG_DEPDUMMY; break;
+
+ case OPT_MF: CMD_ONLY();
+  if (preproc.p_depfd != TPP_STREAM_INVALID &&
+      preproc.p_depfd != DCC_STREAM_STDOUT) s_close(preproc.p_depfd);
+  preproc.p_depfd = s_openw(v);
+  break;
+
+ case OPT_MQ: CMD_ONLY();
+  preproc.p_flags |= DCC_PREPROCESSOR_FLAG_DEPESCAPE;
+ case OPT_MT: CMD_ONLY();
+  preproc.p_deptarget = v;
+  break;
+
+ case OPT_name:
+  if (from_cmd) preproc.p_srcname = v;
+  else {
+   /* Override the used name of the base source file. */
+   struct TPPFile *f = TOKEN.t_file;
+   if (f != &TPPFile_Empty) {
+    while (f->f_prev != &TPPFile_Empty) f = f->f_prev;
+    if (f->f_kind == TPPFILE_KIND_TEXT) {
+     struct TPPString *newname;
+     if unlikely((newname = TPPString_New(v,strlen(v))) == NULL) break;
+     if (f->f_textfile.f_usedname) TPPString_Decref(f->f_textfile.f_usedname);
+     f->f_textfile.f_usedname = newname; /* Inherit reference. */
+    }
+   }
+  }
+  break;
+
+  /* TODO: '-B' changes the internal library path. */
 
  case OPT_traditional:
   /* Enable old-style spelling of inplace operators ('x += 42;' --> 'x =+ 42;') */
@@ -411,12 +473,18 @@ done_std:;
 
   /* NOTE: The 'help' and 'version' callbacks are noreturn,
    *       so no need to guard against fall-through */
- case OPT_help:    if (from_cmd) dcc_help(v);
- case OPT_version: if (from_cmd) dcc_version();
- case OPT_E:
- case OPT_o:
- case OPT_c:
-  WARN(W_CMD_ILLEGAL);
+ case OPT_help:
+  if (from_cmd) {
+   if (from_cmd == 2) goto help_def;
+        if (!strcmp(v,"include-paths")) preproc.p_flags |= DCC_PREPROCESSOR_FLAG_HELPINC;
+   else if (!strcmp(v,"library-paths")) preproc.p_flags |= DCC_PREPROCESSOR_FLAG_HELPLIB;
+   else help_def: dcc_help(v);
+  }
+  break;
+
+ case OPT_version:
+  if (from_cmd) dcc_version();
+illegal: WARN(W_CMD_ILLEGAL);
   break;
 
  default:
@@ -425,8 +493,7 @@ done_std:;
   break;
  }
  return;
-seterr:
- TPPLexer_SetErr();
+seterr: TPPLexer_SetErr();
 }
 
 INTDEF struct option const *const dcc_cmd_groups[];

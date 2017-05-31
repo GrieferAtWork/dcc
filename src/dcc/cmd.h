@@ -25,11 +25,14 @@
 DCC_DECL_BEGIN
 
 #if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
-#define DCC_OUTFILE_STDEXE "a.exe"
+#define DCC_OUTFILE_EXTEXE ".exe"
 #else
-#define DCC_OUTFILE_STDEXE "a.out"
+#define DCC_OUTFILE_EXTEXE ".out"
 #endif
-#define DCC_OUTFILE_STDOBJ "a.o"
+#define DCC_OUTFILE_EXTOBJ ".o"
+
+#define DCC_OUTFILE_STDEXE "a" DCC_OUTFILE_EXTEXE
+#define DCC_OUTFILE_STDOBJ "a" DCC_OUTFILE_EXTOBJ
 
 struct option {
  int16_t              o_id;     /*< Unique Option ID emit when it is encountered. */

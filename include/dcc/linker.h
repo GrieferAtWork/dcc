@@ -221,7 +221,6 @@ DCCFUN void DCCLinker_LibPathPop(void);
  * >> This is the most high-level function of all!
  * NOTES:
  *  - Relocations not compatible with the target are warned about.
- *  - The caller should call 'DCCSection_ResolveDisp' on all sections beforehand.
  *  - To be able to safely call this function, only 'DCCLinker_Current',
  *    'DCCUnit_Current' and 'TPPLexer_Current' must be initialized.
  *    'DCCCompiler_Current' is unused and its state can be undefined. */

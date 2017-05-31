@@ -20,6 +20,7 @@
     <ClCompile Include="..\src\dcc\gen.c" />
     <ClCompile Include="..\src\dcc\lexer.c" />
     <ClCompile Include="..\src\dcc\linker.c" />
+    <ClCompile Include="..\src\dcc\preprocessor.c" />
     <ClCompile Include="..\src\dcc\tpp-wrapper.c" />
     <ClCompile Include="..\src\dcc\type.c" />
     <ClCompile Include="..\src\dcc\unit-export.c" />
@@ -44,6 +45,7 @@
     <ClInclude Include="..\include\dcc\gen.h" />
     <ClInclude Include="..\include\dcc\lexer.h" />
     <ClInclude Include="..\include\dcc\linker.h" />
+    <ClInclude Include="..\include\dcc\preprocessor.h" />
     <ClInclude Include="..\include\dcc\stream.h" />
     <ClInclude Include="..\include\dcc\target.h" />
     <ClInclude Include="..\include\dcc\type.h" />

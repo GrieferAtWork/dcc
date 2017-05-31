@@ -108,6 +108,20 @@ GROUP_BEGIN(grp_main) /* Main options group */
    OPTION_O(OPT_version,OPTION_FLAG_NONE, NULL,"version",NULL) /* --version */
    OPTION_O(OPT_message_format,OPTION_FLAG_EQUAL,NULL,"message-format",NULL) /* --message-format={msvc|gcc} */
 
+   OPTION_O(OPT_P,OPTION_FLAG_NONE,"P",NULL,NULL) /* -P */
+   OPTION_O(OPT_MMD,OPTION_FLAG_NONE,"MMD",NULL,NULL) /* -MMD */
+   OPTION_O(OPT_MM,OPTION_FLAG_NONE,"MM",NULL,NULL) /* -MM */
+   OPTION_O(OPT_MD,OPTION_FLAG_NONE,"MD",NULL,NULL) /* -MD */
+   OPTION_O(OPT_MG,OPTION_FLAG_NONE,"MG",NULL,NULL) /* -MG */
+   OPTION_O(OPT_MP,OPTION_FLAG_NONE,"MP",NULL,NULL) /* -MP */
+   OPTION_O(OPT_MF,OPTION_FLAG_VALUE,"MF",NULL,NULL) /* -MF deps.d */
+   OPTION_O(OPT_MT,OPTION_FLAG_VALUE,"MT",NULL,NULL) /* -MT my_target.o */
+   OPTION_O(OPT_MQ,OPTION_FLAG_VALUE,"MQ",NULL,NULL) /* -MQ my_target.o */
+   OPTION_O(OPT_M,OPTION_FLAG_NONE,"M",NULL,NULL) /* -M */
+   OPTION_O(OPT_tok,OPTION_FLAG_NONE,NULL,"tok",NULL) /* --tok */
+   OPTION_O(OPT_pp,OPTION_FLAG_NONE,NULL,"pp",NULL) /* --pp */
+   OPTION_O(OPT_name,OPTION_FLAG_VALUE,NULL,"name",NULL) /* --name foo.c */
+
    OPTION_O(OPT_std,OPTION_FLAG_EQUAL,"std",NULL,NULL) /* -std=... */
 
    /* GCC extension flags. */

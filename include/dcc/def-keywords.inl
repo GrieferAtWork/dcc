@@ -1113,7 +1113,7 @@ DEF_WARNING(W_BREAK_CONTINUE_NOT_ALLOWED,(WG_SYNTAX),WSTATE_WARN,WARNF("break/co
 DEF_WARNING(W_EXPECTED_KEYWORD_AFTER_GOTO,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected a keyword after " Q("goto") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_EXPECTED_WHILE_AFTER_DO,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("while") " after " Q("do") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_EXPECTED_KEYWORD_AFTER_LABEL_ADDRESS,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected label name after " Q("&&") ", but got " TOK_S,TOK_A))
-DEF_WARNING(W_EXPECTED_CONSTANT_EXPRESSION_FOR_BUILTIN_CHOOSE_EXPR,(WG_VALUE),WSTATE_WARN,WARNF("Expected a constant expression for " Q("__builtin_choose_expr(...)")))
+DEF_WARNING(W_BUILTIN_CHOOSE_EXPR_EXPECTED_CONSTANT_EXPRESSION,(WG_VALUE),WSTATE_WARN,WARNF("Expected a constant expression for " Q("__builtin_choose_expr(...)")))
 DEF_WARNING(W_CASE_NOT_ALLOWED_HERE,(WG_SYNTAX),WSTATE_WARN,WARNF(Q("case") " is only allowed in switch statements"))
 DEF_WARNING(W_DEFAULT_NOT_ALLOWED_HERE,(WG_SYNTAX),WSTATE_WARN,WARNF(Q("default") " cases are only allowed in switch statements"))
 DEF_WARNING(W_DEFAULT_ALREADY_DEFINED,(WG_REDEFINE,WG_SYNTAX),WSTATE_WARN,WARNF(Q("default") " case was already defined"))

@@ -27,6 +27,7 @@
 #include <dcc/unit.h>
 #include <dcc/stream.h>
 #include <dcc/linker.h>
+#include <dcc/preprocessor.h>
 
 #include "unit-import.h"
 
@@ -123,6 +124,14 @@ srcloader_exec(struct SrcLoaderDef const *__restrict loader,
  }
  tpp_file = TPPFile_OpenStream(fd,filename);
  if unlikely(!tpp_file) { TPPLexer_SetErr(); goto end; }
+ assert(!tpp_file->f_textfile.f_usedname);
+ if (preproc.p_srcname) {
+  tpp_file->f_textfile.f_usedname = TPPString_New(preproc.p_srcname,
+                                                  strlen(preproc.p_srcname));
+ }
+ /* Output the base file as a dependency. */
+ if (preproc.p_depfd != TPP_STREAM_INVALID)
+     DCCPreprocessor_DepPrint(tpp_file->f_name,tpp_file->f_namesize);
  /* Manipulate the previous file to re-parse the last token. */
  assert(TOKEN.t_file);
  assert(TOKEN.t_begin >= TOKEN.t_file->f_begin);
@@ -239,7 +248,13 @@ done:
 PRIVATE int DCCUNIT_IMPORTCALL
 DCCUnit_ImportWithFilename(struct DCCLibDef *__restrict def,
                            char const *__restrict filename) {
- int result; stream_t s = s_openr(filename);
+ int result; stream_t s;
+ if (!strcmp(filename,"-")) {
+  /* Read from stdin. */
+  return DCCUnit_DoImportStream(def,"<stdin>",
+                                DCC_STREAM_STDIN,0);
+ }
+ s = s_openr(filename);
  //printf("Checking: '%s'\n",filename);
  if (s == TPP_STREAM_INVALID) {
 #if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)

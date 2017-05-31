@@ -207,9 +207,9 @@ DCCStackValue_Kill(struct DCCStackValue *__restrict self) {
                                           : unit.u_data;
   WARN(W_IMPLICIT_SECTION_ALLOCATION,
        target_section->sc_start.sy_name->k_name,s);
-  target_sym     = DCCUnit_AllocSym();
+  target_sym = DCCUnit_AllocSym();
   if unlikely(!target_sym) goto alloc_stack;
-  target_ptr     = DCCSection_DAlloc(target_section,s,a,0);
+  target_ptr = DCCSection_DAlloc(target_section,s,a,0);
   DCCSym_Define(target_sym,target_section,target_ptr,s,a);
   local_target.sv_reg = DCC_RC_CONST;
   local_target.sv_sym = target_sym;

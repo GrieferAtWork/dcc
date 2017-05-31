@@ -49,7 +49,7 @@
 
 
 /* DCC Configuration (NOTE: Target configs are in "/include/dcc/target.h") */
-#define DCC_CONFIG_LIBPREFIX   "lib"
+#define DCC_CONFIG_LIBPREFIX  "lib"
 
 
 

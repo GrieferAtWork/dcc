@@ -99,7 +99,7 @@ DCCParse_BuiltinChooseExpr(void) {
  if (visconst_bool()) {
   is_true = vgtconst_bool();
  } else {
-  WARN(W_EXPECTED_CONSTANT_EXPRESSION_FOR_BUILTIN_CHOOSE_EXPR);
+  WARN(W_BUILTIN_CHOOSE_EXPR_EXPECTED_CONSTANT_EXPRESSION);
   is_true = 0;
  }
  vpop(1);

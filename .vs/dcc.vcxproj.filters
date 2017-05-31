@@ -75,6 +75,9 @@
     <ClCompile Include="..\src\dcc\cmd-help.c">
       <Filter>src\dcc</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\dcc\preprocessor.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcc\lexer.h">
@@ -148,6 +151,9 @@
     </ClInclude>
     <ClInclude Include="..\include\ar.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\preprocessor.h">
+      <Filter>include\dcc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
