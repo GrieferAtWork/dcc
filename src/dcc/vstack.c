@@ -1602,7 +1602,9 @@ default_binary:
     (!(target->sv_flags&DCC_SFLAG_LVALUE)) &&
     (!self->sv_sym || target->sv_reg == DCC_RC_CONST)) {
   /* Special case: Add/Sub offset. */
-  if (self->sv_sym) assert(!target->sv_sym),target->sv_sym = self->sv_sym;
+  if (self->sv_sym) assert(!target->sv_sym),
+                    target->sv_sym = self->sv_sym,
+                    DCCSym_Incref(target->sv_sym);
   if (op == '+') target->sv_const.it += self->sv_const.it;
   else           target->sv_const.it -= self->sv_const.it;
   /* Set the X-offset flag to ensure the offset is added during pop. */
