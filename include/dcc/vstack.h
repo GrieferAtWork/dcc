@@ -288,8 +288,12 @@ union DCCConstValue {
                                              *  the following case:
                                              *  >> unsigned int x = ~(0x1|0x2); // This constant has the sign bit set, but it wouldn't make sense to warn here...
                                              *  >> unsigned int y = -4;         // Now here, we should warn about the assignment.
-                                             *  NOTE: You should realize that 'x' and 'y' are assigned the same value...
-                                             */
+                                             *  NOTE: You should realize that 'x' and 'y' are assigned the same value... */
+#define DCC_SFLAG_DO_WUNUSED     0x00000080 /*< Emit warnings when the stack-value is unused.
+                                             *  A use qualifies as the value being:
+                                             *   - The source operand in a binary/store operation
+                                             *   - The target operand in a unary/binary/store operation (Only if the 'DCC_SFLAG_COPY|DCC_SFLAG_RVALUE' flags aren't set)
+                                             *   - An argument operand during a function call. */
 
 typedef uint32_t DCC(sflag_t); /*< Stack value flag (Set of 'DCC_SFLAG_*'). */
 

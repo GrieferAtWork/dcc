@@ -1215,7 +1215,6 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
       !(target->sv_ctype.t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC)
       )) WARN(W_STRUCTURE_ARITHMETIC,&target->sv_ctype);
  }
-
  switch (op) {
 
  {
@@ -3043,10 +3042,13 @@ seterr:
 PUBLIC void DCC_VSTACK_CALL DCCVStack_Pop(int del) {
  VLOG(-1,("vpop(%s)\n",del ? "delete" : ""));
  assert(vsize != 0);
- if (!del);
- else if (/* Only perform destruction if we're supposed to. */
-         (vbottom->sv_flags&(DCC_SFLAG_XOFFSET|DCC_SFLAG_LVALUE|DCC_SFLAG_COPY)) == DCC_SFLAG_XOFFSET &&
-         (vbottom->sv_reg != DCC_RC_CONST) && (vbottom->sv_const.it != 0)) {
+ if (!del) goto done;
+ /* Warn about an unused value. */
+ if (vbottom->sv_flags&DCC_SFLAG_DO_WUNUSED)
+     WARN(W_UNUSED_VALUE,&vbottom->sv_ctype);
+ if (/* Only perform destruction if we're supposed to. */
+    (vbottom->sv_flags&(DCC_SFLAG_XOFFSET|DCC_SFLAG_LVALUE|DCC_SFLAG_COPY)) == DCC_SFLAG_XOFFSET &&
+    (vbottom->sv_reg != DCC_RC_CONST) && (vbottom->sv_const.it != 0)) {
   struct DCCSymAddr rhs_val;
   rhs_val.sa_sym = vbottom->sv_sym;
   rhs_val.sa_off = (target_off_t)vbottom->sv_const.offset;
@@ -3063,6 +3065,7 @@ PUBLIC void DCC_VSTACK_CALL DCCVStack_Pop(int del) {
    DCCDisp_AddReg(&rhs_val,vbottom->sv_reg);
   }
  }
+done:
  DCCType_Quit(&vbottom->sv_ctype);
  DCCSym_XDecref(vbottom->sv_sym);
  ++vbottom;
@@ -3136,6 +3139,9 @@ DCCVStack_Unary(tok_t op) {
  }
 #endif
  target_type = NULL;
+ /* Update WUNUSED flag. */
+ if (!(vbottom->sv_flags&(DCC_SFLAG_COPY|DCC_SFLAG_RVALUE)))
+       vbottom->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
  if (op != '!' && op != '*') {
   target_type = DCCType_Effective(&vbottom->sv_ctype);
   if (op != '&' && (target_type->t_type&DCCTYPE_CONST))
@@ -3178,13 +3184,14 @@ DCCVStack_Unary(tok_t op) {
    /* Make sure 'gen2' didn't swap the operands (which it shouldn't) */
    assert(!multiplier.sv_sym);
    assert(!multiplier.sv_ctype.t_base);
-   return;
+   goto update_flags;
   }
   break;
  default: break;
  }
 gen_unary:
  DCCStackValue_Unary(vbottom,op);
+update_flags:
  if (op == '!' || op == '&') {
   vbottom->sv_flags |=  (DCC_SFLAG_RVALUE);
  } else {
@@ -3236,6 +3243,10 @@ DCCVStack_Binary(tok_t op) {
   VLOG(-1,("vgen2('%s')\n",name));
  }
 #endif
+ /* Update the WUNUSED flags. */
+ vbottom->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
+ if (!(vbottom[1].sv_flags&(DCC_SFLAG_COPY|DCC_SFLAG_RVALUE)))
+       vbottom[1].sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
  /* Promote array types. */
  DCCStackValue_Promote(vbottom+1);
  vprom();
@@ -3290,6 +3301,8 @@ DCCVStack_Binary(tok_t op) {
     int compatible = DCCType_IsCompatible(pointer_base,&source_type->t_base->d_type,1);
     if (!compatible) WARN(W_POINTER_ARITHMETIC_INCOMPATIBLE_DIFF,
                           &vbottom[1].sv_ctype,&vbottom[0].sv_ctype);
+    if (!(vbottom[1].sv_flags&(DCC_SFLAG_COPY|DCC_SFLAG_RVALUE)))
+          vbottom[1].sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
     /* Calculate the difference between the operands. */
     DCCStackValue_Binary(vbottom,vbottom+1,'-');
     /* Divide the result by the multiplier size (size of the pointer base). */
@@ -3373,6 +3386,8 @@ DCCVStack_Store(int initial_store) {
  int wid;
  assert(vsize >= 2);
  VLOG(-1,("vstore(%s)\n",initial_store ? "initial" : ""));
+ /* Update the WUNUSED flag. */
+ vbottom->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
  if (!initial_store ||
     (!DCCTYPE_ISARRAY(vbottom[1].sv_ctype.t_type) &&
       DCCTYPE_GROUP(vbottom[1].sv_ctype.t_type) != DCCTYPE_LVALUE) ||
@@ -3380,6 +3395,9 @@ DCCVStack_Store(int initial_store) {
   vprom();
  }
  target = &vbottom[1];
+ /* Update the WUNUSED flag. */
+ if (!(target->sv_flags&(DCC_SFLAG_COPY|DCC_SFLAG_RVALUE)))
+       target->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
  /* Warn if the target is const. */
  target_type = &target->sv_ctype;
  while (DCCTYPE_GROUP(target_type->t_type) == DCCTYPE_LVALUE)
@@ -3959,6 +3977,7 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Call(size_t n_args) {
  struct DCCStackValue *arg_first,*function;
  struct DCCDecl *funty_decl;
+ struct DCCAttrDecl *funty_attr;
  target_siz_t arg_size,stack_align;
  uint32_t cc; size_t argc,untyped;
  struct DCCStructField *argv;
@@ -4010,13 +4029,14 @@ after_typefix:
  DCCDecl_XIncref(funty_decl);
  cc          = DCC_ATTRFLAG_CC_CDECL;
  stack_align = DCC_TARGET_STACKALIGN;
+ funty_attr  = NULL;
  argc        = 0;
  argv        = NULL;
  untyped     = n_args;
  if (funty_decl) {
   int wid;
-  if (funty_decl->d_attr) {
-   cc = (funty_decl->d_attr->a_flags&DCC_ATTRFLAG_MASK_CALLCONV);
+  if ((funty_attr = funty_decl->d_attr) != NULL) {
+   cc = (funty_attr->a_flags&DCC_ATTRFLAG_MASK_CALLCONV);
   }
   /* Ignore argument information when calling an old-style function. */
   if (funty_decl->d_kind != DCC_DECLKIND_OLDFUNCTION) {
@@ -4063,6 +4083,8 @@ warn_argc:
    /* Just do regular type promotions on anything else. */
    vprom();
   }
+  /* Function arguments are used by default. */
+  vbottom->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
   arg_size += DCCStackValue_PushAligned(vbottom,stack_align);
   vpop(1);
  }
@@ -4085,6 +4107,11 @@ warn_argc:
  /* TODO: What about caller-allocated structure memory? */
 
  DCCVStack_PushReturn(funty_decl);
+ /* Set the WUNUSED flag for the return value
+  * of functions marked with [[warn_unused_result]] */
+ if (funty_attr &&
+    (funty_attr->a_specs&DCC_ATTRSPEC_WUNUSED))
+     vbottom->sv_flags |= DCC_SFLAG_DO_WUNUSED;
  vbottom->sv_flags |= DCC_SFLAG_RVALUE;
  DCCDecl_XDecref(funty_decl);
 }

@@ -915,6 +915,7 @@ emit_type_warning:
  break;
 #endif
 #define TYPE_WARNING(msg) { format = msg; goto emit_type_warning; }
+DEF_WARNING(W_UNUSED_VALUE,(WG_VALUE),WSTATE_WARN,TYPE_WARNING("Value of type '%s' is not used"))
 DEF_WARNING(W_EXPECTED_LVALUE_IN_STORE,(WG_TYPE,WG_VALUE),WSTATE_WARN,TYPE_WARNING("Expected an lvalue " Q("%s") " as store operation target"))
 DEF_WARNING(W_EXPECTED_LVALUE_FOR_REFERENCE,(WG_TYPE,WG_VALUE),WSTATE_WARN,TYPE_WARNING("Expected an lvalue " Q("%s") " for reference operator " Q("&")))
 DEF_WARNING(W_EXPECTED_LVALUE_FOR_BINARY_OP,(WG_TYPE,WG_VALUE),WSTATE_WARN,TYPE_WARNING("Expected an lvalue " Q("%s") " as inplace-binary operation target"))
