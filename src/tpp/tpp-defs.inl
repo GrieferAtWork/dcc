@@ -634,10 +634,10 @@ WGROUP(WG_DEPRECATED,          "deprecated",          WSTATE_ERROR)
 /*65*/WARNING(W_UNUSED_15,(WG_VALUE),WSTATE_WARN) /*< OLD(TPPWarn_VaCommaUsedAsMacroParameter). */
 /*66*/WARNING(W_UNUSED_16,(WG_VALUE),WSTATE_WARN) /*< OLD(TPPWarn_Unexpected). */
 /*67*/WARNING(W_UNUSED_17,(WG_VALUE),WSTATE_WARN) /*< OLD(TPPWarn_VaArgsMustBeLastParameter). */
-/*68*/WARNING(W_EXPECTED_BOOL,(WG_BOOLVALUE,WG_VALUE),WSTATE_WARN) /*< [struct TPPConst *] OLD(TPPWarn_ExpectedBoolExpression). */
-/*69*/WARNING(W_EXPECTED_BOOL_UNARY,(WG_BOOLVALUE,WG_VALUE),WSTATE_WARN) /*< [struct TPPConst *] OLD(TPPWarn_ExpectedBoolExpressionNot). */
-/*70*/WARNING(W_EXPECTED_BOOL_BINARY_LHS,(WG_BOOLVALUE,WG_VALUE),WSTATE_WARN) /*< [struct TPPConst *] OLD(TPPWarn_ExpectedBoolExpressionLhsOP). */
-/*71*/WARNING(W_EXPECTED_BOOL_BINARY_RHS,(WG_BOOLVALUE,WG_VALUE),WSTATE_WARN) /*< [struct TPPConst *] OLD(TPPWarn_ExpectedBoolExpressionRhsOP). */
+/*68*/WARNING(W_EXPECTED_BOOL,(WG_BOOLVALUE,WG_VALUE),WSTATE_DISABLE) /*< [struct TPPConst *] OLD(TPPWarn_ExpectedBoolExpression). */
+/*69*/WARNING(W_EXPECTED_BOOL_UNARY,(WG_BOOLVALUE,WG_VALUE),WSTATE_DISABLE) /*< [struct TPPConst *] OLD(TPPWarn_ExpectedBoolExpressionNot). */
+/*70*/WARNING(W_EXPECTED_BOOL_BINARY_LHS,(WG_BOOLVALUE,WG_VALUE),WSTATE_DISABLE) /*< [struct TPPConst *] OLD(TPPWarn_ExpectedBoolExpressionLhsOP). */
+/*71*/WARNING(W_EXPECTED_BOOL_BINARY_RHS,(WG_BOOLVALUE,WG_VALUE),WSTATE_DISABLE) /*< [struct TPPConst *] OLD(TPPWarn_ExpectedBoolExpressionRhsOP). */
 /*72*/WARNING(W_UNUSED_18,(WG_VALUE),WSTATE_WARN) /*< OLD(TPPWarn_ExpectedKeyword). */
 #ifdef DECLARE_WARNING_MESSAGES
 { char const *use; /* Warn about non-boolean integral. */

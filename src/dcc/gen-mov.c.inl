@@ -985,18 +985,7 @@ PUBLIC void
 DCCDisp_CstPush(struct DCCSymAddr const *__restrict val,
                 width_t width) {
  assert(val);
- assert(width == 1 || width == 2 ||
-        width == 4 || width == 8);
- if (width == 8 && !val->sa_sym) {
-  struct DCCSymAddr temp;
-  /* Special case: push 64-bit immediate value. */
-  temp.sa_sym = NULL;
-  temp.sa_off = (target_off_t)((int32_t *)&val->sa_off)[1];
-  DCCDisp_CstPush(&temp,4);
-  temp.sa_off = (target_off_t)((int32_t *)&val->sa_off)[0];
-  DCCDisp_CstPush(&temp,4);
-  return;
- }
+ assert(CHECK_WIDTH(width));
  if (width == 2) t_putb(0x66);
  if (width == 1) t_putb(0x6a);
  else            t_putb(0x68);

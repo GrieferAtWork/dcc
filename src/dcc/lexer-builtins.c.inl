@@ -1361,7 +1361,7 @@ DCCParse_SyncCompareAndSwap(void) {
  vswap(); /* [test], EAX, *dst */
  vpop(1); /* [test], EAX */
  if (bool_mode) vpop(1); /* test */
- vrval(); /* rEAX/rtext */
+ vrval(); /* rEAX/rtest */
 }
 
 

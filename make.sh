@@ -1,8 +1,17 @@
 #!/bin/bash
 
-#CC="gcc"
-CC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
-F="-Iinclude -DDCC_PRIVATE_API"
+CC="gcc"
+F=("-Iinclude" "-DDCC_PRIVATE_API")
+
+CC_DCC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
+if [ -f "$CC_DCC" ]; then
+	CC="$CC_DCC";
+	F+=("-D__GNUC__=2")
+	F+=("-D__GNUC_MINOR__=0")
+	F+=("-D__GNUC_PATCH__=0")
+	F+=("-I D:\\cygwin\\root\\usr\\include\\w32api")
+fi
+
 build() { echo "build/dcc/$1"; }
 out() { echo "$(build $1).o"; }
 dep() { echo "$(build $1).d"; }
@@ -35,8 +44,8 @@ src() {
 		if ! src_changed "$inf"; then
 			dpf="$(dep $(basename "$inf"))"
 			echo "Compiling: '$inf'"
-			echo $CC $F -MMD -MF "$dpf" -c -o "$ouf" "$inf" || exit $?
-			$CC $F -MMD -MF "$dpf" -c -o "$ouf" "$inf" || exit $?
+			echo $CC "${F[@]}" -MMD -MF "$dpf" -c -o "$ouf" "$inf" || exit $?
+			$CC "${F[@]}" -MMD -MF "$dpf" -c -o "$ouf" "$inf" || exit $?
 		else
 			echo "Unchanged: '$inf'"
 		fi

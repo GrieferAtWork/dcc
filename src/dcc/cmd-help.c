@@ -392,7 +392,7 @@ INTERN void dcc_help(char const *subject) {
 #undef INDENT
 done:
  fflush(stderr);
- _exit(2);
+ exit(2);
 }
 
 
@@ -401,7 +401,7 @@ INTERN void dcc_version(void) {
        (sizeof(dcc_version_text)/sizeof(char))-1,
         stderr);
  fflush(stderr);
- _exit(2);
+ exit(2);
 }
 
 

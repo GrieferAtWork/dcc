@@ -38,7 +38,7 @@
 #define tolower(ch)  __builtin_tolower((ch))
 #if __has_builtin(__builtin_isblank) || \
    !defined(__STDLIB_VERSION__) || \
-    ((__STDLIB_VERSION__+0) >= 201112L)
+  ((__STDLIB_VERSION__+0) >= 201112L)
 #define isblank(ch) __builtin_isblank((ch))
 #endif
 

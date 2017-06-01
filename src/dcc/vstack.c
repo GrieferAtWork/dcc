@@ -3873,15 +3873,54 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
   DCCDisp_NdfPush(filler);
 #endif
  } else if (self->sv_reg == DCC_RC_CONST) {
+  int          sign_byte = 0;
+  target_siz_t sign_size = 0;
+  target_siz_t curr_size = result;
   symaddr.ml_sad.sa_off = self->sv_const.offset;
   symaddr.ml_sad.sa_sym = self->sv_sym;
 #if DCC_TARGET_STACKDOWN
   DCCDisp_NdfPush(filler);
-  DCCDisp_CstPush(&symaddr.ml_sad,result);
-#elif DCC_TARGET_BYTEORDER == 1234
-  DCCDisp_CstPush(&symaddr.ml_sad,result+filler);
+#endif
+  if (curr_size > 8) {
+   sign_size = (curr_size-8);
+   curr_size = 8;
+   if (DCCTYPE_ISUNSIGNED(self->sv_ctype.t_type) &&
+       self->sv_const.it < 0) sign_byte = 0xff;
+  }
+#if (DCC_TARGET_BYTEORDER == 4321) ^ DCC_TARGET_STACKDOWN
+  DCCDisp_BytPush(sign_byte,sign_size);
+#endif
+#if DCC_TARGET_SIZEOF_IMM_MAX < 8 && \
+   (DCC_TARGET_BYTEORDER == 4321) ^ DCC_TARGET_STACKDOWN
+  if (curr_size > 4) {
+   struct DCCMemLoc upper_cst;
+   upper_cst.ml_reg = DCC_RC_CONST;
+   upper_cst.ml_off = (target_off_t)(self->sv_const.it >> 32);
+   upper_cst.ml_sym = NULL;
+   DCCDisp_CstPush(&symaddr.ml_sad,curr_size-4);
+   curr_size = 4;
+  }
+  DCCDisp_CstPush(&symaddr.ml_sad,curr_size);
+#elif DCC_TARGET_SIZEOF_IMM_MAX < 8
+  DCCDisp_CstPush(&symaddr.ml_sad,curr_size > 4 ? 4 : curr_size);
 #else
-  DCCDisp_CstPush(&symaddr.ml_sad,result);
+  DCCDisp_CstPush(&symaddr.ml_sad,curr_size);
+#endif
+#if DCC_TARGET_SIZEOF_IMM_MAX < 8 && \
+   (DCC_TARGET_BYTEORDER == 1234) ^ DCC_TARGET_STACKDOWN
+  if (curr_size > 4) {
+   struct DCCMemLoc upper_cst;
+   upper_cst.ml_reg = DCC_RC_CONST;
+   upper_cst.ml_off = (target_off_t)(self->sv_const.it >> 32);
+   upper_cst.ml_sym = NULL;
+   DCCDisp_CstPush(&symaddr.ml_sad,curr_size-4);
+   curr_size = 4;
+  }
+#endif
+#if (DCC_TARGET_BYTEORDER == 1234) ^ DCC_TARGET_STACKDOWN
+  DCCDisp_BytPush(sign_byte,sign_size);
+#endif
+#if !DCC_TARGET_STACKDOWN
   DCCDisp_NdfPush(filler);
 #endif
  } else if (self->sv_reg != DCC_RC_CONST) {

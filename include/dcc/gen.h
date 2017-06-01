@@ -212,7 +212,7 @@ DCCFUN void DCCDisp_AddMem(struct DCCSymAddr const *__restrict val,
 DCCFUN DCC(rc_t) DCCDisp_AddProtReg(struct DCCSymAddr const *__restrict val, DCC(rc_t) dst);
 
 /* Push/pop constants/addresses/memory-locations/registers onto the run-time %ESP-stack. */
-DCCFUN void DCCDisp_CstPush(struct DCCSymAddr const *__restrict val, DCC(width_t) width); /* NOTE: Always accepts '8' for 'width' */
+DCCFUN void DCCDisp_CstPush(struct DCCSymAddr const *__restrict val, DCC(width_t) width);
 DCCFUN void DCCDisp_LocPush(struct DCCMemLoc const *__restrict addr);
 DCCFUN void DCCDisp_MemPush(struct DCCMemLoc const *__restrict src, DCC(target_siz_t) n_bytes);
 DCCFUN void DCCDisp_MemRevPush(struct DCCMemLoc const *__restrict src, DCC(target_siz_t) n_bytes);
@@ -222,7 +222,7 @@ DCCFUN void DCCDisp_VecPush(void const *__restrict src, DCC(target_siz_t) n_byte
 DCCFUN void DCCDisp_BytPush(int src, DCC(target_siz_t) n_bytes);
 DCCFUN void DCCDisp_ByrPush(DCC(rc_t) src, DCC(target_siz_t) n_bytes);
 DCCFUN void DCCDisp_RegPush(DCC(rc_t) src);
-#define     DCCDisp_NdfPush(n_bytes) DCCDisp_BytPush(0,n_bytes)
+#define     DCCDisp_NdfPush(n_bytes) DCCDisp_BytPush(0,n_bytes) /* TODO: sub $n_bytes, %esp */
 DCCFUN void DCCDisp_PopMem(struct DCCMemLoc const *__restrict dst, DCC(width_t) width);
 DCCFUN void DCCDisp_PopReg(DCC(rc_t) dst);
 

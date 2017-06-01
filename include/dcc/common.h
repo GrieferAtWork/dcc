@@ -143,7 +143,15 @@
 #define DCCFUN         extern
 #define DCC_PRIVATE    static
 #define DCC_PUBLIC     /* nothing */
-#define DCC_LOCAL      static __inline
+#if defined(__cplusplus) || defined(inline)
+#   define DCC_LOCAL   static inline
+#elif defined(_MSC_VER)
+#   define DCC_LOCAL   static __inline
+#elif defined(__GNUC__) || defined(__TCC__) || defined(__DCC_VERSION__)
+#   define DCC_LOCAL   static __inline__
+#else
+#   define DCC_LOCAL   static
+#endif
 #if defined(__ELF__) || \
    (!defined(__GNUC__) && __has_attribute(visibility)) || \
    (defined(__GNUC__) && !defined(_WIN32) && !defined(__CYGWIN__))

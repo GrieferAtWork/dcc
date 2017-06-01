@@ -228,7 +228,7 @@
 #   define TPP_LOCAL            static inline
 #elif defined(_MSC_VER)
 #   define TPP_LOCAL            static __inline
-#elif defined(__GNUC__) || defined(__TCC__)
+#elif defined(__GNUC__) || defined(__TCC__) || defined(__DCC_VERSION__)
 #   define TPP_LOCAL            static __inline__
 #else
 #   define TPP_LOCAL            static
@@ -246,7 +246,7 @@
 #endif
 #   define TPP_OFFSETAFTER(m,s) ((size_t)(&((m *)0)->s+1))
 #if (defined(_MSC_VER) && (defined(_MSC_EXTENSIONS) || _MSC_VER >= 1400)) || \
-    (defined(__clang__)) || \
+     defined(__clang__) || defined(__DCC_VERSION__) || \
     (defined(__GNUC__) && !defined(__DARWIN_NO_LONG_LONG)) || \
     (defined(__BORLANDC__) && __BORLANDC__ >= 0x561 && !defined(__NO_LONG_LONG))
 #   define TPP_HAVE_LONGLONG  1
