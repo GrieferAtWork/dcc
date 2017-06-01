@@ -153,6 +153,7 @@ LEXDECL void DCC_PARSE_CALL DCCParse_SyncBinary(void);               /* (type|vo
 LEXDECL void DCC_PARSE_CALL DCCParse_SyncUnary(void);                /* (type|void) __sync_...(type *ptr, ...); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinReturnAddr(void);        /* void *__builtin_return_address(unsigned int level),__builtin_frame_address(unsigned int level); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinExtractReturnAddr(void); /* void *__builtin_extract_return_addr(void *p),__builtin_frob_return_address(void *p); */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinNoop(void);              /* int __builtin_noop(...),__noop(...); */
 
 LEXDECL /*ref*/struct TPPString *DCC_PARSE_CALL DCCParse_GetFunction(void);
 LEXDECL /*ref*/struct TPPString *DCC_PARSE_CALL DCCParse_GetPrettyFunction(void);

@@ -167,7 +167,7 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   if (DCC_MACRO_FALSE) { case KWD_noinline:                SPECF(DCC_ATTRSPEC_NOINLINE); }
   if (DCC_MACRO_FALSE) { case KWD_noreturn:                SPECF(DCC_ATTRSPEC_NORETURN); }
   if (DCC_MACRO_FALSE) { case KWD_warn_unused_result:      SPECF(DCC_ATTRSPEC_WUNUSED); }
-  if (DCC_MACRO_FALSE) { case KWD_weak:                    SPECF(DCC_ATTRSPEC_WEAK); }
+  if (DCC_MACRO_FALSE) { case KWD_weak:case KWD_selectany: SPECF(DCC_ATTRSPEC_WEAK); }
   if (DCC_MACRO_FALSE) { case KWD_used:                    SPECF(DCC_ATTRSPEC_USED); }
   if (DCC_MACRO_FALSE) { case KWD_unused:                  SPECF(DCC_ATTRSPEC_UNUSED); }
   if (DCC_MACRO_FALSE) { case KWD_dllexport:               SPECF(DCC_ATTRSPEC_DLLEXPORT); }

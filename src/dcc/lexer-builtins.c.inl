@@ -304,12 +304,12 @@ DCCParse_BuiltinAssume(void) {
  assert(TOK == KWD___builtin_assume ||
         TOK == KWD___assume);
  YIELD();
- DCCParse_ParPairBegin();
  pushf();
+ DCCParse_ParPairBegin();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
  DCCParse_Expr1(),vused();
- popf();
  DCCParse_ParPairEnd();
+ popf();
  /* If a compile-time assumption fails, it means
   * this code location can't possibly be reached. */
  if (visconst_bool() && !vgtconst_bool()) {
@@ -1598,6 +1598,21 @@ DCCParse_BuiltinExtractReturnAddr(void) {
  vwunused();
 }
 
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_BuiltinNoop(void) {
+ assert(TOK == KWD___builtin_noop ||
+        TOK == KWD___noop);
+ YIELD();
+ pushf(); /* Parse an expression, but don't do anything with it. */
+ DCCParse_ParPairBegin();
+ compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
+ DCCParse_Expr();
+ vpop(1);
+ DCCParse_ParPairEnd();
+ popf();
+ /* Return an integral constant ZERO(0). */
+ vpushi(DCCTYPE_INT,0);
+}
 
 
 DCC_DECL_END

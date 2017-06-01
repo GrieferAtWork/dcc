@@ -881,6 +881,7 @@ outside_function:
  case KWD___builtin_frame_address: DCCParse_BuiltinReturnAddr(); break;
  case KWD___builtin_extract_return_addr:
  case KWD___builtin_frob_return_address: DCCParse_BuiltinExtractReturnAddr(); break;
+ case KWD___builtin_noop: case KWD___noop: DCCParse_BuiltinNoop(); break;
   /* Atomic (aka. __sync_*) builtins */
  case KWD___sync_val_compare_and_swap:
  case KWD___sync_bool_compare_and_swap: DCCParse_SyncCompareAndSwap(); break;
