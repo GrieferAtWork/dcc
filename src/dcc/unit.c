@@ -412,7 +412,8 @@ DCCSection_Clear(struct DCCSection *__restrict self) {
    for (; biter != bend; ++biter) {
     iter = *biter;
     while (iter) {
-     assert(iter->sy_align);
+     assert((iter->sy_size == 0) || (iter->sy_align != 0));
+     assert(!iter->sy_size || !(iter->sy_align&(iter->sy_align-1)));
      assert(iter->sy_align <= self->sc_start.sy_align);
      next = iter->sy_sec_next;
      assert(iter->sy_sec == self);
@@ -555,7 +556,9 @@ DCCSym_Define(struct DCCSym *__restrict self,
               target_siz_t align) {
  DCCSym_ASSERT(self);
  assert(section);
- assertf(!(align&(align-1)),"Invalid alignment: %lu",(unsigned long)align);
+ assert((size == 0) || (align != 0));
+ assertf(!size || !(align&(align-1)),
+         "Invalid alignment: %lu",(unsigned long)align);
  /*  Don't warn when re-declared at the same location
   * (Can happen for multiple lib-import declarations). */
  if (self->sy_sec) {

@@ -452,7 +452,7 @@ imcomplete:
   } else {
    result *= self->t_base->d_tdecl.td_size;
   }
-  return result;
+  goto end;
  } break;
 
  { /* LValue sizeof (Either target pointer, or lvalue-base-size) */
@@ -483,6 +483,9 @@ imcomplete:
  }
  if (align) *align = result;
 end:
+ assertf(!align || (result ? *align != 0 : *align == 0),
+         "Invalid alignment '%lu' for type size '%lu'",
+        (unsigned long)*align,(unsigned long)result);
  return result;
 }
 
