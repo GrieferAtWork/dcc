@@ -496,7 +496,7 @@ WGROUP(WG_BOOLVALUE,           "boolean-value",       WSTATE_ERROR)
 WGROUP(WG_USER,                "user",                WSTATE_ERROR)
 WGROUP(WG_ENVIRON,             "environ",             WSTATE_ERROR)
 WGROUP(WG_LIMIT,               "limit",               WSTATE_ERROR)
-WGROUP(WG_UNDEF,               "undef",               WSTATE_ERROR)
+WGROUP(WG_UNDEF,               "undef",               WSTATE_DISABLE)
 WGROUP(WG_TRIGRAPHS,           "trigraphs",           WSTATE_DISABLE)
 WGROUP(WG_EXPANSION_TO_DEFINED,"expansion-to-defined",WSTATE_DISABLE)
 WGROUP(WG_DIRECTIVE,           "directive",           WSTATE_ERROR)
@@ -699,7 +699,7 @@ DEF_WARNING(W_UNKNOWN_INCLUDE_PATH,(WG_VALUE),WSTATE_WARN,{ char *temp = ARG(cha
 DEF_WARNING(W_INCLUDE_PATH_ALREADY_EXISTS,(WG_VALUE),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("System #include-path " Q("%.*s") " already exists",(int)ARG(size_t),temp); }) /*< [char const *,size_t]. */
 DEF_WARNING(W_EXPECTED_ELSE_IN_EXPRESSION,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("else") " in expression, but got " TOK_S,TOK_A)) /*< . */
 DEF_WARNING(W_STATEMENT_IN_EXPRESSION,(WG_USAGE,WG_SYNTAX),WSTATE_WARN,WARNF("GCC-style statement " TOK_S " in expression is not understood",TOK_A)) /*< . */
-DEF_WARNING(W_TYPECAST_IN_EXPRESSION,(WG_USAGE,WG_SYNTAX),WSTATE_WARN,WARNF("C-style type cast " TOK_S " in expression is not understood (Consider using bit-masks to narrow integral types)",TOK_A)) /*< . */
+DEF_WARNING(W_TYPECAST_IN_EXPRESSION,(WG_USAGE,WG_SYNTAX,WG_UNDEF),WSTATE_WARN,WARNF("C-style type cast " TOK_S " in expression is not understood (Consider using bit-masks to narrow integral types)",TOK_A)) /*< . */
 DEF_WARNING(W_EXPECTED_RPAREN_AFTER_CAST,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q(")") " after casting type, but got " TOK_S,TOK_A)) /*< . */
 DEF_WARNING(W_EXPECTED_RBRACE_AFTER_STATEMENT,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("}") " after statement, but got " TOK_S,TOK_A)) /*< . */
 DEF_WARNING(W_EXPECTED_WARNING_NAMEORID,(WG_VALUE),WSTATE_WARN,WARNF("Expected warning name or id, but got " Q("%s"),CONST_STR())) /*< [struct TPPConst *]. */

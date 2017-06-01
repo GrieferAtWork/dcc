@@ -144,7 +144,7 @@ DCCDisp_UnaryMem(tok_t op, struct DCCMemLoc const *__restrict dst,
  }
  dst_iter = *dst;
  if (dst_bytes > DCC_TARGET_SIZEOF_ARITH_MAX &&
-     op == TOK_INC || op == TOK_DEC) {
+    (op == TOK_INC || op == TOK_DEC)) {
   /* inc/dec for out-of-band memory arguments. */
   struct DCCSymAddr src_val = {1,NULL};
   DCCDisp_CstBinMem(op == TOK_INC ? '+' : '-',&src_val,

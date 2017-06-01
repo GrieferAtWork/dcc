@@ -182,9 +182,9 @@ int main(int argc, char *argv[]) {
   hc.c_grp   = NULL;
   hc.c_state = 0;
   hc.c_id    = OPT_help;
-  hc.c_val   = (preproc.p_flags&DCC_PREPROCESSOR_FLAG_HELPINC) ? "include-paths" :
-               (preproc.p_flags&DCC_PREPROCESSOR_FLAG_HELPLIB) ? "library-paths" :
-                                                                 "";
+  hc.c_val   = (preproc.p_flags&DCC_PREPROCESSOR_FLAG_HELPINC) ? (char *)"include-paths" :
+               (preproc.p_flags&DCC_PREPROCESSOR_FLAG_HELPLIB) ? (char *)"library-paths" :
+                                                                 (char *)"";
   exec_cmd(&hc,2);
  }
  if unlikely(!argc) WARN(W_LINKER_NO_INPUT_FILES);

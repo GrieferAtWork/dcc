@@ -37,6 +37,10 @@ DCCDAT struct TPPFile TPPFile_Linker;
 #ifdef __INTELLISENSE__
 DCCDAT struct TPPKeyword TPPKeyword_Empty;
 #else
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4820)
+#endif
 struct TPPKeyword_Empty_struct {
         struct TPPKeyword *k_next;
  /*ref*/struct TPPFile    *k_macro;
@@ -46,6 +50,9 @@ struct TPPKeyword_Empty_struct {
  TPP(hash_t)               k_hash;
  char                      k_zero;
 };
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 DCCDAT struct TPPKeyword_Empty_struct TPPKeyword_Empty_data;
 #define TPPKeyword_Empty  (*(struct TPPKeyword *)&TPPKeyword_Empty_data)
 #endif

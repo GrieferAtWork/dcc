@@ -222,7 +222,7 @@ DCCParse_CTypeOldArgumentList(struct DCCDecl *__restrict funtydecl,
  assert(funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
  assert((opt_firstname != NULL) == (opt_firstattr != NULL));
  assert(!opt_firstname || (TOK == ',' || TOK == ')'));
- WARN(W_OLD_STYLE_FUNCTION_IMPLEMENTATION);
+ WARN(W_OLD_STYLE_FUNCTION_DECLARATION);
  argv = NULL; argc = arga = 0;
  for (;;) {
   struct DCCAttrDecl arg_attr = DCCATTRDECL_INIT;
@@ -369,6 +369,7 @@ DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl,
    DCCAttrDecl_Quit(&attr);
    break;
   }
+  if (is_first) WARN(W_OLD_STYLE_FUNCTION_IMPLEMENTATION);
   DCCParse_CTypeOldArgumentListDefWithBase(funtydecl,&type,&attr);
   DCCAttrDecl_Quit(&attr);
   DCCType_Quit(&type);
@@ -512,7 +513,7 @@ DCCParse_CTypeTrail(struct DCCType     *__restrict self,
   self->t_base  = funtydecl; /* Inherit reference. */
   YIELD();
   if (TOK == ')') {
-   WARN(W_OLD_STYLE_FUNCTION_DECLARATION);
+   WARN(W_OLD_STYLE_FUNCTION_DECLARATION_NOARGS);
    YIELD();
    funtydecl->d_kind  = DCC_DECLKIND_OLDFUNCTION;
    assert(funtydecl->d_tdecl.td_size   == 0);
@@ -657,8 +658,9 @@ parse_leading:
   DCCParse_Attr(&paren_attr);
   if (TOK == ')') {
 /*parcase_3:*/ /* Unnamed old-style argument list. */
-   WARN(W_OLD_STYLE_FUNCTION_DECLARATION);
+   WARN(W_OLD_STYLE_FUNCTION_DECLARATION_NOARGS);
    DCCType_MkOldFunc(self);
+   is_old_funimpl = 1;
    goto innerend_yield;
   } else if (TOK == '*' || TOK == '&') {
    /* Optimization: For these tokens, we can effortlessly determine case #2. */

@@ -990,8 +990,8 @@ DEF_WARNING(W_GENERIC_EXPRESSION_SECOND_MATCH,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TY
 DEF_WARNING(W_GENERIC_EXPRESSION_EXPECTED_TYPE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Expected type for generic expression " Q("%s")))
 DEF_WARNING(W_GENERIC_EXPRESSION_EXPECTED_COLON,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Expected " Q(":") " after type in generic expression " Q("%s")))
 DEF_WARNING(W_GENERIC_EXPRESSION_C11,(WG_C11,WG_EXTENSIONS),WSTATE_WARN,WARNF("_Generic expressions are only accepted by C11-compliant compilers"))
-DEF_WARNING(W_BUILTIN_VA_START_MISSING_SECOND_ARGUMENT,(WG_OLD_FUNCTION_DECL),WSTATE_WARN,WARNF("Assuming last argument for missing second parameter to " Q("va_start")))
-DEF_WARNING(W_BUILTIN_VA_START_MISSING_SECOND_,(WG_OLD_FUNCTION_DECL),WSTATE_WARN,WARNF("Missing second argument to " Q("va_start") " is only allowed in old-style functions"))
+DEF_WARNING(W_BUILTIN_VA_START_MISSING_SECOND_ARGUMENT,(WG_SYNTAX),WSTATE_WARN,WARNF("Assuming last argument for missing second parameter to " Q("va_start")))
+DEF_WARNING(W_BUILTIN_VA_START_MISSING_SECOND_OLDSTYLE,(WG_OLD_FUNCTION_DECL),WSTATE_WARN,WARNF("Use of old-style va_start with missing second argument"))
 DEF_WARNING(W_BUILTIN_VA_START_NO_VARARGS,(WG_TYPE),WSTATE_WARN,WARNF(Q("va_start") " used in function without variadic argument portion"))
 DEF_WARNING(W_BUILTIN_VA_START_NOT_LAST_ARG,(WG_TYPE),WSTATE_WARN,WARNF("Argument to " Q("va_start") " must be the last function argument"))
 DEF_WARNING(W_BUILTIN_JMPBUF_HAS_INCORRECT_SIZE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Incorrect size for " Q("jmp_buf") " of type " Q("%s") " in " Q("setjmp/longjmp")))
@@ -1002,6 +1002,7 @@ DEF_WARNING(W_BUILTIN_MEMCPY_POINTERS_ALWAYS_EQUAL,(WG_QUALITY),WSTATE_WARN,WARN
 DEF_WARNING(W_BUILTIN_MEMCMP_POINTERS_ALWAYS_EQUAL,(WG_QUALITY),WSTATE_WARN,WARNF("Equal pointers passed to " Q("memcmp") " makes the call redundant"))
 DEF_WARNING(W_BUILTIN_RETURN_ADDRESS_CONST_LEVEL,(WG_VALUE),WSTATE_WARN,WARNF("__builtin_return_address/__builtin_frame_address expect a constant integral as argument"))
 DEF_WARNING(W_BUILTIN_RETURN_ADDRESS_NEG_LEVEL,(WG_VALUE),WSTATE_WARN,WARNF("__builtin_return_address/__builtin_frame_address expect a positive integral as argument"))
+DEF_WARNING(W_UNSUPPORTED_CAS_SIZE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Type " Q("%s") " has an unsupported CAS size"))
 #undef TYPE_WARNING
 #ifdef DECLARE_WARNING_MESSAGES
 }
@@ -1189,6 +1190,7 @@ DEF_WARNING(W_TYPE_STRUCT_EXPLICIT_ALIGNMENT_TOO_LOW,(WG_VALUE),WSTATE_WARN,{
        (unsigned long)used_alignment,DECL_NAME(),(unsigned long)ARG(target_siz_t));
  DECL_PRINT(NULL);
 })
+DEF_WARNING(W_OLD_STYLE_FUNCTION_DECLARATION_NOARGS,(WG_QUALITY,WG_OLD_FUNCTION_DECL),WSTATE_DISABLE,WARNF("Empty argument list does not enforce argument count. Use 'void' as only unnamed argument instead"))
 DEF_WARNING(W_OLD_STYLE_FUNCTION_DECLARATION,(WG_OLD_FUNCTION_DECL),WSTATE_WARN,WARNF("An old-style function declarations was used"))
 DEF_WARNING(W_OLD_STYLE_FUNCTION_IMPLEMENTATION,(WG_OLD_FUNCTION_DECL),WSTATE_WARN,WARNF("An old-style function implementation was used"))
 DEF_WARNING(W_OLD_STYLE_FUNCTION_VARARGS,(WG_SYNTAX),WSTATE_WARN,WARNF("varargs " Q("...") " may not appear in old-style function parameter list; use <varargs.h> instead"))
@@ -1227,7 +1229,7 @@ DEF_WARNING(W_EXPECTED_STRING_FOR_ASSEMBLY_NAME,(WG_SYNTAX),WSTATE_WARN,WARNF("E
 DEF_WARNING(W_AUTO_TYPE_USED_AS_POINTER_BASE,(WG_TYPE),WSTATE_WARN,WARNF(Q("__auto_type") " used as pointer base"))
 DEF_WARNING(W_QUAL_ON_AUTO_TYPE,(WG_TYPE),WSTATE_WARN,WARNF("Qualifiers on " Q("__auto_type") " have no defined semantics"))
 DEF_WARNING(W_VARIABLE_LENGTH_ARRAYS_NOT_ALLOWED_HERE,(WG_TYPE),WSTATE_WARN,WARNF("VLA array types are not allowed here"))
-DEF_WARNING(W_ARRAY_SIZE_DEPENDS_ON_SYMBOL,(WG_VALUE,WG_SYMBOL),WSTATE_WARN,WARNF("Array size depends on symbol " Q("%s") "\n",KWDNAME()))
+DEF_WARNING(W_ARRAY_SIZE_DEPENDS_ON_SYMBOL,(WG_VALUE,WG_SYMBOL),WSTATE_WARN,WARNF("Array size depends on symbol " Q("%s"),KWDNAME()))
 
 DEF_WARNING(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P,(WG_TYPE),WSTATE_WARN,WARNF("Expected type after " Q("__builtin_types_compatible_p")))
 //DEF_WARNING(W_INCOMPATIBLE_ALIAS_TYPES,(WG_TYPE),WSTATE_WARN,WARNF("Aliasing " Q("%s") " and " Q("%s") " with incompatible types",KWDNAME(),KWDNAME()))
@@ -1327,7 +1329,6 @@ DEF_WARNING(W_CAST_TO_ARRAY,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Incompatible arr
 DEF_WARNING(W_CAST_TO_VARRAY,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Incompatible variadic array types " Q("%s") " and " Q("%s")))
 DEF_WARNING(W_INCOMPATIBLE_TYPES_FOR_VARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Incompatible types " Q("%s") " and " Q("%s") " for variadic-array initializer"))
 DEF_WARNING(W_EXPECTED_ARRAY_FOR_VARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected an array type for the initializer of variadic-array-type " Q("%s") ", but got " Q("%s")))
-DEF_WARNING(W_UNSUPPORTED_CAS_SIZE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Type " Q("%s") " has an unsupported CAS size"))
 DEF_WARNING(W_ASSIGN_VOID,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Can't assign non-void-type " Q("%s") " to void-type " Q("%s")))
 DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assigning void-type " Q("%s") " to void-type " Q("%s")))
 #undef TYPE_WARNING

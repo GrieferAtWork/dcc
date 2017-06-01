@@ -8100,6 +8100,7 @@ seterr_argv: UNUSED_LABEL; TPPLexer_SetErr(); goto err_argv;
 PRIVDEF void EVAL_CALL eval_question(struct TPPConst *result);
 
 PRIVATE void EVAL_CALL eval_unary(struct TPPConst *result) {
+ int try_parse_value = 0;
 again_unary:
  switch (TOK) {
 
@@ -8140,7 +8141,7 @@ again_unary:
      * >> '!!42' should evaluate to '1' without a warning. */
     yield_fetch();
     eval_unary(result);
-    TPPConst_ToBool(result);
+    if (result) TPPConst_ToBool(result);
     break;
    }
    eval_unary(result);
@@ -8208,6 +8209,7 @@ again_unary:
     }
     if (TOK == ')') yield_fetch();
     else TPPLexer_Warn(W_EXPECTED_RPAREN_AFTER_CAST);
+    try_parse_value = 1;
     goto again_unary;
    }
    if (TOK == '{') {
@@ -8459,6 +8461,7 @@ restore_warnings:
        HAVE_EXTENSION_BUILTIN_FUNCTIONS &&
        eval_call_builtin(result)) break;
 #endif
+   if (try_parse_value) goto set_zero;
    if (result) TPPLexer_Warn(W_UNKNOWN_TOKEN_IN_EXPR_IS_ZERO);
    if (TPP_ISKEYWORD(TOK)) {
     yield_fetch();
@@ -8476,6 +8479,7 @@ restore_warnings:
     }
 #endif
    }
+set_zero:
    if (result) TPPConst_ZERO(result);
    break;
  }

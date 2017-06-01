@@ -109,8 +109,8 @@ DCCParse_AsmOp(struct asm_operand *__restrict self) {
 
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_AsmConstraint(struct TPPString *asm_text) {
-
-
+ /* TODO: Parse constraints */
+ while (TOK == ':' || TOK == TOK_STRING) YIELD();
  DCCAsm_ExecStringInherited(asm_text);
 }
 

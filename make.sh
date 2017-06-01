@@ -6,10 +6,11 @@ F=("-Iinclude" "-DDCC_PRIVATE_API")
 CC_DCC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
 if [ -f "$CC_DCC" ]; then
 	CC="$CC_DCC";
-	F+=("-D__GNUC__=2")
+	F+=("-D__GNUC__=3")
 	F+=("-D__GNUC_MINOR__=0")
 	F+=("-D__GNUC_PATCH__=0")
-	F+=("-I D:\\cygwin\\root\\usr\\include\\w32api")
+	F+=("-ID:/cygwin32/usr/include/w32api")
+	F+=("-LC:/Program Files (x86)/Windows Kits/8.1/Lib/winv6.3/um/x86")
 fi
 
 build() { echo "build/dcc/$1"; }

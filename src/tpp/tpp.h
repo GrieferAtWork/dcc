@@ -256,6 +256,8 @@
 #if defined(_MSC_VER)
 #   define TPP_HAVE_UNNAMED_UNION  1
 #   pragma warning(disable: 4201)
+#elif defined(__DCC_VERSION__)
+#   define TPP_HAVE_UNNAMED_UNION  1
 #elif (defined(__GNUC__) && \
       /* Anonymous unions support starts with gcc 2.96/g++ 2.95 */\
       (__GNUC__ < 2 || (__GNUC__ == 2 && (__GNUC_MINOR__ < 95 ||\
@@ -991,7 +993,6 @@ struct TPPRareKeyword {
  /*ref*/struct TPPFile    *kr_defmacro; /*< [0..1] Default macro definition (backup of the original, builtin macro when re-defined by the user).
                                          *         This macro file is restored as the active macro when lexer macros are reset and the
                                          *        'TPP_KEYWORDFLAG_BUILTINMACRO' keyword flag is set below. */
- TPP(int_t)                kr_counter;  /*< Counter value used by '__TPP_COUNTER()' */
 #define TPP_KEYWORDFLAG_NONE                   0x00000000
 #define TPP_KEYWORDFLAG_BUILTINMACRO           0x20000000 /*< An explicitly defined builtin macro-definition, that can't be #undef'ed and is not  */
 #define TPP_KEYWORDFLAG_NO_UNDERSCORES         0x40000000 /*< When looking up keyword flags, don't allow this keyword to alias another with additional underscores at the front and back:
@@ -1010,6 +1011,7 @@ struct TPPRareKeyword {
 #define TPP_KEYWORDFLAG_HAS_TPP_BUILTIN        0x00000100
 #define TPP_KEYWORDFLAG_USERMASK               0x0000007f /*< Set of flags modifiable through pragmas. */
  uint32_t                  kr_flags;    /*< A set of 'TPP_KEYWORDFLAG_*'. */
+ TPP(int_t)                kr_counter;  /*< Counter value used by '__TPP_COUNTER()' */
  struct TPPAssertions      kr_asserts;  /*< Assertions (aka. #assert/#unassert associated with this keyword) */
 };
 
@@ -1189,11 +1191,11 @@ struct TPPLexer {
  size_t                l_eof_paren;  /*< Recursion counter used by the 'TPPLEXER_FLAG_EOF_ON_PAREN' flag. */
  size_t                l_warncount;  /*< Amount of warnings that were invoked (including those that were dismissed). */
  size_t                l_tabsize;    /*< Size of '\t' tab characters (used for __COLUMN__ and in error messages). */
- TPP(tok_t)            l_noerror;    /*< Old token ID before 'TPPLEXER_FLAG_ERROR' was set. */
- TPP(int_t)            l_counter;    /*< Value returned the next time '__COUNTER__' is expanded (Initialized to ZERO(0)). */
  struct TPPIfdefStack  l_ifdef;      /*< #ifdef stack. */
  struct TPPWarnings    l_warnings;   /*< Current user-configured warnings state. */
  struct TPPCallbacks   l_callbacks;  /*< User-defined lexer callbacks. */
+ TPP(tok_t)            l_noerror;    /*< Old token ID before 'TPPLEXER_FLAG_ERROR' was set. */
+ TPP(int_t)            l_counter;    /*< Value returned the next time '__COUNTER__' is expanded (Initialized to ZERO(0)). */
 };
 #define TPPLEXER_DEFAULT_LIMIT_MREC 512 /* Even when generated text differs from previous version, don't allow more self-recursion per macro than this. */
 #define TPPLEXER_DEFAULT_LIMIT_INCL 64  /* User attempts to #include a file more often that file will fail with an error message. */

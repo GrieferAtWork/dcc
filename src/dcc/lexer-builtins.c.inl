@@ -669,7 +669,10 @@ DCCParse_BuiltinVaStart(void) {
  if (TOK != ',') {
   /* Load the default location for the va-argument. */
   struct DCCStackValue vararg;
-  WARN(W_BUILTIN_VA_START_MISSING_SECOND_ARGUMENT);
+  WARN((compiler.c_fun && compiler.c_fun->d_type.t_base &&
+        compiler.c_fun->d_type.t_base->d_kind == DCC_DECLKIND_OLDFUNCTION)
+        ? W_BUILTIN_VA_START_MISSING_SECOND_OLDSTYLE
+        : W_BUILTIN_VA_START_MISSING_SECOND_ARGUMENT);
   vararg.sv_ctype.t_type = DCCTYPE_VOID;
   vararg.sv_ctype.t_base = NULL;
   vararg.sv_flags        = DCC_SFLAG_LVALUE;

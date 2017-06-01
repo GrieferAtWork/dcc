@@ -334,8 +334,7 @@ DCCUnit_ImportWithPath(struct TPPString *__restrict path,
   memcpy(ext,DCC_CONFIG_LIBPREFIX,DCC_COMPILER_STRLEN(DCC_CONFIG_LIBPREFIX)*sizeof(char));
   ext += DCC_COMPILER_STRLEN(DCC_CONFIG_LIBPREFIX);
   memcpy(ext,def->ld_name,def->ld_size*sizeof(char));
-  ext += def->ld_size;
-  ext[MAX_EXTLEN] = '\0';
+  ext[def->ld_size] = '\0';
   ext_iter = search_extensions;
   do {
    memcpy(ext,ext_iter->ext,MAX_EXTLEN*sizeof(char));
