@@ -196,6 +196,23 @@ DEF_BUILTIN(__builtin_memset)
 DEF_BUILTIN(__builtin_memcmp)
 DEF_BUILTIN(__builtin_strlen)
 
+/* Builtin character trait functions.
+ * WARNING: The order of these is important! */
+DEF_BUILTIN(__builtin_iscntrl)
+DEF_BUILTIN(__builtin_isblank)
+DEF_BUILTIN(__builtin_isspace)
+DEF_BUILTIN(__builtin_isupper)
+DEF_BUILTIN(__builtin_islower)
+DEF_BUILTIN(__builtin_isalpha)
+DEF_BUILTIN(__builtin_isdigit)
+DEF_BUILTIN(__builtin_isxdigit)
+DEF_BUILTIN(__builtin_isalnum)
+DEF_BUILTIN(__builtin_ispunct)
+DEF_BUILTIN(__builtin_isgraph)
+DEF_BUILTIN(__builtin_isprint)
+DEF_BUILTIN(__builtin_tolower)
+DEF_BUILTIN(__builtin_toupper)
+
 DEF_BUILTIN(__builtin_return_address)
 DEF_BUILTIN(__builtin_frame_address)
 DEF_BUILTIN(__builtin_extract_return_addr)

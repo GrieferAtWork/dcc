@@ -53,11 +53,11 @@ DCCParse_BuiltinTypeStr(void) {
   pushf();
   compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
   DCCParse_Expr1();
-  popf();
   name_sym = vbottom->sv_sym;
   type_str = DCCType_ToTPPString(&vbottom->sv_ctype,
                                  name_sym ? name_sym->sy_name : NULL);
   vpop(1);
+  popf();
  }
  DCCType_Quit(&query_type);
  assert(type_str),
@@ -73,14 +73,14 @@ DCCParse_BuiltinConstantP(void) {
  int is_constant;
  assert(TOK == KWD___builtin_constant_p);
  YIELD();
- DCCParse_ParPairBegin();
  pushf();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
+ DCCParse_ParPairBegin();
  DCCParse_Expr1();
- popf();
  DCCParse_ParPairEnd();
  is_constant = DCCStackValue_ISCONST(vbottom);
  vpop(1);
+ popf();
  vpushi(DCCTYPE_BOOL,is_constant);
 }
 
@@ -95,7 +95,6 @@ DCCParse_BuiltinChooseExpr(void) {
  pushf();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
  DCCParse_Expr1();
- popf();
  if (visconst_bool()) {
   is_true = vgtconst_bool();
  } else {
@@ -103,6 +102,7 @@ DCCParse_BuiltinChooseExpr(void) {
   is_true = 0;
  }
  vpop(1);
+ popf();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
  if (is_true) DCCParse_Expr1(); else DCCParse_SkipExpr();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
@@ -155,7 +155,7 @@ DCCParse_BuiltinBSwap(void) {
  DCCParse_ParPairBegin();
  switch (mode) {
  default:
-  DCCParse_Expr1();
+  DCCParse_Expr1(),vused();
   vprom();
   if (TOK == ',') {
    YIELD();
@@ -168,7 +168,7 @@ DCCParse_BuiltinBSwap(void) {
   if (DCC_MACRO_FALSE) { case KWD___builtin_bswap16: size = 2; }
   if (DCC_MACRO_FALSE) { case KWD___builtin_bswap32: size = 4; }
   if (DCC_MACRO_FALSE) { case KWD___builtin_bswap64: size = 8; }
-  DCCParse_Expr1();
+  DCCParse_Expr1(),vused();
   vprom();
  } break;
  }
@@ -238,6 +238,7 @@ copy_elem:
    vbottom->sv_reg = temp;
   }
  }
+ vwunused();
 }
 
 
@@ -306,7 +307,7 @@ DCCParse_BuiltinAssume(void) {
  DCCParse_ParPairBegin();
  pushf();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
- DCCParse_Expr1();
+ DCCParse_Expr1(),vused();
  popf();
  DCCParse_ParPairEnd();
  /* If a compile-time assumption fails, it means
@@ -470,7 +471,7 @@ DCCParse_BuiltinScanner(void) {
  int clz_mode = 0;
  tok_t mode = TOK; YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1();
+ DCCParse_Expr1(),vused();
  switch (mode) {
  case KWD___builtin_clz:   clz_mode = 1;
  case KWD___builtin_ffs:   size = DCC_TARGET_SIZEOF_INT; break;
@@ -577,6 +578,7 @@ default_ffs:
  }
  vpop(1);                 /* res */
  vrval();                 /* rres */
+ vwunused();
 }
 
 // TODO: int __builtin_ctz(unsigned int x);
@@ -785,7 +787,7 @@ DCCParse_BuiltinSetJmp(void) {
  assert(TOK == KWD___builtin_setjmp);
  YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1();
+ DCCParse_Expr1(),vused();
  DCCParse_ParPairEnd();
  DCCStackValue_LoadLValue(vbottom);
  DCCType_CheckWritable(&vbottom->sv_ctype);
@@ -815,6 +817,7 @@ DCCParse_BuiltinSetJmp(void) {
  /* Push the longjmp register. */
  vpushr(TARGET_LONGJMP_REGISTER);
  vrval();
+ //vwunused(); /* Well... You should, but you don't ~really~ have to... */
 }
 
 /*  __builtin_longjmp  */
@@ -829,9 +832,9 @@ DCCParse_BuiltinLongJmp(void) {
   *       will simply mark the control flow as dead, meaning that all registers
   *       still alive when one gets here are, will be meaningless afterwards! */
  DCCParse_ParPairBegin();
- DCCParse_Expr1();
+ DCCParse_Expr1(),vused();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_Expr1();
+ DCCParse_Expr1(),vused();
  DCCStackValue_LoadLValue(&vbottom[1]);
  if (!(vbottom[1].sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(&vbottom[1]);
  if (DCCType_Sizeof(&vbottom[1].sv_ctype,NULL,1) != DCC_TARGET_SIZEOF_JMP_BUF)
@@ -936,11 +939,11 @@ DCCParse_BuiltinMemcpy(void) {
  int may_overlap = TOK == KWD___builtin_memmove;
  YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID,0);
+ DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID,0),vused();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID|DCCTYPE_CONST,0);
+ DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID|DCCTYPE_CONST,0),vused();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_Expr1(),vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0);
+ DCCParse_Expr1(),vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0),vused();
  if (TOK == ',') YIELD(),DCCParse_ExprDiscard();
  DCCParse_ParPairEnd();
  /* dst, src, size */
@@ -1018,12 +1021,12 @@ DCCParse_BuiltinMemset(void) {
  assert(TOK == KWD___builtin_memset);
  YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID,0);
+ DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID,0),vused();
  DCCType_CheckWritablePtr(&vbottom->sv_ctype);
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_Expr1(),vcast_t(DCCTYPE_INT,0);
+ DCCParse_Expr1(),vcast_t(DCCTYPE_INT,0),vused();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_Expr1(),vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0);
+ DCCParse_Expr1(),vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0),vused();
  if (TOK == ',') YIELD(),DCCParse_ExprDiscard();
  DCCParse_ParPairEnd();
  /* Compile-time optimizations for known memset sizes. */
@@ -1080,11 +1083,11 @@ DCCParse_BuiltinMemcmp(void) {
  assert(TOK == KWD___builtin_memcmp);
  YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID|DCCTYPE_CONST,0);
+ DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID|DCCTYPE_CONST,0),vused();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID|DCCTYPE_CONST,0);
+ DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID|DCCTYPE_CONST,0),vused();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_Expr1(),vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0);
+ DCCParse_Expr1(),vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0),vused();
  if (TOK == ',') YIELD(),DCCParse_ExprDiscard();
  DCCParse_ParPairEnd();
  /* a, b, size */
@@ -1166,6 +1169,7 @@ fix_stack:
   vlrot(4);      /* memcmp, a, b, size */
   vcall(3);      /* ret */
  }
+ vwunused();
 }
 
 
@@ -1178,7 +1182,7 @@ DCCParse_BuiltinStrlen(void) {
  assert(TOK == KWD___builtin_strlen);
  YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1(),vcast_pt(DCCTYPE_CHAR|DCCTYPE_CONST,0);
+ DCCParse_Expr1(),vcast_pt(DCCTYPE_CHAR|DCCTYPE_CONST,0),vused();
  if (TOK == ',') YIELD(),DCCParse_ExprDiscard();
  DCCParse_ParPairEnd();
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
@@ -1209,7 +1213,94 @@ DCCParse_BuiltinStrlen(void) {
   vswap();       /* strlen, str */
   vcall(1);      /* ret */
  }
+ vwunused();
 }
+
+#define ASCII_ISCNTRL(ch)  ((uint8_t)(ch) <= 0x1f || (uint8_t)(ch) == 0x7f)
+#define ASCII_ISBLANK(ch)  ((uint8_t)(ch) == 0x09 || (uint8_t)(ch) == 0x20)
+#define ASCII_ISSPACE(ch)  (((uint8_t)(ch) >= 0x09 && (uint8_t)(ch) <= 0x0d) || (uint8_t)(ch) == 0x20)
+#define ASCII_ISUPPER(ch)  ((uint8_t)(ch) >= 0x41 && (uint8_t)(ch) <= 0x5a)
+#define ASCII_ISLOWER(ch)  ((uint8_t)(ch) >= 0x61 && (uint8_t)(ch) <= 0x7a)
+#define ASCII_ISALPHA(ch)  (ASCII_ISUPPER(ch) || ASCII_ISLOWER(ch))
+#define ASCII_ISDIGIT(ch)  ((uint8_t)(ch) >= 0x30 && (uint8_t)(ch) <= 0x39)
+#define ASCII_ISXDIGIT(ch) (ASCII_ISDIGIT(ch) || \
+                           ((uint8_t)(ch) >= 0x41 && (uint8_t)(ch) <= 0x46) || \
+                           ((uint8_t)(ch) >= 0x61 && (uint8_t)(ch) <= 0x66))
+#define ASCII_ISALNUM(ch)  (ASCII_ISUPPER(ch) || ASCII_ISLOWER(ch) || ASCII_ISDIGIT(ch))
+#define ASCII_ISPUNCT(ch)  (((uint8_t)(ch) >= 0x21 && (uint8_t)(ch) <= 0x2f) || \
+                            ((uint8_t)(ch) >= 0x3a && (uint8_t)(ch) <= 0x40) || \
+                            ((uint8_t)(ch) >= 0x5b && (uint8_t)(ch) <= 0x60) || \
+                            ((uint8_t)(ch) >= 0x7b && (uint8_t)(ch) <= 0x7e))
+#define ASCII_ISGRAPH(ch)  ((uint8_t)(ch) >= 0x21 && (uint8_t)(ch) <= 0x7e)
+#define ASCII_ISPRINT(ch)  ((uint8_t)(ch) >= 0x20 && (uint8_t)(ch) <= 0x7e)
+#define ASCII_TOLOWER(ch)  (ASCII_ISUPPER(ch) ? ((uint8_t)(ch)+0x20) : (uint8_t)(ch))
+#define ASCII_TOUPPER(ch)  (ASCII_ISLOWER(ch) ? ((uint8_t)(ch)-0x20) : (uint8_t)(ch))
+
+PRIVATE int ascii_iscntrl(int ch) { return ASCII_ISCNTRL(ch); }
+PRIVATE int ascii_isblank(int ch) { return ASCII_ISBLANK(ch); }
+PRIVATE int ascii_isspace(int ch) { return ASCII_ISSPACE(ch); }
+PRIVATE int ascii_isupper(int ch) { return ASCII_ISUPPER(ch); }
+PRIVATE int ascii_islower(int ch) { return ASCII_ISLOWER(ch); }
+PRIVATE int ascii_isalpha(int ch) { return ASCII_ISALPHA(ch); }
+PRIVATE int ascii_isdigit(int ch) { return ASCII_ISDIGIT(ch); }
+PRIVATE int ascii_isxdigit(int ch) { return ASCII_ISXDIGIT(ch); }
+PRIVATE int ascii_isalnum(int ch) { return ASCII_ISALNUM(ch); }
+PRIVATE int ascii_ispunct(int ch) { return ASCII_ISPUNCT(ch); }
+PRIVATE int ascii_isgraph(int ch) { return ASCII_ISGRAPH(ch); }
+PRIVATE int ascii_isprint(int ch) { return ASCII_ISPRINT(ch); }
+PRIVATE int ascii_tolower(int ch) { return ASCII_TOLOWER(ch); }
+PRIVATE int ascii_toupper(int ch) { return ASCII_TOUPPER(ch); }
+
+struct ctype_callback {
+ char const *name;
+ int       (*func)(int);
+};
+
+PRIVATE struct ctype_callback const builtin_ctype[] = {
+ /* __builtin_iscntrl  */{"iscntrl", &ascii_iscntrl},
+ /* __builtin_isblank  */{"isblank", &ascii_isblank},
+ /* __builtin_isspace  */{"isspace", &ascii_isspace},
+ /* __builtin_isupper  */{"isupper", &ascii_isupper},
+ /* __builtin_islower  */{"islower", &ascii_islower},
+ /* __builtin_isalpha  */{"isalpha", &ascii_isalpha},
+ /* __builtin_isdigit  */{"isdigit", &ascii_isdigit},
+ /* __builtin_isxdigit */{"isxdigit",&ascii_isxdigit},
+ /* __builtin_isalnum  */{"isalnum", &ascii_isalnum},
+ /* __builtin_ispunct  */{"ispunct", &ascii_ispunct},
+ /* __builtin_isgraph  */{"isgraph", &ascii_isgraph},
+ /* __builtin_isprint  */{"isprint", &ascii_isprint},
+ /* __builtin_tolower  */{"tolower", &ascii_tolower},
+ /* __builtin_toupper  */{"toupper", &ascii_toupper},
+};
+
+
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_BuiltinCType(void) {
+ struct ctype_callback const *spec;
+ /* int __builtin_isXXX(int ch); */
+ assert(TOK >= KWD___builtin_iscntrl &&
+        TOK <= KWD___builtin_toupper);
+ spec = &builtin_ctype[TOK-KWD___builtin_iscntrl];
+ YIELD();
+ DCCParse_ParPairBegin();
+ DCCParse_Expr1(),vcast_t(DCCTYPE_INT,0),vused();
+ DCCParse_ParPairEnd();
+ if (visconst_int()) {
+  /* Calculate at compile-time. */
+  vbottom->sv_const.it = (int_t)(*spec->func)((int)vgtconst_int());
+  vbottom->sv_flags   |= DCC_SFLAG_RVALUE;
+ } else {
+  /* Generate a function call. */
+  struct DCCSym *funsym;
+  funsym = DCCUnit_NewSyms(spec->name,DCC_SYMFLAG_NONE);
+  if (funsym) push_ifun_sym(funsym);
+  else vpushv(); /* ch, ... */
+  vswap();       /* ..., ch */
+  vcall(1);      /* ret */
+ }
+ vwunused();
+}
+
 
 
 
@@ -1225,7 +1316,7 @@ DCCParse_SyncCompareAndSwap(void) {
  bool_mode = (TOK == KWD___sync_bool_compare_and_swap);
  YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1();
+ DCCParse_Expr1(),vused();
  vgen1('*'); /* Dereference first argument. */
  DCCStackValue_LoadLValue(vbottom);
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(vbottom);
@@ -1241,9 +1332,9 @@ DCCParse_SyncCompareAndSwap(void) {
              cas_size == 2 ? DCC_RC_I16|DCC_RC_I8 :
                              DCC_RC_I32|DCC_RC_I16|DCC_RC_I8;
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_Expr1(),vcast(cas_type,0);
+ DCCParse_Expr1(),vcast(cas_type,0),vused();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_Expr1(),vcast(cas_type,0);
+ DCCParse_Expr1(),vcast(cas_type,0),vused();
  if (TOK == ',') YIELD(),DCCParse_ExprDiscard();
  DCCParse_ParPairEnd();
  DCCStackValue_LoadExplicit(&vbottom[1],(rc_t)(DCC_ASMREG_EAX|reg_class));
@@ -1313,7 +1404,7 @@ DCCParse_SyncBinary(void) {
  }
  YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1();
+ DCCParse_Expr1(),vused();
  vgen1('*'); /* Dereference first argument. */
  DCCStackValue_LoadLValue(vbottom);
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(vbottom);
@@ -1329,7 +1420,7 @@ DCCParse_SyncBinary(void) {
              cas_size == 2 ? DCC_RC_I16|DCC_RC_I8 :
                              DCC_RC_I32|DCC_RC_I16|DCC_RC_I8;
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_Expr1(),vcast(cas_type,0);
+ DCCParse_Expr1(),vcast(cas_type,0),vused();
  if (TOK == ',') YIELD(),DCCParse_ExprDiscard();
  DCCParse_ParPairEnd();
  DCCStackValue_LoadClass(&vbottom[0],reg_class,1);
@@ -1369,7 +1460,7 @@ DCCParse_SyncUnary(void) {
  }
  YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1();
+ DCCParse_Expr1(),vused();
  vgen1('*'); /* Dereference first argument. */
  DCCStackValue_LoadLValue(vbottom);
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(vbottom);
@@ -1426,7 +1517,7 @@ DCCParse_BuiltinReturnAddr(void) {
  YIELD();
  DCCParse_ParPairBegin();
  pushf();
- DCCParse_Expr1();
+ DCCParse_Expr1(),vused();
  /* unsigned ptrdiff makes more sense in my opinion... */
  vcast_t(DCCTYPE_PTRDIFF|DCCTYPE_UNSIGNED,0);
  if (visconst_int()) level = (target_off_t)vgtconst_int();
@@ -1488,6 +1579,7 @@ end_pushsval:
  assert(vbottom->sv_flags&DCC_SFLAG_RVALUE);
  assert(sval.sv_ctype.t_base);
  DCCDecl_Decref(sval.sv_ctype.t_base);
+ vwunused();
 }
 
 LEXPRIV void DCC_PARSE_CALL
@@ -1497,9 +1589,10 @@ DCCParse_BuiltinExtractReturnAddr(void) {
  YIELD();
  /* None of DCC's targets so weird stuff to the pointer! */
  DCCParse_ParPairBegin();
- DCCParse_Expr1();
+ DCCParse_Expr1(),vused();
  vcast_pt(DCCTYPE_VOID,0);
  DCCParse_ParPairEnd();
+ vwunused();
 }
 
 

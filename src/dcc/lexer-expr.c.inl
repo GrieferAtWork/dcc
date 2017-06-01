@@ -862,6 +862,14 @@ outside_function:
  case KWD___builtin_memset: DCCParse_BuiltinMemset(); break;
  case KWD___builtin_memcmp: DCCParse_BuiltinMemcmp(); break;
  case KWD___builtin_strlen: DCCParse_BuiltinStrlen(); break;
+  /* Builtin ctype operations. */
+ case KWD___builtin_iscntrl: case KWD___builtin_isblank:
+ case KWD___builtin_isspace: case KWD___builtin_isupper:
+ case KWD___builtin_islower: case KWD___builtin_isalpha:
+ case KWD___builtin_isdigit: case KWD___builtin_isxdigit:
+ case KWD___builtin_isalnum: case KWD___builtin_ispunct:
+ case KWD___builtin_isgraph: case KWD___builtin_isprint:
+ case KWD___builtin_tolower: case KWD___builtin_toupper: DCCParse_BuiltinCType(); break;
   /* bit-scanning functions. */
  case KWD___builtin_ffs:  case KWD___builtin_ffsll:
  case KWD___builtin_ffsl: case KWD___builtin_ffscc:

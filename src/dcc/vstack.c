@@ -3043,9 +3043,13 @@ PUBLIC void DCC_VSTACK_CALL DCCVStack_Pop(int del) {
  VLOG(-1,("vpop(%s)\n",del ? "delete" : ""));
  assert(vsize != 0);
  if (!del) goto done;
- /* Warn about an unused value. */
- if (vbottom->sv_flags&DCC_SFLAG_DO_WUNUSED)
-     WARN(W_UNUSED_VALUE,&vbottom->sv_ctype);
+ /* Warn about an unused value.
+  * NOTE: Don't warn about unused values when no code should be generated.
+  *    >> Within those regions, we don't care, as someone
+  *       probably just want's to know the type or size. */
+ if ((vbottom->sv_flags&DCC_SFLAG_DO_WUNUSED) &&
+    !(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN))
+      WARN(W_UNUSED_VALUE,&vbottom->sv_ctype);
  if (/* Only perform destruction if we're supposed to. */
     (vbottom->sv_flags&(DCC_SFLAG_XOFFSET|DCC_SFLAG_LVALUE|DCC_SFLAG_COPY)) == DCC_SFLAG_XOFFSET &&
     (vbottom->sv_reg != DCC_RC_CONST) && (vbottom->sv_const.it != 0)) {
@@ -3905,10 +3909,39 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
 #if DCC_TARGET_STACKDOWN
   DCCDisp_NdfPush(filler);
 #endif
-#if DCC_TARGET_BYTEORDER == 4321
+  /* TODO: Sign-memory, while working, is very inefficient:
+   * >> char ch = ' ';
+   * >> int i = isspace(ch);
+   * Current assembly generation:
+   * >> mov $' ', -1(%ebp) # ch = ' ';
+   * >> mov -1(%ebp), %al  # Load 'ch' into AL
+   * >> mov %al, %cl       # Create a new copy of 'ch' in 'CL'
+   * >> sar $7, %cl        # Sign-extend 'CL'
+   * >> sub $3, %esp       # Allocate 3 bytes of stack memory (sign-memory; 'sizeof(int)-sizeof(char)')
+   * >> mov %cl, 0(%esp)   # Fill those 3 bytes with the sign-extend of 'CL'
+   * >> mov %cl, 1(%esp)   # *ditto*
+   * >> mov %cl, 2(%esp)   # *ditto*
+   * >> dec %esp           # Allocate 1 byte of stack memory for the character itself
+   * >> mov %al, 0(%esp)   # Push the character onto the stack
+   * >> call isspace       # Call the function
+   * >> add $4, %esp       # Cleanup
+   * Instead, do this:
+   * >> mov    $' ', -1(%ebp) # ch = ' ';
+   * >> movsxb -1(%ebp), %eax # Load+sign-extend 'ch' into 'EAX'
+   * >> pushl  %eax           # Push the 4-byte sign-extended character
+   * >> call isspace          # Call the function
+   * >> add $4, %esp          # Cleanup
+   * WARNING:
+   *    The current solution must still remain implemented, as
+   *    it works for _ANY_ type size, and _ANY_ sign extension,
+   *    whereas the proposed optimization only works for 1 --> 4
+   *    byte, with the ability of more for 1 --> 2 and 2 --> 4
+   */
+#if (DCC_TARGET_BYTEORDER == 4321) ^ DCC_TARGET_STACKDOWN
   if (sign_memory) {
    rc_t temp = DCCVStack_GetReg(DCC_RC_I8,1);
    DCCDisp_RegMovReg(r1,temp,0);
+   DCCDisp_SignExtendReg(temp);
    DCCDisp_ByrPush(temp,sign_memory);
   }
 #endif
@@ -3952,7 +3985,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
     DCCDisp_RegPush(r1&~(DCC_RC_I32));
    }
   }
-#if DCC_TARGET_BYTEORDER == 1234
+#if (DCC_TARGET_BYTEORDER == 1234) ^ DCC_TARGET_STACKDOWN
   if (sign_memory) {
    DCCDisp_SignExtendReg(r1);
    DCCDisp_ByrPush(r1,sign_memory);
@@ -3961,6 +3994,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
 #if !DCC_TARGET_STACKDOWN
   DCCDisp_NdfPush(filler);
 #endif
+  result += sign_memory;
  }
  return result+filler;
 }

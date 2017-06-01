@@ -145,6 +145,7 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemcpy(void);            /* void *__
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemset(void);            /* void *__builtin_memset(void *dst, int byte, size_t size); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemcmp(void);            /* int __builtin_memcmp(void const *a, void const *b, size_t size); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinStrlen(void);            /* size_t __builtin_strlen(char const *str); */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinCType(void);             /* int __builtin_(is|to)XXX(int ch); */
 LEXDECL void DCC_PARSE_CALL DCCParse_SyncCompareAndSwap(void);       /* bool __sync_bool_compare_and_swap(type *p, type oldval, type newval, ...);
                                                                       * type __sync_val_compare_and_swap(type *p, type oldval, type newval, ...); */
 LEXDECL void DCC_PARSE_CALL DCCParse_SyncSynchronize(void);          /* void __sync_synchronize(...); */
