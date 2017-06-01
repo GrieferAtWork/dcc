@@ -22,8 +22,12 @@
 #include "common.h"
 #include "lexer.h"
 
-#ifdef _WIN32
-#include <Windows.h>
+#if defined(_WIN16) || defined(WIN16) || \
+    defined(_WIN32) || defined(WIN32) || \
+    defined(_WIN64) || defined(WIN64) || \
+    defined(__WIN32__) || defined(__TOS_WIN__) || \
+    defined(_WIN32_WCE) || defined(WIN32_WCE)
+#include <dcc_winmin.h>
 #else
 #include <fcntl.h>
 #include <unistd.h>

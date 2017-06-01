@@ -155,6 +155,9 @@
     <ClInclude Include="..\include\dcc\preprocessor.h">
       <Filter>include\dcc</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\dcc_winmin.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\dcc\lexer-attributes.c.inl">

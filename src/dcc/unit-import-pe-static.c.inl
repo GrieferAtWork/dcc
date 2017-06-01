@@ -383,7 +383,9 @@ next_block:
    * delete the section base addresses! */
   { struct DCCSection *sec;
     DCCUnit_ENUMSEC(sec) {
+#ifdef DCC_SYMFLAG_SEC_OWNSBASE
      assert(!(sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE));
+#endif
      DCCSection_SETBASE(sec,0);
      sec->sc_start.sy_flags &= ~(DCC_SYMFLAG_SEC_FIXED);
     }

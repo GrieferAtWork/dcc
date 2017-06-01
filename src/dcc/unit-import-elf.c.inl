@@ -649,7 +649,9 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
     if (!(secflags&DCC_SYMFLAG_SEC_ISIMPORT)) {
      if (sec->sc_text.tb_begin != sec->sc_text.tb_end)
          WARN(W_LIB_ELF_STATIC_SECNAME_REUSED,file,name);
+#ifdef DCC_SYMFLAG_SEC_OWNSBASE
      assert(!(sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE));
+#endif
      free(sec->sc_text.tb_begin);
      elf_loadsection(iter,&sec->sc_text,fd,start);
      sec->sc_start.sy_align = iter->sh_addralign;
@@ -1041,7 +1043,9 @@ absrel:
   /* With all relocations loaded, we can now
    * delete the section base addresses! */
   DCCUnit_ENUMSEC(sec) {
+#ifdef DCC_SYMFLAG_SEC_OWNSBASE
    assert(!(sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE));
+#endif
    DCCSection_SETBASE(sec,0);
    sec->sc_start.sy_flags &= ~(DCC_SYMFLAG_SEC_FIXED);
   }

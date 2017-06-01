@@ -96,11 +96,15 @@
 #include <time.h>
 
 #ifdef _WIN32
+#ifndef NO_INCLUDE_WINDOWS_H
 #include <Windows.h>
+#endif
 #define stream_close(fd) CloseHandle(fd)
 #else
 #if defined(__CYGWIN__) || defined(__MINGW32__)
+#ifndef NO_INCLUDE_WINDOWS_H
 #include <Windows.h>
+#endif
 #endif
 #include <endian.h>
 #include <fcntl.h>

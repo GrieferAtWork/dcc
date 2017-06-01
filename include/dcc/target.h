@@ -61,7 +61,8 @@ DCC_DECL_BEGIN
 
 /* DCC Master CPU target switch. */
 #ifndef DCC_TARGET_CPU
-#define DCC_TARGET_CPU     DCC_HOST_CPU
+#define DCC_TARGET_CPU     DCC_CPU_I686
+//#define DCC_TARGET_CPU     DCC_HOST_CPU
 #endif
 
 /* DCC Master Binary target format switch. */

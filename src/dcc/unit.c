@@ -39,7 +39,7 @@
 #endif
 
 #ifdef _WIN32
-#include <Windows.h>
+#include <dcc_winmin.h>
 #else
 #include <sys/mman.h>
 #endif

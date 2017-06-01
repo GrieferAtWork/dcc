@@ -182,6 +182,23 @@
 #define DCC_ATTRIBUTE_NORETURN
 #endif
 
+#ifdef _MSC_VER
+#define DCC_ATTRIBUTE_DLLIMPORT  __declspec(dllimport)
+#define DCC_ATTRIBUTE_DLLEXPORT  __declspec(dllexport)
+#elif defined(__DCC_VERSION__) && defined(__PE__)
+#define DCC_ATTRIBUTE_DLLIMPORT  __attribute__((__dllimport__))
+#define DCC_ATTRIBUTE_DLLEXPORT  __attribute__((__dllexport__))
+#elif (!defined(__GNUC__) && __has_attribute(dllimport)) || \
+      (defined(__GNUC__) && (defined(_WIN32) || defined(__CYGWIN__)))
+#define DCC_ATTRIBUTE_DLLIMPORT  __attribute__((__dllimport__))
+#define DCC_ATTRIBUTE_DLLEXPORT  __attribute__((__dllexport__))
+#else
+#define DCC_NO_ATTRIBUTE_DLLIMPORT
+#define DCC_NO_ATTRIBUTE_DLLEXPORT
+#define DCC_ATTRIBUTE_DLLIMPORT
+#define DCC_ATTRIBUTE_DLLEXPORT
+#endif
+
 
 #if defined(__GNUC__) || __has_builtin(__builtin_expect)
 #   define DCC_LIKELY(x)    (__builtin_expect(!!(x),1))
@@ -201,11 +218,22 @@
 
 #if defined(_MSC_VER)
 #   define DCC_ATTRIBUTE_FASTCALL  __fastcall
-#elif (defined(__i386__) || defined(__i386) || defined(i386))
+#elif (defined(__i386__) || defined(__i386) || defined(i386)) || \
+      (__has_attribute(fastcall))
 #   define DCC_ATTRIBUTE_FASTCALL  __attribute__((__fastcall__))
 #else
 #   define DCC_NO_ATTRIBUTE_FASTCALL
 #   define DCC_ATTRIBUTE_FASTCALL  /* nothing */
+#endif
+
+#if defined(_MSC_VER)
+#   define DCC_ATTRIBUTE_STDCALL  __stdcall
+#elif defined(__GNUC__) || defined(__DCC_VERSION__) || \
+      __has_attribute(stdcall)
+#   define DCC_ATTRIBUTE_STDCALL  __attribute__((__stdcall__))
+#else
+#   define DCC_NO_ATTRIBUTE_STDCALL
+#   define DCC_ATTRIBUTE_STDCALL  /* nothing */
 #endif
 
 

@@ -3,7 +3,7 @@
 CC="gcc"
 F=("-Iinclude" "-DDCC_PRIVATE_API")
 
-CC_DCC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
+#CC_DCC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
 if [ -f "$CC_DCC" ]; then
 	CC="$CC_DCC";
 	F+=("-D__GNUC__=3")

@@ -30,14 +30,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef _WIN32
-#include <Windows.h>
+#if DCC_DEBUG && !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
+#include <dcc_winmin.h>
 #endif
 
 DCC_DECL_BEGIN
 
 #if DCC_DEBUG
-#ifdef _WIN32
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
 INTERN void dcc_voutf(char const *fmt, va_list args) {
  char buffer[4096];
  vsnprintf(buffer,sizeof(buffer),fmt,args);

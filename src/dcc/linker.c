@@ -20,20 +20,20 @@
 #define GUARD_DCC_LINKER_C 1
 
 #include <dcc/common.h>
-#include <dcc/linker.h>
 #include <dcc/target.h>
+#include <dcc/linker.h>
 #include <dcc/unit.h>
 
 #include <string.h>
+
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
+#include <dcc_winmin.h>
+#endif
 
 #ifdef _MSC_VER
 #include <malloc.h>
 #else
 #include <alloca.h>
-#endif
-
-#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
-#include <Windows.h>
 #endif
 
 #ifndef PATH_MAX

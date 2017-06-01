@@ -51,6 +51,7 @@
     <ClInclude Include="..\include\dcc\type.h" />
     <ClInclude Include="..\include\dcc\unit.h" />
     <ClInclude Include="..\include\dcc\vstack.h" />
+    <ClInclude Include="..\include\dcc_winmin.h" />
     <ClInclude Include="..\include\elf.h" />
     <ClInclude Include="..\src\dcc\cmd.h" />
     <ClInclude Include="..\src\dcc\lexer-priv.h" />
@@ -143,7 +144,6 @@
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <ShowIncludes>false</ShowIncludes>
       <CompileAs>CompileAsCpp</CompileAs>
       <PreprocessorDefinitions>DCC_PRIVATE_API;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>

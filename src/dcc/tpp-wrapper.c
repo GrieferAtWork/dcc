@@ -31,28 +31,20 @@
 #include <stdarg.h>
 #include <string.h>
 
-#if DCC_DEBUG && !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
-#include <Windows.h>
+#if defined(_WIN32) || defined(__CYGWIN__) || defined(__MINGW32__)
+#include <dcc_winmin.h>
 #endif
 
 DCC_DECL_BEGIN
 
+INTDEF void dcc_voutf(char const *fmt, va_list args);
+INTDEF void dcc_outf(char const *fmt, ...);
+
 PRIVATE void dcc_warnf(char const *fmt, ...) {
- char buffer[1024];
  va_list args;
- size_t bufsiz;
  va_start(args,fmt);
-#ifdef _MSC_VER
- _vsnprintf(buffer,sizeof(buffer),fmt,args);
-#else
-  vsnprintf(buffer,sizeof(buffer),fmt,args);
-#endif
+ dcc_voutf(fmt,args);
  va_end(args);
- bufsiz = strlen(buffer);
- fwrite(buffer,sizeof(char),bufsiz,stderr);
-#if DCC_DEBUG && !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
- OutputDebugStringA(buffer);
-#endif
 }
 
 DCC_DECL_END
@@ -97,6 +89,7 @@ case W_UNRESOLVED_REFERENCE: \
  * some of the more useful helper functions. */
 #define PRIVDEF    INTDEF
 #define PRIVATE    INTERN
+#define NO_INCLUDE_WINDOWS_H
 
 /* Custom warning print callback (used for adding colors). */
 #define TPP_WARNF  dcc_warnf
