@@ -43,8 +43,8 @@ DCCPreprocessor_OutAuto(char const *first_infile) {
   size_t infile_len,newext_len;
   char *output_name;
   ext = strrchr(first_infile,'.');
-  infile_len = strlen(first_infile);
   if (!ext) ext = first_infile+strlen(first_infile);
+  infile_len = (size_t)(ext-first_infile);
   newext = (preproc.p_flags&DCC_PREPROCESSOR_FLAG_COMPILEONLY) ? DCC_OUTFILE_EXTOBJ : DCC_OUTFILE_EXTEXE;
   newext_len = strlen(newext);
   output_name = (char *)DCC_Malloc((infile_len+newext_len+1)*sizeof(char),0);

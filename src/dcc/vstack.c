@@ -2087,9 +2087,8 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
  tyid_t tid;
  assert(self);
  /* Make sure never */
- if (!(self->sv_flags&DCC_SFLAG_LVALUE) &&
-      (tid = self->sv_ctype.t_type,
-       DCCTYPE_GROUP(tid) == DCCTYPE_BUILTIN)) {
+ tid = self->sv_ctype.t_type;
+ if (DCCTYPE_GROUP(tid) == DCCTYPE_BUILTIN) {
   assert(!self->sv_ctype.t_base);
   tid &= DCCTYPE_BASICMASK;
   switch (tid) {
@@ -2107,6 +2106,11 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
   case DCCTYPE_IB8:
   case DCCTYPE_UNSIGNED|DCCTYPE_IB8:
 #endif
+   if (self->sv_flags&DCC_SFLAG_LVALUE) {
+    /* Must load the stack value into a register.
+     * >> This must be done to conform to the new storage rules. */
+    DCCStackValue_Load(self);
+   }
    /* Nothing else to do here.
     * The actual effect of this is handled once the value is used! */
    self->sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK);

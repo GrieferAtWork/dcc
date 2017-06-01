@@ -313,36 +313,40 @@ DCCParse_CTypeOldArgumentListDefWithBase(struct DCCDecl *__restrict funtydecl,
  assert(funtydecl->d_kind == DCC_DECLKIND_OLDFUNCTION);
  assert(base_type);
  assert(base_attr);
- DCCType_InitCopy(&type,base_type);
- DCCAttrDecl_InitCopy(&attr,base_attr);
- arg_name = DCCParse_CTypeSuffix(&type,&attr);
- assert(arg_name);
- if (arg_name != &TPPKeyword_Empty) {
-  struct DCCStructField *iter,*end;
-  end = (iter = funtydecl->d_tdecl.td_fieldv)+
-                funtydecl->d_tdecl.td_size;
-  for (; iter != end; ++iter) {
-   assert(iter->sf_decl);
-   if (iter->sf_decl->d_name == arg_name) {
-    if (iter->sf_decl->d_type.t_type == DCCTYPE_INT) {
-     /* Warn about using types that cannot be
-      * properly aligned as old-style arguments. */
-     if (DCCType_Sizeof(&type,NULL,1) > DCC_TARGET_STACKALIGN)
-         WARN(W_OLD_STYLE_ARGUMENT_TYPE_TOO_LARGE,&type);
-     iter->sf_decl->d_type = type; /* Inherit object. */
-     type.t_base           = NULL;
-    } else {
-     /* Warning: Argument already defined. */
-     WARN(W_DECL_ALREADY_DEFINED,iter->sf_decl);
+ for (;;) {
+  DCCType_InitCopy(&type,base_type);
+  DCCAttrDecl_InitCopy(&attr,base_attr);
+  arg_name = DCCParse_CTypeSuffix(&type,&attr);
+  assert(arg_name);
+  if (arg_name != &TPPKeyword_Empty) {
+   struct DCCStructField *iter,*end;
+   end = (iter = funtydecl->d_tdecl.td_fieldv)+
+                 funtydecl->d_tdecl.td_size;
+   for (; iter != end; ++iter) {
+    assert(iter->sf_decl);
+    if (iter->sf_decl->d_name == arg_name) {
+     if (iter->sf_decl->d_type.t_type == DCCTYPE_INT) {
+      /* Warn about using types that cannot be
+       * properly aligned as old-style arguments. */
+      if (DCCType_Sizeof(&type,NULL,1) > DCC_TARGET_STACKALIGN)
+          WARN(W_OLD_STYLE_ARGUMENT_TYPE_TOO_LARGE,&type);
+      iter->sf_decl->d_type = type; /* Inherit object. */
+      type.t_base           = NULL;
+     } else {
+      /* Warning: Argument already defined. */
+      WARN(W_DECL_ALREADY_DEFINED,iter->sf_decl);
+     }
+     goto done;
     }
-    goto done;
    }
+   WARN(W_UNKNOWN_FUNCTION_ARGUMENT,arg_name);
   }
-  WARN(W_UNKNOWN_FUNCTION_ARGUMENT,arg_name);
- }
 done:
- DCCAttrDecl_Quit(&attr);
- DCCType_Quit(&type);
+  DCCAttrDecl_Quit(&attr);
+  DCCType_Quit(&type);
+  if (TOK != ',') break;
+  YIELD();
+ }
 }
 
 

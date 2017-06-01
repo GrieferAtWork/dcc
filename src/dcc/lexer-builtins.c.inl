@@ -122,7 +122,7 @@ DCCParse_BuiltinTypesCompatibleP(void) {
  DCCParse_ParPairBegin();
  if (!DCCParse_CType(&ta,&attr)) WARN(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P);
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- if (!DCCParse_CType(&ta,&attr)) WARN(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P);
+ if (!DCCParse_CType(&tb,&attr)) WARN(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P);
  DCCParse_ParPairEnd();
  DCCAttrDecl_Quit(&attr);
  vpushi(DCCTYPE_BOOL,DCCType_IsCompatible(&ta,&tb,0));

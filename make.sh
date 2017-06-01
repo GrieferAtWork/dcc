@@ -1,7 +1,7 @@
 #!/bin/bash
 
-CC="gcc"
-#CC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
+#CC="gcc"
+CC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
 F="-Iinclude -DDCC_PRIVATE_API"
 build() { echo "build/dcc/$1"; }
 out() { echo "$(build $1).o"; }
@@ -35,6 +35,7 @@ src() {
 		if ! src_changed "$inf"; then
 			dpf="$(dep $(basename "$inf"))"
 			echo "Compiling: '$inf'"
+			echo $CC $F -MMD -MF "$dpf" -c -o "$ouf" "$inf" || exit $?
 			$CC $F -MMD -MF "$dpf" -c -o "$ouf" "$inf" || exit $?
 		else
 			echo "Unchanged: '$inf'"
