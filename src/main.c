@@ -128,7 +128,6 @@ static void load_stdlib(void) {
 int main(int argc, char *argv[]) {
  int result = 0;
  /*_CrtSetBreakAlloc(33398);*/
-
  if (!TPP_INITIALIZE()) return 1;
  DCCPreprocessor_Init(&preproc);
 

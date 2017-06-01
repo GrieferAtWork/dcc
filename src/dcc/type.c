@@ -472,10 +472,35 @@ imcomplete:
   case DCCTYPE_INT : case DCCTYPE_UNSIGNED|DCCTYPE_INT : result = DCC_TARGET_SIZEOF_INT; break;
   case DCCTYPE_BYTE: case DCCTYPE_UNSIGNED|DCCTYPE_BYTE: result = DCC_TARGET_SIZEOF_BYTE; break;
   case DCCTYPE_WORD: case DCCTYPE_UNSIGNED|DCCTYPE_WORD: result = DCC_TARGET_SIZEOF_WORD; break;
-  case DCCTYPE_IB8 : case DCCTYPE_UNSIGNED|DCCTYPE_IB8 : result = 8; break;
-  case DCCTYPE_FLOAT: result = DCC_TARGET_SIZEOF_FLOAT; break;
-  case DCCTYPE_DOUBLE: result = DCC_TARGET_SIZEOF_DOUBLE; break;
-  case DCCTYPE_LDOUBLE: result = DCC_TARGET_SIZEOF_LONG_DOUBLE; break;
+  case DCCTYPE_IB8 : case DCCTYPE_UNSIGNED|DCCTYPE_IB8 :
+   result = 8;
+#if DCC_TARGET_SIZEOF_LONG_LONG == 8 && \
+    DCC_TARGET_ALIGNOF_LONG_LONG != 8
+   if (align) *align = DCC_TARGET_ALIGNOF_LONG_LONG;
+   goto end;
+#endif
+   break;
+  case DCCTYPE_FLOAT:
+   result = DCC_TARGET_SIZEOF_FLOAT;
+#if DCC_TARGET_ALIGNOF_FLOAT != DCC_TARGET_SIZEOF_FLOAT
+   if (align) *align = DCC_TARGET_ALIGNOF_FLOAT;
+   goto end;
+#endif
+   break;
+  case DCCTYPE_DOUBLE:
+   result = DCC_TARGET_SIZEOF_DOUBLE;
+#if DCC_TARGET_ALIGNOF_DOUBLE != DCC_TARGET_SIZEOF_DOUBLE
+   if (align) *align = DCC_TARGET_ALIGNOF_DOUBLE;
+   goto end;
+#endif
+   break;
+  case DCCTYPE_LDOUBLE:
+   result = DCC_TARGET_SIZEOF_LONG_DOUBLE;
+#if DCC_TARGET_ALIGNOF_LONG_DOUBLE != DCC_TARGET_SIZEOF_LONG_DOUBLE
+   if (align) *align = DCC_TARGET_ALIGNOF_LONG_DOUBLE;
+   goto end;
+#endif
+   break;
   case DCCTYPE_BOOL: result = DCC_TARGET_SIZEOF_BOOL; break;
   default: result = 0; break;
   }
@@ -486,6 +511,8 @@ end:
  assertf(!align || (result ? *align != 0 : *align == 0),
          "Invalid alignment '%lu' for type size '%lu'",
         (unsigned long)*align,(unsigned long)result);
+ assertf(!align || !((*align)&((*align)-1)),
+         "Invalid alignment '%lu'",(unsigned long)*align);
  return result;
 }
 
