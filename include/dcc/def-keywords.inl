@@ -63,6 +63,7 @@ DEF_K(typedef) DEF_K(extern)
 DEF_K(_Thread_local) DEF_K(__thread)
 #endif
 DEF_K(inline) DEF_K(__inline) DEF_K(__inline__)
+DEF_K(__forceinline)
 
 /* Type flag keywords. */
 DEF_K(_Atomic)

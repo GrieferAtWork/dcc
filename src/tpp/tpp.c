@@ -5187,7 +5187,6 @@ PRIVATE int parse_include_string(char **begin, char **end) {
   /* Relative #include-string. */
   *begin = token.t_begin;
   *end = token.t_end;
-  assert(*begin < *end);
   if ((*end)[-1] == '\"') --*end;
  } else if (TOK == '<') {
   /* System #include-string. */
@@ -5200,12 +5199,12 @@ PRIVATE int parse_include_string(char **begin, char **end) {
    token.t_file->f_pos = (*end)+1;
    --end;
   }
-  assert(*end > *begin);
  } else {
   TPPLexer_Warn(W_EXPECTED_INCLUDE_STRING);
   token.t_file->f_pos = token.t_begin;
   result = 0;
  }
+ assert(!result || *begin <= *end);
  popf();
  return result;
 }

@@ -1014,6 +1014,7 @@ again:
   if (!HAS(EXT_SHORT_EXT_KEYWORDS)) break;
  case KWD___inline:
  case KWD___inline__:
+ case KWD___forceinline:
   if (flags&F_INLINE)
       WARN(W_TYPE_STORAGE_CLASS_ALREADY_DEFINED);
   self->t_type |= DCCTYPE_INLINE;

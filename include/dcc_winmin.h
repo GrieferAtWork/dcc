@@ -67,6 +67,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#ifndef _MSC_VER
 /* Disable more C7A9 */
 #define _OLE2_H_
 #define VER_H
@@ -101,9 +102,9 @@
 //#define _APISETDEBUG_ // OutputDebugStringA()
 //#define _APISETFILE_ // A buck of file functions
 //#define _PROCESSENV_ // GetStdHandle()
+#endif
 
 #include <Windows.h>
-
 
 #undef NOGDICAPMASKS
 #undef NOVIRTUALKEYCODES
