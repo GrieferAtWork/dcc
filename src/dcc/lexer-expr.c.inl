@@ -1053,7 +1053,9 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLAnd(void) {
    vpushs(sym);
    vgen1('&');
    vjcc(1);           /* Jump over the second operand(s) if first was false. */
+   pushf();
    DCCParse_ExprOr(); /* Parse the second operand. */
+   popf();
   }
   vgen1('!'),vgen1('!'); /* Force the second expression into a boolean. */
  }
@@ -1082,7 +1084,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
     old_deadjmp = compiler.c_deadjmp;
     compiler.c_deadjmp = sym;
     compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
-                             DCC_COMPILER_FLAG_DEAD);
+                         DCC_COMPILER_FLAG_DEAD);
     DCCParse_ExprLXor();
     compiler.c_deadjmp = old_deadjmp;
     popf();
@@ -1097,7 +1099,9 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
    vpushs(sym);
    vgen1('&');
    vjcc(0);             /* Jump over the second operand(s) if first was true. */
+   pushf();
    DCCParse_ExprLXor(); /* Parse the second operand. */
+   popf();
   }
   vgen1('!'),vgen1('!'); /* Force the second expression into a boolean. */
  }

@@ -96,6 +96,7 @@ srcloader_exec(struct SrcLoaderDef const *__restrict loader,
  uint32_t old_tpp_flags;
  uint32_t old_tpp_extokens;
  struct TPPFile *old_tpp_eof_file;
+ struct TPPFile *prev_file;
 
  /* Make sure the loading a source file
   * behaves like loading a static library does. */
@@ -133,11 +134,14 @@ srcloader_exec(struct SrcLoaderDef const *__restrict loader,
  if (preproc.p_depfd != TPP_STREAM_INVALID)
      DCCPreprocessor_DepPrint(tpp_file->f_name,tpp_file->f_namesize);
  /* Manipulate the previous file to re-parse the last token. */
- assert(TOKEN.t_file);
- assert(TOKEN.t_begin >= TOKEN.t_file->f_begin);
- assert(TOKEN.t_begin <= TOKEN.t_file->f_end);
- TOKEN.t_file->f_pos = TOKEN.t_begin;
+ prev_file = TOKEN.t_file;
+ assert(prev_file);
+ assert(TOKEN.t_begin >= prev_file->f_begin);
+ assert(TOKEN.t_begin <= prev_file->f_end);
+ prev_file->f_pos = TOKEN.t_begin;
 
+ /* Configure TPP to use a sub-set of its
+  * #include-stack, only consisting of the new files. */
  TPPLexer_PushFileInherited(tpp_file);
  CURRENT.l_eof_file = tpp_file;
 
@@ -145,8 +149,9 @@ srcloader_exec(struct SrcLoaderDef const *__restrict loader,
  (*loader->sld_func)(def);
 
  assert(CURRENT.l_eof_file == tpp_file);
- /* Manually pop all files until 'tpp_file' is found. */
- while (TOKEN.t_file != tpp_file) TPPLexer_PopFile();
+ CURRENT.l_eof_file = old_tpp_eof_file;
+ /* Manually pop all files until the original is found. */
+ while (TOKEN.t_file != prev_file) TPPLexer_PopFile();
  /* Restore the old token. */
  YIELD();
 

@@ -550,9 +550,9 @@ dead_pushv_semi:
   compiler.c_sexpr = *vbottom;
   vpop(0);
   /* Setup the break/default symbols. */
-  old_break_sym        = compiler.c_bsym;
-  old_default_case     = compiler.c_defsym;
-  old_casejmp          = compiler.c_casejmp;
+  old_break_sym      = compiler.c_bsym;
+  old_default_case   = compiler.c_defsym;
+  old_casejmp        = compiler.c_casejmp;
   compiler.c_bsym    = break_sym;
   compiler.c_defsym  = default_case;
   compiler.c_casejmp = casejmp; /* case-jumper. */
@@ -564,7 +564,7 @@ dead_pushv_semi:
   if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD)
       compiler.c_flags |= DCC_COMPILER_FLAG_SDEAD;
   compiler.c_flags |= (DCC_COMPILER_FLAG_DEAD|
-                           DCC_COMPILER_FLAG_NOCGEN);
+                       DCC_COMPILER_FLAG_NOCGEN);
   /* Parse the switch block. */
   DCCParse_Stmt(DCC_PFLAG_NONE);
 
