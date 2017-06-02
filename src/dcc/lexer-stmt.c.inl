@@ -688,7 +688,7 @@ ignore_case_label:
    /* Jump to the next case when the case wasn't met. */
    vpushs(compiler.c_casejmp),vgen1('&'),vjcc(0);
    /* Special case: If the label declaration below will generate a dead-jmp,
-   /*               we must make sure that the case walks after that jump! */
+    *               we must make sure that the case walks after that jump! */
    if (compiler.c_deadjmp) vpushs(label_sym),vgen1('&'),vjmp();
   }
   if (TOK != ':') WARN(W_EXPECTED_COLON_AFTER_CASE); else YIELD();

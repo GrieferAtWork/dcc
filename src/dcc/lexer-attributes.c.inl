@@ -152,8 +152,9 @@ DCCAttrDecl_IsEmpty(struct DCCAttrDecl const *__restrict self) {
 
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
- struct TPPKeyword *function; assert(self);
+ struct TPPKeyword *function;
  uint32_t flag,mask;
+ assert(self);
  (void)kind;
  function = tok_without_underscores();
  if unlikely(!function) goto fallback;

@@ -582,10 +582,10 @@ oldstyle_arglist:
 PUBLIC struct TPPKeyword *DCC_PARSE_CALL
 DCCParse_CTypeSuffix(struct DCCType     *__restrict self,
                      struct DCCAttrDecl *__restrict attr) {
- DCCType_ASSERT(self);
  struct DCCType inner_type;
  int        has_inner_type = 0;
  struct TPPKeyword *result = &TPPKeyword_Empty;
+ DCCType_ASSERT(self);
 parse_leading:
  DCCParse_Attr(attr);
  /* Parse leading suffix modifiers for const/volatile/pointer/l-value */

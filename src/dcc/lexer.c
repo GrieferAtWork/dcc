@@ -52,13 +52,13 @@ INTDEF struct TPPStringEmpty tpp_empty_string;
  /* f_refcnt                 */0x80000000,\
  /* f_kind                   */TPPFILE_KIND_TEXT,\
  /* f_prev                   */NULL,\
- /* f_name                   */name,\
+ /* f_name                   */(char *)(name),\
  /* f_namesize               */DCC_COMPILER_STRLEN(name),\
  /* f_namehash               */hash,\
  /* f_text                   */empty_string,\
  /* f_begin                  */empty_string->s_text,\
  /* f_end                    */empty_string->s_text,\
- /* f_pos                    */empty_string->s_text,{\
+ /* f_pos                    */empty_string->s_text,{{\
  /* f_textfile.f_cacheentry  */NULL,\
  /* f_textfile.f_usedname    */NULL,\
  /* f_textfile.f_lineoff     */0,\
@@ -71,7 +71,7 @@ INTDEF struct TPPStringEmpty tpp_empty_string;
  /* f_textfile.f_flags       */TPP_TEXTFILE_FLAG_NOGUARD|TPP_TEXTFILE_FLAG_INTERNAL,\
  /* f_textfile.f_encoding    */TPP_ENCODING_UTF8,\
  /* f_textfile.f_padding     */{0},\
- /* f_textfile.f_newguard    */NULL}\
+ /* f_textfile.f_newguard    */NULL}}\
 }
 
 PUBLIC struct TPPFile TPPFile_Cmd    = SPECIAL_FILE("CMD",22846089lu);

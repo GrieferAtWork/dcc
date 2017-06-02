@@ -57,10 +57,14 @@ __IMP void *(memset)(void *,int,size_t);
 __IMP __WUNUSED char *(strerror)(int);
 __IMP __WUNUSED size_t (strlen)(char const *);
 
+#ifdef	__USE_XOPEN2K8
+__IMP __WUNUSED size_t (strnlen)(const char *,size_t);
+#endif
+
 #ifdef __USE_GNU
 #if #__CRT(glibc)
 __IMP __WUNUSED void *(memrchr)(void const *,int,size_t);
-__IMP __WUNUSED void *(rawmemchr)(const void *s, int c);
+__IMP __WUNUSED void *(rawmemchr)(const void *,int);
 #else
 __STDLIB_UNSUPPORTED("memrchr")
 __STDLIB_UNSUPPORTED("rawmemchr")
