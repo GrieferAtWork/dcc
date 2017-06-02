@@ -1312,9 +1312,9 @@ DEF_WARNING(W_BINARY_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Binary oper
 DEF_WARNING(W_CAST_TO_VOID,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Inplicit cast from " Q("%s") " to void-type " Q("%s")))
 DEF_WARNING(W_CAST_INCOMPATIBLE_TYPES,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Cast between incompatible types " Q("%s") " and " Q("%s")))
 DEF_WARNING(W_CAST_INTEGRAL_OVERFLOW,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from " Q("%s") " to " Q("%s") " causes an overflow"))
-DEF_WARNING(W_CAST_INTEGRAL_MAYOVERFLOW,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from " Q("%s") " to " Q("%s") " may cause an overflow"))
+DEF_WARNING(W_CAST_INTEGRAL_MAYOVERFLOW,(WG_CAST),WSTATE_DISABLE,TYPE_WARNING("Implicit cast from " Q("%s") " to " Q("%s") " may cause an overflow"))
 DEF_WARNING(W_CAST_INTEGRAL_SIGNLOSS,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from " Q("%s") " to " Q("%s") " causes the sign to be lost"))
-DEF_WARNING(W_CAST_INTEGRAL_MAYSIGNLOSS,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from " Q("%s") " to " Q("%s") " may cause the sign to be lost"))
+DEF_WARNING(W_CAST_INTEGRAL_MAYSIGNLOSS,(WG_CAST),WSTATE_DISABLE,TYPE_WARNING("Implicit cast from " Q("%s") " to " Q("%s") " may cause the sign to be lost"))
 DEF_WARNING(W_CAST_FLOAT_TO_INT,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast from floating-point-type " Q("%s") " to integer-type " Q("%s")))
 DEF_WARNING(W_CAST_FLOAT_DOWNCAST,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit downcast of floating-point-type " Q("%s") " to " Q("%s")))
 DEF_WARNING(W_CAST_INCOMPATIBLE_POINTERS,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Implicit cast between incompatible pointer types " Q("%s") " and " Q("%s")))
@@ -1337,7 +1337,7 @@ DEF_WARNING(W_CAST_TO_VARRAY,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Incompatible va
 DEF_WARNING(W_INCOMPATIBLE_TYPES_FOR_VARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Incompatible types " Q("%s") " and " Q("%s") " for variadic-array initializer"))
 DEF_WARNING(W_EXPECTED_ARRAY_FOR_VARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected an array type for the initializer of variadic-array-type " Q("%s") ", but got " Q("%s")))
 DEF_WARNING(W_ASSIGN_VOID,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Can't assign non-void-type " Q("%s") " to void-type " Q("%s")))
-DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assigning void-type " Q("%s") " to void-type " Q("%s")))
+DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTATE_DISABLE,TYPE_WARNING("Assigning void-type " Q("%s") " to void-type " Q("%s")))
 #undef TYPE_WARNING
 #ifdef DECLARE_WARNING_MESSAGES
 }

@@ -569,18 +569,29 @@ dead_pushv_semi:
   DCCParse_Stmt(DCC_PFLAG_NONE);
 
   /* Reload the last case jumper. */
-  casejmp                = compiler.c_casejmp;
+  casejmp            = compiler.c_casejmp;
   compiler.c_casejmp = old_casejmp;
   compiler.c_bsym    = old_break_sym;
-  compiler.c_defsym = old_default_case;
-  popf();
-  /* if forward defined, set the default case to jump after the switch. */
-  if (DCCSym_ISFORWARD(default_case)) t_defsym(default_case);
-  t_defsym(break_sym);
-  compiler.c_sexpr = old_switch;
+  compiler.c_defsym  = old_default_case;
   /* The last case jump leads to the default case. */
   assert(DCCSym_ISFORWARD(casejmp));
   DCCSym_Alias(casejmp,default_case,0);
+  /* if forward defined, set the default case to jump after the switch. */
+  if (DCCSym_ISFORWARD(default_case))
+      DCCSym_Alias(default_case,break_sym,0);
+  /* When nothing used the break label, and the current
+   * control flow is dead, it should stay that way! */
+  if (break_sym->sy_refcnt == 1 &&
+     (compiler.c_flags&DCC_COMPILER_FLAG_DEAD)) {
+   compiler.c_flags  = _old_flags;
+   compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
+                        DCC_COMPILER_FLAG_DEAD);
+   goto def_break;
+  }
+  popf();
+def_break:
+  t_defsym(break_sym);
+  compiler.c_sexpr = old_switch;
  } break;
 
  { /* Label statements. */

@@ -1640,7 +1640,9 @@ default_binary:
     temp.e_sym = self->sv_sym;
     if (DCCStackValue_ConstBinary(target,op,&temp)) return;
    }
-   WARN(W_EXPECTED_LVALUE_FOR_BINARY_OP,&target->sv_ctype);
+   if (target->sv_reg == DCC_RC_CONST)
+        DCCStackValue_Load(target);
+   else WARN(W_EXPECTED_LVALUE_FOR_BINARY_OP,&target->sv_ctype);
   }
   /* Memory location. */
   dest.ml_reg = target->sv_reg;
@@ -3154,7 +3156,7 @@ DCCVStack_Unary(tok_t op) {
  /* Update WUNUSED flag. */
  if (!(vbottom->sv_flags&(DCC_SFLAG_COPY|DCC_SFLAG_RVALUE)))
        vbottom->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
- if (op != '!' && op != '*') {
+ if (op != '!' && op != '*' && !(vbottom->sv_flags&DCC_SFLAG_COPY)) {
   target_type = DCCType_Effective(&vbottom->sv_ctype);
   if (op != '&' && (target_type->t_type&DCCTYPE_CONST))
       WARN(W_UNARY_CONSTANT_TYPE,&vbottom->sv_ctype);

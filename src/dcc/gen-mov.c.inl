@@ -239,9 +239,9 @@ DCCDisp_DoRepMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_
    /* Special case: Fill remainder destination with one byte. */
    DCCDisp_CstMovMem(0,&dst_end,dst_bytes);
   } else {
+   rc_t ax;
    struct DCCMemLoc src_last = *src;
    src_last.ml_off += common_size-1;
-   rc_t ax;
         if (dst_bytes >= 4) ax = DCC_RC_I32|DCC_ASMREG_EAX;
    else if (dst_bytes >= 2) ax = DCC_RC_I16|DCC_ASMREG_AX;
    else                     ax = DCC_RC_I8|DCC_ASMREG_AL;
