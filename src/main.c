@@ -111,6 +111,7 @@ static void load_stdlib(void) {
 #if DCC_TARGET_OS == DCC_OS_WINDOWS || \
     DCC_TARGET_OS == DCC_OS_CYGWIN
    STDLIB(SO("msvcrt"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+   STDLIB(SO("kernel32"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
 #else
    STDLIB(SO("libc"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
 #endif

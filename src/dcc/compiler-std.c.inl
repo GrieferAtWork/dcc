@@ -78,8 +78,8 @@ PUBLIC void DCCCompiler_SetStd(int std) {
   /* Enable traditional macros & tokens, and disable old-style warnings. */
   TPPLexer_EnableExtension(EXT_TRADITIONAL_MACRO);
   CURRENT.l_extokens |= TPPLEXER_TOKEN_EQUALBINOP;
-  TPPLexer_SetWarningGroup(WG_OLD_FUNCTION_DECL,WSTATE_DISABLE);
-  TPPLexer_SetWarningGroup(WG_OLD_VARIABLE_INIT,WSTATE_DISABLE);
+  TPPLexer_SetWarningGroup(WG_OLD_FUNCTION_DECL,WSTATE_DISABLED);
+  TPPLexer_SetWarningGroup(WG_OLD_VARIABLE_INIT,WSTATE_DISABLED);
   break;
  case DCC_COMPILER_STD_C90:
   /* Disable C++-style comments. */
@@ -87,12 +87,12 @@ PUBLIC void DCCCompiler_SetStd(int std) {
   break;
  case DCC_COMPILER_STD_C99:
   /* Disable warnings about C99-specific syntax. */
-  TPPLexer_SetWarningGroup(WG_C99,WSTATE_DISABLE);
+  TPPLexer_SetWarningGroup(WG_C99,WSTATE_DISABLED);
   break;
  case DCC_COMPILER_STD_C11:
   /* Disable warnings about C99/C11-specific syntax. */
-  TPPLexer_SetWarningGroup(WG_C99,WSTATE_DISABLE);
-  TPPLexer_SetWarningGroup(WG_C11,WSTATE_DISABLE);
+  TPPLexer_SetWarningGroup(WG_C99,WSTATE_DISABLED);
+  TPPLexer_SetWarningGroup(WG_C11,WSTATE_DISABLED);
   break;
  default: break;
  }

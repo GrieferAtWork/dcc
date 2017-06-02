@@ -592,6 +592,8 @@ TPPFUN /*ref*/struct TPPFile *TPPFile_OpenStream(TPP(stream_t) stream, char cons
 /* Parse a #define-style preprocessor command, expecting the
  * current lexer's token to point at the name of the macro.
  * NOTE: This function will also register the macro in the keyword list.
+ * NOTE: When attempting to (re-)define a locked keyword, either the
+ *       previous macro definition, or '&TPPFile_Empty' is returned.
  * WARNING: This function expects the 'TPPLEXER_FLAG_WANTLF' flag to be set.
  * WARNING: This function does _not_ return a reference. */
 TPPFUN struct TPPFile *TPPFile_NewDefine(void);
@@ -758,12 +760,13 @@ enum{
 };
 
 typedef enum { /* Warning states. */
- TPP(WSTATE_DISABLE)  = 0,
+ TPP(WSTATE_DISABLED) = 0,
  TPP(WSTATE_ERROR)    = 1,
  TPP(WSTATE_WARN)     = 2,
  TPP(WSTATE_SUPPRESS) = 3, /*< Can be set multiple times for recursion. */
  TPP(WSTATE_DEFAULT)  = 4,
  TPP(WSTATE_UNKNOWN)  = 4, /*< May not be used as state. - May be returned by 'TPPLexer_GetWarning(s)' */
+ TPP(WSTATE_DISABLE)  = TPP(WSTATE_DISABLED), /* Deprecated alias. */
 } TPP(wstate_t);
 #define TPP_WSTATE_ISENABLED(s) ((6 >> (s))&1) /* WSTATE_ERROR|WSTATE_WARN */
 
@@ -999,6 +1002,7 @@ struct TPPRareKeyword {
                                                            *  >> __has_feature(__tpp_dollar_is_alpha__) // If 'tpp_dollar_is_alpha' doesn't have this flag set, it can alias '__tpp_dollar_is_alpha__'
                                                            */
 #define TPP_KEYWORDFLAG_IMPORTED               0x80000000 /*< Set for for files after they've been #import-ed. */
+#define TPP_KEYWORDFLAG_LOCKED                 0x00000200 /*< Any attempts at defining or deleting a macro for this keyword using #define or #undef are denied. */
  /* NOTE: These flags share their values with those
   *       from the old TPP for backwards compatibility. */
 #define TPP_KEYWORDFLAG_HAS_ATTRIBUTE          0x00000001
@@ -1377,20 +1381,36 @@ TPPFUN TPP(tok_t) TPPLexer_Yield(void);
  * @return: 1: The warning was ignored, suppressed or simply non-fatal. */
 TPPFUN int TPPLexer_Warn(int wnum, ...);
 
-/* Set the lexer into an error-state in which
- * calls to to any yield function return TOK_ERR.
- * >> Called when an unrecoverable error occurrs.
- * HINT: To recover after such an event, 'TPPLexer_UnsetErr()' should be called. */
-#define TPPLexer_SetErr() \
+#undef TPPLexer_SetErr
+#undef TPPLexer_UnsetErr
+
+#define TPPLexer_SetErr_inline() \
  ((TPPLexer_Current->l_flags&TPPLEXER_FLAG_ERROR) ? 0 : \
   (TPPLexer_Current->l_flags |= TPPLEXER_FLAG_ERROR,\
    TPPLexer_Current->l_noerror = TPPLexer_Current->l_token.t_id,\
    TPPLexer_Current->l_token.t_id = TPP(TOK_ERR),1))
-#define TPPLexer_UnsetErr() \
+#define TPPLexer_UnsetErr_inline() \
  ((TPPLexer_Current->l_flags&TPPLEXER_FLAG_ERROR) ? \
   (TPPLexer_Current->l_flags &= ~TPPLEXER_FLAG_ERROR,\
    TPPLexer_Current->l_token.t_id = TPPLexer_Current->l_noerror,\
    1) : 0)
+
+
+/* Set the lexer into an error-state in which
+ * calls to to any yield function return TOK_ERR.
+ * >> Called when an unrecoverable error occurrs.
+ * HINT: To recover after such an event, 'TPPLexer_UnsetErr()' should be called.
+ * @return: 0: [TPPLexer_SetErr]   A lexer error was already set.
+ *             [TPPLexer_UnsetErr] No lexer error was set.
+ * @return: 1: [TPPLexer_SetErr]   Successfully set a lexer error.
+ *             [TPPLexer_UnsetErr] Successfully cleared a lexer error. */
+TPPFUN int TPPLexer_SetErr(void);
+TPPFUN int TPPLexer_UnsetErr(void);
+
+#ifdef TPP_CONFIG_INLINE_SETERR
+#define TPPLexer_SetErr    TPPLexer_SetErr_inline
+#define TPPLexer_UnsetErr  TPPLexer_UnsetErr_inline
+#endif
 
 /* Called after a given macro was referenced and
  * the associated parenthesis was located.

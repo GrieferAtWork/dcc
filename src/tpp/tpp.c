@@ -63,7 +63,7 @@
 #ifdef __ELF__
 #   define PRIVDEF  __attribute__((__visibility__("private")))
 #   define PRIVATE  __attribute__((__visibility__("private")))
-#elif 0
+#elif 1
 #ifdef _MSC_VER
 #   define PRIVDEF  extern
 #   define PRIVATE  extern
@@ -271,80 +271,90 @@ for (local i = 0; i < 256; ++i) {
 //[[[end]]]
 };
 
+#undef TOKEN
+#undef TOK
+#undef YIELD
+#undef WARN
+#undef HAS
+#undef CURRENT
+
 /* Helpers macro/implementation variables for the current TPP context. */
 #if TPP_CONFIG_ONELEXER
 PUBLIC struct TPPLexer TPPLexer_Global;
-#define current        TPPLexer_Global
+#define CURRENT        TPPLexer_Global
 #else
 PUBLIC struct TPPLexer *TPPLexer_Current = NULL;
-#define current       (*TPPLexer_Current)
+#define CURRENT       (*TPPLexer_Current)
 #endif
-#define token         current.l_token
-#define TOK           token.t_id
-#define yield_fetch() TPPLexer_Yield()
 
-#define pushfile_inherited(f) (void)((f)->f_prev = token.t_file,token.t_file = (f))
-#define pushfile(f)           (TPPFile_Incref(f),pushfile_inherited(f))
+#define TOKEN CURRENT.l_token
+#define TOK   TOKEN.t_id
+#define YIELD TPPLexer_Yield
+#define WARN  TPPLexer_Warn
+#define HAS   TPPLexer_HasExtension
+
+#define pushfile_inherited  TPPLexer_PushFileInherited
+#define pushfile            TPPLexer_PushFile
 
 #define pushf() \
-do{uint32_t const _oldflags = current.l_flags
-#define breakf() (void)(current.l_flags = _oldflags|(current.l_flags&TPPLEXER_FLAG_MERGEMASK))
+do{uint32_t const _oldflags = CURRENT.l_flags
+#define breakf() (void)(CURRENT.l_flags = _oldflags|(CURRENT.l_flags&TPPLEXER_FLAG_MERGEMASK))
 #define popf() \
    /* NOTE: Don't override the error-flag! */\
-   current.l_flags = _oldflags|(current.l_flags&TPPLEXER_FLAG_MERGEMASK);\
+   CURRENT.l_flags = _oldflags|(CURRENT.l_flags&TPPLEXER_FLAG_MERGEMASK);\
 }while(FALSE)
 
 /* Similar to 'popf', but flags part of 'mask' are not restored. */
 #define breakff(mask) \
-  (void)(current.l_flags = (_oldflags&~(mask))|(current.l_flags&(TPPLEXER_FLAG_MERGEMASK|(mask))))
+  (void)(CURRENT.l_flags = (_oldflags&~(mask))|(CURRENT.l_flags&(TPPLEXER_FLAG_MERGEMASK|(mask))))
 #define popff(mask) \
-         current.l_flags = (_oldflags&~(mask))|(current.l_flags&(TPPLEXER_FLAG_MERGEMASK|(mask)));\
+         CURRENT.l_flags = (_oldflags&~(mask))|(CURRENT.l_flags&(TPPLEXER_FLAG_MERGEMASK|(mask)));\
 }while(FALSE)
 
 #define pusheob() \
-do{struct TPPFile *const _oldeob = current.l_eob_file;\
-   current.l_eob_file            = token.t_file
-#define breakeob() (void)(current.l_eob_file = _oldeob)
+do{struct TPPFile *const _oldeob = CURRENT.l_eob_file;\
+   CURRENT.l_eob_file            = TOKEN.t_file
+#define breakeob() (void)(CURRENT.l_eob_file = _oldeob)
 #define popeob() \
-   current.l_eob_file = _oldeob;\
+   CURRENT.l_eob_file = _oldeob;\
 }while(FALSE)
 #define pusheof() \
-do{struct TPPFile *const _oldeof = current.l_eof_file;\
-   current.l_eof_file            = token.t_file
-#define breakeof() (void)(current.l_eof_file = _oldeof)
+do{struct TPPFile *const _oldeof = CURRENT.l_eof_file;\
+   CURRENT.l_eof_file            = TOKEN.t_file
+#define breakeof() (void)(CURRENT.l_eof_file = _oldeof)
 #define popeof() \
-   current.l_eof_file = _oldeof;\
+   CURRENT.l_eof_file = _oldeof;\
 }while(FALSE)
 PRIVDEF void on_popfile(struct TPPFile *file);
 #if TPP_CONFIG_DEBUG
 #define pushtok() \
-do{ tok_t              _old_tok_id    = token.t_id;\
-    unsigned long      _old_tok_num   = token.t_num;\
-    struct TPPFile    *_old_tok_file  = token.t_file;\
-    char              *_old_tok_begin = token.t_begin;\
-    char              *_old_tok_end   = token.t_end;\
-    struct TPPKeyword *_old_tok_kwd   = token.t_kwd
+do{ tok_t              _old_tok_id    = TOKEN.t_id;\
+    unsigned long      _old_tok_num   = TOKEN.t_num;\
+    struct TPPFile    *_old_tok_file  = TOKEN.t_file;\
+    char              *_old_tok_begin = TOKEN.t_begin;\
+    char              *_old_tok_end   = TOKEN.t_end;\
+    struct TPPKeyword *_old_tok_kwd   = TOKEN.t_kwd
 #define poptok() \
-    assert(token.t_file == _old_tok_file);\
-    token.t_kwd   = _old_tok_kwd;\
-    token.t_end   = _old_tok_end;\
-    token.t_begin = _old_tok_begin;\
-    token.t_num   = _old_tok_num;\
-    token.t_id    = _old_tok_id;\
+    assert(TOKEN.t_file == _old_tok_file);\
+    TOKEN.t_kwd   = _old_tok_kwd;\
+    TOKEN.t_end   = _old_tok_end;\
+    TOKEN.t_begin = _old_tok_begin;\
+    TOKEN.t_num   = _old_tok_num;\
+    TOKEN.t_id    = _old_tok_id;\
 }while(FALSE)
 #else
 #define pushtok() \
-do{ tok_t              _old_tok_id    = token.t_id;\
-    unsigned long      _old_tok_num   = token.t_num;\
-    char              *_old_tok_begin = token.t_begin;\
-    char              *_old_tok_end   = token.t_end;\
-    struct TPPKeyword *_old_tok_kwd   = token.t_kwd
+do{ tok_t              _old_tok_id    = TOKEN.t_id;\
+    unsigned long      _old_tok_num   = TOKEN.t_num;\
+    char              *_old_tok_begin = TOKEN.t_begin;\
+    char              *_old_tok_end   = TOKEN.t_end;\
+    struct TPPKeyword *_old_tok_kwd   = TOKEN.t_kwd
 #define poptok() \
-    token.t_kwd   = _old_tok_kwd;\
-    token.t_end   = _old_tok_end;\
-    token.t_begin = _old_tok_begin;\
-    token.t_num   = _old_tok_num;\
-    token.t_id    = _old_tok_id;\
+    TOKEN.t_kwd   = _old_tok_kwd;\
+    TOKEN.t_end   = _old_tok_end;\
+    TOKEN.t_begin = _old_tok_begin;\
+    TOKEN.t_num   = _old_tok_num;\
+    TOKEN.t_id    = _old_tok_id;\
 }while(FALSE)
 #endif
 
@@ -381,68 +391,68 @@ do{ tok_t              _old_tok_id    = token.t_id;\
 
 
 /* Active feature configurations. */
-#define HAVE_FEATURE_TRIGRAPHS           TPPLexer_HasExtension(EXT_TRIGRAPHS)
-#define HAVE_FEATURE_DIGRAPHS            TPPLexer_HasExtension(EXT_DIGRAPHS)
-#define HAVE_EXTENSION_GCC_VA_ARG        TPPLexer_HasExtension(EXT_GCC_VA_ARGS)
-#define HAVE_EXTENSION_GCC_VA_COMMA      TPPLexer_HasExtension(EXT_GCC_VA_COMMA)
-#define HAVE_EXTENSION_GCC_IFELSE        TPPLexer_HasExtension(EXT_GCC_IFELSE)
-#define HAVE_EXTENSION_VA_COMMA          TPPLexer_HasExtension(EXT_VA_COMMA)
-#define HAVE_EXTENSION_VA_NARGS          TPPLexer_HasExtension(EXT_VA_NARGS)
-#define HAVE_EXTENSION_VA_ARGS           TPPLexer_HasExtension(EXT_VA_ARGS)
-#define HAVE_EXTENSION_STR_E             TPPLexer_HasExtension(EXT_STR_E)
-#define HAVE_EXTENSION_ALTMAC            TPPLexer_HasExtension(EXT_ALTMAC)
-#define HAVE_EXTENSION_RECMAC            TPPLexer_HasExtension(EXT_RECMAC)
-#define HAVE_EXTENSION_BININTEGRAL       TPPLexer_HasExtension(EXT_BININTEGRAL)
-#define HAVE_EXTENSION_MSVC_PRAGMA       TPPLexer_HasExtension(EXT_MSVC_PRAGMA)
-#define HAVE_EXTENSION_STRINGOPS         TPPLexer_HasExtension(EXT_STRINGOPS)
-#define HAVE_EXTENSION_HASH_AT           TPPLexer_HasExtension(EXT_HASH_AT)
-#define HAVE_EXTENSION_HASH_XCLAIM       TPPLexer_HasExtension(EXT_HASH_XCLAIM)
-#define HAVE_EXTENSION_WARNING           TPPLexer_HasExtension(EXT_WARNING)
-#define HAVE_EXTENSION_SHEBANG           TPPLexer_HasExtension(EXT_SHEBANG)
-#define HAVE_EXTENSION_INCLUDE_NEXT      TPPLexer_HasExtension(EXT_INCLUDE_NEXT)
-#define HAVE_EXTENSION_IMPORT            TPPLexer_HasExtension(EXT_IMPORT)
-#define HAVE_EXTENSION_IDENT_SCCS        TPPLexer_HasExtension(EXT_IDENT_SCCS)
-#define HAVE_EXTENSION_BASEFILE          TPPLexer_HasExtension(EXT_BASEFILE)
-#define HAVE_EXTENSION_INCLUDE_LEVEL     TPPLexer_HasExtension(EXT_INCLUDE_LEVEL)
-#define HAVE_EXTENSION_COUNTER           TPPLexer_HasExtension(EXT_COUNTER)
-#define HAVE_EXTENSION_CLANG_FEATURES    TPPLexer_HasExtension(EXT_CLANG_FEATURES)
-#define HAVE_EXTENSION_HAS_INCLUDE       TPPLexer_HasExtension(EXT_HAS_INCLUDE)
-#define HAVE_EXTENSION_LXOR              TPPLexer_HasExtension(EXT_LXOR)
-#define HAVE_EXTENSION_MULTICHAR_CONST   TPPLexer_HasExtension(EXT_MULTICHAR_CONST)
-#define HAVE_EXTENSION_DATEUTILS         TPPLexer_HasExtension(EXT_DATEUTILS)
-#define HAVE_EXTENSION_TIMEUTILS         TPPLexer_HasExtension(EXT_TIMEUTILS)
-#define HAVE_EXTENSION_TIMESTAMP         TPPLexer_HasExtension(EXT_TIMESTAMP)
-#define HAVE_EXTENSION_COLUMN            TPPLexer_HasExtension(EXT_COLUMN)
-#define HAVE_EXTENSION_TPP_EVAL          TPPLexer_HasExtension(EXT_TPP_EVAL)
-#define HAVE_EXTENSION_TPP_UNIQUE        TPPLexer_HasExtension(EXT_TPP_UNIQUE)
-#define HAVE_EXTENSION_TPP_LOAD_FILE     TPPLexer_HasExtension(EXT_TPP_LOAD_FILE)
-#define HAVE_EXTENSION_TPP_COUNTER       TPPLexer_HasExtension(EXT_TPP_COUNTER)
-#define HAVE_EXTENSION_TPP_RANDOM        TPPLexer_HasExtension(EXT_TPP_RANDOM)
-#define HAVE_EXTENSION_TPP_STR_DECOMPILE TPPLexer_HasExtension(EXT_TPP_STR_DECOMPILE)
-#define HAVE_EXTENSION_TPP_STR_SUBSTR    TPPLexer_HasExtension(EXT_TPP_STR_SUBSTR)
-#define HAVE_EXTENSION_TPP_STR_SIZE      TPPLexer_HasExtension(EXT_TPP_STR_SIZE)
-#define HAVE_EXTENSION_TPP_STR_PACK      TPPLexer_HasExtension(EXT_TPP_STR_PACK)
-#define HAVE_EXTENSION_TPP_COUNT_TOKENS  TPPLexer_HasExtension(EXT_TPP_COUNT_TOKENS)
-#define HAVE_EXTENSION_DOLLAR_IS_ALPHA   TPPLexer_HasExtension(EXT_DOLLAR_IS_ALPHA)
-#define HAVE_EXTENSION_ASSERTIONS        TPPLexer_HasExtension(EXT_ASSERTIONS)
-#define HAVE_EXTENSION_CANONICAL_HEADERS TPPLexer_HasExtension(EXT_CANONICAL_HEADERS)
-#define HAVE_EXTENSION_EXT_ARE_FEATURES  TPPLexer_HasExtension(EXT_EXT_ARE_FEATURES)
-#define HAVE_EXTENSION_MSVC_FIXED_INT    TPPLexer_HasExtension(EXT_MSVC_FIXED_INT)
-#define HAVE_EXTENSION_NO_EXPAND_DEFINED TPPLexer_HasExtension(EXT_NO_EXPAND_DEFINED)
-#define HAVE_EXTENSION_IFELSE_IN_EXPR    TPPLexer_HasExtension(EXT_IFELSE_IN_EXPR)
-#define HAVE_EXTENSION_EXTENDED_IDENTS   TPPLexer_HasExtension(EXT_EXTENDED_IDENTS)
-#define HAVE_EXTENSION_TRADITIONAL_MACRO TPPLexer_HasExtension(EXT_TRADITIONAL_MACRO)
+#define HAVE_FEATURE_TRIGRAPHS           HAS(EXT_TRIGRAPHS)
+#define HAVE_FEATURE_DIGRAPHS            HAS(EXT_DIGRAPHS)
+#define HAVE_EXTENSION_GCC_VA_ARG        HAS(EXT_GCC_VA_ARGS)
+#define HAVE_EXTENSION_GCC_VA_COMMA      HAS(EXT_GCC_VA_COMMA)
+#define HAVE_EXTENSION_GCC_IFELSE        HAS(EXT_GCC_IFELSE)
+#define HAVE_EXTENSION_VA_COMMA          HAS(EXT_VA_COMMA)
+#define HAVE_EXTENSION_VA_NARGS          HAS(EXT_VA_NARGS)
+#define HAVE_EXTENSION_VA_ARGS           HAS(EXT_VA_ARGS)
+#define HAVE_EXTENSION_STR_E             HAS(EXT_STR_E)
+#define HAVE_EXTENSION_ALTMAC            HAS(EXT_ALTMAC)
+#define HAVE_EXTENSION_RECMAC            HAS(EXT_RECMAC)
+#define HAVE_EXTENSION_BININTEGRAL       HAS(EXT_BININTEGRAL)
+#define HAVE_EXTENSION_MSVC_PRAGMA       HAS(EXT_MSVC_PRAGMA)
+#define HAVE_EXTENSION_STRINGOPS         HAS(EXT_STRINGOPS)
+#define HAVE_EXTENSION_HASH_AT           HAS(EXT_HASH_AT)
+#define HAVE_EXTENSION_HASH_XCLAIM       HAS(EXT_HASH_XCLAIM)
+#define HAVE_EXTENSION_WARNING           HAS(EXT_WARNING)
+#define HAVE_EXTENSION_SHEBANG           HAS(EXT_SHEBANG)
+#define HAVE_EXTENSION_INCLUDE_NEXT      HAS(EXT_INCLUDE_NEXT)
+#define HAVE_EXTENSION_IMPORT            HAS(EXT_IMPORT)
+#define HAVE_EXTENSION_IDENT_SCCS        HAS(EXT_IDENT_SCCS)
+#define HAVE_EXTENSION_BASEFILE          HAS(EXT_BASEFILE)
+#define HAVE_EXTENSION_INCLUDE_LEVEL     HAS(EXT_INCLUDE_LEVEL)
+#define HAVE_EXTENSION_COUNTER           HAS(EXT_COUNTER)
+#define HAVE_EXTENSION_CLANG_FEATURES    HAS(EXT_CLANG_FEATURES)
+#define HAVE_EXTENSION_HAS_INCLUDE       HAS(EXT_HAS_INCLUDE)
+#define HAVE_EXTENSION_LXOR              HAS(EXT_LXOR)
+#define HAVE_EXTENSION_MULTICHAR_CONST   HAS(EXT_MULTICHAR_CONST)
+#define HAVE_EXTENSION_DATEUTILS         HAS(EXT_DATEUTILS)
+#define HAVE_EXTENSION_TIMEUTILS         HAS(EXT_TIMEUTILS)
+#define HAVE_EXTENSION_TIMESTAMP         HAS(EXT_TIMESTAMP)
+#define HAVE_EXTENSION_COLUMN            HAS(EXT_COLUMN)
+#define HAVE_EXTENSION_TPP_EVAL          HAS(EXT_TPP_EVAL)
+#define HAVE_EXTENSION_TPP_UNIQUE        HAS(EXT_TPP_UNIQUE)
+#define HAVE_EXTENSION_TPP_LOAD_FILE     HAS(EXT_TPP_LOAD_FILE)
+#define HAVE_EXTENSION_TPP_COUNTER       HAS(EXT_TPP_COUNTER)
+#define HAVE_EXTENSION_TPP_RANDOM        HAS(EXT_TPP_RANDOM)
+#define HAVE_EXTENSION_TPP_STR_DECOMPILE HAS(EXT_TPP_STR_DECOMPILE)
+#define HAVE_EXTENSION_TPP_STR_SUBSTR    HAS(EXT_TPP_STR_SUBSTR)
+#define HAVE_EXTENSION_TPP_STR_SIZE      HAS(EXT_TPP_STR_SIZE)
+#define HAVE_EXTENSION_TPP_STR_PACK      HAS(EXT_TPP_STR_PACK)
+#define HAVE_EXTENSION_TPP_COUNT_TOKENS  HAS(EXT_TPP_COUNT_TOKENS)
+#define HAVE_EXTENSION_DOLLAR_IS_ALPHA   HAS(EXT_DOLLAR_IS_ALPHA)
+#define HAVE_EXTENSION_ASSERTIONS        HAS(EXT_ASSERTIONS)
+#define HAVE_EXTENSION_CANONICAL_HEADERS HAS(EXT_CANONICAL_HEADERS)
+#define HAVE_EXTENSION_EXT_ARE_FEATURES  HAS(EXT_EXT_ARE_FEATURES)
+#define HAVE_EXTENSION_MSVC_FIXED_INT    HAS(EXT_MSVC_FIXED_INT)
+#define HAVE_EXTENSION_NO_EXPAND_DEFINED HAS(EXT_NO_EXPAND_DEFINED)
+#define HAVE_EXTENSION_IFELSE_IN_EXPR    HAS(EXT_IFELSE_IN_EXPR)
+#define HAVE_EXTENSION_EXTENDED_IDENTS   HAS(EXT_EXTENDED_IDENTS)
+#define HAVE_EXTENSION_TRADITIONAL_MACRO HAS(EXT_TRADITIONAL_MACRO)
 #if TPP_CONFIG_GCCFUNC
 #if TPP_CONFIG_MINGCCFUNC < 2
-#define HAVE_EXTENSION_BUILTIN_FUNCTIONS TPPLexer_HasExtension(EXT_BUILTIN_FUNCTIONS)
+#define HAVE_EXTENSION_BUILTIN_FUNCTIONS HAS(EXT_BUILTIN_FUNCTIONS)
 #else
 #define HAVE_EXTENSION_BUILTIN_FUNCTIONS 1
 #endif
 #endif /* TPP_CONFIG_GCCFUNC */
 #if !TPP_CONFIG_MINMACRO
-#define HAVE_EXTENSION_CPU_MACROS        TPPLexer_HasExtension(EXT_CPU_MACROS)
-#define HAVE_EXTENSION_SYSTEM_MACROS     TPPLexer_HasExtension(EXT_SYSTEM_MACROS)
-#define HAVE_EXTENSION_UTILITY_MACROS    TPPLexer_HasExtension(EXT_UTILITY_MACROS)
+#define HAVE_EXTENSION_CPU_MACROS        HAS(EXT_CPU_MACROS)
+#define HAVE_EXTENSION_SYSTEM_MACROS     HAS(EXT_SYSTEM_MACROS)
+#define HAVE_EXTENSION_UTILITY_MACROS    HAS(EXT_UTILITY_MACROS)
 #endif /* !TPP_CONFIG_MINMACRO */
 
 
@@ -462,7 +472,7 @@ LOCAL void tpp_log(char const *fmt, ...) {
  assert(TPPLexer_Current);
  va_start(args,fmt);
  TPPLexer_LC(&info);
- fprintf(stderr,current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+ fprintf(stderr,CURRENT.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
                 ? "%s(%d,%d) : " : "%s:%d:%d: ",
                 TPPLexer_FILE(NULL),
                (int)(info.lc_line+1),
@@ -588,7 +598,7 @@ skip_whitespace_and_comments(char *iter, char *end) {
    char *forward = iter+1;
    while (SKIP_WRAPLF(forward,end));
    if (*forward == '*' &&
-      (current.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
+      (CURRENT.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
     ++forward;
     while (forward != end) {
      while (forward != end && *forward != '*') ++forward;
@@ -600,7 +610,7 @@ skip_whitespace_and_comments(char *iter, char *end) {
     continue;
    }
    if (*forward == '/' &&
-      (current.l_extokens&TPPLEXER_TOKEN_CPP_COMMENT)) {
+      (CURRENT.l_extokens&TPPLEXER_TOKEN_CPP_COMMENT)) {
     iter = forward;
     while (iter != end) {
      if (*iter == '\\' && iter+1 != end && tpp_islf(iter[1])) {
@@ -632,7 +642,7 @@ next:
    forward = iter-1;
    while (SKIP_WRAPLF_REV(forward,begin));
    if (forward[-1] == '*' &&
-      (current.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
+      (CURRENT.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
     --forward;
     while (forward != begin) {
      while (forward != begin && forward[-1] != '*') --forward;
@@ -646,7 +656,7 @@ next:
   }
   if (tpp_islf(iter[-1])) {
    /* HINT: This linefeed is known not to be escaped, due to the 'SKIP_WRAPLF_REV' above. */
-   if (current.l_extokens&TPPLEXER_TOKEN_CPP_COMMENT) {
+   if (CURRENT.l_extokens&TPPLEXER_TOKEN_CPP_COMMENT) {
     /* Check for a C++-style comment. */
     forward = iter-1;
     if (*forward == '\n' && forward != begin && forward[-1] == '\r') --forward;
@@ -682,7 +692,7 @@ skip_whitespacenolf_and_comments_rev(char *iter, char *begin) {
   }
   if (iter == begin) break;
   if (iter[-1] == '/' && iter-1 != begin &&
-     (current.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
+     (CURRENT.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
    char *forward = iter-1;
    while (SKIP_WRAPLF_REV(forward,begin));
    if (forward[-1] == '*') {
@@ -956,7 +966,7 @@ string_find_eol_after_comments(char *iter, char *end) {
        if (*iter == '\\') { if (++iter == end) break; }
   else if (tpp_islf(*iter)) break;
   else if (*iter == '/' &&
-          (current.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
+          (CURRENT.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
    if (++iter != end) while (SKIP_WRAPLF(iter,end));
    if (*iter == '/') return (++iter,string_find_eol(iter,(size_t)(end-iter)));
    if (*iter == '*') {
@@ -1047,7 +1057,7 @@ lf:
   } else if (ch == '\n') {
    goto lf;
   } else if (ch == '\t') {
-   self->lc_col += current.l_tabsize;
+   self->lc_col += CURRENT.l_tabsize;
   } else {
    ++self->lc_col;
   }
@@ -1195,7 +1205,7 @@ fallback_cl:
    column_num = 0;
    begin = self->f_text->s_text,iter = text_pointer;
    for (; iter != begin && !tpp_islforzero(iter[-1]); --iter)
-        column_num += iter[-1] == '\t' ? current.l_tabsize : 1;
+        column_num += iter[-1] == '\t' ? CURRENT.l_tabsize : 1;
    info->lc_col   = column_num;
   } break;
   case TPPFILE_KIND_MACRO:
@@ -1254,7 +1264,7 @@ PUBLIC struct TPPFile *
 TPPLexer_Textfile(void) {
  struct TPPFile *result;
  assert(TPPLexer_Current);
- result = token.t_file;
+ result = TOKEN.t_file;
  for (;;) {
   assert(result);
   /* NOTE: The last file in the #include chain should
@@ -1268,7 +1278,7 @@ PUBLIC struct TPPFile *
 TPPLexer_Basefile(void) {
  struct TPPFile *result;
  assert(TPPLexer_Current);
- result = token.t_file;
+ result = TOKEN.t_file;
  if (result != &TPPFile_Empty) {
   /* Search for the last file before the empty one. */
   while (result->f_prev != &TPPFile_Empty)
@@ -1630,7 +1640,7 @@ TPPFile_NextChunk(struct TPPFile *__restrict self, int flags) {
    self->f_pos   = newchunk->s_text+(self->f_pos-old_textbegin);
   }
   if (!(flags&TPPFILE_NEXTCHUNK_FLAG_BINARY) &&
-      !(current.l_flags&TPPLEXER_FLAG_NO_ENCODING) &&
+      !(CURRENT.l_flags&TPPLEXER_FLAG_NO_ENCODING) &&
         read_bufsize) {
    char *text_start = newchunk->s_text+prefix_size;
    if (!self->f_textfile.f_rdata) {
@@ -1691,7 +1701,7 @@ search_suitable_end_again:
     *    Yet there are still some more restrictions: It must not end inside an unfinished comment,
     *    and it must not contain an unterminated string/character (if the necessary flag is set). */
    last_zero_mode = iter = self->f_begin,end = self->f_end;
-   termstring_onlf = (current.l_flags&TPPLEXER_FLAG_TERMINATE_STRING_LF);
+   termstring_onlf = (CURRENT.l_flags&TPPLEXER_FLAG_TERMINATE_STRING_LF);
    while (iter != end) {
     assert(iter < end);
     if (!mode) last_zero_mode = iter;
@@ -2112,7 +2122,7 @@ macro_function_scan_block_traditional(struct TPPFile *self) {
 next:
  while (iter != end) {
   ch = *iter;
-  if (ch == '/' && (current.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
+  if (ch == '/' && (CURRENT.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
    char *comment_start = iter++;
    while (SKIP_WRAPLF(iter,end));
    if (*iter == '*') {
@@ -2192,7 +2202,7 @@ skipcom:
     if ((arg_id == KWD___VA_COMMA__ && HAVE_EXTENSION_VA_COMMA) ||
         (arg_id == KWD___VA_NARGS__ && HAVE_EXTENSION_VA_NARGS)) {
      if (!(self->f_macro.m_flags&TPP_MACROFILE_FLAG_FUNC_VARIADIC)) {
-      if unlikely(!TPPLexer_Warn(W_VA_KEYWORD_IN_REGULAR_MACRO,arg_name)) goto err;
+      if unlikely(!WARN(W_VA_KEYWORD_IN_REGULAR_MACRO,arg_name)) goto err;
      } else {
       if (keyword_begin != last_text_pointer) {
        if unlikely(!codewriter_put1(&writer,TPP_FUNOP_ADV,
@@ -2253,9 +2263,9 @@ macro_function_scan_block(struct TPPFile *self) {
   *       to calculate text pointer offsets, we also
   *       need the original file pointers instead of
   *       the better readable keyword pointers. */
- current.l_flags |= (TPPLEXER_FLAG_TERMINATE_STRING_LF|
+ CURRENT.l_flags |= (TPPLEXER_FLAG_TERMINATE_STRING_LF|
                      TPPLEXER_FLAG_NO_SEEK_ON_EOB);
- current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS);
+ CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS);
  func.f_deltotal = 0;
  func.f_n_vacomma = 0;
  func.f_n_vanargs = 0;
@@ -2263,10 +2273,10 @@ macro_function_scan_block(struct TPPFile *self) {
  last_text_pointer = self->f_begin;
 next:
  while (TOK > 0 && TOK != '\n') {
-  assert(token.t_file  == self->f_macro.m_deffile);
-  assert(token.t_begin >= last_text_pointer);
+  assert(TOKEN.t_file  == self->f_macro.m_deffile);
+  assert(TOKEN.t_begin >= last_text_pointer);
   if (TOK == '#') {
-   strop_begin = token.t_begin;
+   strop_begin = TOKEN.t_begin;
    /* Check for special operations such as "#arg", "#@arg" or "#!arg"
     * NOTE: "#!" prevents expansion of the argument. */
    TPPLexer_YieldRaw();
@@ -2292,10 +2302,10 @@ strop_normal:
       last_was_glue = 0;
       if unlikely(!codewriter_put2(&writer,strop,
                                   (size_t)(iter-begin),
-                                  (size_t)(token.t_end-strop_begin))
+                                  (size_t)(TOKEN.t_end-strop_begin))
                   ) goto seterr;
-      func.f_deltotal += (size_t)(token.t_end-strop_begin);
-      last_text_pointer = token.t_end;
+      func.f_deltotal += (size_t)(TOKEN.t_end-strop_begin);
+      last_text_pointer = TOKEN.t_end;
       if (strop != TPP_FUNOP_INS) ++iter->ai_ins_str;
       else ++iter->ai_ins;
       TPPLexer_YieldRaw();
@@ -2310,14 +2320,14 @@ strop_normal:
      size_t argi = (size_t)(iter-begin);
      size_t namesize;
      /* Got a regular argument reference. */
-     if (token.t_begin != last_text_pointer) {
+     if (TOKEN.t_begin != last_text_pointer) {
       /* Advance the text pointer to cover the gap. */
       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_ADV,
-                                  (size_t)(token.t_begin-last_text_pointer))
+                                  (size_t)(TOKEN.t_begin-last_text_pointer))
                   ) goto seterr;
      }
-     namesize = (size_t)(token.t_end-token.t_begin);
-     last_text_pointer = token.t_end;
+     namesize = (size_t)(TOKEN.t_end-TOKEN.t_begin);
+     last_text_pointer = TOKEN.t_end;
      TPPLexer_YieldRaw();
      if (TOK == TOK_GLUE) {
       /* Insert the argument without expansion and override
@@ -2326,8 +2336,8 @@ strop_normal:
       TPPLexer_YieldRaw();
       /* Add the size of the glue token, as well as surrounding
        * whitespace to what should be deleted by the ins operation. */
-      namesize += (size_t)(token.t_begin-last_text_pointer);
-      last_text_pointer = token.t_begin;
+      namesize += (size_t)(TOKEN.t_begin-last_text_pointer);
+      last_text_pointer = TOKEN.t_begin;
       if unlikely(!codewriter_put2(&writer,TPP_FUNOP_INS,argi,namesize)) goto seterr;
       last_was_glue = 1;
      } else if (last_was_glue) {
@@ -2348,31 +2358,31 @@ strop_normal:
    if ((TOK == KWD___VA_COMMA__ && HAVE_EXTENSION_VA_COMMA) ||
        (TOK == KWD___VA_NARGS__ && HAVE_EXTENSION_VA_NARGS)) {
     if (!(self->f_macro.m_flags&TPP_MACROFILE_FLAG_FUNC_VARIADIC)) {
-     if unlikely(!TPPLexer_Warn(W_VA_KEYWORD_IN_REGULAR_MACRO,token.t_kwd)) goto err;
+     if unlikely(!WARN(W_VA_KEYWORD_IN_REGULAR_MACRO,TOKEN.t_kwd)) goto err;
     } else {
-     if (token.t_begin != last_text_pointer) {
+     if (TOKEN.t_begin != last_text_pointer) {
       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_ADV,
-                                  (size_t)(token.t_begin-last_text_pointer))
+                                  (size_t)(TOKEN.t_begin-last_text_pointer))
                   ) goto seterr;
      }
      if (TOK == KWD___VA_COMMA__) {
       /* Replace __VA_COMMA__ with ',' if necessary. */
       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_VA_COMMA,
-                                  (size_t)(token.t_end-token.t_begin))
+                                  (size_t)(TOKEN.t_end-TOKEN.t_begin))
                   ) goto seterr;
       ++func.f_n_vacomma;
      } else {
       /* Replace __VA_NARGS__ with the integral representation of the argument argument size. */
       if unlikely(!codewriter_put1(&writer,TPP_FUNOP_VA_NARGS,
-                                  (size_t)(token.t_end-token.t_begin))
+                                  (size_t)(TOKEN.t_end-TOKEN.t_begin))
                   ) goto seterr;
       ++func.f_n_vanargs;
      }
-     func.f_deltotal += (size_t)(token.t_end-token.t_begin);
-     last_text_pointer = token.t_end;
+     func.f_deltotal += (size_t)(TOKEN.t_end-TOKEN.t_begin);
+     last_text_pointer = TOKEN.t_end;
     }
    } else if (TOK == KWD_defined) {
-    if unlikely(!TPPLexer_Warn(W_DEFINED_IN_MACRO_BODY)) goto err;
+    if unlikely(!WARN(W_DEFINED_IN_MACRO_BODY)) goto err;
     /* ----: GCC has an extension that prevents expansion of arguments after 'defined' in a macro body.
      *       Similar to our '#!' operator, gcc implicitly compiles:
      *    >> #define is_defined(x)  defined(x)
@@ -2396,14 +2406,14 @@ strop_normal:
      *    >> STR4(FOO) // "defined(FOO)" << this extension!
      */
     if (HAVE_EXTENSION_NO_EXPAND_DEFINED && !last_was_glue) {
-     preglue_begin = token.t_begin;
-     preglue_end = token.t_end;
+     preglue_begin = TOKEN.t_begin;
+     preglue_end = TOKEN.t_end;
      preglue_tok = TOK;
      TPPLexer_YieldRaw();
      if unlikely(TOK == TOK_GLUE) goto begin_glue;
      if (TOK == '(') {
-      preglue_begin = token.t_begin;
-      preglue_end   = token.t_end;
+      preglue_begin = TOKEN.t_begin;
+      preglue_end   = TOKEN.t_end;
       preglue_tok   = TOK;
       TPPLexer_YieldRaw();
       if unlikely(TOK == TOK_GLUE) goto begin_glue;
@@ -2411,7 +2421,7 @@ strop_normal:
      if (TPP_ISKEYWORD(TOK)) {
       /* If this token describes the name of an argument, don't expand it! */
       strop       = TPP_FUNOP_INS;
-      strop_begin = token.t_begin;
+      strop_begin = TOKEN.t_begin;
       goto strop_normal;
      }
      /* Since we already did a yield, we must head for the next loop now. */
@@ -2419,8 +2429,8 @@ strop_normal:
     }
    }
   }
-  preglue_begin = token.t_begin;
-  preglue_end = token.t_end;
+  preglue_begin = TOKEN.t_begin;
+  preglue_end = TOKEN.t_end;
   preglue_tok = TOK;
   TPPLexer_YieldRaw();
   last_was_glue = 0;
@@ -2440,9 +2450,9 @@ begin_glue:
     /* Insert a __VA_COMMA__ and override the ',' and '##'
      * tokens up to the start of whatever follows. */
     if unlikely(!codewriter_put1(&writer,TPP_FUNOP_VA_COMMA,
-                                (size_t)(token.t_begin-preglue_begin))
+                                (size_t)(TOKEN.t_begin-preglue_begin))
                 ) goto seterr;
-    func.f_deltotal += (size_t)(token.t_begin-preglue_begin);
+    func.f_deltotal += (size_t)(TOKEN.t_begin-preglue_begin);
     ++func.f_n_vacomma;
    } else {
     if (preglue_end != last_text_pointer) {
@@ -2452,11 +2462,11 @@ begin_glue:
                  ) goto seterr;
     }
     if unlikely(!codewriter_put1(&writer,TPP_FUNOP_DEL,
-                                (size_t)(token.t_begin-preglue_end))
+                                (size_t)(TOKEN.t_begin-preglue_end))
                 ) goto seterr;
-    func.f_deltotal += (size_t)(token.t_begin-preglue_end);
+    func.f_deltotal += (size_t)(TOKEN.t_begin-preglue_end);
    }
-   last_text_pointer = token.t_begin;
+   last_text_pointer = TOKEN.t_begin;
   }
  }
  func.f_expand = codewriter_pack(&writer);
@@ -2481,14 +2491,14 @@ TPPFile_NewDefine(void) {
  struct TPPKeyword *keyword_entry; int fix_linenumber = 0;
  tok_t argend_token,argument_name;
  struct arginfo_t *arginfo_v,*new_arginfo_v; size_t arginfo_a;
- assert(current.l_flags&TPPLEXER_FLAG_WANTLF);
+ assert(CURRENT.l_flags&TPPLEXER_FLAG_WANTLF);
  assert(TPP_ISKEYWORD(TOK));
- keyword_entry = token.t_kwd;
+ keyword_entry = TOKEN.t_kwd;
  assert(keyword_entry);
- curfile = token.t_file;
+ curfile = TOKEN.t_file;
  /* Emit some warning about redefining stuff. */
- if (TPP_ISKEYWORD(token.t_id) && !TPP_ISUSERKEYWORD(token.t_id) &&
-    !TPPLexer_Warn(W_REDEFINING_BUILTIN_KEYWORD,keyword_entry)) return NULL;
+ if (TPP_ISKEYWORD(TOKEN.t_id) && !TPP_ISUSERKEYWORD(TOKEN.t_id) &&
+    !WARN(W_REDEFINING_BUILTIN_KEYWORD,keyword_entry)) return NULL;
  while (SKIP_WRAPLF(curfile->f_pos,curfile->f_end));
  /* Check the character immediately after the name of the macro. */
  switch (*curfile->f_pos) {
@@ -2515,7 +2525,7 @@ common_call_extension:
  result->f_namesize          = keyword_entry->k_size;
  result->f_namehash          = keyword_entry->k_hash;
  result->f_macro.m_flags     = macro_flags;
- result->f_macro.m_deffile   = token.t_file;
+ result->f_macro.m_deffile   = TOKEN.t_file;
  result->f_macro.m_pushprev  = NULL; /* Used for macro push/pop */
  result->f_macro.m_pushcount = 0;    /* Used for macro push/pop */
  TPPFile_Incref(result->f_macro.m_deffile); /* Create reference. */
@@ -2537,13 +2547,13 @@ common_call_extension:
                (argument_name == KWD___VA_COMMA__ && HAVE_EXTENSION_VA_COMMA) ||
                (argument_name == KWD___VA_NARGS__ && HAVE_EXTENSION_VA_NARGS)) {
      /* Warn amount argument name with otherwise special meaning. */
-     if unlikely(!TPPLexer_Warn(W_SPECIAL_ARGUMENT_NAME,token.t_kwd)) goto err_arginfo;
+     if unlikely(!WARN(W_SPECIAL_ARGUMENT_NAME,TOKEN.t_kwd)) goto err_arginfo;
     }
 add_macro_argument:
     /* Check if an argument named 'argument_name' already exists. */
     new_arginfo_v = arginfo_v+result->f_macro.m_function.f_argc;
     while (new_arginfo_v-- != arginfo_v) if (new_arginfo_v->ai_id == argument_name) {
-     if unlikely(!TPPLexer_Warn(W_ARGUMENT_NAMED_ALREADY_TAKEN,argument_name)) goto err_arginfo;
+     if unlikely(!WARN(W_ARGUMENT_NAMED_ALREADY_TAKEN,argument_name)) goto err_arginfo;
      goto skip_argument_name;
     }
 
@@ -2563,9 +2573,9 @@ add_macro_argument:
      new_arginfo_v->ai_name     = (char *)"__VA_ARGS__";
      new_arginfo_v->ai_namesize = 11;
     } else {
-     assert(token.t_kwd);
-     new_arginfo_v->ai_name     = token.t_kwd->k_name;
-     new_arginfo_v->ai_namesize = token.t_kwd->k_size;
+     assert(TOKEN.t_kwd);
+     new_arginfo_v->ai_name     = TOKEN.t_kwd->k_name;
+     new_arginfo_v->ai_namesize = TOKEN.t_kwd->k_size;
     }
 #endif
     new_arginfo_v->ai_ins      = 0;
@@ -2581,19 +2591,19 @@ skip_argument_name:
     }
     if (result->f_macro.m_flags&TPP_MACROFILE_FLAG_FUNC_VARIADIC && TOK != argend_token) {
      /* Expected ')' after varargs argument name. */
-     if (!TPPLexer_Warn(W_EXPECTED_ARGEND_AFTER_VARARGS,argend_token)) goto err_arginfo;
+     if (!WARN(W_EXPECTED_ARGEND_AFTER_VARARGS,argend_token)) goto err_arginfo;
     }
    } else if (TOK == TOK_DOTS && HAVE_EXTENSION_VA_ARGS) {
     argument_name            = KWD___VA_ARGS__;
     result->f_macro.m_flags |= TPP_MACROFILE_FLAG_FUNC_VARIADIC;
     goto add_macro_argument;
    } else {
-    if (!TPPLexer_Warn(W_EXPECTED_MACRO_ARGUMENT_NAME,argend_token)) goto err_arginfo;
+    if (!WARN(W_EXPECTED_MACRO_ARGUMENT_NAME,argend_token)) goto err_arginfo;
     break;
    }
    if (TOK == argend_token) break; /* Stop parsing the argument list. */
    if (TOK == ',') TPPLexer_YieldRaw();
-   else if (!TPPLexer_Warn(W_EXPECTED_COMMA_OR_ARGEND,argend_token)) goto err_arginfo;
+   else if (!WARN(W_EXPECTED_COMMA_OR_ARGEND,argend_token)) goto err_arginfo;
   }
   if (result->f_macro.m_function.f_argc != arginfo_a) {
    new_arginfo_v = (struct arginfo_t *)realloc(arginfo_v,result->f_macro.m_function.f_argc*
@@ -2603,20 +2613,20 @@ skip_argument_name:
   result->f_macro.m_function.f_arginfo = arginfo_v; /*< Inherit data. */
   /* At this point, 'TOK == argend_token' unless user-syntax was wrong.
    * >> For that reason, the file pointer should point to the first whitespace of the macro block. */
-  assert(curfile == token.t_file);
+  assert(curfile == TOKEN.t_file);
   /* Figure out where the block should start.
    * NOTE: The yield in here is what requires LF tokens
    *       to be enabled, so that an empty macro body
    *       can be detected when immediately detecting
    *       a linefeed. */
-  if (current.l_flags&TPPLEXER_FLAG_KEEP_MACRO_WHITESPACE) {
+  if (CURRENT.l_flags&TPPLEXER_FLAG_KEEP_MACRO_WHITESPACE) {
    result->f_begin = curfile->f_pos;
    TPPLexer_YieldRaw();
-   assert(curfile == token.t_file);
+   assert(curfile == TOKEN.t_file);
   } else {
    TPPLexer_YieldRaw();
-   assert(curfile == token.t_file);
-   result->f_begin = token.t_begin;
+   assert(curfile == TOKEN.t_file);
+   result->f_begin = TOKEN.t_begin;
   }
   result->f_macro.m_function.f_expansions = 0;
   /* Scan the entirety of the macro's text block.
@@ -2627,24 +2637,24 @@ skip_argument_name:
    macro_end = macro_function_scan_block_traditional(result);
    if unlikely(!macro_end) goto err_arginfo;
    result->f_end = macro_end;
-   assert(curfile == token.t_file);
-   token.t_file->f_pos = macro_end;
+   assert(curfile == TOKEN.t_file);
+   TOKEN.t_file->f_pos = macro_end;
    /* Yield the next token after the macro. */
    TPPLexer_YieldRaw();
   } else {
    if unlikely(!macro_function_scan_block(result)) goto err_arginfo;
-   assert(curfile == token.t_file);
-   result->f_end = token.t_begin;
+   assert(curfile == TOKEN.t_file);
+   result->f_end = TOKEN.t_begin;
   }
   /* NOTE: Because the scan_block function disabled chunk transitions,
    *       it is possible that the token now describes a symbolic EOF.
    *       >> In that case, simply try yielding another token
    *          now that the lexer flags have been restored. */
-  if (!token.t_id) TPPLexer_YieldRaw();
+  if (!TOKEN.t_id) TPPLexer_YieldRaw();
  } else {
   result->f_begin = curfile->f_pos;
   /* Skip whitespace at the front. */
-  if (!(current.l_flags&TPPLEXER_FLAG_KEEP_MACRO_WHITESPACE)) {
+  if (!(CURRENT.l_flags&TPPLEXER_FLAG_KEEP_MACRO_WHITESPACE)) {
    while (result->f_begin != curfile->f_end) {
     while (SKIP_WRAPLF(result->f_begin,curfile->f_end));
     if (result->f_begin == curfile->f_end || 
@@ -2654,12 +2664,12 @@ skip_argument_name:
   }
   /* Scan forward until the end of the macro block. */
   while (TOK > 0 && TOK != '\n') TPPLexer_YieldRaw();
-  assert(curfile == token.t_file);
-  result->f_end = token.t_begin;
+  assert(curfile == TOKEN.t_file);
+  result->f_end = TOKEN.t_begin;
  }
  /* Trim down the end of the macro's text block. */
  assert(result->f_end >= result->f_begin);
- if (!(current.l_flags&TPPLEXER_FLAG_KEEP_MACRO_WHITESPACE)) {
+ if (!(CURRENT.l_flags&TPPLEXER_FLAG_KEEP_MACRO_WHITESPACE)) {
   while (result->f_end != result->f_begin) {
    while (SKIP_WRAPLF_REV(result->f_end,result->f_begin));
    if (result->f_end == result->f_begin ||
@@ -2698,24 +2708,39 @@ skip_argument_name:
  }
  /* Finally set the seek pointer to the front. */
  result->f_pos = result->f_begin;
- if (keyword_entry->k_macro) {
-  struct TPPFile *oldfile = keyword_entry->k_macro;
-  if (((size_t)(oldfile->f_end-oldfile->f_begin) !=
-       (size_t)(result ->f_end-result ->f_begin) ||
-        memcmp(result->f_begin,oldfile->f_begin,
-              (size_t)(result->f_end-result->f_begin)) != 0)) {
-   int warn_error; /* Make sure to use the correct line number in this warning. */
-   if (fix_linenumber) --curfile->f_textfile.f_lineoff;
-   warn_error = TPPLexer_Warn(W_REDEFINING_MACRO,keyword_entry);
-   if (fix_linenumber) ++curfile->f_textfile.f_lineoff;
-   if (!warn_error) {
-    TPPFile_Decref(result);
-    return NULL;
+ {
+  int warn_error;
+  uint32_t kwd_flags = TPPKeyword_Getflags(keyword_entry);
+  if (keyword_entry->k_macro) {
+   struct TPPFile *oldfile = keyword_entry->k_macro;
+   if (((size_t)(oldfile->f_end-oldfile->f_begin) !=
+        (size_t)(result ->f_end-result ->f_begin) ||
+         memcmp(result->f_begin,oldfile->f_begin,
+               (size_t)(result->f_end-result->f_begin)) != 0)) {
+    /* Make sure to use the correct line number in this warning. */
+    if (fix_linenumber) --curfile->f_textfile.f_lineoff;
+    warn_error = WARN(W_REDEFINING_MACRO,keyword_entry);
+    if (fix_linenumber) ++curfile->f_textfile.f_lineoff;
+    if (!warn_error) goto err_result;
    }
+   if (kwd_flags&TPP_KEYWORDFLAG_LOCKED) goto locked_keyword;
+   TPPKeyword_Undef(keyword_entry);
   }
-  TPPKeyword_Undef(keyword_entry);
+  if (kwd_flags&TPP_KEYWORDFLAG_LOCKED) {
+locked_keyword:
+   if (fix_linenumber) --curfile->f_textfile.f_lineoff;
+   warn_error = WARN(W_CANT_DEFINE_LOCKED_KEYWORD,keyword_entry);
+   if (fix_linenumber) ++curfile->f_textfile.f_lineoff;
+err_result:
+   TPPFile_Decref(result);
+   result = keyword_entry->k_macro;
+   if (!result) result = &TPPFile_Empty;
+   if unlikely(!warn_error) result = NULL;
+   goto done;
+  }
  }
  keyword_entry->k_macro = result; /*< Inherit reference. */
+done:
  return result;
 seterr_arginfo: TPPLexer_SetErr();
 err_arginfo: free(arginfo_v);
@@ -2908,7 +2933,7 @@ PUBLIC int
 TPP_ISBUILTINMACRO(tok_t id) {
  int result = 0;
  /* Check if builtin macros are even enabled. */
- if (!(current.l_flags&TPPLEXER_FLAG_NO_BUILTIN_MACROS)) {
+ if (!(CURRENT.l_flags&TPPLEXER_FLAG_NO_BUILTIN_MACROS)) {
   switch (id) {
 #define MACRO(name,if) case name: result = !!(if); break;
 #include "tpp-defs.inl"
@@ -3025,8 +3050,8 @@ def_builtin_keyword(struct TPPKeyword *keyword) {
 #else
  keyword->k_hash = hashof(keyword->k_name,keyword->k_size);
 #endif
- bucket = &current.l_keywords.km_bucketv[keyword->k_hash % 
-           current.l_keywords.km_bucketc];
+ bucket = &CURRENT.l_keywords.km_bucketv[keyword->k_hash % 
+           CURRENT.l_keywords.km_bucketc];
  keyword->k_next = *bucket;
  *bucket = keyword;
 }
@@ -3164,9 +3189,9 @@ PRIVATE wgroup_t const *const w_associated_groups[W_COUNT] = {
 PUBLIC int TPPLexer_PushWarnings(void) {
  struct TPPWarningState *newstate,*curstate;
  assert(TPPLexer_Current);
- curstate = current.l_warnings.w_curstate;
+ curstate = CURRENT.l_warnings.w_curstate;
  assert(curstate);
- assert((curstate == &current.l_warnings.w_basestate) ==
+ assert((curstate == &CURRENT.l_warnings.w_basestate) ==
         (curstate->ws_prev == NULL));
  newstate = (struct TPPWarningState *)malloc(sizeof(struct TPPWarningState));
  if unlikely(!newstate) return 0;
@@ -3183,19 +3208,19 @@ PUBLIC int TPPLexer_PushWarnings(void) {
  }
  memcpy(newstate->ws_state,curstate->ws_state,TPP_WARNING_BITSETSIZE);
  newstate->ws_prev = curstate;
- current.l_warnings.w_curstate = newstate;
+ CURRENT.l_warnings.w_curstate = newstate;
  return 1;
 }
 PUBLIC int TPPLexer_PopWarnings(void) {
  struct TPPWarningState *curstate;
  assert(TPPLexer_Current);
- curstate = current.l_warnings.w_curstate;
+ curstate = CURRENT.l_warnings.w_curstate;
  assert(curstate);
- assert((curstate == &current.l_warnings.w_basestate) ==
+ assert((curstate == &CURRENT.l_warnings.w_basestate) ==
         (curstate->ws_prev == NULL));
  /* Check if this state has a predecessor. */
  if unlikely(!curstate->ws_prev) return 0;
- current.l_warnings.w_curstate = curstate->ws_prev;
+ CURRENT.l_warnings.w_curstate = curstate->ws_prev;
  free(curstate->ws_extendedv);
  free(curstate);
  return 1;
@@ -3207,18 +3232,18 @@ PUBLIC int TPPLexer_PushExtensions(void) {
  state_copy = (struct TPPExtState *)malloc(sizeof(struct TPPExtState));
  if unlikely(!state_copy) return 0;
  /* Create a copy of the current extension state. */
- memcpy(state_copy,&current.l_extensions,sizeof(struct TPPExtState));
+ memcpy(state_copy,&CURRENT.l_extensions,sizeof(struct TPPExtState));
  /* Link the copy we've just created. */
- current.l_extensions.es_prev = state_copy;
+ CURRENT.l_extensions.es_prev = state_copy;
  return 1;
 }
 PUBLIC int TPPLexer_PopExtensions(void) {
  struct TPPExtState *prev_state;
  assert(TPPLexer_Current);
- prev_state = current.l_extensions.es_prev;
+ prev_state = CURRENT.l_extensions.es_prev;
  if unlikely(!prev_state) return 0;
  /* Restore the old extension state. */
- memcpy(&current.l_extensions,prev_state,
+ memcpy(&CURRENT.l_extensions,prev_state,
         sizeof(struct TPPExtState));
  free(prev_state);
  return 1;
@@ -3230,9 +3255,9 @@ PRIVATE int set_wstate(int wid, wstate_t state) {
  struct TPPWarningStateEx *iter,*end,*newslot;
  uint8_t *bitset_byte,byte_shift;
  assert(TPPLexer_Current);
- curstate = current.l_warnings.w_curstate;
+ curstate = CURRENT.l_warnings.w_curstate;
  assert(curstate);
- assert((curstate == &current.l_warnings.w_basestate) ==
+ assert((curstate == &CURRENT.l_warnings.w_basestate) ==
         (curstate->ws_prev == NULL));
  assert(wid < TPP_WARNING_TOTAL);
  if (state == WSTATE_DEFAULT) state = DEFAULT_WARNING_STATE(wid);
@@ -3311,9 +3336,9 @@ PRIVATE wstate_t get_wstate(unsigned int wid) {
  uint8_t bitset_byte,byte_shift;
  assert(TPPLexer_Current);
  assert(wid_isvalid(wid));
- curstate = current.l_warnings.w_curstate;
+ curstate = CURRENT.l_warnings.w_curstate;
  assert(curstate);
- assert((curstate == &current.l_warnings.w_basestate) ==
+ assert((curstate == &CURRENT.l_warnings.w_basestate) ==
         (curstate->ws_prev == NULL));
  bitset_byte = curstate->ws_state[wid/(8/TPP_WARNING_BITS)];
  byte_shift  = (uint8_t)((wid%(8/TPP_WARNING_BITS))*TPP_WARNING_BITS);
@@ -3353,9 +3378,9 @@ PUBLIC wstate_t TPPLexer_GetWarnings(char const *__restrict group) {
    uint8_t bitset_byte,byte_shift;
    unsigned int wid = (unsigned int)(iter-wgroup_names);
    assert(wid_isvalid(wid));
-   curstate = current.l_warnings.w_curstate;
+   curstate = CURRENT.l_warnings.w_curstate;
    assert(curstate);
-   assert((curstate == &current.l_warnings.w_basestate) ==
+   assert((curstate == &CURRENT.l_warnings.w_basestate) ==
           (curstate->ws_prev == NULL));
    bitset_byte = curstate->ws_state[wid/(8/TPP_WARNING_BITS)];
    byte_shift  = (uint8_t)((wid%(8/TPP_WARNING_BITS))*TPP_WARNING_BITS);
@@ -3370,9 +3395,9 @@ PRIVATE wstate_t do_invoke_wid(int wid) {
  uint8_t *bitset_byte,byte_shift;
  wstate_t state;
  assert(TPPLexer_Current);
- curstate = current.l_warnings.w_curstate;
+ curstate = CURRENT.l_warnings.w_curstate;
  assert(curstate);
- assert((curstate == &current.l_warnings.w_basestate) ==
+ assert((curstate == &CURRENT.l_warnings.w_basestate) ==
         (curstate->ws_prev == NULL));
  assert(wid < TPP_WARNING_TOTAL);
  bitset_byte = &curstate->ws_state[wid/(8/TPP_WARNING_BITS)];
@@ -3403,7 +3428,7 @@ PUBLIC int TPPLexer_InvokeWarning(int wnum) {
  group_iter = w_associated_groups[wid-WG_COUNT];
  for (;;) {
   if (state == WSTATE_SUPPRESS ||
-      state == WSTATE_DISABLE) return TPP_WARNINGMODE_IGNORE;
+      state == WSTATE_DISABLED) return TPP_WARNINGMODE_IGNORE;
   found_warn |= state == WSTATE_WARN;
   if (*group_iter < 0) break;
   state = do_invoke_wid(*group_iter++);
@@ -3493,7 +3518,7 @@ PUBLIC void TPPLexer_Quit(struct TPPLexer *__restrict self) {
   TPPLexer_Current = self;
 #endif /* !TPP_CONFIG_ONELEXER */
   while (self->l_ifdef.is_slotc--) {
-   if (!TPPLexer_Warn(W_IF_WITHOUT_ENDIF,&self->l_ifdef.is_slotv[
+   if (!WARN(W_IF_WITHOUT_ENDIF,&self->l_ifdef.is_slotv[
                                           self->l_ifdef.is_slotc])) break;
   }
 #if !TPP_CONFIG_ONELEXER
@@ -3880,7 +3905,7 @@ TPPLexer_GetExtension(char const *__restrict name) {
      !memcmp(iter->e_name,name,name_size*sizeof(char))) {
    id = (size_t)(iter-tpp_extensions);
    /* Found it! */
-   return !!TPPLexer_HasExtension(id);
+   return !!HAS(id);
   }
   ++iter;
  }
@@ -3894,13 +3919,13 @@ rehash_keywords(size_t newsize) {
  struct TPPKeyword **newvec,*iter,*next,**bucket;
  struct TPPKeyword **bucket_iter,**bucket_end;
  assert(newsize);
- assert(current.l_keywords.km_bucketc);
- assert(current.l_keywords.km_bucketv);
- assert(newsize > current.l_keywords.km_bucketc);
+ assert(CURRENT.l_keywords.km_bucketc);
+ assert(CURRENT.l_keywords.km_bucketv);
+ assert(newsize > CURRENT.l_keywords.km_bucketc);
  newvec = (struct TPPKeyword **)calloc(newsize,sizeof(struct TPPKeyword *));
  if unlikely(!newvec) return; /* Ignore errors here. */
- bucket_end = (bucket_iter = current.l_keywords.km_bucketv)+
-                             current.l_keywords.km_bucketc;
+ bucket_end = (bucket_iter = CURRENT.l_keywords.km_bucketv)+
+                             CURRENT.l_keywords.km_bucketc;
  for (; bucket_iter != bucket_end; ++bucket_iter) {
   iter = *bucket_iter;
   while (iter) {
@@ -3912,9 +3937,9 @@ rehash_keywords(size_t newsize) {
    iter = next;
   }
  }
- free(current.l_keywords.km_bucketv);
- current.l_keywords.km_bucketc = newsize;
- current.l_keywords.km_bucketv = newvec;
+ free(CURRENT.l_keywords.km_bucketv);
+ CURRENT.l_keywords.km_bucketc = newsize;
+ CURRENT.l_keywords.km_bucketv = newvec;
 }
 
 PUBLIC struct TPPKeyword *
@@ -3925,13 +3950,13 @@ TPPLexer_LookupKeyword(char const *name, size_t namelen,
  assert(TPPLexer_Current);
  namehash = hashof(name,namelen);
  /* Try to rehash the keyword map. */
- if (TPPKeywordMap_SHOULDHASH(&current.l_keywords)) {
-  rehash_keywords(current.l_keywords.km_entryc);
+ if (TPPKeywordMap_SHOULDHASH(&CURRENT.l_keywords)) {
+  rehash_keywords(CURRENT.l_keywords.km_entryc);
  }
- assert(current.l_keywords.km_bucketc);
- assert(current.l_keywords.km_bucketv);
- bucket = &current.l_keywords.km_bucketv[namehash %
-           current.l_keywords.km_bucketc];
+ assert(CURRENT.l_keywords.km_bucketc);
+ assert(CURRENT.l_keywords.km_bucketv);
+ bucket = &CURRENT.l_keywords.km_bucketv[namehash %
+           CURRENT.l_keywords.km_bucketc];
  kwd_entry = *bucket;
  while (kwd_entry) {
   if (kwd_entry->k_hash == namehash &&
@@ -3948,7 +3973,7 @@ TPPLexer_LookupKeyword(char const *name, size_t namelen,
  /* Setup the new keyword entry. */
  kwd_entry->k_rare     = NULL;
  kwd_entry->k_macro    = NULL;
- kwd_entry->k_id       = _KWD_BACK+(current.l_keywords.km_entryc++); /* Unique user-keyword ID. */
+ kwd_entry->k_id       = _KWD_BACK+(CURRENT.l_keywords.km_entryc++); /* Unique user-keyword ID. */
  kwd_entry->k_size     = namelen;
  kwd_entry->k_hash     = namehash;
  memcpy(kwd_entry->k_name,name,namelen*sizeof(char));
@@ -3966,8 +3991,8 @@ TPPLexer_LookupKeywordID(tok_t id) {
  if (!TPP_ISUSERKEYWORD(id)) return builtin_keywords[id-TOK_KEYWORD_BEGIN];
 #endif
  /* The slow way: Check _every_ keyword in the worst case. */
- bucket_end = (bucket_iter = current.l_keywords.km_bucketv)+
-                             current.l_keywords.km_bucketc;
+ bucket_end = (bucket_iter = CURRENT.l_keywords.km_bucketv)+
+                             CURRENT.l_keywords.km_bucketc;
  for (; bucket_iter != bucket_end; ++bucket_iter) {
   iter = *bucket_iter;
   while (iter) {
@@ -4081,20 +4106,20 @@ PUBLIC int TPPLexer_PushInclude(void) {
  assert(TPPLexer_Current);
  oldstate = (struct TPPIncludeList *)malloc(sizeof(struct TPPIncludeList));
  if unlikely(!oldstate) return 0;
- memcpy(oldstate,&current.l_syspaths,sizeof(struct TPPIncludeList));
+ memcpy(oldstate,&CURRENT.l_syspaths,sizeof(struct TPPIncludeList));
  /* Allocate memory for a copy of the #include-vector. */
- current.l_syspaths.il_pathv = (struct TPPString **)malloc(oldstate->il_pathc*
+ CURRENT.l_syspaths.il_pathv = (struct TPPString **)malloc(oldstate->il_pathc*
                                                            sizeof(struct TPPString *));
- if unlikely(!current.l_syspaths.il_pathv) goto err_oldstate;
- memcpy(current.l_syspaths.il_pathv,oldstate->il_pathv,
+ if unlikely(!CURRENT.l_syspaths.il_pathv) goto err_oldstate;
+ memcpy(CURRENT.l_syspaths.il_pathv,oldstate->il_pathv,
         oldstate->il_pathc*sizeof(struct TPPString *));
  /* Generate references to the #include-paths for our vector copy. */
  end = (iter = oldstate->il_pathv)+oldstate->il_pathc;
  for (; iter != end; ++iter) TPPString_Incref(*iter);
- current.l_syspaths.il_prev = oldstate; /*< Inherit pointer. */
+ CURRENT.l_syspaths.il_prev = oldstate; /*< Inherit pointer. */
  return 1;
 err_oldstate:
- memcpy(&current.l_syspaths,oldstate,sizeof(struct TPPIncludeList));
+ memcpy(&CURRENT.l_syspaths,oldstate,sizeof(struct TPPIncludeList));
  free(oldstate);
  return 0;
 }
@@ -4102,15 +4127,15 @@ PUBLIC int TPPLexer_PopInclude(void) {
  struct TPPIncludeList *oldstate;
  struct TPPString **iter,**end;
  assert(TPPLexer_Current);
- oldstate = current.l_syspaths.il_prev;
+ oldstate = CURRENT.l_syspaths.il_prev;
  if unlikely(!oldstate) return 0;
- end = (iter = current.l_syspaths.il_pathv)+
-               current.l_syspaths.il_pathc;
+ end = (iter = CURRENT.l_syspaths.il_pathv)+
+               CURRENT.l_syspaths.il_pathc;
  /* Cleanup include paths we're about to drop. */
  for (; iter != end; ++iter) TPPString_Decref(*iter);
- free(current.l_syspaths.il_pathv);
+ free(CURRENT.l_syspaths.il_pathv);
  /* Restore the data from the old state. */
- memcpy(&current.l_syspaths,oldstate,sizeof(struct TPPIncludeList));
+ memcpy(&CURRENT.l_syspaths,oldstate,sizeof(struct TPPIncludeList));
  free(oldstate);
  return 1;
 }
@@ -4125,8 +4150,8 @@ TPPLexer_AddIncludePath(char *__restrict path, size_t pathsize) {
  while (pathsize && path[-1] == SEP) --pathsize;
  if unlikely(!pathsize) path = (char *)".",pathsize = 1;
  /* Make sure that the path doesn't already exists. */
- end = (iter = current.l_syspaths.il_pathv)+
-               current.l_syspaths.il_pathc;
+ end = (iter = CURRENT.l_syspaths.il_pathv)+
+               CURRENT.l_syspaths.il_pathc;
  for (; iter != end; ++iter) {
   if ((elem = *iter)->s_size == pathsize &&
      !memcmp(elem->s_text,path,pathsize*sizeof(char))
@@ -4134,12 +4159,12 @@ TPPLexer_AddIncludePath(char *__restrict path, size_t pathsize) {
  }
  elem = TPPString_New(path,pathsize);
  if unlikely(!elem) return 0;
- iter = (struct TPPString **)realloc(current.l_syspaths.il_pathv,
-                                    (current.l_syspaths.il_pathc+1)*
+ iter = (struct TPPString **)realloc(CURRENT.l_syspaths.il_pathv,
+                                    (CURRENT.l_syspaths.il_pathc+1)*
                                      sizeof(struct TPPString *));
  if unlikely(!iter) { TPPString_Decref(elem); return 0; }
- current.l_syspaths.il_pathv = iter;
- iter[current.l_syspaths.il_pathc++] = elem; /*< Inherit reference. */
+ CURRENT.l_syspaths.il_pathv = iter;
+ iter[CURRENT.l_syspaths.il_pathc++] = elem; /*< Inherit reference. */
  return 1;
 }
 PUBLIC int
@@ -4150,14 +4175,14 @@ TPPLexer_DelIncludePath(char *__restrict path, size_t pathsize) {
  while (pathsize && path[-1] == SEP) --pathsize;
  if unlikely(!pathsize) path = (char *)".",pathsize = 1;
  /* Make sure that the path doesn't already exists. */
- end = (iter = current.l_syspaths.il_pathv)+
-               current.l_syspaths.il_pathc;
+ end = (iter = CURRENT.l_syspaths.il_pathv)+
+               CURRENT.l_syspaths.il_pathc;
  for (; iter != end; ++iter) {
   if ((elem = *iter)->s_size == pathsize &&
      !memcmp(elem->s_text,path,pathsize*sizeof(char))) {
    /* Found it! */
    memmove(iter,iter+1,((end-iter)-1)*sizeof(struct TPPString *));
-   --current.l_syspaths.il_pathc;
+   --CURRENT.l_syspaths.il_pathc;
    TPPString_Decref(elem);
    return 1;
   }
@@ -4283,7 +4308,7 @@ check_path_spelling(char *filename, size_t filename_size) {
   if (find_handle && find_handle != INVALID_HANDLE_VALUE) {
    if (strcmp(filename_data.cFileName,part_begin)) {
     *next_sep = backup; /* This part of the path is cased differently. */
-    error = TPPLexer_Warn(W_NONPARTABLE_FILENAME_CASING,filename,part_begin,
+    error = WARN(W_NONPARTABLE_FILENAME_CASING,filename,part_begin,
                          (size_t)(next_sep-part_begin),filename_data.cFileName);
    } else {
     error = 1;
@@ -4326,8 +4351,8 @@ open_normal_file(char *filename, size_t filename_size,
  assert(!kwd_entry->k_rare->kr_file);
  kwd_entry->k_rare->kr_file = result; /*< Inherit reference. */
  /* Run the callback to notify of a new text file. */
- if ( current.l_callbacks.c_new_textfile &&
-   !(*current.l_callbacks.c_new_textfile)(result,is_system_header)) {
+ if ( CURRENT.l_callbacks.c_new_textfile &&
+   !(*CURRENT.l_callbacks.c_new_textfile)(result,is_system_header)) {
   kwd_entry->k_rare->kr_file = NULL;
   goto err_r;
  }
@@ -4369,7 +4394,7 @@ TPPLexer_OpenFile(int mode, char *filename, size_t filename_size,
  }
  buffer = NULL,buffersize = 0;
  if (mode&TPPLEXER_OPENFILE_MODE_RELATIVE) {
-  struct TPPFile *iter = token.t_file;
+  struct TPPFile *iter = TOKEN.t_file;
   /* Relative #include-mode (Scan for files relative to
    * the paths of all text files on the #include stack). */
   while ((assert(iter),iter != &TPPFile_Empty)) {
@@ -4429,8 +4454,8 @@ nextfile:
  /* Search system folders for this file. */
  {
   struct TPPString **iter,**begin,*elem;
-  iter = (begin = current.l_syspaths.il_pathv)+
-                  current.l_syspaths.il_pathc;
+  iter = (begin = CURRENT.l_syspaths.il_pathv)+
+                  CURRENT.l_syspaths.il_pathc;
 next_syspath:
   while (iter-- != begin) {
    elem = *iter;
@@ -4477,9 +4502,9 @@ next_syspath:
 check_unknown_file:
  result = NULL;
  if (!(mode&TPPLEXER_OPENFILE_FLAG_NOCALLBACK) &&
-      (current.l_callbacks.c_unknown_file)) {
+      (CURRENT.l_callbacks.c_unknown_file)) {
   /* Invoke the unknown-file callback. */
-  result = (*current.l_callbacks.c_unknown_file)(filename,filename_size);
+  result = (*CURRENT.l_callbacks.c_unknown_file)(filename,filename_size);
  }
 end_buffer: free(buffer);
 end: free(mfilename);
@@ -4571,15 +4596,15 @@ PUBLIC tok_t TPPLexer_YieldRaw(void) {
  char *iter,*end,*forward; tok_t ch;
  assert(TPPLexer_Current);
  /* Check for special lexer state. */
- if (current.l_flags&(TPPLEXER_FLAG_ERROR|TPPLEXER_FLAG_EOF_ON_PAREN)) {
+ if (CURRENT.l_flags&(TPPLEXER_FLAG_ERROR|TPPLEXER_FLAG_EOF_ON_PAREN)) {
   /* Refuse parsing more data if an error occurred. */
-  if (current.l_flags&TPPLEXER_FLAG_ERROR) return TOK_ERR;
-  assert(current.l_flags&TPPLEXER_FLAG_EOF_ON_PAREN);
+  if (CURRENT.l_flags&TPPLEXER_FLAG_ERROR) return TOK_ERR;
+  assert(CURRENT.l_flags&TPPLEXER_FLAG_EOF_ON_PAREN);
   /* Refuse to return anything other than EOF when eof-on-paren is
    * turned on an the parenthesis recursion has dropped to ZERO(0). */
-  if (!current.l_eof_paren) { return TOK = TOK_EOF; }
+  if (!CURRENT.l_eof_paren) { return TOK = TOK_EOF; }
  }
- file = token.t_file;
+ file = TOKEN.t_file;
 again:
  assert(file);
  iter = file->f_pos,end = file->f_end;
@@ -4588,7 +4613,7 @@ startover_iter:
  assert(!*end);
  assert(iter <= end);
  while (SKIP_WRAPLF(iter,end));
- token.t_begin = iter;
+ TOKEN.t_begin = iter;
  assert(iter <= end);
  /* Start reading data. */
  ch = (unsigned char)*iter++;
@@ -4607,14 +4632,14 @@ parse_multichar:
    if unlikely(iter > end) iter = end;
    /* Don't allow seek if the EOB flag is set or
     * the EOB file matches the current one. */
-   if ((current.l_flags&TPPLEXER_FLAG_NO_SEEK_ON_EOB) || 
-        current.l_eob_file == file) goto settok;
+   if ((CURRENT.l_flags&TPPLEXER_FLAG_NO_SEEK_ON_EOB) || 
+        CURRENT.l_eob_file == file) goto settok;
    /* Check for more data chunks within the current file. */
    file->f_pos = iter;
    if (TPPFile_NextChunk(file,TPPFILE_NEXTCHUNK_FLAG_NONE)) goto again;
    iter = file->f_pos,end = file->f_end;
-   if ((current.l_flags&TPPLEXER_FLAG_NO_POP_ON_EOF) ||
-        current.l_eof_file == file) goto settok;
+   if ((CURRENT.l_flags&TPPLEXER_FLAG_NO_POP_ON_EOF) ||
+        CURRENT.l_eof_file == file) goto settok;
    /* EOF (Check the include stack for more files) */
    if ((prev_file = file->f_prev) == NULL) {
     if (file == &TPPFile_Empty) goto settok;
@@ -4626,7 +4651,7 @@ parse_multichar:
    file->f_prev = NULL;
    on_popfile(file);
    TPPFile_Decref(file);
-   token.t_file = file = prev_file;
+   TOKEN.t_file = file = prev_file;
    goto again; /* Load the file again. */
 
   case '\r':
@@ -4634,7 +4659,7 @@ parse_multichar:
    ch = '\n';
   case '\n':
    /* Linefeed token. */
-   if (!(current.l_flags&TPPLEXER_FLAG_WANTLF)) goto startover_iter;
+   if (!(CURRENT.l_flags&TPPLEXER_FLAG_WANTLF)) goto startover_iter;
    goto settok;
 
   case '\'':
@@ -4642,23 +4667,23 @@ parse_multichar:
    /* Scan forward until the end of the string/character. */
    while (iter != end && *iter != (char)ch) {
     while (SKIP_WRAPLF(iter,end));
-    if ((current.l_flags&TPPLEXER_FLAG_TERMINATE_STRING_LF) && tpp_islforzero(*iter)) {
-     if unlikely(!TPPLexer_Warn(W_STRING_TERMINATED_BY_LINEFEED)) goto err;
+    if ((CURRENT.l_flags&TPPLEXER_FLAG_TERMINATE_STRING_LF) && tpp_islforzero(*iter)) {
+     if unlikely(!WARN(W_STRING_TERMINATED_BY_LINEFEED)) goto err;
      break;
     }
     if (*iter == '\\' && iter != end &&
-      !(current.l_flags&TPPLEXER_FLAG_INCLUDESTRING)) ++iter;
+      !(CURRENT.l_flags&TPPLEXER_FLAG_INCLUDESTRING)) ++iter;
     ++iter;
    }
         if (*iter == (char)ch) ++iter;
-   else if (iter == end && unlikely(!TPPLexer_Warn(W_STRING_TERMINATED_BY_EOF))) goto err;
+   else if (iter == end && unlikely(!WARN(W_STRING_TERMINATED_BY_EOF))) goto err;
    /* Warn amount if multi-char constants if they are not enabled. */
    if (ch == '\'' && !HAVE_EXTENSION_MULTICHAR_CONST) {
-    char *char_begin = token.t_begin+1,*char_end = iter;
+    char *char_begin = TOKEN.t_begin+1,*char_end = iter;
     assert(char_end >= char_begin);
     if (char_end != char_begin && char_end[-1] == '\'') --char_end;
     if (TPP_SizeofUnescape(char_begin,(size_t)(char_end-char_begin)) != 1) {
-     if unlikely(!TPPLexer_Warn(W_MULTICHAR_NOT_ALLOWED,char_begin,
+     if unlikely(!WARN(W_MULTICHAR_NOT_ALLOWED,char_begin,
                                (size_t)(char_end-char_begin))) goto err;
     }
    }
@@ -4681,7 +4706,7 @@ parse_multichar:
      case '?':             break; /* ??? */
      default: goto settok;
     }
-    if unlikely(!TPPLexer_Warn(W_ENCOUNTERED_TRIGRAPH,iter-1)) goto err;
+    if unlikely(!WARN(W_ENCOUNTERED_TRIGRAPH,iter-1)) goto err;
     iter += 2;
     if (tpp_ismultichar(ch)) goto parse_multichar;
    }
@@ -4695,7 +4720,7 @@ parse_multichar:
     while (SKIP_WRAPLF(forward,end));
     /* Check for tri-char: '<<<' / '>>>' */
     if (*forward == ch) {
-     if (current.l_extokens&TPPLEXER_TOKEN_ANGLE3_EQUAL) {
+     if (CURRENT.l_extokens&TPPLEXER_TOKEN_ANGLE3_EQUAL) {
       char *forward2 = forward+1;
       while (SKIP_WRAPLF(forward2,end));
       if (*forward2 == '=') {
@@ -4704,7 +4729,7 @@ parse_multichar:
        goto settok;
       }
      }
-     if (current.l_extokens&TPPLEXER_TOKEN_ANGLE3) {
+     if (CURRENT.l_extokens&TPPLEXER_TOKEN_ANGLE3) {
       ch = (ch == '<' ? TOK_LANGLE3 : TOK_RANGLE3);
       iter = ++forward;
       goto settok;
@@ -4717,7 +4742,7 @@ parse_multichar:
     goto settok;
    }
    /* Check for lower-greater: '<>' */
-   if (*forward == '>' && ch == '<' && (current.l_extokens&TPPLEXER_TOKEN_LOGT)) { ch = TOK_LOGT; goto settok_forward1; }
+   if (*forward == '>' && ch == '<' && (CURRENT.l_extokens&TPPLEXER_TOKEN_LOGT)) { ch = TOK_LOGT; goto settok_forward1; }
    if (*forward == '=') { ch = (ch == '<' ? TOK_LOWER_EQUAL : TOK_GREATER_EQUAL); goto settok_forward1; }
    if (HAVE_FEATURE_DIGRAPHS && ch == '<') {
     if (*forward == '%') { ch = '{'; goto settok_forward1; } /* [<%] --> [{] */
@@ -4727,7 +4752,7 @@ parse_multichar:
 
   case '=':
    if (*forward == '=') { ch = TOK_EQUAL; goto settok_forward1; }
-   if (!(current.l_extokens&TPPLEXER_TOKEN_EQUALBINOP)) goto settok;
+   if (!(CURRENT.l_extokens&TPPLEXER_TOKEN_EQUALBINOP)) goto settok;
    /*< '=<<', '=>>', '=>>>', '=<<<', '=@' and '=**' */
    switch (*forward) {
    case '+': ch = TOK_ADD_EQUAL; break;
@@ -4738,14 +4763,14 @@ parse_multichar:
    case '|': ch = TOK_OR_EQUAL; break;
    case '^': ch = TOK_XOR_EQUAL; break;
    case '*':
-    if (current.l_extokens&TPPLEXER_TOKEN_STARSTAR) {
+    if (CURRENT.l_extokens&TPPLEXER_TOKEN_STARSTAR) {
      char *forward2 = forward+1;
      while (SKIP_WRAPLF(forward2,end));
      if (*forward2 == '*') { iter = ++forward2; ch = TOK_POW_EQUAL; goto settok; }
     }
     ch = TOK_MUL_EQUAL;
     break;
-   case '@': if (!(current.l_extokens&TPPLEXER_TOKEN_ATEQUAL)) goto settok; ch = TOK_XOR_EQUAL; break;
+   case '@': if (!(CURRENT.l_extokens&TPPLEXER_TOKEN_ATEQUAL)) goto settok; ch = TOK_XOR_EQUAL; break;
    {
     char *forward2;
    case '<': case '>':
@@ -4754,7 +4779,7 @@ parse_multichar:
     if (*forward2 == *forward) {
      iter = ++forward2;
      ch = (*forward2 == '<') ? TOK_LANGLE2_EQUAL : TOK_RANGLE2_EQUAL;
-     if (current.l_extokens&TPPLEXER_TOKEN_ANGLE3_EQUAL) {
+     if (CURRENT.l_extokens&TPPLEXER_TOKEN_ANGLE3_EQUAL) {
       /* Check for 3-range inplace tokens. */
       while (SKIP_WRAPLF(forward2,end));
       if (*forward2 == ch) {
@@ -4777,7 +4802,7 @@ parse_multichar:
 
   case '.':
    if (*forward == '*' &&
-      (current.l_extokens&TPPLEXER_TOKEN_DOTSTAR)) { ch = TOK_DOT_STAR; goto settok_forward1; }
+      (CURRENT.l_extokens&TPPLEXER_TOKEN_DOTSTAR)) { ch = TOK_DOT_STAR; goto settok_forward1; }
    if (*forward == '.') {
     char *after_second = ++forward;
     while (SKIP_WRAPLF(forward,end));
@@ -4785,7 +4810,7 @@ parse_multichar:
      ch = TOK_DOTS;
      iter = forward+1;
      goto settok;
-    } else if (current.l_extokens&TPPLEXER_TOKEN_DOTDOT) {
+    } else if (CURRENT.l_extokens&TPPLEXER_TOKEN_DOTDOT) {
      ch = TOK_DOTDOT;
      iter = after_second;
     }
@@ -4805,9 +4830,9 @@ parse_multichar:
    if (*forward == '=') { ch = TOK_SUB_EQUAL; goto settok_forward1; }
    if (*forward == '-') { ch = TOK_DEC; goto settok_forward1; }
    if (*forward == '>' &&
-      (current.l_extokens&(TPPLEXER_TOKEN_ARROW|TPPLEXER_TOKEN_ARROWSTAR))) {
+      (CURRENT.l_extokens&(TPPLEXER_TOKEN_ARROW|TPPLEXER_TOKEN_ARROWSTAR))) {
     char *after_arrow = ++forward;
-    if (current.l_flags&TPPLEXER_TOKEN_ARROWSTAR) {
+    if (CURRENT.l_flags&TPPLEXER_TOKEN_ARROWSTAR) {
      while (SKIP_WRAPLF(forward,end));
      if (*forward == '*') {
       iter = forward;
@@ -4815,7 +4840,7 @@ parse_multichar:
       goto settok_forward1;
      }
     }
-    if (current.l_extokens&TPPLEXER_TOKEN_ARROW) {
+    if (CURRENT.l_extokens&TPPLEXER_TOKEN_ARROW) {
      ch = TOK_ARROW;
      iter = after_arrow;
     }
@@ -4824,24 +4849,24 @@ parse_multichar:
 
   case '*':
    if (*forward == '*' &&
-      (current.l_extokens&TPPLEXER_TOKEN_STARSTAR)) { ch = TOK_POW; goto settok_forward1; }
+      (CURRENT.l_extokens&TPPLEXER_TOKEN_STARSTAR)) { ch = TOK_POW; goto settok_forward1; }
    if (*forward == '=') { ch = TOK_MUL_EQUAL; goto settok_forward1; }
    if (*forward == '/') {
-    if (!TPPLexer_Warn(W_STARSLASH_OUTSIDE_OF_COMMENT,iter-1)) goto err;
+    if (!WARN(W_STARSLASH_OUTSIDE_OF_COMMENT,iter-1)) goto err;
    }
    goto settok;
 
   case '/':
    if (*forward == '=') { ch = TOK_DIV_EQUAL; goto settok_forward1; }
    if (*forward == '*' &&
-      (current.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
+      (CURRENT.l_extokens&TPPLEXER_TOKEN_C_COMMENT)) {
     /* Parse a multi-line-comment. */
     ++forward;
     if (forward == end) ch = 0;
     else for (;;) {
      ch = *forward;
      if (!ch && forward == end) {
-      if unlikely(!TPPLexer_Warn(W_COMMENT_TERMINATED_BY_EOF)) goto err;
+      if unlikely(!WARN(W_COMMENT_TERMINATED_BY_EOF)) goto err;
       break;
      }
      ++forward;
@@ -4851,28 +4876,28 @@ parse_multichar:
      } else if (ch == '/') {
       while (SKIP_WRAPLF(forward,end));
       if (*forward == '*' &&
-          !TPPLexer_Warn(W_SLASHSTAR_INSIDE_OF_COMMENT,forward)) goto err;
+          !WARN(W_SLASHSTAR_INSIDE_OF_COMMENT,forward)) goto err;
      }
     }
     iter = forward;
     if (ch) ++iter;
     assert(iter <= end);
-    if unlikely(!(current.l_flags&TPPLEXER_FLAG_WANTCOMMENTS)) goto startover_iter;
+    if unlikely(!(CURRENT.l_flags&TPPLEXER_FLAG_WANTCOMMENTS)) goto startover_iter;
     goto set_comment;
    }
    if (*forward == '/' &&
-      (current.l_extokens&TPPLEXER_TOKEN_CPP_COMMENT)) {
+      (CURRENT.l_extokens&TPPLEXER_TOKEN_CPP_COMMENT)) {
     /* Parse a line-comment. */
     do {
      ++forward;
      while (SKIP_WRAPLF(forward,end)) {
-      if unlikely(!TPPLexer_Warn(W_LINE_COMMENT_CONTINUED)) goto err;
+      if unlikely(!WARN(W_LINE_COMMENT_CONTINUED)) goto err;
      }
     } while (!tpp_islforzero(*forward));
-    if (!(current.l_flags&TPPLEXER_FLAG_COMMENT_NOOWN_LF) &&
+    if (!(CURRENT.l_flags&TPPLEXER_FLAG_COMMENT_NOOWN_LF) &&
        (*forward && *forward++ == '\r' && *forward == '\n')) ++forward;
     iter = forward;
-    if unlikely(!(current.l_flags&TPPLEXER_FLAG_WANTCOMMENTS)) goto startover_iter;
+    if unlikely(!(CURRENT.l_flags&TPPLEXER_FLAG_WANTCOMMENTS)) goto startover_iter;
 set_comment:
     ch = TOK_COMMENT;
    }
@@ -4907,7 +4932,7 @@ set_comment:
     goto settok_forward1;
    }
    if (*forward == (char)ch &&
-      ((current.l_extokens&TPPLEXER_TOKEN_ROOFROOF) || ch != '^')) {
+      ((CURRENT.l_extokens&TPPLEXER_TOKEN_ROOFROOF) || ch != '^')) {
     ch = (ch == '&') ? TOK_LAND :
          (ch == '|') ? TOK_LOR :
                        TOK_LXOR;
@@ -4922,7 +4947,7 @@ set_comment:
   case '~':
    /* NOTE: '~~' tokens can be disabled. */
    if (*forward == '~' &&
-      (current.l_extokens&TPPLEXER_TOKEN_TILDETILDE)) {
+      (CURRENT.l_extokens&TPPLEXER_TOKEN_TILDETILDE)) {
     ch = TOK_TILDE_TILDE;
     goto settok_forward1;
    }
@@ -4930,30 +4955,30 @@ set_comment:
 
   case ':':
    if (*forward == ':' &&
-      (current.l_extokens&TPPLEXER_TOKEN_COLLONCOLLON)) { ch = TOK_COLLON_COLLON; goto settok_forward1; }
+      (CURRENT.l_extokens&TPPLEXER_TOKEN_COLLONCOLLON)) { ch = TOK_COLLON_COLLON; goto settok_forward1; }
    if (*forward == '=' &&
-      (current.l_extokens&TPPLEXER_TOKEN_COLLONASSIGN)) { ch = TOK_COLLON_EQUAL; goto settok_forward1; }
+      (CURRENT.l_extokens&TPPLEXER_TOKEN_COLLONASSIGN)) { ch = TOK_COLLON_EQUAL; goto settok_forward1; }
    if (HAVE_FEATURE_DIGRAPHS &&
        *forward == '>') { ch = ']'; goto settok_forward1; } /* [:>] --> []] */
    goto settok;
 
   case '@':
    if (*forward == '=' &&
-      (current.l_extokens&TPPLEXER_TOKEN_ATEQUAL)) { ch = TOK_AT_EQUAL; goto settok_forward1; }
+      (CURRENT.l_extokens&TPPLEXER_TOKEN_ATEQUAL)) { ch = TOK_AT_EQUAL; goto settok_forward1; }
    goto settok;
 
   case '(':
   case ')':
-   if (current.l_flags&TPPLEXER_FLAG_EOF_ON_PAREN) {
+   if (CURRENT.l_flags&TPPLEXER_FLAG_EOF_ON_PAREN) {
     /* Handle EOF parenthesis recursion. */
-    assert(current.l_eof_paren); /* Already checked above. */
-         if (ch == '(') ++current.l_eof_paren;
-    else if (!--current.l_eof_paren) ch = TOK_EOF;
+    assert(CURRENT.l_eof_paren); /* Already checked above. */
+         if (ch == '(') ++CURRENT.l_eof_paren;
+    else if (!--CURRENT.l_eof_paren) ch = TOK_EOF;
    }
    goto settok;
 
   case '$':
-   if ((current.l_extokens&TPPLEXER_TOKEN_DOLLAR) ||
+   if ((CURRENT.l_extokens&TPPLEXER_TOKEN_DOLLAR) ||
        !HAVE_EXTENSION_DOLLAR_IS_ALPHA) goto settok;
   default:
    if (tpp_isalpha(ch) || (HAVE_EXTENSION_EXTENDED_IDENTS && tpp_isansi(ch))) {
@@ -4973,29 +4998,29 @@ set_comment:
      ++iter,++name_size;
     }
     /* Lookup/generate the token id of this keyword. */
-    name_escapesize = (size_t)(iter-token.t_begin);
+    name_escapesize = (size_t)(iter-TOKEN.t_begin);
     if (name_size == name_escapesize) {
-     kwd_entry = TPPLexer_LookupKeyword(token.t_begin,name_size,1);
+     kwd_entry = TPPLexer_LookupKeyword(TOKEN.t_begin,name_size,1);
     } else {
-     kwd_entry = lookup_escaped_keyword(token.t_begin,name_escapesize,name_size,1);
+     kwd_entry = lookup_escaped_keyword(TOKEN.t_begin,name_escapesize,name_size,1);
     }
     if unlikely(!kwd_entry) goto seterr;
     ch = kwd_entry->k_id;
-    token.t_id = kwd_entry->k_id;
-    token.t_kwd = kwd_entry;
+    TOKEN.t_id = kwd_entry->k_id;
+    TOKEN.t_kwd = kwd_entry;
     if (kwd_entry->k_rare &&
        (kwd_entry->k_rare->kr_flags&TPP_KEYWORDFLAG_IS_DEPRECATED) &&
-      !(current.l_flags&TPPLEXER_FLAG_NO_DEPRECATED)) {
+      !(CURRENT.l_flags&TPPLEXER_FLAG_NO_DEPRECATED)) {
      /* Check 'kwd_entry' for being a keyword marked as '#pragma deprecated'.
       * If it is, emit a warning. */
-     token.t_end = iter;
-     if (!TPPLexer_Warn(W_DEPRECATED_IDENTIFIER,kwd_entry)) goto err;
+     TOKEN.t_end = iter;
+     if (!WARN(W_DEPRECATED_IDENTIFIER,kwd_entry)) goto err;
     }
     break;
    }
    if (tpp_isdigit(ch)) {
     /* Integer/float. */
-    token.t_id = TOK_INT;
+    TOKEN.t_id = TOK_INT;
     for (;;) {
      while (SKIP_WRAPLF(iter,end));
 continue_int:
@@ -5003,14 +5028,14 @@ continue_int:
       switch (*iter) {
        case '.':
         /* Switch to a float-token for the first encountered dot. */
-        if (token.t_id == TOK_FLOAT) goto done;
-        token.t_id = TOK_FLOAT;
+        if (TOKEN.t_id == TOK_FLOAT) goto done;
+        TOKEN.t_id = TOK_FLOAT;
         break;
        case 'e':
        case 'E':
         /* Exponent suffix for floating-point.
          * >> Past this, we must allow for an immediate '+' or '-' */
-        if (token.t_id != TOK_FLOAT) goto done;
+        if (TOKEN.t_id != TOK_FLOAT) goto done;
         ++iter;
         while (SKIP_WRAPLF(iter,end));
         /* If it's not a '+' or '-', parse the character normally. */
@@ -5031,7 +5056,7 @@ whitespace:
      if (!tpp_isspace_nolf(*iter) || iter == end) break;
      ++iter;
     }
-    if (!(current.l_flags&TPPLEXER_FLAG_WANTSPACE)) goto startover_iter;
+    if (!(CURRENT.l_flags&TPPLEXER_FLAG_WANTSPACE)) goto startover_iter;
     ch = TOK_SPACE;
    }
    goto settok;
@@ -5040,7 +5065,7 @@ settok_forward1:
 settok:
    /* default case: Single-character token.
     * NOTE: These all share their ids with the character decimal. */
-   token.t_id = (tok_t)ch;
+   TOKEN.t_id = (tok_t)ch;
    break;
  }
  assert(end == file->f_end);
@@ -5049,9 +5074,9 @@ done:
  assert(iter >= file->f_pos);
  assert(iter <= end);
  file->f_pos = iter;
- token.t_end = iter;
- ++token.t_num;
- return token.t_id;
+ TOKEN.t_end = iter;
+ ++TOKEN.t_num;
+ return TOKEN.t_id;
 seterr: TPPLexer_SetErr();
 err: ch = (tok_t)TOK_ERR; goto settok;
 }
@@ -5064,8 +5089,8 @@ PRIVATE int at_start_of_line(void) {
  char *line_begin,*file_begin;
  /* Check if the current token is at the start of
   * a line and perform a preprocessor directive. */
- file_begin = token.t_file->f_begin;
- line_begin = token.t_begin;
+ file_begin = TOKEN.t_file->f_begin;
+ line_begin = TOKEN.t_begin;
  /* NOTE: Due to how chunks are read from files, we can rely
   *       on the fact that nothing until to start of the current
   *       line is part of a previous chunk, meaning that we are
@@ -5096,21 +5121,21 @@ PRIVATE void on_popfile(struct TPPFile *file) {
   file->f_textfile.f_flags   |= TPP_TEXTFILE_FLAG_NOGUARD;
   file->f_textfile.f_newguard = NULL;
  }
- while (current.l_ifdef.is_slotc &&
-       (slot = &current.l_ifdef.is_slotv[current.l_ifdef.is_slotc-1],
+ while (CURRENT.l_ifdef.is_slotc &&
+       (slot = &CURRENT.l_ifdef.is_slotv[CURRENT.l_ifdef.is_slotc-1],
         slot->iss_file == file)) {
-  TPPLexer_Warn(W_IF_WITHOUT_ENDIF,slot);
-  --current.l_ifdef.is_slotc;
+  WARN(W_IF_WITHOUT_ENDIF,slot);
+  --CURRENT.l_ifdef.is_slotc;
  }
 }
 PUBLIC void TPPLexer_PopFile(void) {
- struct TPPFile *popfile = token.t_file;
+ struct TPPFile *popfile = TOKEN.t_file;
  assert(popfile);
- assert(popfile != current.l_eob_file);
- assert(popfile != current.l_eof_file);
- if ((token.t_file = popfile->f_prev) == NULL) {
+ assert(popfile != CURRENT.l_eob_file);
+ assert(popfile != CURRENT.l_eof_file);
+ if ((TOKEN.t_file = popfile->f_prev) == NULL) {
   TPPFile_Incref(&TPPFile_Empty);
-  token.t_file = &TPPFile_Empty;
+  TOKEN.t_file = &TPPFile_Empty;
  }
  popfile->f_prev = NULL;
  on_popfile(popfile);
@@ -5119,24 +5144,24 @@ PUBLIC void TPPLexer_PopFile(void) {
 
 PRIVATE struct TPPIfdefStackSlot *alloc_ifdef(int mode) {
  struct TPPIfdefStackSlot *result;
- result = current.l_ifdef.is_slotv;
- if (current.l_ifdef.is_slota == current.l_ifdef.is_slotc) {
-  size_t newalloc = current.l_ifdef.is_slota ? current.l_ifdef.is_slota*2 : 2;
+ result = CURRENT.l_ifdef.is_slotv;
+ if (CURRENT.l_ifdef.is_slota == CURRENT.l_ifdef.is_slotc) {
+  size_t newalloc = CURRENT.l_ifdef.is_slota ? CURRENT.l_ifdef.is_slota*2 : 2;
   result = (struct TPPIfdefStackSlot *)realloc(result,newalloc*sizeof(struct TPPIfdefStackSlot));
   if unlikely(!result) return NULL;
-  current.l_ifdef.is_slota = newalloc;
-  current.l_ifdef.is_slotv = result;
+  CURRENT.l_ifdef.is_slota = newalloc;
+  CURRENT.l_ifdef.is_slotv = result;
  }
- result += current.l_ifdef.is_slotc++;
+ result += CURRENT.l_ifdef.is_slotc++;
  result->iss_mode = mode;
- result->iss_file = token.t_file;
+ result->iss_file = TOKEN.t_file;
  result->iss_line = TPPLexer_LINE();
  return result;
 }
 
 PRIVATE int do_skip_pp_block(void) {
  unsigned int recursion = 1;
- uint32_t oldflags = current.l_flags;
+ uint32_t oldflags = CURRENT.l_flags;
  for (;;) {
   if (TOK != '#' || !at_start_of_line()) {
    if (TPPLexer_YieldRaw() <= 0) break;
@@ -5145,7 +5170,7 @@ PRIVATE int do_skip_pp_block(void) {
     *    >> Otherwise, we might get incorrect syntax because this line may
     *       contain an incomplete string ("#error a'b" is complete)
     */
-   current.l_flags = oldflags|(TPPLEXER_FLAG_TERMINATE_STRING_LF|
+   CURRENT.l_flags = oldflags|(TPPLEXER_FLAG_TERMINATE_STRING_LF|
                                TPPLEXER_FLAG_WANTLF|
                                TPPLEXER_FLAG_COMMENT_NOOWN_LF);
    TPPLexer_YieldRaw();
@@ -5157,7 +5182,7 @@ PRIVATE int do_skip_pp_block(void) {
    }
    /* Scan until the end of the line. */
    while (TOK > 0 && TOK != '\n') TPPLexer_YieldRaw();
-   current.l_flags = oldflags;
+   CURRENT.l_flags = oldflags;
    TPPLexer_YieldRaw();
   }
  }
@@ -5167,11 +5192,11 @@ PRIVATE int skip_pp_block(void) {
  int result;
  pushf();
  /* Disable unnecessary tokens. */
- current.l_flags &= ~(TPPLEXER_FLAG_WANTLF|
+ CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTLF|
                       TPPLEXER_FLAG_WANTSPACE|
                       TPPLEXER_FLAG_WANTCOMMENTS);
  /* Warnings don't need to be emit. */
- current.l_flags |= TPPLEXER_FLAG_NO_WARNINGS;
+ CURRENT.l_flags |= TPPLEXER_FLAG_NO_WARNINGS;
  result = do_skip_pp_block();
  popf();
  return result;
@@ -5180,30 +5205,30 @@ PRIVATE int skip_pp_block(void) {
 PRIVATE int parse_include_string(char **begin, char **end) {
  int result = 1;
  pushf();
- current.l_flags &= ~(TPPLEXER_FLAG_WANTLF|
+ CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTLF|
                       TPPLEXER_FLAG_WANTSPACE|
                       TPPLEXER_FLAG_WANTCOMMENTS);
- current.l_flags |= TPPLEXER_FLAG_INCLUDESTRING;
+ CURRENT.l_flags |= TPPLEXER_FLAG_INCLUDESTRING;
  TPPLexer_Yield();
  if (TOK == '\"') {
   /* Relative #include-string. */
-  *begin = token.t_begin;
-  *end = token.t_end;
+  *begin = TOKEN.t_begin;
+  *end = TOKEN.t_end;
   if ((*end)[-1] == '\"') --*end;
  } else if (TOK == '<') {
   /* System #include-string. */
-  *begin = token.t_begin;
-  *end = (char *)memchr(token.t_end,'>',
-                       (size_t)(token.t_file->f_end-token.t_end));
-  if (!*end) *end = token.t_end;
+  *begin = TOKEN.t_begin;
+  *end = (char *)memchr(TOKEN.t_end,'>',
+                       (size_t)(TOKEN.t_file->f_end-TOKEN.t_end));
+  if (!*end) *end = TOKEN.t_end;
   else {
    /* Continue parsing _AFTER_ the '>' character! */
-   token.t_file->f_pos = (*end)+1;
+   TOKEN.t_file->f_pos = (*end)+1;
    --end;
   }
  } else {
-  TPPLexer_Warn(W_EXPECTED_INCLUDE_STRING);
-  token.t_file->f_pos = token.t_begin;
+  WARN(W_EXPECTED_INCLUDE_STRING);
+  TOKEN.t_file->f_pos = TOKEN.t_begin;
   result = 0;
  }
  assert(!result || *begin <= *end);
@@ -5217,20 +5242,20 @@ PUBLIC tok_t TPPLexer_YieldPP(void) {
 again:
  result = TPPLexer_YieldRaw();
  if (result == '#' &&
-     token.t_file->f_kind != TPPFILE_KIND_MACRO) {
-  char *hash_begin = token.t_begin;
-  if ((current.l_flags&(TPPLEXER_FLAG_NO_DIRECTIVES|TPPLEXER_FLAG_ASM_COMMENTS)) ==
+     TOKEN.t_file->f_kind != TPPFILE_KIND_MACRO) {
+  char *hash_begin = TOKEN.t_begin;
+  if ((CURRENT.l_flags&(TPPLEXER_FLAG_NO_DIRECTIVES|TPPLEXER_FLAG_ASM_COMMENTS)) ==
                         TPPLEXER_FLAG_NO_DIRECTIVES
       ) return result; /* Directives are not being parsed. */
   if (!at_start_of_line()) return result; /* Not actually a preprocessor directive! */
   pushf();
-  current.l_flags |= (TPPLEXER_FLAG_WANTLF|
+  CURRENT.l_flags |= (TPPLEXER_FLAG_WANTLF|
                       TPPLEXER_FLAG_TERMINATE_STRING_LF|
                       TPPLEXER_FLAG_COMMENT_NOOWN_LF);
-  current.l_flags &= ~(TPPLEXER_FLAG_WANTSPACE|TPPLEXER_FLAG_WANTCOMMENTS);
+  CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTSPACE|TPPLEXER_FLAG_WANTCOMMENTS);
   pusheob();
   /* Parse these are assembler comments. */
-  if (current.l_flags&TPPLEXER_FLAG_NO_DIRECTIVES) goto asm_comment;
+  if (CURRENT.l_flags&TPPLEXER_FLAG_NO_DIRECTIVES) goto asm_comment;
   result = TPPLexer_YieldRaw();
 parse_result_directive:
   switch (result) {
@@ -5243,7 +5268,7 @@ parse_result_directive:
    case '!':
     if (!HAVE_EXTENSION_SHEBANG) goto default_directive;
 def_skip_until_lf:
-    current.l_flags |= TPPLEXER_FLAG_WANTLF;
+    CURRENT.l_flags |= TPPLEXER_FLAG_WANTLF;
     while (TOK > 0 && TOK != '\n') TPPLexer_YieldRaw();
    } break;
 
@@ -5251,8 +5276,8 @@ def_skip_until_lf:
    case KWD_define:
     TPPLexer_YieldRaw();
     if (!TPP_ISKEYWORD(TOK)) {
-     if unlikely(!(current.l_flags&TPPLEXER_FLAG_ASM_COMMENTS) &&
-                 !TPPLexer_Warn(W_EXPECTED_KEYWORD_AFTER_DEFINE)) goto err;
+     if unlikely(!(CURRENT.l_flags&TPPLEXER_FLAG_ASM_COMMENTS) &&
+                 !WARN(W_EXPECTED_KEYWORD_AFTER_DEFINE)) goto err;
      goto def_skip_until_lf;
     } else {
      if unlikely(!TPPFile_NewDefine()) goto err;
@@ -5295,23 +5320,23 @@ def_skip_until_lf:
      *      (So much about intellisense being meant to behave
      *       just like your core compiler, Bill... *sigh*)
      */
-    current.l_flags |= (TPPLEXER_FLAG_NO_MACROS|
+    CURRENT.l_flags |= (TPPLEXER_FLAG_NO_MACROS|
                         TPPLEXER_FLAG_NO_DIRECTIVES|
                         TPPLEXER_FLAG_NO_BUILTIN_MACROS);
-    old_eof = token.t_file->f_end;
+    old_eof = TOKEN.t_file->f_end;
     /* Fake the file pointer to force an EOF where the pragma ends. */
-    new_eof = string_find_eol_after_comments(token.t_file->f_pos,old_eof);
+    new_eof = string_find_eol_after_comments(TOKEN.t_file->f_pos,old_eof);
     oldch = *new_eof,*new_eof = '\0';
-    token.t_file->f_end = new_eof;
+    TOKEN.t_file->f_end = new_eof;
     pragma_error = TPPLexer_ParsePragma();
-    assert(token.t_file->f_end == new_eof);
-    token.t_file->f_end = old_eof;
+    assert(TOKEN.t_file->f_end == new_eof);
+    TOKEN.t_file->f_end = old_eof;
     *new_eof = oldch;
-    if (!pragma_error && (current.l_flags&TPPLEXER_FLAG_EAT_UNKNOWN_PRAGMA)) pragma_error = 1;
-    while (token.t_file != current.l_eob_file) TPPLexer_PopFile();
-    assert(hash_begin >= token.t_file->f_begin);
-    assert(hash_begin <= token.t_file->f_end);
-    if (!pragma_error) token.t_file->f_pos = hash_begin; /* Restore the old file pointer. */
+    if (!pragma_error && (CURRENT.l_flags&TPPLEXER_FLAG_EAT_UNKNOWN_PRAGMA)) pragma_error = 1;
+    while (TOKEN.t_file != CURRENT.l_eob_file) TPPLexer_PopFile();
+    assert(hash_begin >= TOKEN.t_file->f_begin);
+    assert(hash_begin <= TOKEN.t_file->f_end);
+    if (!pragma_error) TOKEN.t_file->f_pos = hash_begin; /* Restore the old file pointer. */
     if (pragma_error) goto def_skip_until_lf;
     /* Must re-emit this #pragma. */
     breakeob();
@@ -5328,16 +5353,18 @@ def_skip_until_lf:
    case KWD_undef:
     TPPLexer_YieldRaw();
     if (!TPP_ISKEYWORD(TOK)) {
-     TPPLexer_Warn(W_EXPECTED_KEYWORD_AFTER_UNDEF);
+     WARN(W_EXPECTED_KEYWORD_AFTER_UNDEF);
     } else {
-     keyword = token.t_kwd;
+     keyword = TOKEN.t_kwd;
      assert(keyword);
      if (keyword->k_macro) {
-      TPPKeyword_Undef(keyword);
+      if (TPPKeyword_Getflags(keyword)&TPP_KEYWORDFLAG_LOCKED)
+          WARN(W_CANT_UNDEF_LOCKED_KEYWORD,keyword);
+      else TPPKeyword_Undef(keyword);
      } else if (TPP_ISBUILTINMACRO(TOK)) {
-      TPPLexer_Warn(W_CANT_UNDEF_BUILTIN_MACRO,keyword);
+      WARN(W_CANT_UNDEF_BUILTIN_MACRO,keyword);
      } else {
-      TPPLexer_Warn(W_MACRO_NOT_DEFINED,keyword);
+      WARN(W_MACRO_NOT_DEFINED,keyword);
      }
     }
     goto def_skip_until_lf;
@@ -5366,7 +5393,7 @@ def_skip_until_lf:
       if (textfile->f_textfile.f_usedname) TPPString_Decref(textfile->f_textfile.f_usedname);
       textfile->f_textfile.f_usedname = val.c_data.c_string; /*< Inherit data. */
      } else {
-      TPPLexer_Warn(W_EXPECTED_STRING_AFTER_LINE,&val);
+      WARN(W_EXPECTED_STRING_AFTER_LINE,&val);
      }
     }
     goto def_skip_until_lf;
@@ -5378,7 +5405,7 @@ def_skip_until_lf:
     /* NOTE: Only #error is officially endorsed by STD-C */
     if (FALSE) { case KWD_error:   wnum = W_ERROR; }
     if (FALSE) { case KWD_warning: wnum = W_WARNING; if (!HAVE_EXTENSION_WARNING) goto default_directive; }
-    messagefile = token.t_file;
+    messagefile = TOKEN.t_file;
     assert(messagefile);
     begin = messagefile->f_pos; /* First character after [error]|[warning] */
     end   = string_find_eol_after_comments(begin,messagefile->f_end);
@@ -5387,16 +5414,16 @@ def_skip_until_lf:
     LSTRIP_SPACE(begin,used_end);
     RSTRIP_SPACE(begin,used_end);
     /* Emit the warning/error. */
-    if (!TPPLexer_Warn(wnum,begin,(size_t)(used_end-begin))) goto err;
+    if (!WARN(wnum,begin,(size_t)(used_end-begin))) goto err;
     messagefile->f_pos = end;
    } break;
 
 #define ALLOW_LEGACY_GUARD(curfile) \
-    (!(current.l_flags&TPPLEXER_FLAG_NO_LEGACY_GUARDS) && /*< Detection of legacy guard is allowed. */\
+    (!(CURRENT.l_flags&TPPLEXER_FLAG_NO_LEGACY_GUARDS) && /*< Detection of legacy guard is allowed. */\
       ((curfile)->f_kind == TPPFILE_KIND_TEXT) &&         /*< The current file is a text-file. */\
       !((curfile)->f_textfile.f_cacheentry) &&            /*< The current file isn't a cache-reference. */\
-      (!current.l_ifdef.is_slotc ||                       /*< This is an outer-most block for this file. */\
-        current.l_ifdef.is_slotv[current.l_ifdef.is_slotc-1].iss_file != (curfile)) &&\
+      (!CURRENT.l_ifdef.is_slotc ||                       /*< This is an outer-most block for this file. */\
+        CURRENT.l_ifdef.is_slotv[CURRENT.l_ifdef.is_slotc-1].iss_file != (curfile)) &&\
       !((curfile)->f_textfile.f_guard) &&                 /*< The current file doesn't already have a guard. */\
       !((curfile)->f_textfile.f_flags&TPP_TEXTFILE_FLAG_NOGUARD)) /* The current file is allowed to have a guard. */
    {
@@ -5409,14 +5436,14 @@ def_skip_until_lf:
     ifndef_keyword = NULL;
     TPPLexer_YieldRaw();
     if (TPP_ISKEYWORD(TOK)) {
-     ifndef_keyword = token.t_kwd;
+     ifndef_keyword = TOKEN.t_kwd;
      assert(ifndef_keyword);
     } else {
-     TPPLexer_Warn(W_EXPECTED_KEYWORD_AFTER_IFDEF);
+     WARN(W_EXPECTED_KEYWORD_AFTER_IFDEF);
      ifndef_keyword = NULL;
     }
     if (block_mode) {
-     curfile = token.t_file;
+     curfile = TOKEN.t_file;
      /* #ifndef: Check if we're at the start of the file to setup a #include guard.
       * WARNING: This detection code will fail to recognize guards when the
       *          #ifndef isn't located within the first chunk of the file.
@@ -5480,22 +5507,22 @@ create_block:
    {
     struct TPPConst ifval;
    case KWD_if:
-    yield_fetch();
+    YIELD();
     /* Automatically detect '#if !defined FOO'/'#if !defined(FOO)'-style guards.
      * NOTE: During this special evaluation, there can't be any macros!
      *       This is required to ensure that the behavior of this code
      *       doesn't depend on the expansion of a macro that might change! */
-    if (TOK == '!' && current.l_eob_file == token.t_file &&
-       (curfile = token.t_file,ALLOW_LEGACY_GUARD(curfile))) {
+    if (TOK == '!' && CURRENT.l_eob_file == TOKEN.t_file &&
+       (curfile = TOKEN.t_file,ALLOW_LEGACY_GUARD(curfile))) {
      int has_paren;
-     char *expr_begin = token.t_begin;
+     char *expr_begin = TOKEN.t_begin;
      TPPLexer_YieldRaw();
      if (TOK != KWD_defined) goto not_a_guard;
      TPPLexer_YieldRaw();
      has_paren = TOK == '(';
      if (has_paren) TPPLexer_YieldRaw();
      if (!TPP_ISKEYWORD(TOK)) goto not_a_guard;
-     ifndef_keyword = token.t_kwd;
+     ifndef_keyword = TOKEN.t_kwd;
      TPPLexer_YieldRaw();
      assert(ifndef_keyword);
      if (has_paren) { if (TOK != ')') goto not_a_guard; TPPLexer_YieldRaw(); }
@@ -5504,15 +5531,15 @@ create_block:
      block_mode = 1;
      goto define_ifndef_guard;
 not_a_guard:
-     while (token.t_file != current.l_eob_file) TPPLexer_PopFile();
-     assert(expr_begin >= token.t_file->f_begin);
-     assert(expr_begin <= token.t_file->f_end);
-     token.t_file->f_pos = expr_begin;
-     yield_fetch();
+     while (TOKEN.t_file != CURRENT.l_eob_file) TPPLexer_PopFile();
+     assert(expr_begin >= TOKEN.t_file->f_begin);
+     assert(expr_begin <= TOKEN.t_file->f_end);
+     TOKEN.t_file->f_pos = expr_begin;
+     YIELD();
     }
     if unlikely(!TPPLexer_Eval(&ifval)) goto err;
     if (!TPPConst_IsBool(&ifval)) {
-     TPPLexer_Warn(W_EXPECTED_BOOL,&ifval);
+     WARN(W_EXPECTED_BOOL,&ifval);
      TPPConst_ToBool(&ifval);
     }
     block_mode = (int)ifval.c_data.c_int;
@@ -5523,12 +5550,12 @@ not_a_guard:
    {
     struct TPPIfdefStackSlot *else_slot;
    case KWD_elif:
-    if (!current.l_ifdef.is_slotc ||
-       (else_slot = &current.l_ifdef.is_slotv[current.l_ifdef.is_slotc-1],
-        else_slot->iss_file != token.t_file)) {
-     TPPLexer_Warn(W_ELIF_WITHOUT_IF);
+    if (!CURRENT.l_ifdef.is_slotc ||
+       (else_slot = &CURRENT.l_ifdef.is_slotv[CURRENT.l_ifdef.is_slotc-1],
+        else_slot->iss_file != TOKEN.t_file)) {
+     WARN(W_ELIF_WITHOUT_IF);
     } else if (else_slot->iss_mode&TPP_IFDEFMODE_ELSE) {
-     TPPLexer_Warn(W_ELIF_AFTER_ELSE,else_slot);
+     WARN(W_ELIF_AFTER_ELSE,else_slot);
     } else if (else_slot->iss_mode == TPP_IFDEFMODE_TRUE) {
      /* Some chunk of this block was already enabled before.
       * >> Must skip this #elif block! */
@@ -5536,10 +5563,10 @@ not_a_guard:
     } else {
      struct TPPConst elif_val;
      assert(!else_slot->iss_mode);
-     yield_fetch();
+     YIELD();
      if unlikely(!TPPLexer_Eval(&elif_val)) goto err;
      if (!TPPConst_IsBool(&elif_val)) {
-      TPPLexer_Warn(W_EXPECTED_BOOL,&elif_val);
+      WARN(W_EXPECTED_BOOL,&elif_val);
       TPPConst_ToBool(&elif_val);
      }
      else_slot->iss_mode = (int)elif_val.c_data.c_int;
@@ -5561,12 +5588,12 @@ skip_block_and_parse:
    {
     struct TPPIfdefStackSlot *else_slot;
    case KWD_else:
-    if (!current.l_ifdef.is_slotc ||
-       (else_slot = &current.l_ifdef.is_slotv[current.l_ifdef.is_slotc-1],
-        else_slot->iss_file != token.t_file)) {
-     TPPLexer_Warn(W_ELSE_WITHOUT_IF);
+    if (!CURRENT.l_ifdef.is_slotc ||
+       (else_slot = &CURRENT.l_ifdef.is_slotv[CURRENT.l_ifdef.is_slotc-1],
+        else_slot->iss_file != TOKEN.t_file)) {
+     WARN(W_ELSE_WITHOUT_IF);
     } else if (else_slot->iss_mode&TPP_IFDEFMODE_ELSE) {
-     TPPLexer_Warn(W_ELSE_AFTER_ELSE,else_slot);
+     WARN(W_ELSE_AFTER_ELSE,else_slot);
     } else {
      else_slot->iss_mode ^= (TPP_IFDEFMODE_TRUE|TPP_IFDEFMODE_ELSE);
      if (else_slot->iss_mode&TPP_IFDEFMODE_TRUE) goto def_skip_until_lf;
@@ -5578,11 +5605,11 @@ skip_block_and_parse:
 
    { /* End an enabled preprocessor block. */
    case KWD_endif:
-    if (!current.l_ifdef.is_slotc ||
-        (current.l_ifdef.is_slotv[current.l_ifdef.is_slotc-1].iss_file != token.t_file)) {
-     TPPLexer_Warn(W_ENDIF_WITHOUT_IF);
+    if (!CURRENT.l_ifdef.is_slotc ||
+        (CURRENT.l_ifdef.is_slotv[CURRENT.l_ifdef.is_slotc-1].iss_file != TOKEN.t_file)) {
+     WARN(W_ENDIF_WITHOUT_IF);
     } else {
-     --current.l_ifdef.is_slotc;
+     --CURRENT.l_ifdef.is_slotc;
     }
     goto def_skip_until_lf;
    } break;
@@ -5597,7 +5624,7 @@ skip_block_and_parse:
                  if (!HAVE_EXTENSION_INCLUDE_NEXT) goto default_directive; }
     if (FALSE) { case KWD_import:       mode = TPPLEXER_OPENFILE_MODE_IMPORT;
                  if (!HAVE_EXTENSION_IMPORT) goto default_directive; }
-    curfile = token.t_file; assert(curfile);
+    curfile = TOKEN.t_file; assert(curfile);
     /* Locate the end of the current line. */
     end_of_line = string_find_eol_after_comments(curfile->f_pos,curfile->f_end);
     /* Parse the include string. */
@@ -5614,18 +5641,18 @@ skip_block_and_parse:
      mode |= TPPLEXER_OPENFILE_MODE_SYSTEM; /* #include <stdlib.h> */
     }
     ++include_begin;
-    assert(include_begin >= token.t_file->f_begin);
-    assert(include_end   <= token.t_file->f_end);
+    assert(include_begin >= TOKEN.t_file->f_begin);
+    assert(include_end   <= TOKEN.t_file->f_end);
     /* When the filename originates from something
      * other than a textfile, we must not modify it. */
-    if (token.t_file->f_kind != TPPFILE_KIND_TEXT)
+    if (TOKEN.t_file->f_kind != TPPFILE_KIND_TEXT)
         mode |= TPPLEXER_OPENFILE_FLAG_CONSTNAME;
     include_file = TPPLexer_OpenFile(mode&0xff,include_begin,
                                     (size_t)(include_end-include_begin),
                                     &kwd_entry);
     if unlikely(!include_file) {
-     token.t_begin = include_begin;
-     TPPLexer_Warn(W_FILE_NOT_FOUND,include_begin,
+     TOKEN.t_begin = include_begin;
+     WARN(W_FILE_NOT_FOUND,include_begin,
                   (size_t)(include_end-include_begin));
      break;
     }
@@ -5647,8 +5674,8 @@ skip_block_and_parse:
      break;
     }
     /* Make sure we're not exceeding the #include recursion limit. */
-    if (include_file->f_textfile.f_cacheinc >= current.l_limit_incl) {
-     TPPLexer_Warn(W_INCLUDE_RECURSION_LIMIT_EXCEEDED,include_file);
+    if (include_file->f_textfile.f_cacheinc >= CURRENT.l_limit_incl) {
+     WARN(W_INCLUDE_RECURSION_LIMIT_EXCEEDED,include_file);
      break;
     }
     final_file = TPPFile_CopyForInclude(include_file);
@@ -5658,7 +5685,7 @@ skip_block_and_parse:
     assert(curfile->f_refcnt);
     /* Make sure to pop any macro files still on the #include-stack.
      * If we'd fail to do this, they'd still count as currently being expanded! */
-    while (token.t_file != curfile) TPPLexer_PopFile();
+    while (TOKEN.t_file != curfile) TPPLexer_PopFile();
 #endif
     pushfile_inherited(final_file);
    } break;
@@ -5672,10 +5699,10 @@ skip_block_and_parse:
     mode = TOK;
     TPPLexer_YieldRaw();
     if likely(TPP_ISKEYWORD(TOK)) {
-     assertion_kwd = token.t_kwd;
+     assertion_kwd = TOKEN.t_kwd;
      TPPLexer_YieldRaw();
     } else {
-     TPPLexer_Warn(W_EXPECTED_KEYWORD_AFTER_ASSERT);
+     WARN(W_EXPECTED_KEYWORD_AFTER_ASSERT);
      assertion_kwd = NULL;
     }
     if (TOK != '(') {
@@ -5684,23 +5711,23 @@ skip_block_and_parse:
       keyword_clrassert(assertion_kwd);
       goto def_skip_until_lf;
      }
-     TPPLexer_Warn(W_EXPECTED_LPAREN);
+     WARN(W_EXPECTED_LPAREN);
     } else TPPLexer_YieldRaw();
     if likely(TPP_ISKEYWORD(TOK)) {
      if (assertion_kwd) {
       if (mode == KWD_assert) {
-       if unlikely(!keyword_addassert(assertion_kwd,token.t_kwd)) goto seterr;
+       if unlikely(!keyword_addassert(assertion_kwd,TOKEN.t_kwd)) goto seterr;
       } else {
        assert(mode == KWD_unassert);
-       if unlikely(!keyword_delassert(assertion_kwd,token.t_kwd) &&
-                   !TPPLexer_Warn(W_UNKNOWN_ASSERTION,assertion_kwd,token.t_kwd)) goto err;
+       if unlikely(!keyword_delassert(assertion_kwd,TOKEN.t_kwd) &&
+                   !WARN(W_UNKNOWN_ASSERTION,assertion_kwd,TOKEN.t_kwd)) goto err;
       }
      }
      TPPLexer_YieldRaw();
     } else if (assertion_kwd) {
-     TPPLexer_Warn(W_EXPECTED_KEYWORD_AFTER_PREDICATE,assertion_kwd);
+     WARN(W_EXPECTED_KEYWORD_AFTER_PREDICATE,assertion_kwd);
     }
-    if (TOK != ')') TPPLexer_Warn(W_EXPECTED_LPAREN);
+    if (TOK != ')') WARN(W_EXPECTED_LPAREN);
     else TPPLexer_YieldRaw();
     goto def_skip_until_lf;
    } break;
@@ -5714,11 +5741,11 @@ skip_block_and_parse:
     TPPLexer_Yield();
     if unlikely(!TPPLexer_Eval(&ident_string)) goto err;
     if unlikely(ident_string.c_kind != TPP_CONST_STRING) {
-     werror = TPPLexer_Warn(W_EXPECTED_STRING_AFTER_IDENT,&ident_string);
-    } else if (!current.l_callbacks.c_ins_comment) {
-     werror = TPPLexer_Warn(W_IDENT_SCCS_IGNORED,&ident_string);
+     werror = WARN(W_EXPECTED_STRING_AFTER_IDENT,&ident_string);
+    } else if (!CURRENT.l_callbacks.c_ins_comment) {
+     werror = WARN(W_IDENT_SCCS_IGNORED,&ident_string);
     } else {
-     werror = (*current.l_callbacks.c_ins_comment)(ident_string.c_data.c_string);
+     werror = (*CURRENT.l_callbacks.c_ins_comment)(ident_string.c_data.c_string);
     }
     TPPConst_Quit(&ident_string);
     if unlikely(!werror) goto err;
@@ -5728,7 +5755,7 @@ skip_block_and_parse:
    default:
     if unlikely(result <= 0) { breakeob(); breakf(); return result; }
 default_directive:
-    if (current.l_flags&TPPLEXER_FLAG_ASM_COMMENTS) {
+    if (CURRENT.l_flags&TPPLEXER_FLAG_ASM_COMMENTS) {
      char *comment_end;
 asm_comment:
      if (!(_oldflags&TPPLEXER_FLAG_WANTCOMMENTS)) goto def_skip_until_lf;
@@ -5742,9 +5769,9 @@ asm_comment:
       *       >> Therefor, we call 'string_find_eol' below,
       *          instead of 'string_find_eol_after_comments'.
       */
-     token.t_begin = hash_begin;
-     comment_end   = string_find_eol(hash_begin,(size_t)(token.t_file->f_end-hash_begin));
-     if (!comment_end) comment_end = token.t_file->f_end;
+     TOKEN.t_begin = hash_begin;
+     comment_end   = string_find_eol(hash_begin,(size_t)(TOKEN.t_file->f_end-hash_begin));
+     if (!comment_end) comment_end = TOKEN.t_file->f_end;
      /* The linefeed past the comment is still part of it (just like with regular line-comments.) */
      if (*comment_end == '\r') {
       if (comment_end[1] == '\n') ++comment_end;
@@ -5752,16 +5779,16 @@ asm_comment:
      } else if (*comment_end == '\n') {
       ++comment_end;
      }
-     token.t_file->f_pos = token.t_end = comment_end;
-     token.t_id = result = TOK_COMMENT;
+     TOKEN.t_file->f_pos = TOKEN.t_end = comment_end;
+     TOKEN.t_id = result = TOK_COMMENT;
     } else {
      breakf();
-     if unlikely(!TPPLexer_Warn(W_UNKNOWN_PREPROCESSOR_DIRECTIVE)) goto err;
+     if unlikely(!WARN(W_UNKNOWN_PREPROCESSOR_DIRECTIVE)) goto err;
      /* Revert the file pointer to where the '#'-token started.
       * >> We are going to re-emit this (supposed) preprocessor directive. */
-     assert(hash_begin >= token.t_file->f_begin);
-     assert(hash_begin <= token.t_file->f_end);
-     token.t_file->f_pos = hash_begin;
+     assert(hash_begin >= TOKEN.t_file->f_begin);
+     assert(hash_begin <= TOKEN.t_file->f_end);
+     TOKEN.t_file->f_pos = hash_begin;
      result = TPPLexer_YieldRaw();
     }
     breakeob();
@@ -5776,7 +5803,7 @@ err:    breakeob();
   popeob();
   popf();
   /* Check if we're supposed to re-emit the linefeed here. */
-  if ((current.l_flags&(TPPLEXER_FLAG_WANTLF|TPPLEXER_FLAG_DIRECTIVE_NOOWN_LF)) !=
+  if ((CURRENT.l_flags&(TPPLEXER_FLAG_WANTLF|TPPLEXER_FLAG_DIRECTIVE_NOOWN_LF)) !=
                        (TPPLEXER_FLAG_WANTLF|TPPLEXER_FLAG_DIRECTIVE_NOOWN_LF)
       ) goto again;
  }
@@ -5875,9 +5902,9 @@ PUBLIC tok_t TPPLexer_Yield(void) {
 again:
  result = TPPLexer_YieldPP();
  if (TPP_ISKEYWORD(result)) {
-  if ((assert(token.t_kwd),
-      (macro = token.t_kwd->k_macro) != NULL) &&
-     !(current.l_flags&TPPLEXER_FLAG_NO_MACROS)) {
+  if ((assert(TOKEN.t_kwd),
+      (macro = TOKEN.t_kwd->k_macro) != NULL) &&
+     !(CURRENT.l_flags&TPPLEXER_FLAG_NO_MACROS)) {
    /* User-defined macro expansion. */
    assert(macro->f_kind == TPPFILE_KIND_MACRO);
    assert((macro->f_macro.m_flags&TPP_MACROFILE_KIND) == TPP_MACROFILE_KIND_FUNCTION ||
@@ -5888,7 +5915,7 @@ again:
      pushfile(macro);
      goto again; /* Parse the macro now located on the #include-stack. */
     }
-    if (!TPPLexer_Warn(W_KEYWORD_MACRO_ALREADY_ONSTACK)) return TOK_ERR;
+    if (!WARN(W_KEYWORD_MACRO_ALREADY_ONSTACK)) return TOK_ERR;
     goto end;
    }
    /* Check if this macro is allowed to expand:
@@ -5908,7 +5935,7 @@ again:
    * NOTE: Only check for these _after_ we've already checked for a user-defined macro,
    *       so-to allow the user to override builtin macros and simply restore regular
    *       behavior by #undef-ing their's again. */
-  if unlikely(current.l_flags&TPPLEXER_FLAG_NO_BUILTIN_MACROS) goto end;
+  if unlikely(CURRENT.l_flags&TPPLEXER_FLAG_NO_BUILTIN_MACROS) goto end;
 
   switch (TOK) {
 
@@ -5918,23 +5945,23 @@ again:
     struct TPPConst pragma_const;
     struct TPPFile *pragma_file;
    case KWD__Pragma:
-    old_filepos = token.t_begin;
-    assert(old_filepos >= token.t_file->f_begin &&
-           old_filepos <= token.t_file->f_end);
+    old_filepos = TOKEN.t_begin;
+    assert(old_filepos >= TOKEN.t_file->f_begin &&
+           old_filepos <= TOKEN.t_file->f_end);
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
     TPPLexer_Yield();
     if (TOK == '(') TPPLexer_Yield();
-    else TPPLexer_Warn(W_EXPECTED_LPAREN);
+    else WARN(W_EXPECTED_LPAREN);
     /* At this point, we should be hovering over a string.
      * >> Evaluating a constant expression here might be overkill,
      *    but doing it this way, we don't need to write more code. */
     if unlikely(!TPPLexer_Eval(&pragma_const)) {err_pragmaf: breakf(); return TOK_ERR; }
-    if (TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
+    if (TOK != ')') WARN(W_EXPECTED_RPAREN);
     if (pragma_const.c_kind != TPP_CONST_STRING) {
-     TPPLexer_Warn(W_EXPECTED_STRING_AFTER_PRAGMA,&pragma_const);
+     WARN(W_EXPECTED_STRING_AFTER_PRAGMA,&pragma_const);
      pragma_error = 0;
     } else {
      pragma_file = TPPFile_NewExplicitInherited(pragma_const.c_data.c_string);
@@ -5943,13 +5970,13 @@ again:
      TPPLexer_YieldRaw();
      /* Disable macros & directives in this kinds of pragma.
       * No-macros-allowed is the whole point of encoding everything as a string! */
-     current.l_flags |= (TPPLEXER_FLAG_NO_MACROS|
+     CURRENT.l_flags |= (TPPLEXER_FLAG_NO_MACROS|
                          TPPLEXER_FLAG_NO_DIRECTIVES|
                          TPPLEXER_FLAG_NO_BUILTIN_MACROS);
      pusheof();
      pragma_error = TPPLexer_ParsePragma();
-     if (!pragma_error && (current.l_flags&TPPLEXER_FLAG_EAT_UNKNOWN_PRAGMA)) pragma_error = 1;
-     while (token.t_file != current.l_eof_file) TPPLexer_PopFile();
+     if (!pragma_error && (CURRENT.l_flags&TPPLEXER_FLAG_EAT_UNKNOWN_PRAGMA)) pragma_error = 1;
+     while (TOKEN.t_file != CURRENT.l_eof_file) TPPLexer_PopFile();
      popeof();
     }
 #if TPPLEXER_FLAG_PRAGMA_KEEPMASK
@@ -5958,7 +5985,7 @@ again:
     popf();
 #endif
     if (!pragma_error) {
-     token.t_file->f_pos = old_filepos; /* Restore the old file pointer. */
+     TOKEN.t_file->f_pos = old_filepos; /* Restore the old file pointer. */
     } else {
      /* If we managed to parse the pragma, continue parsing afterwards. */
      goto again;
@@ -6053,7 +6080,7 @@ create_int_file:
    case KWD___INCLUDE_LEVEL__:
    case KWD___INCLUDE_DEPTH__:
     if (!HAVE_EXTENSION_INCLUDE_LEVEL) break;
-    intval = -1,file_iter = token.t_file;
+    intval = -1,file_iter = TOKEN.t_file;
     while (file_iter != &TPPFile_Empty) {
      if (file_iter->f_kind == TPPFILE_KIND_TEXT) ++intval;
      file_iter = file_iter->f_prev;
@@ -6065,7 +6092,7 @@ create_int_file:
    { /* Expand into a non-recurring, ever-incrementing integral constant. */
    case KWD___COUNTER__:
     if (!HAVE_EXTENSION_COUNTER) break;
-    intval = current.l_counter++;
+    intval = CURRENT.l_counter++;
     goto create_int_file;
    } break;
 
@@ -6096,23 +6123,23 @@ create_int_file:
                                          create_missing_keyword = 1; }
     mode = TOK;
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
     TPPLexer_YieldPP();
     popf();
-    if (TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-    keyword_begin = token.t_end,file_end = token.t_file->f_end;
+    if (TOK != '(') WARN(W_EXPECTED_LPAREN);
+    keyword_begin = TOKEN.t_end,file_end = TOKEN.t_file->f_end;
     keyword_begin = skip_whitespace_and_comments(keyword_begin,file_end);
     /* Special handling if the next token is a string/number. */
     if (*keyword_begin == '\"' || tpp_isdigit(*keyword_begin)) {
      struct TPPConst name;
-     yield_fetch();
+     YIELD();
      if (!TPPLexer_Eval(&name)) {
       name.c_kind       = TPP_CONST_INTEGRAL;
       name.c_data.c_int = 0;
      }
-     if (TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
+     if (TOK != ')') WARN(W_EXPECTED_RPAREN);
      /* Special handling for __has_extension("-fname"), etc. */
      switch (mode) {
      case KWD___has_extension:
@@ -6169,12 +6196,12 @@ create_int_file:
       ++keyword_end;
      }
      file_pos = skip_whitespace_and_comments(keyword_end,file_end);
-     token.t_file->f_pos = file_pos;
+     TOKEN.t_file->f_pos = file_pos;
      if (*file_pos != ')') {
-      TPPLexer_Warn(W_EXPECTED_RPAREN);
+      WARN(W_EXPECTED_RPAREN);
       keyword_end = keyword_begin;
      } else {
-      ++token.t_file->f_pos; /* Skip the ')' character. */
+      ++TOKEN.t_file->f_pos; /* Skip the ')' character. */
      }
      /* Whitespace and comments have been stripped from both ends, and
       * we can be sure that the keyword only contains alnum characters. */
@@ -6254,12 +6281,12 @@ create_int_file:
     function = TOK,mode = 0;
     if (function == KWD___has_include_next) mode |= TPPLEXER_OPENFILE_FLAG_NEXT;
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
     TPPLexer_YieldPP();
     popf();
-    if (TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
+    if (TOK != '(') WARN(W_EXPECTED_LPAREN);
     if unlikely(!parse_include_string(&include_begin,&include_end)) break;
     assert(include_end > include_begin);
     assert(include_begin[0] == '\"' || include_begin[0] == '<');
@@ -6269,11 +6296,11 @@ create_int_file:
      mode |= TPPLEXER_OPENFILE_MODE_SYSTEM; /* #include <stdlib.h> */
     }
     ++include_begin;
-    assert(include_begin >= token.t_file->f_begin);
-    assert(include_end   <= token.t_file->f_end);
+    assert(include_begin >= TOKEN.t_file->f_begin);
+    assert(include_end   <= TOKEN.t_file->f_end);
     /* When the filename originates from something
      * other than a textfile, we must not modify it. */
-    if (token.t_file->f_kind != TPPFILE_KIND_TEXT)
+    if (TOKEN.t_file->f_kind != TPPFILE_KIND_TEXT)
         mode |= TPPLEXER_OPENFILE_FLAG_CONSTNAME;
     /* Try to open the file described.
      * NOTE: If we do manage to open it, it will already
@@ -6282,21 +6309,21 @@ create_int_file:
                                (size_t)(include_end-include_begin),
                                 NULL);
     if (function == KWD___TPP_LOAD_FILE && !incfile) {
-     TPPLexer_Warn(W_FILE_NOT_FOUND,include_begin,
+     WARN(W_FILE_NOT_FOUND,include_begin,
                   (size_t)(include_end-include_begin));
     }
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
     TPPLexer_YieldPP();
     popf();
     if (TOK != ')') {
-     TPPLexer_Warn(W_EXPECTED_RPAREN);
-     assert(token.t_begin >= token.t_file->f_begin);
-     assert(token.t_begin <= token.t_file->f_pos);
-     assert(token.t_begin <= token.t_file->f_end);
-     token.t_file->f_pos = token.t_begin;
+     WARN(W_EXPECTED_RPAREN);
+     assert(TOKEN.t_begin >= TOKEN.t_file->f_begin);
+     assert(TOKEN.t_begin <= TOKEN.t_file->f_pos);
+     assert(TOKEN.t_begin <= TOKEN.t_file->f_end);
+     TOKEN.t_file->f_pos = TOKEN.t_begin;
     }
     if (function == KWD___TPP_LOAD_FILE) {
      if (!incfile) string_text = TPPString_New("\"\"",2);
@@ -6354,27 +6381,27 @@ create_int_file:
     pushf();
     pusheof();
     /* Disable some unnecessary tokens. */
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
-    old_filepos = token.t_begin;
-    assert(old_filepos >= token.t_file->f_begin &&
-           old_filepos <= token.t_file->f_end);
+    old_filepos = TOKEN.t_begin;
+    assert(old_filepos >= TOKEN.t_file->f_begin &&
+           old_filepos <= TOKEN.t_file->f_end);
     TPPLexer_Yield();
     if (TOK == '(') TPPLexer_Yield();
-    else TPPLexer_Warn(W_EXPECTED_LPAREN);
+    else WARN(W_EXPECTED_LPAREN);
     /* WARNING: We leave macros turned on for this, because (perhaps surprisingly),
      *          visual studio _does_ expand macros inside its __pragma helper. */
-    current.l_flags    |= TPPLEXER_FLAG_EOF_ON_PAREN;
-    old_eofparen        = current.l_eof_paren;
-    current.l_eof_paren = 1; /* Use EOF-on-paren recursion here. */
+    CURRENT.l_flags    |= TPPLEXER_FLAG_EOF_ON_PAREN;
+    old_eofparen        = CURRENT.l_eof_paren;
+    CURRENT.l_eof_paren = 1; /* Use EOF-on-paren recursion here. */
     pragma_error        = TPPLexer_ParsePragma();
-    current.l_eof_paren = old_eofparen;
-    current.l_flags    &= ~(TPPLEXER_FLAG_EOF_ON_PAREN);
-    current.l_flags    |= (_oldflags&TPPLEXER_FLAG_EOF_ON_PAREN);
-    if (!pragma_error && (current.l_flags&TPPLEXER_FLAG_EAT_UNKNOWN_PRAGMA)) pragma_error = 1;
-    while (token.t_file != current.l_eof_file) TPPLexer_PopFile();
-    if (!TOK && *token.t_begin == ')') TOK = ')';
+    CURRENT.l_eof_paren = old_eofparen;
+    CURRENT.l_flags    &= ~(TPPLEXER_FLAG_EOF_ON_PAREN);
+    CURRENT.l_flags    |= (_oldflags&TPPLEXER_FLAG_EOF_ON_PAREN);
+    if (!pragma_error && (CURRENT.l_flags&TPPLEXER_FLAG_EAT_UNKNOWN_PRAGMA)) pragma_error = 1;
+    while (TOKEN.t_file != CURRENT.l_eof_file) TPPLexer_PopFile();
+    if (!TOK && *TOKEN.t_begin == ')') TOK = ')';
     if (pragma_error) {
      int recursion = 1;
      while (TOK > 0) {
@@ -6383,9 +6410,9 @@ create_int_file:
       TPPLexer_Yield();
      }
      if (TOK == ')') TPPLexer_Yield();
-     else TPPLexer_Warn(W_EXPECTED_RPAREN),TOK = 0; /* NOTE: Set TOK to 0 to force a reload below. */
+     else WARN(W_EXPECTED_RPAREN),TOK = 0; /* NOTE: Set TOK to 0 to force a reload below. */
     }
-    if (!pragma_error) token.t_file->f_pos = old_filepos; /* Restore the old file pointer. */
+    if (!pragma_error) TOKEN.t_file->f_pos = old_filepos; /* Restore the old file pointer. */
     popeof();
 #if TPPLEXER_FLAG_PRAGMA_KEEPMASK
     popff(TPPLEXER_FLAG_PRAGMA_KEEPMASK);
@@ -6405,19 +6432,19 @@ create_int_file:
    case KWD___TPP_EVAL:
     if (!HAVE_EXTENSION_TPP_EVAL) break;
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
-    yield_fetch();
-    if (TOK == '(') yield_fetch();
-    else TPPLexer_Warn(W_EXPECTED_LPAREN);
+    YIELD();
+    if (TOK == '(') YIELD();
+    else WARN(W_EXPECTED_LPAREN);
     /* Evaluate a constant preprocessor-expression. */
     eval_error = TPPLexer_Eval(&val);
     popf();
     if unlikely(!eval_error) return TOK_ERR;
     if (TOK != ')') {
-     TPPLexer_Warn(W_EXPECTED_RPAREN);
-     token.t_file->f_pos = token.t_begin;
+     WARN(W_EXPECTED_RPAREN);
+     TOKEN.t_file->f_pos = TOKEN.t_begin;
     }
     val_str = TPPConst_ToString(&val);
     TPPConst_Quit(&val);
@@ -6445,16 +6472,16 @@ create_int_file:
    case KWD___TPP_COUNT_TOKENS:
     if (!HAVE_EXTENSION_TPP_COUNT_TOKENS) break;
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
-    yield_fetch();
-    if likely(TOK == '(') yield_fetch();
-    else TPPLexer_Warn(W_EXPECTED_LPAREN);
+    YIELD();
+    if likely(TOK == '(') YIELD();
+    else WARN(W_EXPECTED_LPAREN);
     if unlikely(!TPPLexer_Eval(&val)) {err_cnttokf: breakf(); return TOK_ERR; }
     if unlikely(val.c_kind != TPP_CONST_STRING &&
-               !TPPLexer_Warn(W_EXPECTED_STRING_AFTER_TPP_CNTTOK,&val)) goto err_cnttokf;
-    if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
+               !WARN(W_EXPECTED_STRING_AFTER_TPP_CNTTOK,&val)) goto err_cnttokf;
+    if unlikely(TOK != ')') WARN(W_EXPECTED_RPAREN);
     popf(); intval = 0;
     if unlikely(val.c_kind != TPP_CONST_STRING) goto create_int_file;
     cnt_file = TPPFile_NewExplicitInherited(val.c_data.c_string);
@@ -6464,8 +6491,8 @@ create_int_file:
     pusheob();
     while (TPPLexer_YieldRaw() > 0) ++intval;
     popeob();
-    assert(token.t_file == cnt_file);
-    token.t_file = cnt_file->f_prev;
+    assert(TOKEN.t_file == cnt_file);
+    TOKEN.t_file = cnt_file->f_prev;
     TPPFile_Decref(cnt_file);
     goto create_int_file;
    } break;
@@ -6476,17 +6503,17 @@ create_int_file:
    case KWD___TPP_RANDOM:
     if (!HAVE_EXTENSION_TPP_RANDOM) break;
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
-    yield_fetch();
-    if (TOK == '(') yield_fetch();
-    else TPPLexer_Warn(W_EXPECTED_LPAREN);
+    YIELD();
+    if (TOK == '(') YIELD();
+    else WARN(W_EXPECTED_LPAREN);
     /* Evaluate a constant preprocessor-expression. */
     if unlikely(!TPPLexer_Eval(&val)) {err_randomf: breakf(); return TOK_ERR; }
     TPPConst_ToInt(&val);
     if (TOK == ',') {
-     yield_fetch();
+     YIELD();
      random_begin = val.c_data.c_int;
      if unlikely(!TPPLexer_Eval(&val)) goto err_randomf;
      TPPConst_ToInt(&val);
@@ -6497,16 +6524,16 @@ create_int_file:
     }
     popf();
     if (TOK != ')') {
-     TPPLexer_Warn(W_EXPECTED_RPAREN);
-     token.t_file->f_pos = token.t_begin;
+     WARN(W_EXPECTED_RPAREN);
+     TOKEN.t_file->f_pos = TOKEN.t_begin;
     }
     /* Generate a random integer between 'random_begin..random_end-1' */
     if (random_begin >= random_end) intval = random_begin;
     else {
-     if (!(current.l_flags&TPPLEXER_FLAG_RANDOM_INITIALIZED)) {
+     if (!(CURRENT.l_flags&TPPLEXER_FLAG_RANDOM_INITIALIZED)) {
       /* Initialize the RNG generate. */
       srand((unsigned int)time(NULL));
-      current.l_flags |= TPPLEXER_FLAG_RANDOM_INITIALIZED;
+      CURRENT.l_flags |= TPPLEXER_FLAG_RANDOM_INITIALIZED;
      }
      random_end -= random_begin;
      /* NOTE: The module here ~should~ be unnecessary
@@ -6522,24 +6549,24 @@ create_int_file:
    case KWD___TPP_STR_DECOMPILE:
     if (!HAVE_EXTENSION_TPP_STR_DECOMPILE) break;
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
-    yield_fetch();
-    if (TOK == '(') yield_fetch();
-    else TPPLexer_Warn(W_EXPECTED_LPAREN);
+    YIELD();
+    if (TOK == '(') YIELD();
+    else WARN(W_EXPECTED_LPAREN);
     /* Evaluate a constant preprocessor-expression. */
     /* WARNING: 'val' may be the unmodified text of the calling file (as loaded by '__TPP_LOAD_FILE').
      *           In that case, we have no way of detecting a possible infinite recursion, essentially
      *           meaning that you probably just shouldn't do that... */
     if unlikely(!TPPLexer_Eval(&val)) { breakf(); return TOK_ERR; }
     if (TOK != ')') {
-     TPPLexer_Warn(W_EXPECTED_RPAREN);
-     token.t_file->f_pos = token.t_begin;
+     WARN(W_EXPECTED_RPAREN);
+     TOKEN.t_file->f_pos = TOKEN.t_begin;
     }
     popf();
     if (val.c_kind != TPP_CONST_STRING) {
-     TPPLexer_Warn(W_EXPECTED_STRING_AFTER_TPP_STRD,&val);
+     WARN(W_EXPECTED_STRING_AFTER_TPP_STRD,&val);
      goto again;
     } else if (!val.c_data.c_string->s_size) {
      /* Special case: Empty string (No need to push anything) */
@@ -6556,17 +6583,17 @@ create_int_file:
    case KWD___TPP_STR_PACK:
     if (!HAVE_EXTENSION_TPP_STR_PACK) break;
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
-    yield_fetch();
-    if (TOK == '(') yield_fetch();
-    else TPPLexer_Warn(W_EXPECTED_LPAREN);
+    YIELD();
+    if (TOK == '(') YIELD();
+    else WARN(W_EXPECTED_LPAREN);
     allocsize = cursize = 0,string_text = NULL;
     TPPString_Incref(empty_string);
     while (TOK != ')') {
      if unlikely(!TPPLexer_Eval(&val)) { breakf(); return TOK_ERR; }
-     if (TOK == ',') yield_fetch();
+     if (TOK == ',') YIELD();
      TPPConst_ToInt(&val);
      ch = (char)val.c_data.c_int;
      reqsize = cursize+TPP_SizeofEscape(&ch,1);
@@ -6610,22 +6637,22 @@ create_int_file:
     if (!HAVE_EXTENSION_TPP_STR_SUBSTR) break;
     escape_char = (char)(TOK == KWD___TPP_STR_AT ? '\'' : '\"');
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
-    yield_fetch();
-    if (TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-    else yield_fetch();
+    YIELD();
+    if (TOK != '(') WARN(W_EXPECTED_LPAREN);
+    else YIELD();
     if unlikely(!TPPLexer_Eval(&val)) { breakf(); return TOK_ERR; }
     if (val.c_kind != TPP_CONST_STRING) {
-     TPPLexer_Warn(W_EXPECTED_STRING_AFTER_TPP_STRAT,&val);
+     WARN(W_EXPECTED_STRING_AFTER_TPP_STRAT,&val);
      basestring = empty_string;
      TPPString_Incref(empty_string);
     } else {
      basestring = val.c_data.c_string; /*< Inherit reference. */
     }
-    if (TOK != ',') TPPLexer_Warn(W_EXPECTED_COMMA);
-    else yield_fetch();
+    if (TOK != ',') WARN(W_EXPECTED_COMMA);
+    else YIELD();
     if unlikely(!TPPLexer_Eval(&val)) {
 err_substrf: breakf();
 err_substr:  TPPString_Decref(basestring);
@@ -6641,7 +6668,7 @@ err_substr:  TPPString_Decref(basestring);
     if (TOK != ',') {
      sublen = basestring->s_size ? 1u : 0u;
     } else {
-     yield_fetch();
+     YIELD();
      if unlikely(!TPPLexer_Eval(&val)) goto err_substrf;
      TPPConst_ToInt(&val);
      sublen = 0;
@@ -6652,7 +6679,7 @@ err_substr:  TPPString_Decref(basestring);
      }
     }
     if (sublen >= basestring->s_size-subindex) sublen = basestring->s_size-subindex;
-    if (TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
+    if (TOK != ')') WARN(W_EXPECTED_RPAREN);
     popf();
     sub_end = (sub_begin = basestring->s_text+subindex)+sublen;
     assert(sub_begin <= sub_end);
@@ -6674,17 +6701,17 @@ err_substr:  TPPString_Decref(basestring);
    case KWD___TPP_STR_SIZE:
     if (!HAVE_EXTENSION_TPP_STR_SIZE) break;
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
-    yield_fetch();
-    if (TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-    else yield_fetch();
+    YIELD();
+    if (TOK != '(') WARN(W_EXPECTED_LPAREN);
+    else YIELD();
     if unlikely(!TPPLexer_Eval(&val)) { breakf(); return TOK_ERR; }
-    if (TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
+    if (TOK != ')') WARN(W_EXPECTED_RPAREN);
     popf();
     if (val.c_kind != TPP_CONST_STRING) {
-     TPPLexer_Warn(W_EXPECTED_STRING_AFTER_TPP_STRAT,&val);
+     WARN(W_EXPECTED_STRING_AFTER_TPP_STRAT,&val);
      intval = 0;
     } else {
      intval = (int_t)val.c_data.c_string->s_size;
@@ -6732,21 +6759,21 @@ predef_macro:
     suffix = intc_suffix[TOK-KWD___INT8_C];
     if (!HAVE_EXTENSION_MSVC_FIXED_INT) suffix += strlen(suffix)+1;
     pushf();
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF);
-    yield_fetch();
-    if (TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-    else yield_fetch();
+    YIELD();
+    if (TOK != '(') WARN(W_EXPECTED_LPAREN);
+    else YIELD();
     suffix_size = strlen(suffix);
-    argsize     = (size_t)(token.t_end-token.t_begin);
+    argsize     = (size_t)(TOKEN.t_end-TOKEN.t_begin);
     if (TOK == ')') argsize = 0;
     argstring   = TPPString_NewSized(argsize+suffix_size);
     if unlikely(!argstring) { breakf(); goto seterr; }
-    memcpy(argstring->s_text,token.t_begin,argsize*sizeof(char));
+    memcpy(argstring->s_text,TOKEN.t_begin,argsize*sizeof(char));
     memcpy(argstring->s_text+argsize,suffix,suffix_size*sizeof(char));
-    if (TOK != ')') yield_fetch();
-    if (TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
+    if (TOK != ')') YIELD();
+    if (TOK != ')') WARN(W_EXPECTED_RPAREN);
     popf();
     argfile = TPPFile_NewExplicitInherited(argstring);
     if unlikely(!argfile) { TPPString_Decref(argstring); goto seterr; }
@@ -6790,14 +6817,14 @@ argcache_genexpand(struct argcache_t *__restrict self,
  char *buf_begin,*buf_end,*buf_pos;
  char *tok_begin,*tok_end,*new_buf;
  size_t reqsize,sizeavail,newsize;
- file = token.t_file;
+ file = TOKEN.t_file;
  assert(file);
  assert(file->f_text);
  assert(text_begin <= text_end);
  assert(text_begin >= file->f_text->s_text);
  assert(text_end   <= file->f_text->s_text+
                       file->f_text->s_size);
- assert(file == current.l_eob_file);
+ assert(file == CURRENT.l_eob_file);
  /* Clobber the file pointers. */
  /*file->f_begin =*/
  file->f_pos   = text_begin;
@@ -6810,8 +6837,8 @@ argcache_genexpand(struct argcache_t *__restrict self,
  while (TPPLexer_Yield()) {
   if unlikely(TOK < 0) goto err_buffer;
   /* Skip empty buffers. */
-  if ((tok_begin = token.t_begin) ==
-      (tok_end = token.t_end)) continue;
+  if ((tok_begin = TOKEN.t_begin) ==
+      (tok_end = TOKEN.t_end)) continue;
   assert(tok_end > tok_begin);
   reqsize = (size_t)(tok_end-tok_begin);
   sizeavail = (size_t)(buf_end-buf_pos);
@@ -6844,8 +6871,8 @@ argcache_genexpand(struct argcache_t *__restrict self,
  }
  assert((self->ac_expand_begin == NULL) ==
         (self->ac_expand_size == 0));
- assert(token.t_file       == file);
- assert(current.l_eob_file == file);
+ assert(TOKEN.t_file       == file);
+ assert(CURRENT.l_eob_file == file);
  assert(!TOK);
  *text_end = old_end;
  return 1;
@@ -7080,12 +7107,12 @@ expand_function_macro(struct TPPFile *__restrict macro,
  struct TPPString *old_text;
  char *old_begin,*old_end,*old_pos;
  /* Enable all tokens to properly include _everything_ when expanding arguments. */
- current.l_flags |= TPPLEXER_FLAG_WANTCOMMENTS|
+ CURRENT.l_flags |= TPPLEXER_FLAG_WANTCOMMENTS|
                     TPPLEXER_FLAG_WANTSPACE|
                     TPPLEXER_FLAG_WANTLF|
                     TPPLEXER_FLAG_COMMENT_NOOWN_LF;
  /* We use explicit EOB by setting the 'l_eob_file' field below! */
- current.l_flags &= ~(TPPLEXER_FLAG_NO_SEEK_ON_EOB);
+ CURRENT.l_flags &= ~(TPPLEXER_FLAG_NO_SEEK_ON_EOB);
  /* NOTE: The expansion implementation screws with the current lexer's
   *       top file in order to easily expand arguments during insertion.
   *       Since I don't want to bother with restoring it above, a
@@ -7095,19 +7122,19 @@ expand_function_macro(struct TPPFile *__restrict macro,
   *       as we are setting the 'l_eob_file' field, meaning that
   *       it will not be removed with incorrect settings.
   */
- assert(arguments_file == token.t_file);
- old_eob            = current.l_eob_file;
+ assert(arguments_file == TOKEN.t_file);
+ old_eob            = CURRENT.l_eob_file;
  old_text           = arguments_file->f_text;
  old_begin          = arguments_file->f_begin;
  old_end            = arguments_file->f_pos;
  old_pos            = arguments_file->f_end;
- current.l_eob_file = arguments_file;
+ CURRENT.l_eob_file = arguments_file;
  result = expand_function_macro_impl(macro,argv,va_size);
  if likely(result) {
   /* NOTE: Must not restore data if an error occurred! */
-  assert(token.t_file == arguments_file);
-  assert(current.l_eob_file == arguments_file);
-  current.l_eob_file      = old_eob;
+  assert(TOKEN.t_file == arguments_file);
+  assert(CURRENT.l_eob_file == arguments_file);
+  CURRENT.l_eob_file      = old_eob;
   arguments_file->f_text  = old_text;
   arguments_file->f_begin = old_begin;
   arguments_file->f_pos   = old_end;
@@ -7125,14 +7152,14 @@ struct incback_slot_t {
 PRIVATE void
 incback_slot_backup(struct incback_slot_t *__restrict self) {
  assert(self);
- assert(token.t_file);
- assert(token.t_file != &TPPFile_Empty);
- assert(token.t_file->f_prev);
- assert(token.t_file->f_kind == TPPFILE_KIND_MACRO);
+ assert(TOKEN.t_file);
+ assert(TOKEN.t_file != &TPPFile_Empty);
+ assert(TOKEN.t_file->f_prev);
+ assert(TOKEN.t_file->f_kind == TPPFILE_KIND_MACRO);
  /* Backup and transfer one file into this include backup. */
- self->is_file = token.t_file; /*< Inherit reference. */
- self->is_fpos = token.t_file->f_pos;
- token.t_file = token.t_file->f_prev;
+ self->is_file = TOKEN.t_file; /*< Inherit reference. */
+ self->is_fpos = TOKEN.t_file->f_pos;
+ TOKEN.t_file = TOKEN.t_file->f_prev;
 #if TPP_CONFIG_DEBUG
  self->is_file->f_prev = NULL;
 #endif
@@ -7150,8 +7177,8 @@ incback_slot_restore(struct incback_slot_t *self) {
  assert(self->is_fpos <= file->f_text->s_text+
                          file->f_text->s_size);
  file->f_pos  = self->is_fpos;
- file->f_prev = token.t_file; /*< Inherit reference. */
- token.t_file = file;         /*< Inherit reference. */
+ file->f_prev = TOKEN.t_file; /*< Inherit reference. */
+ TOKEN.t_file = file;         /*< Inherit reference. */
 }
 
 struct incback_t {
@@ -7186,18 +7213,18 @@ PRIVATE int
 incback_init(struct incback_t *__restrict self,
              struct TPPFile *__restrict new_top_file) {
  assert(self);
- assert(TPP_ISKEYWORD(token.t_id));
- assert(token.t_kwd);
- assert(token.t_kwd->k_id == token.t_id);
+ assert(TPP_ISKEYWORD(TOKEN.t_id));
+ assert(TOKEN.t_kwd);
+ assert(TOKEN.t_kwd->k_id == TOKEN.t_id);
  self->ib_morec = self->ib_morea = 0;
  self->ib_morev = NULL;
- while (token.t_file != new_top_file) {
+ while (TOKEN.t_file != new_top_file) {
   if (!incback_pushdyn(self)) return 0;
  }
- self->ib_tok_begin = token.t_begin;
- self->ib_tok_end   = token.t_end;
- self->ib_tok_kwd   = token.t_kwd;
- self->ib_tok_num   = token.t_num;
+ self->ib_tok_begin = TOKEN.t_begin;
+ self->ib_tok_end   = TOKEN.t_end;
+ self->ib_tok_kwd   = TOKEN.t_kwd;
+ self->ib_tok_num   = TOKEN.t_num;
  self->ib_args_fpos = new_top_file->f_pos;
  return 1;
 }
@@ -7221,15 +7248,15 @@ incback_restore(struct incback_t *__restrict self,
  self->ib_morec = self->ib_morea = 0;
  self->ib_morev = NULL;
  assert(self->ib_tok_begin <= self->ib_tok_end);
- assert(self->ib_tok_begin >= token.t_file->f_begin);
- assert(self->ib_tok_begin <= token.t_file->f_end);
- assert(self->ib_tok_end   >= token.t_file->f_begin);
- assert(self->ib_tok_end   <= token.t_file->f_end);
- token.t_begin = self->ib_tok_begin;
- token.t_end   = self->ib_tok_end;
- token.t_kwd   = self->ib_tok_kwd;
- token.t_num   = self->ib_tok_num;
- token.t_id    = self->ib_tok_kwd->k_id;
+ assert(self->ib_tok_begin >= TOKEN.t_file->f_begin);
+ assert(self->ib_tok_begin <= TOKEN.t_file->f_end);
+ assert(self->ib_tok_end   >= TOKEN.t_file->f_begin);
+ assert(self->ib_tok_end   <= TOKEN.t_file->f_end);
+ TOKEN.t_begin = self->ib_tok_begin;
+ TOKEN.t_end   = self->ib_tok_end;
+ TOKEN.t_kwd   = self->ib_tok_kwd;
+ TOKEN.t_num   = self->ib_tok_num;
+ TOKEN.t_id    = self->ib_tok_kwd->k_id;
  assert(self->ib_args_fpos >= arguments_file->f_begin);
  assert(self->ib_args_fpos <= arguments_file->f_end);
  arguments_file->f_pos = self->ib_args_fpos;
@@ -7268,7 +7295,7 @@ TPPLexer_ExpandFunctionMacro(struct TPPFile *__restrict macro) {
  assert((macro->f_macro.m_flags&TPP_MACROFILE_KIND) == TPP_MACROFILE_KIND_FUNCTION);
  /* If the macro is allowed to self-expand, we must check for mirrors later. */
  check_mirrors = macro->f_macro.m_flags&TPP_MACROFILE_FLAG_FUNC_SELFEXPAND;
- arguments_file = token.t_file;
+ arguments_file = TOKEN.t_file;
  assert(arguments_file);
  calling_conv = RECURSION_OF(macro->f_macro.m_flags&TPP_MACROFILE_MASK_FUNC_STARTCH);
  assert(calling_conv >= 0 && calling_conv <= 3);
@@ -7313,19 +7340,19 @@ at_next_non_whitespace:
   *       is already on the #include-stack.
   */
  if (check_mirrors) {
-  if (macro->f_macro.m_function.f_expansions >= current.l_limit_mrec) {
+  if (macro->f_macro.m_function.f_expansions >= CURRENT.l_limit_mrec) {
    /* Make sure that this macro call doesn't exceed the current recursion limit. */
-   if unlikely(!TPPLexer_Warn(W_MACRO_RECURSION_LIMIT_EXCEEDED,macro)) return 0;
+   if unlikely(!WARN(W_MACRO_RECURSION_LIMIT_EXCEEDED,macro)) return 0;
    return 2;
   }
   if (!incback_init(&popped_includes,arguments_file)) return 0;
  } else {
   struct TPPFile *nextfile;
-  while (token.t_file != arguments_file) {
-   nextfile = token.t_file->f_prev;
-   token.t_file->f_prev = NULL;
-   TPPFile_Decref(token.t_file);
-   token.t_file = nextfile;
+  while (TOKEN.t_file != arguments_file) {
+   nextfile = TOKEN.t_file->f_prev;
+   TOKEN.t_file->f_prev = NULL;
+   TPPFile_Decref(TOKEN.t_file);
+   TOKEN.t_file = nextfile;
   }
  }
  /* We are supposed to expand this macro (an argument list was found)
@@ -7351,7 +7378,7 @@ at_next_non_whitespace:
   *       the various macro arguments.
   */
  pushf();
- current.l_flags |= TPPLEXER_FLAG_NO_SEEK_ON_EOB;
+ CURRENT.l_flags |= TPPLEXER_FLAG_NO_SEEK_ON_EOB;
  {
   int paren_recursion[4];
   struct argcache_t *argv,*arg_iter,*arg_last,*arg_end;
@@ -7380,21 +7407,21 @@ at_next_non_whitespace:
   arg_last = (arg_iter = argv)+(effective_argc-1);
   memset(paren_recursion,0,sizeof(paren_recursion));
   paren_recursion[calling_conv] = 1;
-  arg_iter->ac_offset_begin = (size_t)(token.t_begin-token.t_file->f_text->s_text);
+  arg_iter->ac_offset_begin = (size_t)(TOKEN.t_begin-TOKEN.t_file->f_text->s_text);
   for (;;) {
-   assert(token.t_file  == arguments_file);
-   assert(token.t_begin <= token.t_end);
-   assert(token.t_begin >= token.t_file->f_begin);
-   assert(token.t_end   <= token.t_file->f_end);
+   assert(TOKEN.t_file  == arguments_file);
+   assert(TOKEN.t_begin <= TOKEN.t_end);
+   assert(TOKEN.t_begin >= TOKEN.t_file->f_begin);
+   assert(TOKEN.t_end   <= TOKEN.t_file->f_end);
    switch (TOK) {
 
     case 0:
      /* Special case: Must load more data from the arguments file. */
      if (!TPPFile_NextChunk(arguments_file,TPPFILE_NEXTCHUNK_FLAG_EXTEND)) {
-      assert(token.t_file == arguments_file);
-      token.t_begin = token.t_end = arguments_file->f_end;
-      arg_iter->ac_offset_end = (size_t)(token.t_begin-arguments_file->f_text->s_text);
-      if (!TPPLexer_Warn(W_EOF_IN_MACRO_ARGUMENT_LIST)) goto err_argv;
+      assert(TOKEN.t_file == arguments_file);
+      TOKEN.t_begin = TOKEN.t_end = arguments_file->f_end;
+      arg_iter->ac_offset_end = (size_t)(TOKEN.t_begin-arguments_file->f_text->s_text);
+      if (!WARN(W_EOF_IN_MACRO_ARGUMENT_LIST)) goto err_argv;
       goto done_args;
      }
      break;
@@ -7420,7 +7447,7 @@ at_next_non_whitespace:
         !paren_recursion[RECURSION_BRACE]) {
       paren_recursion[RECURSION_ANGLE] += TOK == TOK_LANGLE3_EQUAL ? 3 :
                                           TOK == TOK_SHL_EQUAL ? 2 : 1;
-      arguments_file->f_pos = token.t_end-1;
+      arguments_file->f_pos = TOKEN.t_end-1;
       assert(*arguments_file->f_pos == '=' ||
              *arguments_file->f_pos == '<');
       if (*arguments_file->f_pos == '<') ++arguments_file->f_pos;
@@ -7456,7 +7483,7 @@ at_next_non_whitespace:
                                 paren_recursion[RECURSION_BRACE] ||
                                 paren_recursion[RECURSION_BRACKET] ||
                                 paren_recursion[RECURSION_PAREN]) break;
-                            assert(arguments_file->f_pos == token.t_end);
+                            assert(arguments_file->f_pos == TOKEN.t_end);
                             switch (TOK) {
                              default: --paren_recursion[RECURSION_ANGLE]; break;
                              case TOK_GREATER_EQUAL:
@@ -7473,7 +7500,7 @@ at_next_non_whitespace:
                                 if (arguments_file->f_pos[-1] == '=')
                                   --arguments_file->f_pos; /* Parse the '=' again. */
                                }
-                               ++token.t_begin;
+                               ++TOKEN.t_begin;
                               } else {
                                --paren_recursion[RECURSION_ANGLE];
                                if (TOK == TOK_SHR) {
@@ -7482,13 +7509,13 @@ at_next_non_whitespace:
                                } else {
                                 assert(arguments_file->f_pos[-1] == '=' ||
                                        arguments_file->f_pos[-1] == '>');
-                                assert(token.t_begin[0] == '>' ||
-                                       token.t_begin[0] == '=');
+                                assert(TOKEN.t_begin[0] == '>' ||
+                                       TOKEN.t_begin[0] == '=');
                                 /* Parse everything after the first '>' again. */
-                                if (token.t_begin[0] != '=') {
-                                 arguments_file->f_pos = token.t_begin+1;
+                                if (TOKEN.t_begin[0] != '=') {
+                                 arguments_file->f_pos = TOKEN.t_begin+1;
                                 } else {
-                                 arguments_file->f_pos = token.t_begin+1;
+                                 arguments_file->f_pos = TOKEN.t_begin+1;
                                  while (SKIP_WRAPLF(arguments_file->f_pos,
                                                     arguments_file->f_end));
                                  assert(arguments_file->f_pos[0] == '>');;
@@ -7507,10 +7534,10 @@ at_next_non_whitespace:
                                 if (arguments_file->f_pos[-1] == '=')
                                   --arguments_file->f_pos; /* Parse the '=' again. */
                                }
-                               ++token.t_begin;
-                               while (SKIP_WRAPLF(token.t_begin,token.t_end));
-                               assert(*token.t_begin == '>');
-                               ++token.t_begin;
+                               ++TOKEN.t_begin;
+                               while (SKIP_WRAPLF(TOKEN.t_begin,TOKEN.t_end));
+                               assert(*TOKEN.t_begin == '>');
+                               ++TOKEN.t_begin;
                               } else if (paren_recursion[RECURSION_ANGLE] >= 2) {
                                paren_recursion[RECURSION_ANGLE] -= 2;
                                if (TOK == TOK_RANGLE3_EQUAL) {
@@ -7526,17 +7553,17 @@ at_next_non_whitespace:
                                 assert(arguments_file->f_pos[-1] == '>');
                                 --arguments_file->f_pos; /* Parse the '>' again. */
                                }
-                               ++token.t_begin;
-                               assert(*token.t_begin == '>');
+                               ++TOKEN.t_begin;
+                               assert(*TOKEN.t_begin == '>');
                               } else {
-                               assert(*token.t_begin == '>' ||
-                                      *token.t_begin == '=');
-                               if (*token.t_begin == '=') {
-                                ++token.t_begin;
-                                while (SKIP_WRAPLF(token.t_begin,arguments_file->f_end));
+                               assert(*TOKEN.t_begin == '>' ||
+                                      *TOKEN.t_begin == '=');
+                               if (*TOKEN.t_begin == '=') {
+                                ++TOKEN.t_begin;
+                                while (SKIP_WRAPLF(TOKEN.t_begin,arguments_file->f_end));
                                }
                                --paren_recursion[RECURSION_ANGLE];
-                               arguments_file->f_pos = token.t_begin+1; /* Parse the '>>' / '>>=' / '>' / '>>' again. */
+                               arguments_file->f_pos = TOKEN.t_begin+1; /* Parse the '>>' / '>>=' / '>' / '>>' again. */
                               }
                               break;
                             }
@@ -7553,12 +7580,12 @@ at_next_non_whitespace:
 add_arg:
       ++va_size;
       /* Add a new argument. */
-      arg_iter->ac_offset_end = (size_t)(token.t_begin-token.t_file->f_text->s_text);
+      arg_iter->ac_offset_end = (size_t)(TOKEN.t_begin-TOKEN.t_file->f_text->s_text);
       if (!paren_recursion[calling_conv]) goto done_args;
       if (arg_iter != arg_last) {
-       (++arg_iter)->ac_offset_begin = (size_t)(token.t_end-token.t_file->f_text->s_text);
+       (++arg_iter)->ac_offset_begin = (size_t)(TOKEN.t_end-TOKEN.t_file->f_text->s_text);
       } else if (!(macro->f_macro.m_flags&TPP_MACROFILE_FLAG_FUNC_VARIADIC)) {
-       if unlikely(!TPPLexer_Warn(W_TOO_MANY_MACRO_ARGUMENTS,macro)) { err_argv: free(argv); goto end0; }
+       if unlikely(!WARN(W_TOO_MANY_MACRO_ARGUMENTS,macro)) { err_argv: free(argv); goto end0; }
       }
      }
      break;
@@ -7569,7 +7596,7 @@ add_arg:
 done_args:
   if (va_size < effective_argc) va_size = 1;
   else va_size -= (effective_argc-1);
-  assert(token.t_file == arguments_file);
+  assert(TOKEN.t_file == arguments_file);
   if (arg_iter != arg_last) {
    if (macro->f_macro.m_flags&TPP_MACROFILE_FLAG_FUNC_VARIADIC &&
        arg_iter == arg_last-1) {
@@ -7583,7 +7610,7 @@ done_args:
     arg_iter->ac_offset_begin = arguments_file->f_text->s_size;
     arg_iter->ac_offset_end   = arguments_file->f_text->s_size;
    } else {
-    if unlikely(!TPPLexer_Warn(W_NOT_ENGOUH_MACRO_ARGUMENTS,macro)) goto err_argv;
+    if unlikely(!WARN(W_NOT_ENGOUH_MACRO_ARGUMENTS,macro)) goto err_argv;
     for (;;) {
      ++arg_iter;
      /* Fill in the remaining arguments with empty-stubs. */
@@ -7606,7 +7633,7 @@ done_args:
    arg_iter->ac_offset_end   *= sizeof(char);
    arg_iter->ac_offset_begin += text_offset;
    arg_iter->ac_offset_end   += text_offset;
-   if (!(current.l_flags&TPPLEXER_FLAG_KEEP_ARG_WHITESPACE)) {
+   if (!(CURRENT.l_flags&TPPLEXER_FLAG_KEEP_ARG_WHITESPACE)) {
     arg_iter->ac_begin = skip_whitespace_and_comments(arg_iter->ac_begin,arg_iter->ac_end);
     arg_iter->ac_end = skip_whitespace_and_comments_rev(arg_iter->ac_end,arg_iter->ac_begin);
    }
@@ -7617,7 +7644,7 @@ done_args:
    /* The one argument that we parsed must only contain whitespace.
     * >> If it does not, emit a warning. */
    if unlikely((argv[0].ac_begin != argv[0].ac_end) &&
-               !TPPLexer_Warn(W_TOO_MANY_MACRO_ARGUMENTS,macro)) goto err_argv;
+               !WARN(W_TOO_MANY_MACRO_ARGUMENTS,macro)) goto err_argv;
   }
   /* If the variadic portion of varargs function is empty, the variadic size drops to ZERO(0).
    * >> This is required to properly implement __VA_COMMA__/__VA_NARGS__ semantics. */
@@ -7653,7 +7680,7 @@ done_args:
           TPP_MACROFILE_KIND_EXPANDED);
   assert(expand_file->f_macro.m_expand.e_expand_origin == macro);
   if (check_mirrors) {
-   struct TPPFile *file_iter = token.t_file;
+   struct TPPFile *file_iter = TOKEN.t_file;
    /* Search for previous expansions of this macro who's
     * files contain the same text as 'expand_file'.
     * If any are found, expansion must not be allowed,
@@ -7672,15 +7699,15 @@ done_args:
                      expand_file->f_text->s_size)) {
      TPPFile_Decref(expand_file);
      incback_restore(&popped_includes,arguments_file);
-     if (!TPPLexer_Warn(W_FUNCTION_MACRO_ALREADY_ONSTACK,macro)) goto end0;
+     if (!WARN(W_FUNCTION_MACRO_ALREADY_ONSTACK,macro)) goto end0;
      goto end2;
     }
     file_iter = file_iter->f_prev;
    }
   }
   /* Insert the new macro file into the expansion stack. */
-  expand_file->f_prev = token.t_file;
-  token.t_file = expand_file;
+  expand_file->f_prev = TOKEN.t_file;
+  TOKEN.t_file = expand_file;
  }
  result = 1;
 end:
@@ -7745,9 +7772,9 @@ TPPLexer_ParseString(void) {
  size_t reqsize,allocsize;
  char *string_begin,*string_end;
  assert(TPPLexer_Current);
- assert(token.t_id == TOK_STRING);
- string_begin = token.t_begin;
- string_end = token.t_end;
+ assert(TOKEN.t_id == TOK_STRING);
+ string_begin = TOKEN.t_begin;
+ string_end = TOKEN.t_end;
  if (string_begin != string_end && *string_begin == '\"') ++string_begin;
  if (string_begin != string_end && string_end[-1] == '\"') --string_end;
  reqsize = TPP_SizeofUnescape(string_begin,
@@ -7758,12 +7785,12 @@ TPPLexer_ParseString(void) {
  result->s_size = reqsize;
  TPP_Unescape(result->s_text,string_begin,
              (size_t)(string_end-string_begin));
- yield_fetch();
+ YIELD();
  allocsize = reqsize;
  while (TOK == TOK_STRING) {
   /* Cat multiple consecutive strings together. */
-  string_begin = token.t_begin;
-  string_end = token.t_end;
+  string_begin = TOKEN.t_begin;
+  string_end = TOKEN.t_end;
   if (string_begin != string_end && *string_begin == '\"') ++string_begin;
   if (string_begin != string_end && string_end[-1] == '\"') --string_end;
   reqsize = result->s_size+TPP_SizeofUnescape(string_begin,
@@ -7778,7 +7805,7 @@ TPPLexer_ParseString(void) {
   TPP_Unescape(result->s_text+result->s_size,string_begin,
               (size_t)(string_end-string_begin));
   result->s_size = reqsize;
-  yield_fetch();
+  YIELD();
  }
  result->s_refcnt = 1;
  result->s_text[result->s_size] = '\0';
@@ -7794,7 +7821,7 @@ PUBLIC int TPP_Atoi(int_t *__restrict pint) {
  assert(pint);
  assert(TPPLexer_Current);
  assert(TOK == TOK_INT || TOK == TOK_CHAR);
- begin = token.t_begin,end = token.t_end;
+ begin = TOKEN.t_begin,end = TOKEN.t_end;
  assert(begin <= end);
  if (TOK == TOK_CHAR) {
   size_t esc_size,size;
@@ -7803,7 +7830,7 @@ PUBLIC int TPP_Atoi(int_t *__restrict pint) {
   size = (size_t)(end-begin);
   esc_size = TPP_SizeofUnescape(begin,size);
   if (esc_size > sizeof(int_t)) {
-   if unlikely(!TPPLexer_Warn(W_CHARACTER_TOO_LONG)) goto err;
+   if unlikely(!WARN(W_CHARACTER_TOO_LONG)) goto err;
    do assert(size),--size;
    while (TPP_SizeofUnescape(begin,size) > sizeof(int_t));
   }
@@ -7815,7 +7842,7 @@ PUBLIC int TPP_Atoi(int_t *__restrict pint) {
 #elif TPP_BYTEORDER != 1234
 #   error FIXME
 #endif
-  if (current.l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED) result |= TPP_ATOI_UNSIGNED;
+  if (CURRENT.l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED) result |= TPP_ATOI_UNSIGNED;
   return result;
  }
  /* Regular integral. */
@@ -7842,7 +7869,7 @@ PUBLIC int TPP_Atoi(int_t *__restrict pint) {
   new_intval = intval*numsys+more;
   if unlikely((uint64_t)new_intval < (uint64_t)intval) {
    /* Warn about overflow: */
-   if unlikely(!TPPLexer_Warn(W_INTEGRAL_OVERFLOW,intval,new_intval)) goto err;
+   if unlikely(!WARN(W_INTEGRAL_OVERFLOW,intval,new_intval)) goto err;
   }
   intval = new_intval;
   ++begin;
@@ -7885,7 +7912,7 @@ PUBLIC int TPP_Atoi(int_t *__restrict pint) {
 wrong_suffix:
   if (begin != end) {
    /* Warning: Unknown suffix. */
-   if unlikely(!TPPLexer_Warn(W_INVALID_INTEGER_SUFFIX,
+   if unlikely(!WARN(W_INVALID_INTEGER_SUFFIX,
                               begin,(size_t)(end-begin))
                ) goto err;
   }
@@ -7907,7 +7934,7 @@ wrong_suffix:
  }
  if unlikely(new_intval != intval) {
   /* Warn about clamped integral. */
-  if unlikely(!TPPLexer_Warn(W_INTEGRAL_CLAMPED,intval,new_intval)) goto err;
+  if unlikely(!WARN(W_INTEGRAL_CLAMPED,intval,new_intval)) goto err;
  }
  intval = new_intval;
 done: *pint = intval;
@@ -7940,7 +7967,7 @@ PUBLIC int TPP_PrintToken(printer_t printer, void *closure) {
   case TOK_GLUE: return_print("##",2);
   default: break;
  }
- iter = flush_start = token.t_begin,end = token.t_end;
+ iter = flush_start = TOKEN.t_begin,end = TOKEN.t_end;
  while (iter != end) {
   assert(iter < end);
   /* Handle escaped linefeeds. */
@@ -8035,19 +8062,19 @@ eval_call_builtin(struct TPPConst *__restrict result) {
  struct TPPConst *argv,*iter,*end;
  assert(result);
  if unlikely((argc = get_builtin_argc(function)) < 0) goto ret;
- yield_fetch();
- if (TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
- else yield_fetch();
+ YIELD();
+ if (TOK != '(') WARN(W_EXPECTED_LPAREN);
+ else YIELD();
  argv = (struct TPPConst *)alloca(argc*sizeof(struct TPPConst));
  end = (iter = argv)+argc;
  if (iter != end) for (;;) {
   if unlikely(!TPPLexer_Eval(iter)) goto err_iter;
   if (++iter == end) break;
-  if (TOK != ',') TPPLexer_Warn(W_EXPECTED_COMMA);
-  else yield_fetch();
+  if (TOK != ',') WARN(W_EXPECTED_COMMA);
+  else YIELD();
  }
- if (TOK != ')') TPPLexer_Warn(W_EXPECTED_LPAREN);
- else yield_fetch();
+ if (TOK != ')') WARN(W_EXPECTED_LPAREN);
+ else YIELD();
  /* The argument list has been parsed. - Time for the big function-switch. */
  switch (function) {
 #ifndef __INTELLISENSE__
@@ -8121,7 +8148,7 @@ again_unary:
     result->c_kind = TPP_CONST_INTEGRAL;
     TPP_Atoi(&result->c_data.c_int);
    }
-   yield_fetch();
+   YIELD();
   } break;
 
   { /* Parse a floating point value. */
@@ -8130,13 +8157,13 @@ again_unary:
     result->c_kind = TPP_CONST_FLOAT;
     TPP_Atof(&result->c_data.c_float);
    }
-   yield_fetch();
+   YIELD();
   } break;
 
   { /* Concat any number of consecutive strings. */
   case TOK_STRING:
    if (!result) {
-    do yield_fetch();
+    do YIELD();
     while (TOK == TOK_STRING);
     break;
    }
@@ -8145,11 +8172,11 @@ again_unary:
   } break;
 
   case '!':
-   yield_fetch();
+   YIELD();
    if (TOK == '!') {
     /* Prevent the warning below.
      * >> '!!42' should evaluate to '1' without a warning. */
-    yield_fetch();
+    YIELD();
     eval_unary(result);
     if (result) TPPConst_ToBool(result);
     break;
@@ -8157,7 +8184,7 @@ again_unary:
    eval_unary(result);
    if (result) {
     if (!TPPConst_IsBool(result)) {
-     TPPLexer_Warn(W_EXPECTED_BOOL_UNARY,result);
+     WARN(W_EXPECTED_BOOL_UNARY,result);
      TPPConst_ToBool(result);
     }
     result->c_data.c_int ^= 1;
@@ -8165,7 +8192,7 @@ again_unary:
    break;
 
   case '~':
-   yield_fetch();
+   YIELD();
    eval_unary(result);
    if (result) {
     TPPConst_ToInt(result);
@@ -8177,13 +8204,13 @@ again_unary:
   case TOK_INC:         /* ++42 == +(+42) == 42 */
   case TOK_DEC:         /* --42 == -(-42) == 42 */
   case TOK_TILDE_TILDE: /* ~~42 == ~(~42) == 42 */
-   yield_fetch();
+   YIELD();
    eval_unary(result);
    if (result) TPPConst_ToInt(result);
    break;
 
   case '-':
-   yield_fetch();
+   YIELD();
    eval_unary(result);
    if (result) {
     TPPConst_ToInt(result);
@@ -8198,7 +8225,7 @@ again_unary:
     *       it warns about such usage, but is still able to
     *       
     */
-   yield_fetch();
+   YIELD();
    if (TPP_ISKEYWORD(TOK) &&
       (TPP_ISUSERKEYWORD(TOK) || (
 #if TPP_CONFIG_GCCFUNC
@@ -8211,14 +8238,14 @@ again_unary:
     unsigned int recursion = 1;
     /* Keyword without any special meaning associated to it.
      * >> Assume c-style casting and recursively skip it. */
-    if (result && !TPPLexer_Warn(W_TYPECAST_IN_EXPRESSION)) return;
+    if (result && !WARN(W_TYPECAST_IN_EXPRESSION)) return;
     while (TOK > 0) {
-     yield_fetch();
+     YIELD();
           if (TOK == '(') ++recursion;
      else if (TOK == ')' && !--recursion) break;
     }
-    if (TOK == ')') yield_fetch();
-    else TPPLexer_Warn(W_EXPECTED_RPAREN_AFTER_CAST);
+    if (TOK == ')') YIELD();
+    else WARN(W_EXPECTED_RPAREN_AFTER_CAST);
     try_parse_value = 1;
     goto again_unary;
    }
@@ -8231,59 +8258,59 @@ again_unary:
       * >> #define foo()
       * >> __TPP_EVAL((__builtin_constant_p(42)) : )
       */
-     TPPLexer_Warn(W_STATEMENT_IN_EXPRESSION);
+     WARN(W_STATEMENT_IN_EXPRESSION);
      TPPConst_ZERO(result);
     }
     while (TOK > 0) {
-     yield_fetch();
+     YIELD();
           if (TOK == '{') ++recursion;
      else if (TOK == '}' && !--recursion) break;
     }
-    if (TOK == '}') yield_fetch();
-    else TPPLexer_Warn(W_EXPECTED_RBRACE_AFTER_STATEMENT);
+    if (TOK == '}') YIELD();
+    else WARN(W_EXPECTED_RBRACE_AFTER_STATEMENT);
     goto rparen_after_expression;
    }
    goto begin_after_paren;
    for (;;) {
-    yield_fetch();
+    YIELD();
 begin_after_paren:
     eval_question(result);
     if (TOK != ',') break;
     if (result) TPPConst_Quit(result);
    }
 rparen_after_expression:
-   if (TOK == ')') yield_fetch();
-   else TPPLexer_Warn(W_EXPECTED_RPAREN_IN_EXPRESSION);
+   if (TOK == ')') YIELD();
+   else WARN(W_EXPECTED_RPAREN_IN_EXPRESSION);
    break;
 
   case '#':
    /* Determine the length of a string. */
    if (!HAVE_EXTENSION_STRINGOPS &&
        !HAVE_EXTENSION_ASSERTIONS) goto defch;
-   yield_fetch();
+   YIELD();
    if (TPP_ISKEYWORD(TOK) && HAVE_EXTENSION_ASSERTIONS) {
     struct TPPKeyword *ass_keyword;
     /* Evaluate assertion expression. */
-    ass_keyword = token.t_kwd;
+    ass_keyword = TOKEN.t_kwd;
     TPPLexer_YieldRaw();
-    if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
+    if unlikely(TOK != '(') WARN(W_EXPECTED_LPAREN);
     else TPPLexer_YieldRaw();
     result->c_kind = TPP_CONST_INTEGRAL;
-    if unlikely(!TPP_ISKEYWORD(TOK)) { TPPLexer_Warn(W_EXPECTED_KEYWORD_AFTER_EXPR_PRED,ass_keyword); goto res_zero; }
+    if unlikely(!TPP_ISKEYWORD(TOK)) { WARN(W_EXPECTED_KEYWORD_AFTER_EXPR_PRED,ass_keyword); goto res_zero; }
     /* Lookup an assertion */
-    result->c_data.c_int = (int_t)keyword_hasassert(ass_keyword,token.t_kwd);
+    result->c_data.c_int = (int_t)keyword_hasassert(ass_keyword,TOKEN.t_kwd);
     TPPLexer_YieldRaw();
-    if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
+    if unlikely(TOK != ')') WARN(W_EXPECTED_RPAREN);
     else TPPLexer_YieldRaw();
     break;
    } else if (!HAVE_EXTENSION_STRINGOPS) {
-    if (result) { TPPLexer_Warn(W_EXPECTED_KEYWORD_AFTER_EXPR_HASH); res_zero: TPPConst_ZERO(result); }
+    if (result) { WARN(W_EXPECTED_KEYWORD_AFTER_EXPR_HASH); res_zero: TPPConst_ZERO(result); }
     break;
    }
    eval_unary(result);
    if (result) {
     if (result->c_kind != TPP_CONST_STRING) {
-     TPPLexer_Warn(W_EXPECTED_STRING_IN_EXPRESSION,result);
+     WARN(W_EXPECTED_STRING_IN_EXPRESSION,result);
     } else {
      /* Extract the length of a string (in characters). */
      size_t length = result->c_data.c_string->s_size;
@@ -8312,13 +8339,13 @@ rparen_after_expression:
    TPPLexer_YieldPP();
    with_paren = TOK == '(';
    if (with_paren) TPPLexer_YieldPP();
-   if (TPP_ISKEYWORD(TOK) && token.t_kwd) {
+   if (TPP_ISKEYWORD(TOK) && TOKEN.t_kwd) {
     if (result) result->c_kind       =  TPP_CONST_INTEGRAL,
-                result->c_data.c_int = (token.t_kwd->k_macro != NULL ||
-                                        TPP_ISBUILTINMACRO(token.t_id));
+                result->c_data.c_int = (TOKEN.t_kwd->k_macro != NULL ||
+                                        TPP_ISBUILTINMACRO(TOKEN.t_id));
     TPPLexer_YieldPP();
    } else if (result) {
-    TPPLexer_Warn(with_paren
+    WARN(with_paren
                   ? W_EXPECTED_KEYWORD_AFTER_DEFINED
                   : W_EXPECTED_KWDLPAR_AFTER_DEFINED);
     if (with_paren) while (TOK > 0 && TOK != ')') TPPLexer_YieldPP();
@@ -8328,7 +8355,7 @@ rparen_after_expression:
    if (with_paren) {
     if (TOK == ')') TPPLexer_YieldPP();
     else if (result) {
-     TPPLexer_Warn(W_EXPECTED_RPAREN_AFTER_DEFINED);
+     WARN(W_EXPECTED_RPAREN_AFTER_DEFINED);
     }
    }
   } break;
@@ -8337,27 +8364,27 @@ rparen_after_expression:
    int is_true;
   case KWD_if:
    if (!HAVE_EXTENSION_IFELSE_IN_EXPR) goto defch;
-   yield_fetch();
-   if (TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-   else yield_fetch();
+   YIELD();
+   if (TOK != '(') WARN(W_EXPECTED_LPAREN);
+   else YIELD();
    eval_question(result);
-   if (TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-   else yield_fetch();
+   if (TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
    if (result && !TPPConst_IsBool(result)) {
-    TPPLexer_Warn(W_EXPECTED_BOOL,result);
+    WARN(W_EXPECTED_BOOL,result);
     TPPConst_ToBool(result);
    }
    is_true = !result || result->c_data.c_int;
    eval_question(is_true ? result : NULL);
    for (;;) {
-    while (TOK == ';') yield_fetch();
+    while (TOK == ';') YIELD();
     if (TOK != KWD_elif) break;
-    yield_fetch();
-    if (TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-    else yield_fetch();
+    YIELD();
+    if (TOK != '(') WARN(W_EXPECTED_LPAREN);
+    else YIELD();
     eval_question(is_true ? NULL : result);
-    if (TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-    else yield_fetch();
+    if (TOK != ')') WARN(W_EXPECTED_RPAREN);
+    else YIELD();
     assert(result || is_true);
     eval_question((!is_true && TPPConst_IsTrue(result)) ?
                    (is_true = 1,result->c_kind == TPP_CONST_STRING
@@ -8366,11 +8393,11 @@ rparen_after_expression:
    }
    assert(result || is_true);
    if (TOK == KWD_else) {
-    yield_fetch();
+    YIELD();
     eval_question(is_true ? NULL : result);
-    while (TOK == ';') yield_fetch();
+    while (TOK == ';') YIELD();
    } else if (!is_true) {
-    TPPLexer_Warn(W_EXPECTED_ELSE_IN_EXPRESSION);
+    WARN(W_EXPECTED_ELSE_IN_EXPRESSION);
     assert(result);
     TPPConst_ZERO(result);
    }
@@ -8380,10 +8407,10 @@ rparen_after_expression:
   {
    size_t old_warncount; int eval_error;
   case KWD___builtin_constant_p:
-   yield_fetch();
-   if (TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-   else yield_fetch();
-   old_warncount = current.l_warncount;
+   YIELD();
+   if (TOK != '(') WARN(W_EXPECTED_LPAREN);
+   else YIELD();
+   old_warncount = CURRENT.l_warncount;
    /* __builtin_constant_p() returns true if the
     * given expression can be resolved at compile-time.
     * The only thing that can prevent this here are unknown
@@ -8425,42 +8452,42 @@ rparen_after_expression:
     * >> int w = __TPP_EVAL(bswap16(x)); // [W0119] Expands to [0]
     */
    pushf();
-   current.l_flags |= TPPLEXER_FLAG_NO_WARNINGS; /* Don't emit warnings (they'll still be counted, though!) */
+   CURRENT.l_flags |= TPPLEXER_FLAG_NO_WARNINGS; /* Don't emit warnings (they'll still be counted, though!) */
    eval_error = TPPLexer_Eval(result);
    popf();
    if unlikely(!eval_error) goto restore_warnings;
    if (result) {
     TPPConst_Quit(result);
     result->c_kind = TPP_CONST_INTEGRAL;
-    result->c_data.c_int = current.l_warncount == old_warncount;
+    result->c_data.c_int = CURRENT.l_warncount == old_warncount;
    }
 restore_warnings:
-   current.l_warncount = old_warncount;
-   if (TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-   else yield_fetch();
+   CURRENT.l_warncount = old_warncount;
+   if (TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
   } break;
 
   {
    int is_true;
   case KWD___builtin_choose_expr:
-   yield_fetch();
-   if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-   else yield_fetch();
+   YIELD();
+   if unlikely(TOK != '(') WARN(W_EXPECTED_LPAREN);
+   else YIELD();
    if unlikely(!TPPLexer_Eval(result)) return;
    is_true = 0;
    if (result) {
-    if (!TPPConst_IsBool(result)) TPPLexer_Warn(W_EXPECTED_BOOL,result);
+    if (!TPPConst_IsBool(result)) WARN(W_EXPECTED_BOOL,result);
     is_true = TPPConst_IsTrue(result);
     TPPConst_Quit(result);
    }
-   if unlikely(TOK != ',') TPPLexer_Warn(W_EXPECTED_COMMA);
-   else yield_fetch();
+   if unlikely(TOK != ',') WARN(W_EXPECTED_COMMA);
+   else YIELD();
    if unlikely(!TPPLexer_Eval(is_true ? result : NULL)) return;
-   if unlikely(TOK != ',') TPPLexer_Warn(W_EXPECTED_COMMA);
-   else yield_fetch();
+   if unlikely(TOK != ',') WARN(W_EXPECTED_COMMA);
+   else YIELD();
    if unlikely(!TPPLexer_Eval(is_true ? NULL : result)) return;
-   if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-   else yield_fetch();
+   if unlikely(TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
   } break;
 #endif
 
@@ -8472,17 +8499,17 @@ restore_warnings:
        eval_call_builtin(result)) break;
 #endif
    if (try_parse_value) goto set_zero;
-   if (result) TPPLexer_Warn(W_UNKNOWN_TOKEN_IN_EXPR_IS_ZERO);
+   if (result) WARN(W_UNKNOWN_TOKEN_IN_EXPR_IS_ZERO);
    if (TPP_ISKEYWORD(TOK)) {
-    yield_fetch();
+    YIELD();
 #if TPP_CONFIG_GCCFUNC || 1 /* Recursively skip paren-style arguments to an imaginary function. */
     while (TOK == '(') {
      unsigned int recursion = 1;
      while (TOK > 0) {
-      yield_fetch();
+      YIELD();
            if (TOK == '(') ++recursion;
       else if (TOK == ')' && !--recursion) {
-       yield_fetch();
+       YIELD();
        break;
       }
      }
@@ -8499,16 +8526,16 @@ set_zero:
   {
   case '[':
    if (!HAVE_EXTENSION_STRINGOPS) break;
-   yield_fetch();
+   YIELD();
    if (!result) {
 skip_array_deref:
     if (TOK != ':' && TOK != ']') eval_question(NULL);
-    if (TOK == ':') yield_fetch();
+    if (TOK == ':') YIELD();
     if (TOK != ']') eval_question(NULL);
    } else {
     struct TPPConst temp;
     if (result->c_kind != TPP_CONST_STRING) {
-     TPPLexer_Warn(W_EXPECTED_STRING_IN_EXPRESSION);
+     WARN(W_EXPECTED_STRING_IN_EXPRESSION);
      goto skip_array_deref;
     }
 
@@ -8525,11 +8552,11 @@ skip_array_deref:
      index_begin = (ptrdiff_t)temp.c_data.c_int;
      if (index_begin < 0) index_begin = (ptrdiff_t)result->c_data.c_string->s_size+index_begin;
      if (index_begin < 0 || (size_t)index_begin >= result->c_data.c_string->s_size) {
-      TPPLexer_Warn(W_INDEX_OUT_OF_BOUNDS,result->c_data.c_string,index_begin);
+      WARN(W_INDEX_OUT_OF_BOUNDS,result->c_data.c_string,index_begin);
       index_begin %= (result->c_data.c_string->s_size+1);
       if (index_begin < 0) index_begin += result->c_data.c_string->s_size;
      }
-     yield_fetch();
+     YIELD();
      if (TOK == ']') {
       index_end = (ptrdiff_t)result->c_data.c_string->s_size;
      } else {
@@ -8538,7 +8565,7 @@ skip_array_deref:
       index_end = (ptrdiff_t)temp.c_data.c_int;
       if (index_end < 0) index_end = (ptrdiff_t)result->c_data.c_string->s_size+index_end;
       if (index_end < 0 || (size_t)index_end >= result->c_data.c_string->s_size) {
-       TPPLexer_Warn(W_INDEX_OUT_OF_BOUNDS,result->c_data.c_string,index_end);
+       WARN(W_INDEX_OUT_OF_BOUNDS,result->c_data.c_string,index_end);
        index_end %= (result->c_data.c_string->s_size+1);
        if (index_end < 0) index_end += result->c_data.c_string->s_size;
       }
@@ -8562,7 +8589,7 @@ skip_array_deref:
      char ch; /* Access character at 'begin'. */
      ptrdiff_t index = (ptrdiff_t)temp.c_data.c_int;
      if (index < 0 || (size_t)index >= result->c_data.c_string->s_size) {
-      TPPLexer_Warn(W_INDEX_OUT_OF_BOUNDS,result->c_data.c_string,index);
+      WARN(W_INDEX_OUT_OF_BOUNDS,result->c_data.c_string,index);
       index %= result->c_data.c_string->s_size;
       if (index < 0) index += result->c_data.c_string->s_size;
      }
@@ -8573,8 +8600,8 @@ skip_array_deref:
      result->c_data.c_int = (int_t)ch;
     }
    }
-   if (TOK == ']') yield_fetch();
-   else TPPLexer_Warn(W_EXPECTED_RBRACKET_IN_EXPRESSION);
+   if (TOK == ']') YIELD();
+   else WARN(W_EXPECTED_RBRACKET_IN_EXPRESSION);
   } break;
 
   default: break;
@@ -8593,13 +8620,13 @@ PRIVATE void EVAL_CALL eval_prod(struct TPPConst *result) {
    case '*':
    case '/':
    case '%':
-    yield_fetch();
+    YIELD();
     eval_unary(result ? &result2 : NULL);
     if (result) {
      TPPConst_ToInt(result);
      TPPConst_ToInt(&result2);
      if (t == '*') result->c_data.c_int *= result2.c_data.c_int;
-     else if (!result2.c_data.c_int) TPPLexer_Warn(W_DIVIDE_BY_ZERO);
+     else if (!result2.c_data.c_int) WARN(W_DIVIDE_BY_ZERO);
      else if (t == '/') result->c_data.c_int /= result2.c_data.c_int;
      else               result->c_data.c_int %= result2.c_data.c_int;
     }
@@ -8617,7 +8644,7 @@ PRIVATE void EVAL_CALL eval_sum(struct TPPConst *result) {
   switch (t = TOK) {
    case '+':
    case '-':
-    yield_fetch();
+    YIELD();
     eval_prod(result ? &result2 : NULL);
     if (result) {
      if (t == '+' &&
@@ -8654,7 +8681,7 @@ PRIVATE void EVAL_CALL eval_shift(struct TPPConst *result) {
   switch (t = TOK) {
    case TOK_SHL:
    case TOK_SHR:
-    yield_fetch();
+    YIELD();
     eval_sum(result ? &result2 : NULL);
     if (result) {
      TPPConst_ToInt(result);
@@ -8678,7 +8705,7 @@ PRIVATE void EVAL_CALL eval_cmp(struct TPPConst *result) {
    case TOK_LOWER_EQUAL:
    case TOK_GREATER:
    case TOK_GREATER_EQUAL:
-    yield_fetch();
+    YIELD();
     eval_shift(result ? &result2 : NULL);
     if (result) {
      if (result->c_kind == TPP_CONST_INTEGRAL ||
@@ -8720,7 +8747,7 @@ PRIVATE void EVAL_CALL eval_cmp_eq(struct TPPConst *result) {
   switch (t = TOK) {
    case TOK_EQUAL:
    case TOK_NOT_EQUAL:
-    yield_fetch();
+    YIELD();
     eval_cmp(result ? &result2 : NULL);
     if (result) {
      if (result->c_kind == TPP_CONST_INTEGRAL ||
@@ -8753,7 +8780,7 @@ PRIVATE void EVAL_CALL eval_cmp_eq(struct TPPConst *result) {
 PRIVATE void EVAL_CALL eval_and(struct TPPConst *result) {
  eval_cmp_eq(result);
  while (TOK == '&') {
-  yield_fetch();
+  YIELD();
   if (result) {
    struct TPPConst result2;
    eval_cmp_eq(&result2);
@@ -8768,7 +8795,7 @@ PRIVATE void EVAL_CALL eval_and(struct TPPConst *result) {
 PRIVATE void EVAL_CALL eval_xor(struct TPPConst *result) {
  eval_and(result);
  while (TOK == '^') {
-  yield_fetch();
+  YIELD();
   if (result) {
    struct TPPConst result2;
    eval_and(&result2);
@@ -8783,7 +8810,7 @@ PRIVATE void EVAL_CALL eval_xor(struct TPPConst *result) {
 PRIVATE void EVAL_CALL eval_or(struct TPPConst *result) {
  eval_xor(result);
  while (TOK == '|') {
-  yield_fetch();
+  YIELD();
   if (result) {
    struct TPPConst result2;
    eval_xor(&result2);
@@ -8800,17 +8827,17 @@ PRIVATE void EVAL_CALL eval_land(struct TPPConst *result) {
  eval_or(result);
  if (TOK == TOK_LAND) {
   do {
-   yield_fetch();
+   YIELD();
    if (result) {
     if (!TPPConst_IsBool(result)) {
-     TPPLexer_Warn(W_EXPECTED_BOOL_BINARY_LHS,result);
+     WARN(W_EXPECTED_BOOL_BINARY_LHS,result);
      TPPConst_ToBool(result);
     }
     if (!result->c_data.c_int) goto nullop2;
     //TPPConst_Quit(result); /* Unnecessary. */
     eval_or(result);
     if (!TPPConst_IsBool(result)) {
-     TPPLexer_Warn(W_EXPECTED_BOOL_BINARY_RHS,result);
+     WARN(W_EXPECTED_BOOL_BINARY_RHS,result);
      TPPConst_ToBool(result);
     }
    } else {
@@ -8819,24 +8846,24 @@ nullop2:
    }
   } while (TOK == TOK_LAND);
   if (result && TOK == TOK_LOR) {
-   TPPLexer_Warn(W_CONSIDER_PAREN_AROUND_LAND);
+   WARN(W_CONSIDER_PAREN_AROUND_LAND);
   }
  }
 }
 PRIVATE void EVAL_CALL eval_lxor(struct TPPConst *result) {
  eval_land(result);
  while (TOK == TOK_LXOR && HAVE_EXTENSION_LXOR) {
-  yield_fetch();
+  YIELD();
   if (result) {
    int oldbool;
    if (!TPPConst_IsBool(result)) {
-    TPPLexer_Warn(W_EXPECTED_BOOL_BINARY_LHS,result);
+    WARN(W_EXPECTED_BOOL_BINARY_LHS,result);
     TPPConst_ToBool(result);
    }
    oldbool = !!result->c_data.c_int;
    eval_land(result);
    if (!TPPConst_IsBool(result)) {
-    TPPLexer_Warn(W_EXPECTED_BOOL_BINARY_RHS,result);
+    WARN(W_EXPECTED_BOOL_BINARY_RHS,result);
     TPPConst_ToBool(result);
    }
    result->c_data.c_int ^= oldbool;
@@ -8848,17 +8875,17 @@ PRIVATE void EVAL_CALL eval_lxor(struct TPPConst *result) {
 PRIVATE void EVAL_CALL eval_lor(struct TPPConst *result) {
  eval_lxor(result);
  while (TOK == TOK_LOR) {
-  yield_fetch();
+  YIELD();
   if (result) {
    if (!TPPConst_IsBool(result)) {
-    TPPLexer_Warn(W_EXPECTED_BOOL_BINARY_LHS,result);
+    WARN(W_EXPECTED_BOOL_BINARY_LHS,result);
     TPPConst_ToBool(result);
    }
    if (result->c_data.c_int) goto nullop2;
    //TPPConst_Quit(result); /* Unnecessary. */
    eval_lxor(result);
    if (!TPPConst_IsBool(result)) {
-    TPPLexer_Warn(W_EXPECTED_BOOL_BINARY_RHS,result);
+    WARN(W_EXPECTED_BOOL_BINARY_RHS,result);
     TPPConst_ToBool(result);
    }
   } else {
@@ -8871,10 +8898,10 @@ nullop2:
 PRIVATE void EVAL_CALL eval_question(struct TPPConst *result) {
  eval_lor(result);
  if (TOK == '?') {
-  yield_fetch();
+  YIELD();
   if (result) {
    if (TOK == ':' && HAVE_EXTENSION_GCC_IFELSE) {
-    yield_fetch();
+    YIELD();
     if (TPPConst_IsTrue(result)) {
      eval_lor(NULL);
     } else {
@@ -8885,21 +8912,21 @@ PRIVATE void EVAL_CALL eval_question(struct TPPConst *result) {
     int was_true = TPPConst_IsTrue(result);
     /* NOTE: Only warn about non-boolean condition if
      *       this isn't a gcc if-then-else-style expression. */
-    if (!TPPConst_IsBool(result)) TPPLexer_Warn(W_EXPECTED_BOOL,result);
+    if (!TPPConst_IsBool(result)) WARN(W_EXPECTED_BOOL,result);
     TPPConst_Quit(result);
     eval_lor(was_true ? result : NULL);
     if (TOK == ':') {
-     yield_fetch();
+     YIELD();
      eval_question(was_true ? NULL : result);
     } else {
-     if (!TPPLexer_Warn(W_EXPECTED_COLLON_AFTER_QUESTION)) TPPLexer_SetErr();
+     if (!WARN(W_EXPECTED_COLLON_AFTER_QUESTION)) TPPLexer_SetErr();
      if (!was_true) TPPConst_ZERO(result);
     }
    }
   } else {
    if (TOK != ':') eval_lor(NULL);
    if (TOK == ':') {
-    yield_fetch();
+    YIELD();
     eval_question(NULL);
    }
   }
@@ -8919,9 +8946,9 @@ TPPLexer_Eval(struct TPPConst *result) {
 PUBLIC int
 TPPLexer_ParsePragma(void) {
  int result = TPPLexer_ParseBuiltinPragma();
- if (!result && !(current.l_flags&TPPLEXER_FLAG_ERROR) &&
-     current.l_callbacks.c_parse_pragma) {
-  result = (*current.l_callbacks.c_parse_pragma)();
+ if (!result && !(CURRENT.l_flags&TPPLEXER_FLAG_ERROR) &&
+     CURRENT.l_callbacks.c_parse_pragma) {
+  result = (*CURRENT.l_callbacks.c_parse_pragma)();
  }
  return result;
 }
@@ -8930,14 +8957,14 @@ PRIVATE void
 TPPLexer_ClearInclude(void) {
  struct TPPString **iter,**end;
  assert(TPPLexer_Current);
- end = (iter = current.l_syspaths.il_pathv)+
-               current.l_syspaths.il_pathc;
+ end = (iter = CURRENT.l_syspaths.il_pathv)+
+               CURRENT.l_syspaths.il_pathc;
  for (; iter != end; ++iter)
       assert(*iter),
       TPPString_Decref(*iter);
- free(current.l_syspaths.il_pathv);
- current.l_syspaths.il_pathc = 0;
- current.l_syspaths.il_pathv = NULL;
+ free(CURRENT.l_syspaths.il_pathv);
+ CURRENT.l_syspaths.il_pathc = 0;
+ CURRENT.l_syspaths.il_pathv = NULL;
 }
 
 PUBLIC int
@@ -8973,19 +9000,19 @@ TPPLexer_ParseBuiltinPragma(void) {
   case KWD_push_macro:
   case KWD_pop_macro:
    mode = TOK;
-   yield_fetch();
-   if (TOK == '(') yield_fetch();
-   else TPPLexer_Warn(W_EXPECTED_LPAREN);
+   YIELD();
+   if (TOK == '(') YIELD();
+   else WARN(W_EXPECTED_LPAREN);
    should_undef = TOK == KWD_undef;
    if (should_undef) {
-    yield_fetch();
-    if (TOK != ',') TPPLexer_Warn(W_EXPECTED_COMMA);
-    else yield_fetch();
+    YIELD();
+    if (TOK != ',') WARN(W_EXPECTED_COMMA);
+    else YIELD();
    }
    for (;;) {
     if unlikely(!TPPLexer_Eval(&const_val)) goto err;
     if (const_val.c_kind != TPP_CONST_STRING) {
-     TPPLexer_Warn(W_EXPECTED_STRING_AFTER_PUSHMACRO,&const_val);
+     WARN(W_EXPECTED_STRING_AFTER_PUSHMACRO,&const_val);
     } else {
      keyword = TPPLexer_LookupKeyword(const_val.c_data.c_string->s_text,
                                       const_val.c_data.c_string->s_size,1);
@@ -9000,10 +9027,10 @@ TPPLexer_ParseBuiltinPragma(void) {
     }
     TPPConst_Quit(&const_val);
     if (TOK != ',') break;
-    yield_fetch();
+    YIELD();
    }
-   if (TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-   else yield_fetch();
+   if (TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
    return 1;
   } break;
 
@@ -9017,18 +9044,18 @@ TPPLexer_ParseBuiltinPragma(void) {
    int with_paren;
    struct TPPConst message;
   case KWD_message:
-   yield_fetch();
+   YIELD();
    /* NOTE: In MSVC, the surrounding '(...)' are _not_ optional, but
     *       gcc does make them be (so we must follow its example...) */
    with_paren = TOK == '(';
-   if (with_paren) yield_fetch();
+   if (with_paren) YIELD();
    if unlikely(!TPPLexer_Eval(&message)) goto err;
    if (message.c_kind != TPP_CONST_STRING) {
-    TPPLexer_Warn(W_EXPECTED_STRING_AFTER_MESSAGE,&message);
+    WARN(W_EXPECTED_STRING_AFTER_MESSAGE,&message);
    } else {
-    if (current.l_flags&TPPLEXER_FLAG_MESSAGE_LOCATION) {
+    if (CURRENT.l_flags&TPPLEXER_FLAG_MESSAGE_LOCATION) {
      struct TPPLCInfo lc_info; TPPLexer_LC(&lc_info);
-     fprintf(stderr,current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+     fprintf(stderr,CURRENT.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
              ? "%s(%d,%d) : " : "%s:%d:%d: ",
              TPPLexer_FILE(NULL),
             (int)(lc_info.lc_line+1),
@@ -9036,7 +9063,7 @@ TPPLexer_ParseBuiltinPragma(void) {
      fprintf(stderr,"#pragma message: ");
      fflush(stderr);
     }
-    if (!(current.l_flags&TPPLEXER_FLAG_MESSAGE_NOLINEFEED)) {
+    if (!(CURRENT.l_flags&TPPLEXER_FLAG_MESSAGE_NOLINEFEED)) {
      register char oldch,*poldch;
      oldch = *(poldch = message.c_data.c_string->s_text+
                         message.c_data.c_string->s_size);
@@ -9050,8 +9077,8 @@ TPPLexer_ParseBuiltinPragma(void) {
     }
    }
    TPPConst_Quit(&message);
-   if (with_paren && unlikely(TOK != ')')) TPPLexer_Warn(W_EXPECTED_RPAREN);
-   else yield_fetch();
+   if (with_paren && unlikely(TOK != ')')) WARN(W_EXPECTED_RPAREN);
+   else YIELD();
    return 1;
   } break;
 
@@ -9060,32 +9087,32 @@ TPPLexer_ParseBuiltinPragma(void) {
    struct TPPConst error_message;
    int warning_error;
   case KWD_error:
-   yield_fetch();
-   if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-   else yield_fetch();
+   YIELD();
+   if unlikely(TOK != '(') WARN(W_EXPECTED_LPAREN);
+   else YIELD();
    if unlikely(!TPPLexer_Eval(&error_message)) goto err;
    if (error_message.c_kind != TPP_CONST_STRING) {
-    if (!TPPLexer_Warn(W_EXPECTED_STRING_AFTER_PRGERROR,&error_message)) goto err;
+    if (!WARN(W_EXPECTED_STRING_AFTER_PRGERROR,&error_message)) goto err;
    } else {
-    warning_error = TPPLexer_Warn(W_ERROR,error_message.c_data.c_string->s_text,
+    warning_error = WARN(W_ERROR,error_message.c_data.c_string->s_text,
                                           error_message.c_data.c_string->s_size);
     TPPString_Decref(error_message.c_data.c_string);
     if unlikely(!warning_error) goto err;
    }
-   if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-   else yield_fetch();
+   if unlikely(TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
   } break;
 
   { /* Mark a given identifier as deprecated. */
    struct TPPConst ident_name;
    struct TPPKeyword *keyword;
   case KWD_deprecated:
-   yield_fetch();
-   if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-   else yield_fetch();
+   YIELD();
+   if unlikely(TOK != '(') WARN(W_EXPECTED_LPAREN);
+   else YIELD();
    if unlikely(!TPPLexer_Eval(&ident_name)) goto err;
    if unlikely(ident_name.c_kind != TPP_CONST_STRING) {
-    if (!TPPLexer_Warn(W_EXPECTED_STRING_AFTER_DEPRECATED,&ident_name)) goto err;
+    if (!WARN(W_EXPECTED_STRING_AFTER_DEPRECATED,&ident_name)) goto err;
    } else {
     keyword = TPPLexer_LookupKeyword(ident_name.c_data.c_string->s_text,
                                      ident_name.c_data.c_string->s_size,1);
@@ -9093,8 +9120,8 @@ TPPLexer_ParseBuiltinPragma(void) {
     if unlikely(!keyword || !TPPKeyword_MAKERARE(keyword)) goto err;
     keyword->k_rare->kr_flags |= TPP_KEYWORDFLAG_IS_DEPRECATED;
    }
-   if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-   else yield_fetch();
+   if unlikely(TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
    return 1;
   } break;
 
@@ -9104,25 +9131,25 @@ TPPLexer_ParseBuiltinPragma(void) {
    struct TPPFile *exec_file;
   case KWD_tpp_exec:
 pragma_tpp_exec:
-   yield_fetch();
-   if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-   else yield_fetch();
+   YIELD();
+   if unlikely(TOK != '(') WARN(W_EXPECTED_LPAREN);
+   else YIELD();
    if unlikely(!TPPLexer_Eval(&exec_code)) goto err;
-   if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-   else yield_fetch();
+   if unlikely(TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
    if unlikely(exec_code.c_kind != TPP_CONST_STRING) {
-    if (!TPPLexer_Warn(W_EXPECTED_STRING_AFTER_TPP_EXEC,&exec_code)) goto err;
+    if (!WARN(W_EXPECTED_STRING_AFTER_TPP_EXEC,&exec_code)) goto err;
    } else {
     char *old_token_begin;
     struct TPPFile *prev_file;
     exec_file = TPPFile_NewExplicitInherited(exec_code.c_data.c_string);
     if unlikely(!exec_file) { TPPString_Decref(exec_code.c_data.c_string); goto err; }
-    old_token_begin = token.t_begin;
+    old_token_begin = TOKEN.t_begin;
     pushfile_inherited(exec_file);
     pushf();
     /* Disable some unnecessary tokens and make sure
      * that macros & preprocessor directives are enabled. */
-    current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
+    CURRENT.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|
                          TPPLEXER_FLAG_WANTLF|
                          TPPLEXER_FLAG_NO_MACROS|
@@ -9133,11 +9160,11 @@ pragma_tpp_exec:
     while (TPPLexer_Yield() > 0);
     popeof();
     popf();
-    assert(token.t_file);
-    assert(token.t_file != &TPPFile_Empty);
-    assert(token.t_file == exec_file);
-    assert(token.t_file->f_prev);
-    prev_file = token.t_file->f_prev;
+    assert(TOKEN.t_file);
+    assert(TOKEN.t_file != &TPPFile_Empty);
+    assert(TOKEN.t_file == exec_file);
+    assert(TOKEN.t_file->f_prev);
+    prev_file = TOKEN.t_file->f_prev;
     assert(old_token_begin >= prev_file->f_begin);
     assert(old_token_begin <= prev_file->f_end);
     assert(old_token_begin <= prev_file->f_pos);
@@ -9153,12 +9180,12 @@ pragma_tpp_exec:
    uint32_t new_flags;
   case KWD_tpp_set_keyword_flags:
 pragma_tpp_set_keyword_flags:
-   yield_fetch();
-   if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-   else yield_fetch();
+   YIELD();
+   if unlikely(TOK != '(') WARN(W_EXPECTED_LPAREN);
+   else YIELD();
    if unlikely(!TPPLexer_Eval(&const_val)) goto err;
    if (const_val.c_kind != TPP_CONST_STRING) {
-    TPPLexer_Warn(W_EXPECTED_STRING_AFTER_TPP_SETF,&const_val);
+    WARN(W_EXPECTED_STRING_AFTER_TPP_SETF,&const_val);
     keyword = NULL;
    } else {
     keyword = TPPLexer_LookupKeyword(const_val.c_data.c_string->s_text,
@@ -9166,13 +9193,13 @@ pragma_tpp_set_keyword_flags:
     TPPString_Decref(const_val.c_data.c_string);
     if unlikely(!keyword || !TPPKeyword_MAKERARE(keyword)) goto err;
    }
-   if unlikely(TOK != ',') TPPLexer_Warn(W_EXPECTED_COMMA);
-   else yield_fetch();
+   if unlikely(TOK != ',') WARN(W_EXPECTED_COMMA);
+   else YIELD();
    if unlikely(!TPPLexer_Eval(&const_val)) goto err;
    TPPConst_ToInt(&const_val);
    new_flags = (uint32_t)const_val.c_data.c_int;
-   if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-   else yield_fetch();
+   if unlikely(TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
    if likely(keyword) {
     assert(keyword->k_rare);
     keyword->k_rare->kr_flags &= ~(TPP_KEYWORDFLAG_USERMASK);
@@ -9185,37 +9212,37 @@ pragma_tpp_set_keyword_flags:
      * NOTE: Warning IDs have been chosen for backwards-compatibility with the old TPP. */
   case KWD_warning:
 pragma_warning:
-   yield_fetch();
-   if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-   else yield_fetch();
+   YIELD();
+   if unlikely(TOK != '(') WARN(W_EXPECTED_LPAREN);
+   else YIELD();
    for (;;) {
     wstate_t newstate; int wset_error;
     struct TPPConst val; char *warning_text;
     switch (TOK) {
      case KWD_push: /* Push warnings. */
       if unlikely(!TPPLexer_PushWarnings()) goto seterr;
-      yield_fetch();
+      YIELD();
       break;
      case KWD_pop: /* Pop warnings. */
       if (!TPPLexer_PopWarnings() &&
-          !TPPLexer_Warn(W_CANT_POP_WARNINGS)) goto err;
-      yield_fetch();
+          !WARN(W_CANT_POP_WARNINGS)) goto err;
+      YIELD();
       break;
 
      { /* Set the state of a given set of warnings. */
-      if (FALSE) { case KWD_disable:  newstate = WSTATE_DISABLE; }
+      if (FALSE) { case KWD_disable:  newstate = WSTATE_DISABLED; }
       if (FALSE) { /*case KWD_warning:*/
                    case KWD_enable:   newstate = WSTATE_WARN; }
       if (FALSE) { case KWD_suppress: newstate = WSTATE_SUPPRESS; }
       if (FALSE) { case KWD_error:    newstate = WSTATE_ERROR; }
       if (FALSE) { case KWD_default:  newstate = WSTATE_DEFAULT; }
-      yield_fetch();
+      YIELD();
 set_warning_newstate:
       if (TOK != ':') {
        /* NOTE: The old TPP didn't have a warning here. */
-       if unlikely(TPPLexer_Warn(W_EXPECTED_COLLON_AFTER_WARNING)) goto err;
+       if unlikely(WARN(W_EXPECTED_COLLON_AFTER_WARNING)) goto err;
       } else {
-       yield_fetch();
+       YIELD();
        /* Parse warning numbers/names. */
        while (TOK > 0 && TOK != ',' && TOK != ')') {
         if unlikely(!TPPLexer_Eval(&val)) goto err;
@@ -9227,7 +9254,7 @@ set_warning_newstate:
          if (*warning_text == 'W') ++warning_text;
          wset_error = TPPLexer_SetWarnings(warning_text,newstate);
         }
-        if (wset_error == 2) wset_error = TPPLexer_Warn(W_INVALID_WARNING,&val);
+        if (wset_error == 2) wset_error = WARN(W_INVALID_WARNING,&val);
         TPPConst_Quit(&val);
         if (!wset_error) goto seterr;
        }
@@ -9254,7 +9281,7 @@ set_warning_newstate:
         */
             if (val.c_data.c_int < 0) newstate = WSTATE_ERROR;
        else if (val.c_data.c_int == 0) newstate = WSTATE_WARN;
-       else if (val.c_data.c_int == 1) newstate = WSTATE_DISABLE;
+       else if (val.c_data.c_int == 1) newstate = WSTATE_DISABLED;
        else newstate = WSTATE_SUPPRESS;
        goto set_warning_newstate;
       } else if (val.c_kind == TPP_CONST_STRING) {
@@ -9267,24 +9294,24 @@ set_warning_newstate:
        warning_text = val.c_data.c_string->s_text;
        if (*warning_text == '-') ++warning_text;
        if (*warning_text == 'W') ++warning_text;
-            if (!memcmp(warning_text,"no-",3*sizeof(char))) warning_text += 3,newstate = WSTATE_DISABLE;
+            if (!memcmp(warning_text,"no-",3*sizeof(char))) warning_text += 3,newstate = WSTATE_DISABLED;
        else if (!memcmp(warning_text,"def-",4*sizeof(char))) warning_text += 4,newstate = WSTATE_DEFAULT;
        else if (!memcmp(warning_text,"sup-",4*sizeof(char))) warning_text += 4,newstate = WSTATE_SUPPRESS;
        else if (!memcmp(warning_text,"suppress-",9*sizeof(char))) warning_text += 9,newstate = WSTATE_SUPPRESS;
        wset_error = TPPLexer_SetWarnings(warning_text,newstate);
-       if (wset_error == 2) wset_error = TPPLexer_Warn(W_INVALID_WARNING,&val);
+       if (wset_error == 2) wset_error = WARN(W_INVALID_WARNING,&val);
        TPPString_Decref(val.c_data.c_string);
        if unlikely(!wset_error) goto seterr;
       } else {
-       if unlikely(!TPPLexer_Warn(W_EXPECTED_WARNING_NAMEORID,&val)) goto err;
+       if unlikely(!WARN(W_EXPECTED_WARNING_NAMEORID,&val)) goto err;
       }
      } break;
     }
     if (TOK != ',') break;
-    yield_fetch();
+    YIELD();
    }
-   if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-   else yield_fetch();
+   if unlikely(TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
    return 1;
   } break;
 
@@ -9292,22 +9319,22 @@ set_warning_newstate:
    struct TPPConst extname;
   case KWD_extension:
 pragma_extension:
-   yield_fetch();
-   if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-   else yield_fetch();
+   YIELD();
+   if unlikely(TOK != '(') WARN(W_EXPECTED_LPAREN);
+   else YIELD();
    for (;;) {
     if (TOK == KWD_push) {
      if unlikely(!TPPLexer_PushExtensions()) goto seterr;
      goto yield_after_extension;
     } else if (TOK == KWD_pop) {
      if unlikely(!TPPLexer_PopExtensions() &&
-                 !TPPLexer_Warn(W_CANT_POP_EXTENSIONS)) goto err;
+                 !WARN(W_CANT_POP_EXTENSIONS)) goto err;
 yield_after_extension:
-     yield_fetch();
+     YIELD();
     } else {
      if unlikely(!TPPLexer_Eval(&extname)) goto err;
      if (extname.c_kind != TPP_CONST_STRING) {
-      if unlikely(!TPPLexer_Warn(W_EXPECTED_STRING_AFTER_EXTENSION,&extname)) goto err;
+      if unlikely(!WARN(W_EXPECTED_STRING_AFTER_EXTENSION,&extname)) goto err;
      } else {
       int ext_error,mode = 1;
       char const *name = extname.c_data.c_string->s_text;
@@ -9315,22 +9342,22 @@ yield_after_extension:
       if (*name == 'f') ++name;
       if (!memcmp(name,"no-",3)) name += 3,mode = 0;
       ext_error = TPPLexer_SetExtension(name,mode);
-      if unlikely(!ext_error) ext_error = TPPLexer_Warn(W_UNKNOWN_EXTENSION,name);
+      if unlikely(!ext_error) ext_error = WARN(W_UNKNOWN_EXTENSION,name);
       TPPString_Decref(extname.c_data.c_string);
       if unlikely(!ext_error) goto err;
      }
     }
     if (TOK != ',') break;
-    yield_fetch();
+    YIELD();
    }
-   if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-   else yield_fetch();
+   if unlikely(TOK != ')') WARN(W_EXPECTED_RPAREN);
+   else YIELD();
    return 1;
   } break;
 
   { /* TPP-specific pragma namespace. */
   case KWD_TPP:
-   yield_fetch();
+   YIELD();
    switch (TOK) {
 
     case KWD_warning              : goto pragma_warning;
@@ -9340,26 +9367,26 @@ yield_after_extension:
 
     { /* Configure system #include-paths. */
     case KWD_include_path:
-     yield_fetch();
-     if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
-     else yield_fetch();
+     YIELD();
+     if unlikely(TOK != '(') WARN(W_EXPECTED_LPAREN);
+     else YIELD();
      while (TOK != ')') {
       switch (TOK) {
        { /* push/pop the system #include-path. */
         if (FALSE) { case KWD_clear: TPPLexer_ClearInclude(); }
         if (FALSE) { case KWD_push:  if unlikely(!TPPLexer_PushInclude()) goto seterr; }
-        if (FALSE) { case KWD_pop:   if unlikely(!TPPLexer_PopInclude() && !TPPLexer_Warn(W_CANT_POP_INCLUDE_PATH)) goto err; }
-        yield_fetch();
+        if (FALSE) { case KWD_pop:   if unlikely(!TPPLexer_PopInclude() && !WARN(W_CANT_POP_INCLUDE_PATH)) goto err; }
+        YIELD();
        } break;
        {
         int mode,error;
         struct TPPConst path_string;
-       case '+': yield_fetch();
+       case '+': YIELD();
        default:  mode = 1;
-        if (FALSE) { case '-': mode = 0; yield_fetch(); }
+        if (FALSE) { case '-': mode = 0; YIELD(); }
         if unlikely(!TPPLexer_Eval(&path_string)) goto err;
         if (path_string.c_kind != TPP_CONST_STRING) {
-         TPPLexer_Warn(W_EXPECTED_STRING_AFTER_TPP_INCPTH,&path_string);
+         WARN(W_EXPECTED_STRING_AFTER_TPP_INCPTH,&path_string);
         } else {
          char *path; size_t size = path_string.c_data.c_string->s_size;
          if (path_string.c_data.c_string->s_refcnt == 1) {
@@ -9375,7 +9402,7 @@ yield_after_extension:
          if unlikely(mode && !error) goto seterr;
          if unlikely(error == 2) error = 0;
          if unlikely(!error) {
-          TPPLexer_Warn(mode ? W_INCLUDE_PATH_ALREADY_EXISTS
+          WARN(mode ? W_INCLUDE_PATH_ALREADY_EXISTS
                              : W_UNKNOWN_INCLUDE_PATH,
                         path,size);
          }
@@ -9386,10 +9413,10 @@ yield_after_extension:
        }
       }
       if (TOK != ',') break;
-      yield_fetch();
+      YIELD();
      }
-     if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
-     else yield_fetch();
+     if unlikely(TOK != ')') WARN(W_EXPECTED_RPAREN);
+     else YIELD();
      return 1;
     } break;
 
@@ -9399,30 +9426,30 @@ yield_after_extension:
 
   { /* Emulate some GCC pragmas. */
   case KWD_GCC:
-   yield_fetch();
+   YIELD();
    if (TOK == KWD_diagnostic) {
-    yield_fetch();
+    YIELD();
     switch (TOK) {
      /* Push/Pop warnings */
      case KWD_push: if unlikely(!TPPLexer_PushWarnings()) goto seterr; break;
-     case KWD_pop: if (!TPPLexer_PopWarnings() && !TPPLexer_Warn(W_CANT_POP_WARNINGS)) goto err; break;
+     case KWD_pop: if (!TPPLexer_PopWarnings() && !WARN(W_CANT_POP_WARNINGS)) goto err; break;
 
      { /* Configure the mode for a GCC diagnostic. */
       wstate_t newmode; struct TPPConst group_name;
       if (FALSE) { case KWD_warning: newmode = WSTATE_WARN; }
       if (FALSE) { case KWD_error:   newmode = WSTATE_ERROR; }
-      if (FALSE) { case KWD_ignored: newmode = WSTATE_DISABLE; }
-      yield_fetch();
+      if (FALSE) { case KWD_ignored: newmode = WSTATE_DISABLED; }
+      YIELD();
       if unlikely(!TPPLexer_Eval(&group_name)) goto err;
       if (group_name.c_kind != TPP_CONST_STRING) {
-       if unlikely(!TPPLexer_Warn(W_EXPECTED_STRING_AFTER_GCC_DIAG,&group_name)) goto err;
+       if unlikely(!WARN(W_EXPECTED_STRING_AFTER_GCC_DIAG,&group_name)) goto err;
       } else {
        int wset_error;
        char const *warning_name = group_name.c_data.c_string->s_text;
        if (*warning_name == '-') ++warning_name;
        if (*warning_name == 'W') ++warning_name;
        wset_error = TPPLexer_SetWarnings(warning_name,newmode);
-       if (wset_error == 2) wset_error = TPPLexer_Warn(W_INVALID_WARNING,&group_name);
+       if (wset_error == 2) wset_error = WARN(W_INVALID_WARNING,&group_name);
        TPPString_Decref(group_name.c_data.c_string);
        if unlikely(!wset_error) goto seterr;
       }
@@ -9431,25 +9458,25 @@ yield_after_extension:
 
      default: return 0;
     }
-    yield_fetch();
+    YIELD();
     return 1;
    } else if (TOK == KWD_system_header) {
     struct TPPFile *textfile;
-    yield_fetch();
+    YIELD();
     textfile = TPPLexer_Textfile();
     /* Set the system-header flag in the current file (thus suppressing warnings) */
     textfile->f_textfile.f_flags |= TPP_TEXTFILE_FLAG_SYSHEADER;
     return 1;
-   } else if (current.l_callbacks.c_parse_pragma_gcc) {
+   } else if (CURRENT.l_callbacks.c_parse_pragma_gcc) {
     /* Call the user-provided GCC pragma hook. */
-    return (*current.l_callbacks.c_parse_pragma_gcc)();
+    return (*CURRENT.l_callbacks.c_parse_pragma_gcc)();
    }
   } break;
 
   default:
    LOG(LOG_PRAGMA,("Unknown pragma '%.*s'\n",
-                  (int)(token.t_end-token.t_begin),
-                   token.t_begin));
+                  (int)(TOKEN.t_end-TOKEN.t_begin),
+                   TOKEN.t_begin));
    break;
  }
  return 0;
@@ -9457,6 +9484,10 @@ seterr: TPPLexer_SetErr();
 err:    return 0;
 }
 
+#undef TPPLexer_SetErr
+#undef TPPLexer_UnsetErr
+PUBLIC int TPPLexer_SetErr(void) { return TPPLexer_SetErr_inline(); }
+PUBLIC int TPPLexer_UnsetErr(void) { return TPPLexer_UnsetErr_inline(); }
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -9496,26 +9527,26 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
  struct TPPFile *effective_file;
  unsigned int wid;
 #if 0 /* Don't warn when already in an error-state. */
- if (current.l_flags&TPPLEXER_FLAG_ERROR) return 0;
+ if (CURRENT.l_flags&TPPLEXER_FLAG_ERROR) return 0;
 #endif
- ++current.l_warncount; /* Always count warnings, even if they'll be dismissed. */
- if (current.l_flags&TPPLEXER_FLAG_NO_WARNINGS) return 1; /* Warnings are disabled. */
+ ++CURRENT.l_warncount; /* Always count warnings, even if they'll be dismissed. */
+ if (CURRENT.l_flags&TPPLEXER_FLAG_NO_WARNINGS) return 1; /* Warnings are disabled. */
  /* Check for per-warning behavior, as configured by the current lexer. */
  behavior = TPPLexer_InvokeWarning(wnum);
  if (behavior == TPP_WARNINGMODE_IGNORE) return 1; /* Warning is being ignored. */
  /* Turn warnings into errors. */
  if (behavior == TPP_WARNINGMODE_WARN) {
   /* Ignore warnings in system headers. */
-  if (!(current.l_flags&TPPLEXER_FLAG_WSYSTEMHEADERS)) {
+  if (!(CURRENT.l_flags&TPPLEXER_FLAG_WSYSTEMHEADERS)) {
    struct TPPFile *textfile = TPPLexer_Textfile(); /* Walk the chain of a cached #include file. */
    if (textfile->f_textfile.f_flags&TPP_TEXTFILE_FLAG_SYSHEADER) return 1;
   }
   /* Turn warnings into errors. */
-  if (current.l_flags&TPPLEXER_FLAG_WERROR) behavior = TPP_WARNINGMODE_ERROR;
+  if (CURRENT.l_flags&TPPLEXER_FLAG_WERROR) behavior = TPP_WARNINGMODE_ERROR;
  }
  va_start(args,wnum);
 #define TOK_S       Q("%.*s")
-#define TOK_A        (int)(token.t_end-token.t_begin),token.t_begin
+#define TOK_A        (int)(TOKEN.t_end-TOKEN.t_begin),TOKEN.t_begin
 #define ARG(T)        va_arg(args,T)
 #define FILENAME()   (ARG(struct TPPFile *)->f_name)
 #define KWDNAME()    (ARG(struct TPPKeyword *)->k_name)
@@ -9524,7 +9555,7 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
  {
   struct TPPFile *macro_file;
   effective_file = NULL;
-  macro_file = token.t_file;
+  macro_file = TOKEN.t_file;
   while (macro_file->f_kind == TPPFILE_KIND_EXPLICIT &&
          macro_file->f_prev) macro_file = macro_file->f_prev;
   if (macro_file->f_kind == TPPFILE_KIND_MACRO) {
@@ -9542,7 +9573,7 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
    struct TPPIfdefStackSlot *ifdef_slot;
   case W_IF_WITHOUT_ENDIF:
    ifdef_slot = ARG(struct TPPIfdefStackSlot *);
-   WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+   WARNF(CURRENT.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
          ? "%s(%d) : " : "%s:%d: ",
          ifdef_slot->iss_file->f_name,ifdef_slot->iss_line+1);
    macro_name = NULL;
@@ -9562,8 +9593,8 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
 #if 1
     /* For better compatibility with custom parsers,
      * make sure that the token pointer can be used. */
-    if (current.l_token.t_begin < current.l_token.t_file->f_begin ||
-        current.l_token.t_begin > current.l_token.t_file->f_end) {
+    if (CURRENT.l_token.t_begin < CURRENT.l_token.t_file->f_begin ||
+        CURRENT.l_token.t_begin > CURRENT.l_token.t_file->f_end) {
      TPPLexer_LC(&lc_info);
      macro_name = NULL;
     } else
@@ -9571,7 +9602,7 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
     {
      TPPLexer_TRUE_LC(&lc_info);
     }
-    WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+    WARNF(CURRENT.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
           ? "%s(%d,%d) : " : "%s:%d:%d: ",
           true_filename,
           (int)(lc_info.lc_line+1),
@@ -9631,13 +9662,13 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
  if (macro_name) {
   struct TPPLCInfo lc_info;
 #if 1
-  struct TPPFile *iter = token.t_file;
+  struct TPPFile *iter = TOKEN.t_file;
   for (;;) {
    iter = iter->f_prev;
    assert(iter);
    if (iter->f_kind != TPPFILE_KIND_EXPLICIT) {
     TPPFile_LCAt(iter,&lc_info,iter->f_pos);
-    WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+    WARNF(CURRENT.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
           ? "%s(%d,%d) : " : "%s:%d:%d: ",
           TPPFile_Filename(iter,NULL),
          (int)(lc_info.lc_line+1),
@@ -9656,7 +9687,7 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
   WARNF("\n"); /* Additional line-feed for better readability. */
 #else
   TPPLexer_LC(&lc_info);
-  WARNF(current.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+  WARNF(CURRENT.l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
         ? "%s(%d,%d) : " : "%s:%d:%d: ",
         TPPLexer_FILE(NULL),
        (int)(lc_info.lc_line+1),
@@ -9677,7 +9708,6 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-
 
 
 #ifdef __cplusplus

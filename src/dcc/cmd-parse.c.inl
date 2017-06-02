@@ -79,16 +79,16 @@ PRIVATE void tpp_wall(void) {
  end = iter+TPP_WARNING_BITSETSIZE;
  for (; iter != end; ++iter) {
   b = *iter;
-  if ((b&B(00000011)) == (WSTATE_DISABLE << 0)) b |= (WSTATE_WARN << 0);
-  if ((b&B(00001100)) == (WSTATE_DISABLE << 2)) b |= (WSTATE_WARN << 2);
-  if ((b&B(00110000)) == (WSTATE_DISABLE << 4)) b |= (WSTATE_WARN << 4);
-  if ((b&B(11000000)) == (WSTATE_DISABLE << 6)) b |= (WSTATE_WARN << 6);
+  if ((b&B(00000011)) == (WSTATE_DISABLED << 0)) b |= (WSTATE_WARN << 0);
+  if ((b&B(00001100)) == (WSTATE_DISABLED << 2)) b |= (WSTATE_WARN << 2);
+  if ((b&B(00110000)) == (WSTATE_DISABLED << 4)) b |= (WSTATE_WARN << 4);
+  if ((b&B(11000000)) == (WSTATE_DISABLED << 6)) b |= (WSTATE_WARN << 6);
   *iter = b;
  }
  ext_end = (ext_iter = CURRENT.l_warnings.w_curstate->ws_extendedv)+
                        CURRENT.l_warnings.w_curstate->ws_extendeda;
  for (; ext_iter != ext_end; ++ext_iter) {
-  if (ext_iter->wse_oldstate == WSTATE_DISABLE)
+  if (ext_iter->wse_oldstate == WSTATE_DISABLED)
       ext_iter->wse_oldstate =  WSTATE_WARN;
  }
 }
@@ -229,36 +229,36 @@ def_secbase:
  case OPT_Wl_fatal_warnings:    CURRENT.l_flags |= TPPLEXER_FLAG_WERROR; break;
  case OPT_Wl_no_fatal_warnings: CURRENT.l_flags &= ~(TPPLEXER_FLAG_WERROR); break;
  case OPT_Wl_allow_multiple_definition:
-  TPPLexer_SetWarning(W_SYMBOL_ALREADY_DEFINED_SEC,WSTATE_DISABLE);
-  TPPLexer_SetWarning(W_SYMBOL_ALREADY_DEFINED_IMP,WSTATE_DISABLE);
-  TPPLexer_SetWarning(W_SYMBOL_ALREADY_DEFINED_ALIAS,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_SYMBOL_ALREADY_DEFINED_SEC,WSTATE_DISABLED);
+  TPPLexer_SetWarning(W_SYMBOL_ALREADY_DEFINED_IMP,WSTATE_DISABLED);
+  TPPLexer_SetWarning(W_SYMBOL_ALREADY_DEFINED_ALIAS,WSTATE_DISABLED);
   break;
  case OPT_Wl_allow_shlib_undefined:
-  TPPLexer_SetWarning(W_UNRESOLVED_REFERENCE,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_UNRESOLVED_REFERENCE,WSTATE_DISABLED);
   break;
  case OPT_Wl_no_allow_shlib_undefined:
   TPPLexer_SetWarning(W_UNRESOLVED_REFERENCE,WSTATE_DEFAULT);
   break;
  case OPT_Wl_no_warn_mismatch:
 #if DCC_LIBFORMAT_ELF
-  TPPLexer_SetWarning(W_LIB_ELF_INVALID_CLASS,WSTATE_DISABLE);
-  TPPLexer_SetWarning(W_LIB_ELF_INVALID_DATA,WSTATE_DISABLE);
-  TPPLexer_SetWarning(W_LIB_ELF_INVALID_VERSION,WSTATE_DISABLE);
-  TPPLexer_SetWarning(W_LIB_ELF_INVALID_OSABI,WSTATE_DISABLE);
-  TPPLexer_SetWarning(W_LIB_ELF_INVALID_MACHINE,WSTATE_DISABLE);
-  TPPLexer_SetWarning(W_LIB_ELF_INVALID_VERSION2,WSTATE_DISABLE);
-  TPPLexer_SetWarning(W_LIB_ELF_STATIC_SHARED,WSTATE_DISABLE);
-  TPPLexer_SetWarning(W_LIB_ELF_DYNAMIC_EXEC,WSTATE_DISABLE);
-  TPPLexer_SetWarning(W_LIB_ELF_DYNAMIC_RELO,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_CLASS,WSTATE_DISABLED);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_DATA,WSTATE_DISABLED);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_VERSION,WSTATE_DISABLED);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_OSABI,WSTATE_DISABLED);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_MACHINE,WSTATE_DISABLED);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_VERSION2,WSTATE_DISABLED);
+  TPPLexer_SetWarning(W_LIB_ELF_STATIC_SHARED,WSTATE_DISABLED);
+  TPPLexer_SetWarning(W_LIB_ELF_DYNAMIC_EXEC,WSTATE_DISABLED);
+  TPPLexer_SetWarning(W_LIB_ELF_DYNAMIC_RELO,WSTATE_DISABLED);
 #endif
   break;
  case OPT_Wl_no_warn_search_mismatch:
 #if DCC_LIBFORMAT_PE_DYNAMIC || DCC_LIBFORMAT_PE_STATIC
-  TPPLexer_SetWarning(W_LIB_PE_INVALID_MACHINE,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_PE_INVALID_MACHINE,WSTATE_DISABLED);
 #endif
 #if DCC_LIBFORMAT_ELF
-  TPPLexer_SetWarning(W_LIB_ELF_INVALID_DATA,WSTATE_DISABLE);
-  TPPLexer_SetWarning(W_LIB_ELF_INVALID_MACHINE,WSTATE_DISABLE);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_DATA,WSTATE_DISABLED);
+  TPPLexer_SetWarning(W_LIB_ELF_INVALID_MACHINE,WSTATE_DISABLED);
 #endif
   break;
 
@@ -294,7 +294,7 @@ def_secbase:
   break;
 
  { int error; /* Configure warning groups. */
-   if (DCC_MACRO_FALSE) { case OPT_Wno:   error = TPPLexer_SetWarnings(v,WSTATE_DISABLE); }
+   if (DCC_MACRO_FALSE) { case OPT_Wno:   error = TPPLexer_SetWarnings(v,WSTATE_DISABLED); }
    if (DCC_MACRO_FALSE) { enable_warning: error = TPPLexer_SetWarnings(v,WSTATE_WARN);    }
    if (error == 2) {
     struct TPPConst val;
@@ -376,7 +376,7 @@ check_depfile: if (preproc.p_depfd == TPP_STREAM_INVALID) preproc.p_depfd = DCC_
  case OPT_MMD: CMD_ONLY(); goto check_depfile;
  case OPT_MG:  CMD_ONLY();
   TPPLexer_Current->l_callbacks.c_unknown_file = &DCCPreprocessor_DepUnknown;
-  TPPLexer_SetWarning(TPP(W_FILE_NOT_FOUND),TPP(WSTATE_DISABLE));
+  TPPLexer_SetWarning(TPP(W_FILE_NOT_FOUND),TPP(WSTATE_DISABLED));
   goto set_dep_mode;
  case OPT_MP: CMD_ONLY(); preproc.p_flags |= DCC_PREPROCESSOR_FLAG_DEPDUMMY; break;
 
@@ -422,7 +422,7 @@ check_depfile: if (preproc.p_depfd == TPP_STREAM_INVALID) preproc.p_depfd = DCC_
   /* Enable old-style spelling of inplace operators ('x += 42;' --> 'x =+ 42;') */
   TPPLexer_Current->l_extokens |= TPPLEXER_TOKEN_EQUALBINOP;
   /* Disable old-style function warnings. */
-  TPPLexer_SetWarning(WG_OLD_FUNCTION_DECL,WSTATE_DISABLE);
+  TPPLexer_SetWarning(WG_OLD_FUNCTION_DECL,WSTATE_DISABLED);
   break;
 
 

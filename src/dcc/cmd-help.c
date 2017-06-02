@@ -279,7 +279,7 @@ INTERN void dcc_help(char const *subject) {
   if (!strcmp(subject,"extensions")) {
    struct tpp_extension const *iter;
    for (iter = tpp_extensions; iter->e_name; ++iter) {
-    fprintf(stderr,"-f%s%s\n",TPPLexer_HasExtension(iter-tpp_extensions) ? "" : "no-",iter->e_name);
+    fprintf(stderr,"-f%s%s\n",HAS(iter-tpp_extensions) ? "" : "no-",iter->e_name);
    }
    goto done;
   }
@@ -289,7 +289,7 @@ INTERN void dcc_help(char const *subject) {
  (TPP(wstate_t))((CURRENT.l_warnings.w_curstate->ws_state[(wid)/(8/TPP_WARNING_BITS)] \
              >> (((wid)%(8/TPP_WARNING_BITS))*TPP_WARNING_BITS)) & 3)
    for (iter = wgroup_names; *iter; ++iter) {
-    fprintf(stderr,"-W%s%s\n",getstate(iter-wgroup_names) == TPP(WSTATE_DISABLE) ? "no-" : "",*iter);
+    fprintf(stderr,"-W%s%s\n",getstate(iter-wgroup_names) == TPP(WSTATE_DISABLED) ? "no-" : "",*iter);
    }
 #undef getstate
    goto done;
