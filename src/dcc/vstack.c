@@ -139,6 +139,46 @@ DCC_RC_FORTYPE(struct DCCType const *__restrict t) {
 }
 
 
+PUBLIC void DCC_VSTACK_CALL
+DCCStackValue_GetReturn(struct DCCStackValue *__restrict self,
+                        struct DCCDecl const *funty_decl) {
+ assert(self);
+ self->sv_ctype.t_type = DCCTYPE_INT;
+ self->sv_ctype.t_base = NULL;
+ self->sv_flags        = DCC_SFLAG_NONE;
+ self->sv_const.it     = 0;
+ self->sv_sym          = NULL;
+ self->sv_reg2         = DCC_RC_CONST;
+ if (!funty_decl || (funty_decl->d_kind != DCC_DECLKIND_FUNCTION &&
+                     funty_decl->d_kind != DCC_DECLKIND_OLDFUNCTION)) {
+push_default:
+  self->sv_reg = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
+ } else {
+  /* Use the return type of a function type declaration. */
+  self->sv_ctype = funty_decl->d_type;
+  if (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_BUILTIN) {
+   /* TODO: floating-point registers. */
+   if (DCCTYPE_ISSIGNLESSBASIC(self->sv_ctype.t_type,DCCTYPE_INT64)) {
+#ifdef DCC_RC_I64
+    self->sv_reg  = DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
+#else
+    self->sv_reg  = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
+    self->sv_reg2 = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EDX;
+#endif
+   } else {
+    self->sv_reg = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
+   }
+  } else if (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_POINTER ||
+             DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_LVALUE) {
+   self->sv_reg = DCC_RC_PTRX|DCC_ASMREG_EAX;
+  } else {
+   /* TODO: structure types. */
+   goto push_default;
+  }
+ }
+}
+
+
 LOCAL void DCC_VSTACK_CALL
 DCCStackValue_SetMemDecl(struct DCCStackValue *__restrict slot,
                          struct DCCMemDecl const *__restrict decl) {
@@ -2445,9 +2485,8 @@ DCCVStack_KillAll(void) {
  end  = compiler.c_vstack.v_end;
  iter = compiler.c_vstack.v_bottom;
  for (; iter != end; ++iter) {
-  if (!(iter->sv_flags&DCC_SFLAG_LVALUE) &&
-      ((iter->sv_reg != DCC_RC_CONST) ||
-       (iter->sv_reg2 != DCC_RC_CONST))) {
+  if (((iter->sv_reg&DCC_RC_I) && !DCC_ASMREG_ISPROTECTED(iter->sv_reg&DCC_RI_MASK)) ||
+      ((iter->sv_reg2&DCC_RC_I) && !DCC_ASMREG_ISPROTECTED(iter->sv_reg2&DCC_RI_MASK))) {
    /* Kill this stack value. */
    DCCStackValue_Kill(iter);
    assert(iter->sv_flags&DCC_SFLAG_LVALUE);
@@ -2633,39 +2672,7 @@ DCCVStack_PushSizeof(struct DCCType const *__restrict t) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_PushReturn(struct DCCDecl const *funty_decl) {
  struct DCCStackValue slot;
- slot.sv_ctype.t_type = DCCTYPE_INT;
- slot.sv_ctype.t_base = NULL;
- slot.sv_flags        = DCC_SFLAG_NONE;
- slot.sv_const.it     = 0;
- slot.sv_sym          = NULL;
- slot.sv_reg2         = DCC_RC_CONST;
- if (!funty_decl || (funty_decl->d_kind != DCC_DECLKIND_FUNCTION &&
-                     funty_decl->d_kind != DCC_DECLKIND_OLDFUNCTION)) {
-push_default:
-  slot.sv_reg = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
- } else {
-  /* Use the return type of a function type declaration. */
-  slot.sv_ctype = funty_decl->d_type;
-  if (DCCTYPE_GROUP(slot.sv_ctype.t_type) == DCCTYPE_BUILTIN) {
-   /* TODO: floating-point registers. */
-   if (DCCTYPE_ISSIGNLESSBASIC(slot.sv_ctype.t_type,DCCTYPE_INT64)) {
-#ifdef DCC_RC_I64
-    slot.sv_reg  = DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
-#else
-    slot.sv_reg  = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
-    slot.sv_reg2 = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EDX;
-#endif
-   } else {
-    slot.sv_reg = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_EAX;
-   }
-  } else if (DCCTYPE_GROUP(slot.sv_ctype.t_type) == DCCTYPE_POINTER ||
-             DCCTYPE_GROUP(slot.sv_ctype.t_type) == DCCTYPE_LVALUE) {
-   slot.sv_reg = DCC_RC_PTRX|DCC_ASMREG_EAX;
-  } else {
-   /* TODO: structure types. */
-   goto push_default;
-  }
- }
+ DCCStackValue_GetReturn(&slot,funty_decl);
  vpush(&slot);
 }
 
@@ -4088,6 +4095,7 @@ DCCVStack_Call(size_t n_args) {
  target_siz_t arg_size,stack_align;
  uint32_t cc; size_t argc,untyped;
  struct DCCStructField *argv;
+ struct DCCStackValue return_value;
  assert(vsize >= (1+n_args));
  VLOG(-(ptrdiff_t)n_args,("vcall(%lu)\n",(unsigned long)n_args));
  /* Kill all tests. */
@@ -4200,6 +4208,12 @@ warn_argc:
 #endif
 
  DCCVStack_KillAll(); /* Kill all temporary registers still in use. */
+ DCCStackValue_GetReturn(&return_value,funty_decl);
+ //if (!(return_value.sv_flags&DCC_SFLAG_LVALUE) &&
+ //      return_value.sv_reg != DCC_RC_CONST)
+ //      DCCVStack;
+
+
  DCCStackValue_Call(function); /* Generate the call instructions. */
  vpop(1); /* Pop the function. */
 
@@ -4213,7 +4227,7 @@ warn_argc:
  }
  /* TODO: What about caller-allocated structure memory? */
 
- DCCVStack_PushReturn(funty_decl);
+ vpush(&return_value);
  /* Set the WUNUSED flag for the return value
   * of functions marked with [[warn_unused_result]] */
  if (funty_attr &&

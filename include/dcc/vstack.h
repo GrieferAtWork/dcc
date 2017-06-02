@@ -341,6 +341,10 @@ struct DCCStackValue {
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_Kill(struct DCCStackValue *__restrict self);
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_Cow(struct DCCStackValue *__restrict self);
 
+/* Initialize the given stack-value 'self' as the return-value of a function of type 'funty_decl'
+ * NOTE: NULL, or a non-function type may be passed for 'funty_decl' to use the default storage location. */
+DCCFUN void DCC_VSTACK_CALL DCCStackValue_GetReturn(struct DCCStackValue *__restrict self, struct DCCDecl const *funty_decl);
+
 /* The opposite of 'DCCStackValue_Kill': Load the value into a register.
  * After a call to this function, 'self' is never an lvalue! */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_Load(struct DCCStackValue *__restrict self);
