@@ -40,7 +40,7 @@ typedef struct {
 	__int32 __msvcrt_charbuf;
 	__int32 __msvcrt_bufsiz;
 	char   *__msvcrt_tmpfname;
-} *FILE;
+} FILE;
 
 #define BUFSIZ  512
 #define EOF     (-1)
@@ -91,7 +91,7 @@ __IMP int (vprintf)(char const *,__builtin_va_list);
 __IMP int (vsprintf)(char *,char const *,__builtin_va_list);
 
 #if __STDLIB_VERSION__ >= 201112L
-#if #__CRT(msvc)
+#if #__CRT(msvc) && 0
 __inline__ int (vsnprintf)(char *__buf, size_t __bufsiz, char const *__format, __builtin_va_list __args) {
 	__IMP int (__msvc_vsnprintf)(char *,size_t,char const *,__builtin_va_list) __asm__("_vsnprintf");
 	__IMP int (__msvc_vscprintf)(char const *,__builtin_va_list) __asm__("_vscprintf");

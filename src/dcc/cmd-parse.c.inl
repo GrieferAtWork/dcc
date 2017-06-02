@@ -133,6 +133,7 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
 
  case OPT_Wl_Bsymbolic: linker.l_flags |= DCC_LINKER_FLAG_SYMBOLIC; break;
  case OPT_Wl_shared:    linker.l_flags |= DCC_LINKER_FLAG_SHARED; break;
+ case OPT_nostdinc:     linker.l_flags |= DCC_LINKER_FLAG_NOSTDINC; break;
  case OPT_Wl_nostdlib:  linker.l_flags |= DCC_LINKER_FLAG_NOSTDLIB; break;
  case OPT_Wl_pie:            linker.l_flags |= DCC_LINKER_FLAG_PIC; break;
  case OPT_Wl_pic_executable: linker.l_flags |= DCC_LINKER_FLAG_PIC;

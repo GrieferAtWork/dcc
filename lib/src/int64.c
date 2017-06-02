@@ -16,46 +16,59 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-/* Compile with: $ dcc -nostdlib -c -o crt1.o crt1.c */
+/* Compile with: $ dcc -nostdlib -c -o int64.o int64.c */
 
-#pragma comment(lib,"msvcrt")
+#include <stdint.h>
 
 /* Declare everything with hidden visibility. */
 #pragma GCC visibility push("hidden")
 
+__attribute__((visibility("default")))
+uint64_t __ashlti3(uint64_t x, int shift) {
+	/* TODO: return x << shift; */
+	return x;
+}
 
-#define __UNKNOWN_APP    0
-#define __CONSOLE_APP    1
-#define __GUI_APP        2
-void __set_app_type(int);
-void _controlfp(unsigned a, unsigned b);
+__attribute__((visibility("default")))
+uint64_t __ashrti3(uint64_t x, int shift) {
+	/* TODO: return x >> shift; */
+	return x;
+}
 
+__attribute__((visibility("default")))
+int64_t __lshrti3(int64_t x, int shift) {
+	/* TODO: return x >> shift; */
+	return x;
+}
 
-typedef struct {
-	int newmode;
-} _startupinfo;
+__attribute__((visibility("default")))
+uint64_t __udivti3(uint64_t x, uint64_t y) {
+	/* TODO: return x / y; */
+	return x;
+}
 
-void __getmainargs(int *pargc, char ***pargv, char ***penv, int globb, _startupinfo*);
-void exit(int exitcode) __attribute__((noreturn));
+__attribute__((visibility("default")))
+int64_t __divti3(int64_t x, int64_t y) {
+	/* TODO: return x / y; */
+	return x;
+}
 
-int main(int argc, char **argv, char **env);
+__attribute__((visibility("default")))
+uint64_t __umodti3(uint64_t x, int64_t y) {
+	/* TODO: return x % y; */
+	return x;
+}
 
-void __start(void) __attribute__((noreturn,alias("_start")));
+__attribute__((visibility("default")))
+int64_t __modti3(int64_t x, int64_t y) {
+	/* TODO: return x % y; */
+	return x;
+}
 
-__attribute__((noreturn))
-void _start(void) {
-	int argc; char **argv; char **env; int ret;
-	_startupinfo start_info = {0};
-#ifdef _WIN32
-	/* TODO: Register initial SEH handler. */
-#endif
-
-	_controlfp(0x10000, 0x30000);
-	__set_app_type(__CONSOLE_APP);
-	__getmainargs(&argc,&argv,&env,0,&start_info);
-
-	ret = main(argc,argv,env);
-	exit(ret);
+__attribute__((visibility("default")))
+int64_t __multi3(int64_t x, int64_t y) {
+	/* TODO: return x * y; */
+	return x;
 }
 
 #pragma GCC visibility pop

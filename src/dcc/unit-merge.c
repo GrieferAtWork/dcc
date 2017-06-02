@@ -144,6 +144,16 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
  assert(other);
  assert(other != &unit);
  TPPLexer_PushFile(&TPPFile_Merge);
+ if (!unit.u_nsymc && !unit.u_symc) {
+  /* Special case: Without anything defined, we can simply restore 'other'! */
+  assert(!unit.u_secc);
+  assert(!unit.u_impc);
+  DCCUnit_Restore(other);
+  /* Ensure that 'other' is in a valid state. */
+  memset(other,0,sizeof(struct DCCUnit));
+  return;
+ }
+
  /* Merge all sections & section data. */
  for (srcsec = other->u_secs; srcsec; srcsec = srcsec->sc_next) {
   struct DCCSection *dstsec;

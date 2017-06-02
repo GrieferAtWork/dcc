@@ -34,6 +34,12 @@
 
 DCC_DECL_BEGIN
 
+#ifdef __DCC_VERSION__
+/* Hot-fix for broken system headers. TODO: REMOVE ME */
+unsigned long __readfsdword(unsigned long) { return 0; }
+#endif
+
+
 INTDEF void dcc_dump_symbols(void);
 
 INTERN void def(char const *name, target_ptr_t addr) {
@@ -108,6 +114,7 @@ static void load_stdlib(void) {
    {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
   static struct DCCLibDef default_stdlib[] = {
    STDLIB("crt1.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
+   STDLIB("int64.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
 #if DCC_TARGET_OS == DCC_OS_WINDOWS || \
     DCC_TARGET_OS == DCC_OS_CYGWIN
    STDLIB(SO("msvcrt"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
@@ -119,7 +126,15 @@ static void load_stdlib(void) {
   };
 #undef STDLIB
   struct DCCLibDef *chain = default_stdlib;
-  for (; chain->ld_name; ++chain) DCCUnit_Import(chain);
+  for (; chain->ld_name; ++chain) {
+   if (chain->ld_flags&DCC_LIBDEF_FLAG_STATIC) {
+    DCCUnit_Push();
+    DCCUnit_Import(chain);
+    DCCUnit_Pop(OK);
+   } else {
+    DCCUnit_Import(chain);
+   }
+  }
  }
 }
 
@@ -174,7 +189,7 @@ int main(int argc, char *argv[]) {
      !strcmp(name,"-"))) name = NULL;
   DCCPreprocessor_OutAuto(name);
  }
- if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB))
+ if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDINC))
        DCCLinker_AddSysPaths(preproc.p_outfile);
  if (preproc.p_flags&DCC_PREPROCESSOR_MASK_HELP) {
   struct cmd hc;

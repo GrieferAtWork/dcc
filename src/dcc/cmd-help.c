@@ -354,7 +354,8 @@ INTERN void dcc_help(char const *subject) {
 #else
                 INDENT "-symbolic                   Ignored by the target binary.\n"
 #endif
-                INDENT "-nostdlib                   Don't include standard include/library paths or link against standard libraries\n"
+                INDENT "-nostdinc                   Don't include standard include/library paths\n"
+                INDENT "-nostdlib                   Don't link against standard libraries\n"
                 INDENT "-Ldir                       Adds 'dir' to the list of library search paths\n"
                 INDENT "-Idir                       Adds 'dir' to the list of #include <...> paths\n"
                 INDENT "-Dsym[=val=1]               Defines a macro 'sym' as 'val'\n"

@@ -2,10 +2,12 @@
 
 CC="gcc"
 F=("-Iinclude" "-DDCC_PRIVATE_API")
+out_bin="bin/dcc"
 
 CC_DCC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
 if [ -f "$CC_DCC" ]; then
 	CC="$CC_DCC";
+	out_bin="bin/ddc.exe"
 	F+=("-DDCC_PRIVATE_API")
 	F+=("-D_VA_LIST_DEFINED")
 	F+=("-D__SSE2__")
@@ -58,7 +60,7 @@ mkdir -p $(build "") || exit $?
 src src/*.c
 src src/dcc/*.c
 
-$CC -o bin/dcc ${object_list[@]}
+$CC -o "$out_bin" ${object_list[@]}
 
 
 

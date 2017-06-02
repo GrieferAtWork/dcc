@@ -173,31 +173,37 @@ tpp_memrchr(void const *p, int c, size_t n) {
 }
 #endif
 
+#ifdef _MSC_VER
+extern void __debugbreak(void);
+#define TPP_BREAKPOINT  __debugbreak
+#elif __has_builtin(__builtin_breakpoint)
+#define TPP_BREAKPOINT  __builtin_breakpoint
+#elif (defined(__i386__) || defined(__i386) || defined(i386) || \
+       defined(__x86_64__)) && (defined(__GNUC__) || defined(__DCC_VERSION__))
+#define TPP_BREAKPOINT() ({ __asm__ __volatile__("int $3\n"); (void)0; })
+#endif
+
 #undef assert
 #if TPP_CONFIG_DEBUG
 PRIVATE
-#ifdef __GNUC__
+#ifndef TPP_BREAKPOINT
 __attribute__((__noreturn__))
 #endif
 void tpp_assertion_failed(char const *expr, char const *file, int line) {
  fprintf(stderr,
 #ifdef _MSC_VER
-         (!TPPLexer_Current || (TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT))
+        (!TPPLexer_Current || (TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT))
 #else
-         (TPPLexer_Current && (TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT))
+        (TPPLexer_Current && (TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT))
 #endif
          ? "%s(%d) : " : "%s:%d: ",file,line);
  fprintf(stderr,"Assertion failed : %s\n",expr);
-#ifndef _MSC_VER
+#ifndef TPP_BREAKPOINT
  exit(1);
 #endif
 }
-#ifdef _MSC_VER
-extern void __debugbreak(void);
-#define assert(expr) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__),__debugbreak(),0))
-#elif defined(__GNUC__)
-#define assert(expr) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__),\
-                     ({ __asm__ __volatile__("int $3\n" : : : "memory"); 0; })))
+#ifdef TPP_BREAKPOINT
+#define assert(expr) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__),TPP_BREAKPOINT(),0))
 #else
 #define assert(expr) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__),0))
 #endif

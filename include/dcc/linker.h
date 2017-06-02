@@ -111,12 +111,13 @@ struct DCCLibPaths {
 
 
 #define DCC_LINKER_FLAG_SHARED       0x00000001 /*< Create shared libraries. */
-#define DCC_LINKER_FLAG_NOSTDLIB     0x00000002 /*< Don't include standard libraries. */
-#define DCC_LINKER_FLAG_NOUNDERSCORE 0x00000004 /*< Don't prepend leading underscores. */
-#define DCC_LINKER_FLAG_PIC          0x00000008 /*< Generate relocations, meaning that a generated image will not be position-independent. */
-#define DCC_LINKER_FLAG_SYMBOLIC     0x00000010 /*< Set if '-Wl,-Bsymbolic' was passed on the commandline. */
-#define DCC_LINKER_FLAG_IMGBASE      0x00000020 /*< Set when an explicit image base has been stored in 'l_imgbase'. */
-#define DCC_LINKER_FLAG_LIBSYMREDEF  0x00000040 /*< When linking against multiple libraries exporting the same symbol, still allow redefinition of use the newest version.
+#define DCC_LINKER_FLAG_NOSTDINC     0x00000002 /*< Don't add standard search paths. */
+#define DCC_LINKER_FLAG_NOSTDLIB     0x00000004 /*< Don't include standard libraries. */
+#define DCC_LINKER_FLAG_NOUNDERSCORE 0x00000008 /*< Don't prepend leading underscores. */
+#define DCC_LINKER_FLAG_PIC          0x00000010 /*< Generate relocations, meaning that a generated image will not be position-independent. */
+#define DCC_LINKER_FLAG_SYMBOLIC     0x00000020 /*< Set if '-Wl,-Bsymbolic' was passed on the commandline. */
+#define DCC_LINKER_FLAG_IMGBASE      0x00000040 /*< Set when an explicit image base has been stored in 'l_imgbase'. */
+#define DCC_LINKER_FLAG_LIBSYMREDEF  0x00000080 /*< When linking against multiple libraries exporting the same symbol, still allow redefinition of use the newest version.
                                                  *  This option is not normally set, as it usually just widens the scope of library dependencies, such as when linking against
                                                  * 'ntdll.dll' on windows, which happens to export its own version of 'strlen' (which is probably already linked against 'msvcrt.dll')
                                                  *  NOTE: This flag is implicitly set for the definition of a symbol with a [[lib(...)]] attribute.
