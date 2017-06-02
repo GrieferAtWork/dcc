@@ -226,16 +226,14 @@ secty_of(struct DCCSection const *__restrict section) {
    !memcmp(section_name->k_name,s,sizeof(s)-sizeof(char)))
  if (!(section->sc_start.sy_flags&DCC_SYMFLAG_SEC_NOALLOC)) {
   if (section->sc_start.sy_flags&DCC_SYMFLAG_SEC_X) return SECTY_TEXT;
-  if (section->sc_text.tb_begin != section->sc_text.tb_max) {
-   /* section with actual data inside. */
-   if (CHECK_NAME(".rsrc"))  return SECTY_RSRC;
-   if (CHECK_NAME(".iedat")) return SECTY_IDATA;
-   if (CHECK_NAME(".pdata")) return SECTY_PDATA;
-   if ((section->sc_start.sy_flags&DCC_SYMFLAG_SEC_W) &&
-       (section->sc_text.tb_begin == section->sc_text.tb_end))
+  /* section with actual data inside. */
+  if (CHECK_NAME(".rsrc"))  return SECTY_RSRC;
+  if (CHECK_NAME(".iedat")) return SECTY_IDATA;
+  if (CHECK_NAME(".pdata")) return SECTY_PDATA;
+  if ((section->sc_start.sy_flags&DCC_SYMFLAG_SEC_W)/* &&
+      (section->sc_text.tb_begin == section->sc_text.tb_end)*/)
        return SECTY_BSS;
-   return (section->sc_start.sy_flags&DCC_SYMFLAG_SEC_R) ? SECTY_DATA : SECTY_OTHER;
-  }
+  return (section->sc_start.sy_flags&DCC_SYMFLAG_SEC_R) ? SECTY_DATA : SECTY_OTHER;
  } else if (!(section->sc_start.sy_flags&DCC_SYMFLAG_SEC_ISIMPORT)) {
   if (CHECK_NAME(".reloc")) return SECTY_RELOC;
   if (section_name->k_size >= 5 &&
@@ -1219,7 +1217,7 @@ DCCLinker_Make(stream_t fd) {
  /* Collect all symbols that should be exported from the binary. */
  pe_mk_collect_exports();
  if (!OK) goto end;
- 
+
  /* Everything that is externally visible has been collected,
   * meaning that everything that's still unused can be removed. */
  DCCUnit_ClearUnused();
