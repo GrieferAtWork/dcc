@@ -94,6 +94,10 @@ case W_UNRESOLVED_REFERENCE: \
 /* Custom warning print callback (used for adding colors). */
 #define TPP_WARNF  dcc_warnf
 
+#if 1
+#include "../tpp/tpp.c"
+#else
 #include DCC_TPP_FILE(tpp.c)
+#endif
 
 #endif /* !GUARD_DCC_TPP_WRAPPER_C */

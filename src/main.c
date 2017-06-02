@@ -123,10 +123,11 @@ static void load_stdlib(void) {
 }
 
 
-
+#include <errno.h>
 
 int main(int argc, char *argv[]) {
  int result = 0;
+ ENOENT;
  /*_CrtSetBreakAlloc(33398);*/
  if (!TPP_INITIALIZE()) return 1;
  DCCPreprocessor_Init(&preproc);

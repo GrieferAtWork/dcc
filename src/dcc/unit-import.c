@@ -145,15 +145,8 @@ srcloader_exec(struct SrcLoaderDef const *__restrict loader,
  (*loader->sld_func)(def);
 
  assert(CURRENT.l_eof_file == tpp_file);
- while (TOKEN.t_file != tpp_file) {
-  struct TPPFile *drop_file;
-  /* Manually pop all files until 'tpp_file' is found. */
-  assert(tpp_file->f_refcnt);
-  drop_file = TOKEN.t_file;
-  assert(drop_file);
-  TOKEN.t_file = drop_file->f_prev;
-  TPPFile_Decref(drop_file);
- }
+ /* Manually pop all files until 'tpp_file' is found. */
+ while (TOKEN.t_file != tpp_file) TPPLexer_PopFile();
  /* Restore the old token. */
  YIELD();
 

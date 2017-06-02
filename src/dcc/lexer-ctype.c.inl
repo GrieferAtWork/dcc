@@ -942,7 +942,7 @@ again:
   if (*next_tok++ != '#') break;
   next_tok = peek_next_advance(next_tok,&next_file);
   if (*next_tok++ != '/') break;
-  while (TOKEN.t_file != next_file) YIELD();
+  while (TOKEN.t_file != next_file) TPPLexer_PopFile();
   TOKEN.t_file->f_pos = next_tok;
   goto w32_bool;
  } break;

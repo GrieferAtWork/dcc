@@ -19,6 +19,9 @@
 #pragma once
 #pragma GCC system_header
 
+#if __has_include_next(<time.h>)
+#include_next <time.h>
+#else
 #include "__stdinc.h"
 
 #undef size_t
@@ -28,7 +31,7 @@ typedef __SIZE_TYPE__ size_t;
 
 struct tm;
 
-#if defined(_WIN32) || defined(__CYGWIN32__)
+#if #__CRT(msvc)
 typedef __int32 clock_t;
 #define CLOCKS_PER_SEC  1000
 
@@ -68,3 +71,4 @@ __IMP __WUNUSED char *(ctime)(time_t const *);
 __IMP __WUNUSED struct tm *(gmtime)(time_t const *);
 __IMP __WUNUSED struct tm *(localtime)(time_t const *);
 __IMP size_t (strftime)(char *,size_t,char const *,struct tm const *);
+#endif

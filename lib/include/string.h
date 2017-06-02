@@ -19,7 +19,11 @@
 #pragma once
 #pragma GCC system_header
 
+#if __has_include_next(<string.h>)
+#include_next <string.h>
+#else
 #include "__stdinc.h"
+#include "features.h"
 
 #undef size_t
 typedef __SIZE_TYPE__ size_t;
@@ -53,3 +57,22 @@ __IMP void *(memset)(void *,int,size_t);
 __IMP __WUNUSED char *(strerror)(int);
 __IMP __WUNUSED size_t (strlen)(char const *);
 
+#ifdef __USE_GNU
+#if #__CRT(glibc)
+__IMP __WUNUSED void *(memrchr)(void const *,int,size_t);
+__IMP __WUNUSED void *(rawmemchr)(const void *s, int c);
+#else
+__STDLIB_UNSUPPORTED("memrchr")
+__STDLIB_UNSUPPORTED("rawmemchr")
+#endif
+#endif
+
+#if defined(__USE_MISC) || defined (__USE_XOPEN)
+#if #__CRT(glibc) || #__CRT(msvc)
+__IMP void *(memccpy)(void *__restrict,void const *__restrict,int,size_t);
+#else
+__STDLIB_UNSUPPORTED("memrchr")
+#endif
+#endif
+
+#endif

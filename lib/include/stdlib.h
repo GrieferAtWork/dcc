@@ -21,6 +21,9 @@
 
 #include "__stdinc.h"
 
+#if __has_include_next(<stdlib.h>)
+#include_next <stdlib.h>
+#else
 #undef size_t
 typedef __SIZE_TYPE__ size_t;
 #define NULL  __NULL__
@@ -88,8 +91,8 @@ __IMP __WUNUSED long long (llabs)(long long);
 __IMP __WUNUSED lldiv_t (lldiv)(long long,long long);
 #endif
 
-
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 #define MB_CUR_MAX   8 /* ??? */
 
+#endif

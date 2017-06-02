@@ -19,6 +19,9 @@
 #pragma once
 #pragma GCC system_header
 
+#if __has_include_next(<stdio.h>)
+#include_next <stdio.h>
+#else
 #include "__stdinc.h"
 
 #undef size_t
@@ -121,4 +124,4 @@ __IMP __WUNUSED int (feof)(FILE *);
 __IMP __WUNUSED int (ferror)(FILE *);
 __IMP void (perror)(char const *);
 
-
+#endif

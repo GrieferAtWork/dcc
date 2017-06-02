@@ -161,13 +161,13 @@
 extern "C" {
 #endif
 
-#ifdef _MSC_VER
+#ifdef _WIN32
+#define memrchr  tpp_memrchr
 LOCAL void *
-memrchr(void const *p, int c, size_t n) {
+tpp_memrchr(void const *p, int c, size_t n) {
  uint8_t *iter = (uint8_t *)p+n;
  while (iter != (uint8_t *)p) {
-  if (*iter == c) return iter;
-  --iter;
+  if (*--iter == c) return iter;
  }
  return NULL;
 }
@@ -189,7 +189,7 @@ void tpp_assertion_failed(char const *expr, char const *file, int line) {
          ? "%s(%d) : " : "%s:%d: ",file,line);
  fprintf(stderr,"Assertion failed : %s\n",expr);
 #ifndef _MSC_VER
- _exit(1);
+ exit(1);
 #endif
 }
 #ifdef _MSC_VER
@@ -316,18 +316,6 @@ do{struct TPPFile *const _oldeof = current.l_eof_file;\
    current.l_eof_file = _oldeof;\
 }while(FALSE)
 PRIVDEF void on_popfile(struct TPPFile *file);
-#define popfile() \
-do{ struct TPPFile *_oldfile = token.t_file;\
-    assert(_oldfile);\
-    assert(_oldfile != current.l_eob_file);\
-    if ((token.t_file = _oldfile->f_prev) == NULL) {\
-     TPPFile_Incref(&TPPFile_Empty);\
-     token.t_file = &TPPFile_Empty;\
-    }\
-    _oldfile->f_prev = NULL;\
-    on_popfile(_oldfile);\
-    TPPFile_Decref(_oldfile);\
-}while(FALSE)
 #if TPP_CONFIG_DEBUG
 #define pushtok() \
 do{ tok_t              _old_tok_id    = token.t_id;\
@@ -1149,10 +1137,11 @@ do_align:
  for (;;) {
   s.ls_exp_text = (char *)memchr(s.ls_exp_text,candy,
                                 (size_t)(s.ls_exp_end-s.ls_exp_text));
-  if unlikely(!s.ls_exp_text) return 0;
+  if unlikely(!s.ls_exp_text) break;
   if (TPPMacroFile_LCScan(&s,text_pointer)) goto done;
   ++s.ls_exp_text; /* Continue scanning after this candidate. */
  }
+ return 0;
 }
 
 PRIVATE int
@@ -3812,7 +3801,7 @@ fuzzy_match(char const *__restrict a, size_t alen,
  for (i = 0; i < alen; ++i) {
   v1[0] = i+1;
   for (j = 0; j < blen; j++) {
-   cost  = (tolower(a[i]) == tolower(b[j])) ? 0 : 1;
+   cost  = (tolower(a[i]) == tolower(b[j])) ? 0u : 1u;
    cost += v0[j];
    temp  = v1[j]+1;
    if (temp < cost) cost = temp;
@@ -4134,7 +4123,7 @@ TPPLexer_AddIncludePath(char *__restrict path, size_t pathsize) {
  if (HAVE_EXTENSION_CANONICAL_HEADERS) fix_filename(path,&pathsize);
  /* Handle special case: empty path & remove trailing slashes. */
  while (pathsize && path[-1] == SEP) --pathsize;
- if unlikely(!pathsize) path = ".",pathsize = 1;
+ if unlikely(!pathsize) path = (char *)".",pathsize = 1;
  /* Make sure that the path doesn't already exists. */
  end = (iter = current.l_syspaths.il_pathv)+
                current.l_syspaths.il_pathc;
@@ -4159,7 +4148,7 @@ TPPLexer_DelIncludePath(char *__restrict path, size_t pathsize) {
  assert(TPPLexer_Current);
  if (HAVE_EXTENSION_CANONICAL_HEADERS) fix_filename(path,&pathsize);
  while (pathsize && path[-1] == SEP) --pathsize;
- if unlikely(!pathsize) path = ".",pathsize = 1;
+ if unlikely(!pathsize) path = (char *)".",pathsize = 1;
  /* Make sure that the path doesn't already exists. */
  end = (iter = current.l_syspaths.il_pathv)+
                current.l_syspaths.il_pathc;
@@ -5091,7 +5080,6 @@ PRIVATE int at_start_of_line(void) {
  return 1;
 }
 
-
 PRIVATE void on_popfile(struct TPPFile *file) {
  struct TPPIfdefStackSlot *slot;
  if (file->f_kind == TPPFILE_KIND_TEXT &&                   /*< Is this a textfile. */
@@ -5114,6 +5102,19 @@ PRIVATE void on_popfile(struct TPPFile *file) {
   TPPLexer_Warn(W_IF_WITHOUT_ENDIF,slot);
   --current.l_ifdef.is_slotc;
  }
+}
+PUBLIC void TPPLexer_PopFile(void) {
+ struct TPPFile *popfile = token.t_file;
+ assert(popfile);
+ assert(popfile != current.l_eob_file);
+ assert(popfile != current.l_eof_file);
+ if ((token.t_file = popfile->f_prev) == NULL) {
+  TPPFile_Incref(&TPPFile_Empty);
+  token.t_file = &TPPFile_Empty;
+ }
+ popfile->f_prev = NULL;
+ on_popfile(popfile);
+ TPPFile_Decref(popfile);
 }
 
 PRIVATE struct TPPIfdefStackSlot *alloc_ifdef(int mode) {
@@ -5138,7 +5139,7 @@ PRIVATE int do_skip_pp_block(void) {
  uint32_t oldflags = current.l_flags;
  for (;;) {
   if (TOK != '#' || !at_start_of_line()) {
-   if (TPPLexer_YieldRaw() <= 0) return 0;
+   if (TPPLexer_YieldRaw() <= 0) break;
   } else {
    /* NOTE: Must enable string-terminate-on-lf until the end of this line.
     *    >> Otherwise, we might get incorrect syntax because this line may
@@ -5160,6 +5161,7 @@ PRIVATE int do_skip_pp_block(void) {
    TPPLexer_YieldRaw();
   }
  }
+ return 0;
 }
 PRIVATE int skip_pp_block(void) {
  int result;
@@ -5306,7 +5308,7 @@ def_skip_until_lf:
     token.t_file->f_end = old_eof;
     *new_eof = oldch;
     if (!pragma_error && (current.l_flags&TPPLEXER_FLAG_EAT_UNKNOWN_PRAGMA)) pragma_error = 1;
-    while (token.t_file != current.l_eob_file) popfile();
+    while (token.t_file != current.l_eob_file) TPPLexer_PopFile();
     assert(hash_begin >= token.t_file->f_begin);
     assert(hash_begin <= token.t_file->f_end);
     if (!pragma_error) token.t_file->f_pos = hash_begin; /* Restore the old file pointer. */
@@ -5502,7 +5504,7 @@ create_block:
      block_mode = 1;
      goto define_ifndef_guard;
 not_a_guard:
-     while (token.t_file != current.l_eob_file) popfile();
+     while (token.t_file != current.l_eob_file) TPPLexer_PopFile();
      assert(expr_begin >= token.t_file->f_begin);
      assert(expr_begin <= token.t_file->f_end);
      token.t_file->f_pos = expr_begin;
@@ -5596,9 +5598,11 @@ skip_block_and_parse:
     if (FALSE) { case KWD_import:       mode = TPPLEXER_OPENFILE_MODE_IMPORT;
                  if (!HAVE_EXTENSION_IMPORT) goto default_directive; }
     curfile = token.t_file; assert(curfile);
+    /* Locate the end of the current line. */
     end_of_line = string_find_eol_after_comments(curfile->f_pos,curfile->f_end);
-    /* Locate the end of the current line and place the file pointer there. */
+    /* Parse the include string. */
     if unlikely(!parse_include_string(&include_begin,&include_end)) goto def_skip_until_lf;
+    /* Place the file pointer at the end of the directive's line. */
     assert(end_of_line >= curfile->f_begin);
     assert(end_of_line >= curfile->f_pos);
     assert(end_of_line <= curfile->f_end);
@@ -5649,11 +5653,14 @@ skip_block_and_parse:
     }
     final_file = TPPFile_CopyForInclude(include_file);
     if unlikely(!final_file) goto seterr;
+#if 1
+    assert(curfile);
+    assert(curfile->f_refcnt);
+    /* Make sure to pop any macro files still on the #include-stack.
+     * If we'd fail to do this, they'd still count as currently being expanded! */
+    while (token.t_file != curfile) TPPLexer_PopFile();
+#endif
     pushfile_inherited(final_file);
-    /* Parse the next token from this file. */
-    breakeob();
-    breakf();
-    goto again;
    } break;
 
    { /* Define/delete an assertion. */
@@ -5942,7 +5949,7 @@ again:
      pusheof();
      pragma_error = TPPLexer_ParsePragma();
      if (!pragma_error && (current.l_flags&TPPLEXER_FLAG_EAT_UNKNOWN_PRAGMA)) pragma_error = 1;
-     while (token.t_file != current.l_eof_file) popfile();
+     while (token.t_file != current.l_eof_file) TPPLexer_PopFile();
      popeof();
     }
 #if TPPLEXER_FLAG_PRAGMA_KEEPMASK
@@ -6366,7 +6373,7 @@ create_int_file:
     current.l_flags    &= ~(TPPLEXER_FLAG_EOF_ON_PAREN);
     current.l_flags    |= (_oldflags&TPPLEXER_FLAG_EOF_ON_PAREN);
     if (!pragma_error && (current.l_flags&TPPLEXER_FLAG_EAT_UNKNOWN_PRAGMA)) pragma_error = 1;
-    while (token.t_file != current.l_eof_file) popfile();
+    while (token.t_file != current.l_eof_file) TPPLexer_PopFile();
     if (!TOK && *token.t_begin == ')') TOK = ')';
     if (pragma_error) {
      int recursion = 1;
@@ -6601,7 +6608,7 @@ create_int_file:
    case KWD___TPP_STR_AT:
    case KWD___TPP_STR_SUBSTR:
     if (!HAVE_EXTENSION_TPP_STR_SUBSTR) break;
-    escape_char = TOK == KWD___TPP_STR_AT ? '\'' : '\"';
+    escape_char = (char)(TOK == KWD___TPP_STR_AT ? '\'' : '\"');
     pushf();
     current.l_flags &= ~(TPPLEXER_FLAG_WANTCOMMENTS|
                          TPPLEXER_FLAG_WANTSPACE|

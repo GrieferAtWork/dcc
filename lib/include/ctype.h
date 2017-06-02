@@ -19,6 +19,9 @@
 #pragma once
 #pragma GCC system_header
 
+#if __has_include_next(<ctype.h>)
+#include_next <ctype.h>
+#else
 #include "__stdinc.h"
 
 __IMP __WUNUSED int (isalpha)(int);
@@ -39,3 +42,4 @@ __IMP __WUNUSED int (tolower)(int);
 __IMP __WUNUSED int (isblank)(int);
 #endif
 
+#endif

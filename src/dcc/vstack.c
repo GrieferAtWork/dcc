@@ -2117,8 +2117,10 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
     DCCStackValue_Load(self);
    }
    /* Nothing else to do here.
-    * The actual effect of this is handled once the value is used! */
-   self->sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK);
+    * The actual effect of this is handled once the value is used!
+    * NOTE: After loading l-value operands, we must also
+    *       remove c/v qualifiers to prevent warnings. */
+   self->sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK|DCCTYPE_QUAL);
 #if DCCTYPE_INT != 0
    self->sv_ctype.t_type |=   DCCTYPE_INT;
 #endif

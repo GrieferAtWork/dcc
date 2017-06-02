@@ -1306,6 +1306,19 @@ TPPFUN struct TPPFile *TPPLexer_OpenFile(int mode, char *filename, size_t filena
 #define TPPLexer_PushFile(f) \
  (TPPFile_Incref(f),TPPLexer_PushFileInherited(f))
 
+/* Returns the currently active #include-file. */
+#define TPPLexer_GetFile()  TPPLexer_Current->l_token.t_file
+
+/* Pop the current file off of the #include-stack.
+ * HINT: This function is save to call, even when the current
+ *       file is 'TPPFile_Empty' (aka. no files are loaded)
+ * WARNING: The caller is responsible never to call this
+ *          function when 'TPPLexer_GetFile()' has been
+ *          configured as either the EOB or EOF lexer-file.
+ * NOTE: This function is usually called in a context like:
+ *    >> while (TPPLexer_GetFile() != my_file) TPPLexer_PopFile(); */
+TPPFUN void TPPLexer_PopFile(void);
+
 /* Lookup or create a keyword entry for the given name.
  * HINT: TPP also caches files inside the keyword hashmap.
  * @return: NULL: [create_missing]  Not enough available memory.

@@ -19,12 +19,15 @@
 #pragma once
 #pragma GCC system_header
 
+#if __has_include_next(<assert.h>)
+#include_next <assert.h>
+#else
 #include "__stdinc.h"
 
 #ifndef __DCC_ASSERT_LIB_DEFINED
 #define __DCC_ASSERT_LIB_DEFINED 1
-#if defined(_WIN32) || defined(__CYGWIN32__)
-__IMP _Noreturn void (_assert)(char const *, char const *,unsigned);
+#if #__CRT(msvc)
+__IMP _Noreturn void (__assertion_failed)(char const *, char const *,unsigned) __asm__("_assert");
 #else
 #error FIXME
 #endif
@@ -37,5 +40,6 @@ __IMP _Noreturn void (_assert)(char const *, char const *,unsigned);
 #ifdef NDEBUG
 #define assert                __builtin_assume
 #else
-#define assert(expr)  (void)((expr) || (_assert(#expr,__FILE__,__LINE__),0))
+#define assert(expr)  (void)((expr) || (__assertion_failed(#expr,__FILE__,__LINE__),0))
+#endif
 #endif
