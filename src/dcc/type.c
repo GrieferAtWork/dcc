@@ -783,7 +783,7 @@ DCCType_PutPrefix(char *buf, size_t buflen,
  } break;
 
  { /* Basic type. */
-  char *basic_name;
+  char const *basic_name;
  default:
   if (self->t_type&DCCTYPE_CONST) WRITE("const ",6);
   if (self->t_type&DCCTYPE_VOLATILE) WRITE("volatile ",9);

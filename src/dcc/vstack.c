@@ -1633,7 +1633,7 @@ default_binary:
    target->sv_flags |= (self->sv_flags&DCC_SFLAG_NO_WSIGN);
    if (self->sv_reg == DCC_RC_CONST &&
        self->sv_reg2 == DCC_RC_CONST &&
-     !(target->sv_flags&DCC_SFLAG_LVALUE)) {
+     !(self->sv_flags&DCC_SFLAG_LVALUE)) {
     struct DCCSymExpr temp;
     /* Binary operation on constant expression. */
     temp.e_int = self->sv_const.it;

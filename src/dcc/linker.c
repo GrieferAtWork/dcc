@@ -155,7 +155,7 @@ DCCLibPaths_DelLibPath(struct DCCLibPaths *__restrict self,
  struct TPPString **iter,**end,*elem;
  if (HAS(EXT_CANONICAL_LIB_PATHS)) fix_filename(path,&pathsize);
  while (pathsize && path[-1] == '/') --pathsize;
- if unlikely(!pathsize) path = ".",pathsize = 1;
+ if unlikely(!pathsize) path = (char *)".",pathsize = 1;
  /* Make sure that the path doesn't already exists. */
  end = (iter = self->lp_pathv)+
                self->lp_pathc;
@@ -189,7 +189,7 @@ DCCLibPaths_AddLibPaths(struct DCCLibPaths *__restrict self,
 
 
 
-PUBLIC struct DCCLinker DCCLinker_Current = {0};
+PUBLIC struct DCCLinker DCCLinker_Current;
 PUBLIC void DCCLinker_Init(struct DCCLinker *__restrict self) {
  assert(self);
  memset(self,0,sizeof(struct DCCLinker));

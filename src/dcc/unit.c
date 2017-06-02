@@ -1782,7 +1782,7 @@ PUBLIC void DCCSection_TPutb(struct DCCSection *__restrict self,
 /* **** */
 /* UNIT */
 /* **** */
-PUBLIC struct DCCUnit DCCUnit_Current = {0};
+PUBLIC struct DCCUnit DCCUnit_Current;
 PUBLIC void
 DCCUnit_Flush(struct DCCUnit *__restrict self, uint32_t flags) {
  struct DCCSection *section;

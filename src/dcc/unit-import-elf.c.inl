@@ -726,6 +726,7 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
       if (!sym_iter->st_name &&
           !sym_iter->st_value &&
            sym_iter->st_shndx == SHN_UNDEF) {
+       /* Either the NUL-symbol, or another section later defines this as an alias. */
        *symdef = NULL;
        continue; /* Ignore the NULL-symbol. */
       }
@@ -838,7 +839,28 @@ done_symvec:
     sym_iter = symv;
     for (; flg_iter != flg_end; ++flg_iter,++sym_iter) {
      struct DCCSym *sym = *sym_iter;
-     uint8_t  flags = ELF(DCC_SYMFLAG_FLAGS)(flg_iter->sf_info);
+     uint8_t flags = ELF(DCC_SYMFLAG_FLAGS)(flg_iter->sf_info);
+     if (flags&ELF_DCC_SYMFLAG_F_ALIAS) {
+      uint32_t targetid = ELF(DCC_SYMFLAG_SYM)(flg_iter->sf_info);
+      struct DCCSym *alias_target;
+      if unlikely(!sym) {
+       /* Must allocate the alias symbol. */
+       sym = DCCUnit_AllocSym();
+       if unlikely(!sym) continue;
+       *sym_iter = sym;
+      }
+      if unlikely(targetid >= symc) continue;
+      alias_target = symv[targetid];
+      if unlikely(!alias_target) {
+       /* Create a new unnamed, alias symbol. */
+       alias_target = DCCUnit_AllocSym();
+       if unlikely(!alias_target) continue;
+       symv[targetid] = alias_target;
+      }
+      /* Define 'sym' as an alias for 'symv[symid]' */
+      DCCSym_Alias(sym,alias_target,sym->sy_size);
+      sym->sy_size = 0;
+     }
      if unlikely(!sym) continue;
      if (sym->sy_align < flg_iter->sf_align)
          sym->sy_align = flg_iter->sf_align;
@@ -850,15 +872,6 @@ done_symvec:
      if (flags&ELF_DCC_SYMFLAG_F_USED)   sym->sy_flags |= DCC_SYMFLAG_USED;
      if (flags&ELF_DCC_SYMFLAG_F_UNUSED) sym->sy_flags |= DCC_SYMFLAG_UNUSED;
 #endif
-     if (flags&ELF_DCC_SYMFLAG_F_ALIAS) {
-      uint32_t symid = ELF(DCC_SYMFLAG_SYM)(flg_iter->sf_info);
-      struct DCCSym *alias_target;
-      if unlikely(symid >= symc) continue;
-      if unlikely((alias_target = symv[symid]) == NULL) continue;
-      /* Define 'sym' as an alias for 'symv[symid]' */
-      DCCSym_Alias(sym,alias_target,sym->sy_size);
-      sym->sy_size = 0;
-     }
     }
     DCC_Free(flgv);
    }

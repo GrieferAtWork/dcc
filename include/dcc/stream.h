@@ -33,6 +33,11 @@
 #include <unistd.h>
 #endif
 
+#ifndef SEEK_SET
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+#endif
 
 DCC_DECL_BEGIN
 

@@ -832,7 +832,7 @@ WGROUP(WG_OLD_VARIABLE_INIT,"old-variable-init",WSTATE_ERROR)            /*< War
 WGROUP(WG_MIXED_DECLARATIONS,"declaration-after-statement",WSTATE_ERROR) /*< Warn about declarations mixed with statements. */
 WGROUP(WG_TYPE_IN_EXPRESSION,"type-in-expression",WSTATE_ERROR)          /*< Warn if c++-style calls to types are used in expressions. */
 WGROUP(WG_ASSIGN_INITIALIZER,"assign-initializer",WSTATE_ERROR)          /*< Warn if brace-initializer are used during assignment. */
-WGROUP(WG_ASSIGN_VOID_VOID,"assign-void",WSTATE_ERROR)                   /*< Warn about assigning void-to-void (Also warned when returning a void-expression in a void-function). */
+WGROUP(WG_ASSIGN_VOID_VOID,"assign-void",WSTATE_DISABLED)                /*< Warn about assigning void-to-void (Also warned when returning a void-expression in a void-function). */
 WGROUP(WG_POINTER_ARITHMETIC,"pointer-arithmetic",WSTATE_ERROR)          /*< Warn about illegal pointer arithmetic. */
 
 WGROUP(WG_ASM,"asm",WSTATE_ERROR)
@@ -1355,7 +1355,7 @@ DEF_WARNING(W_CAST_TO_VARRAY,(WG_CAST),WSTATE_WARN,TYPE_WARNING("Incompatible va
 DEF_WARNING(W_INCOMPATIBLE_TYPES_FOR_VARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Incompatible types " Q("%s") " and " Q("%s") " for variadic-array initializer"))
 DEF_WARNING(W_EXPECTED_ARRAY_FOR_VARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected an array type for the initializer of variadic-array-type " Q("%s") ", but got " Q("%s")))
 DEF_WARNING(W_ASSIGN_VOID,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Can't assign non-void-type " Q("%s") " to void-type " Q("%s")))
-DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTATE_DISABLED,TYPE_WARNING("Assigning void-type " Q("%s") " to void-type " Q("%s")))
+DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assigning void-type " Q("%s") " to void-type " Q("%s")))
 #undef TYPE_WARNING
 #ifdef DECLARE_WARNING_MESSAGES
 }
@@ -1665,6 +1665,7 @@ DEF_WARNING(W_LIB_ARCH_UNKNOWN_FORMAT,(WG_LIBLOAD),WSTATE_ERROR,{
 WARNING_NAMESPACE(WN_UNITEXPORT,4000)
 DEF_WARNING(W_EXPORT_CANNOT_OPEN,(WG_LIBLOAD),WSTATE_ERROR,
             WARNF("Cannot export compilation used: Failed to open " Q("%s"),ARG(char *)))
+DEF_WARNING(W_EXPORT_UNDEFINED_UNNAMED_SYMBOL,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Exporting undefined, unnamed symbol " Q("%lu"),(unsigned long)ARG(uint32_t)))
 
 
 #undef DECL_PRINTTY_LOAD

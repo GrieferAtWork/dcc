@@ -610,7 +610,7 @@ DCCDecltab_NewDecl(struct DCCDecltab *__restrict self,
 /* ******** */
 /* COMPILER */
 /* ******** */
-PUBLIC struct DCCCompiler DCCCompiler_Current = {0};
+PUBLIC struct DCCCompiler DCCCompiler_Current;
 PRIVATE void
 DCCDecltab_RehashSmall(struct DCCDecltab *__restrict self,
                        int rehash_aggressive) {

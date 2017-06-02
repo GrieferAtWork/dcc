@@ -574,7 +574,7 @@ DCCDisp_VecMovMem_fixed(void const *__restrict src,
                         target_siz_t n_bytes) {
  struct DCCSymAddr cst;
  struct DCCMemLoc dst_iter = *dst;
- cst.sa_sym = DCC_RC_CONST;
+ cst.sa_sym = NULL;
  while (n_bytes >= DCC_TARGET_SIZEOF_IMM_MAX) {
   cst.sa_off = *(target_off_t *)src;
   DCCDisp_DoCstMovMem(&cst,&dst_iter,DCC_TARGET_SIZEOF_IMM_MAX);

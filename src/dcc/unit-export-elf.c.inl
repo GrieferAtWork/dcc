@@ -244,12 +244,17 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
              !DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
      symhdr.st_shndx = (Elf(Section))symaddr.sa_sym->sy_sec->sc_start.sy_addr;
     } else {
+     assert(symaddr.sa_sym->sy_name != &TPPKeyword_Empty);
      symhdr.st_shndx = SHN_UNDEF;
     }
    } else {
     if (symaddr.sa_sym->sy_alias) {
      /* XXX: warn if ELF extensions are disabled. */
      need_symflags = sym->sy_elfid;
+    } else if (symaddr.sa_sym->sy_name == &TPPKeyword_Empty) {
+     /* An unnamed, undefined symbol appears in the object file.
+      * >> This is bad and probably means that some internal symbol wasn't defined... */
+     WARN(W_EXPORT_UNDEFINED_UNNAMED_SYMBOL,sym->sy_elfid);
     }
     symhdr.st_shndx = SHN_UNDEF;
    }

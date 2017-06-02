@@ -29,8 +29,7 @@
 
 DCC_DECL_BEGIN
 
-PUBLIC struct DCCPreprocessor DCCPreprocessor_Current = {0};
-
+PUBLIC struct DCCPreprocessor DCCPreprocessor_Current;
 PUBLIC void
 DCCPreprocessor_OutAuto(char const *first_infile) {
  assert(!preproc.p_outfile);

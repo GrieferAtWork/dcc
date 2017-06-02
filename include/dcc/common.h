@@ -138,6 +138,10 @@
 #   define DCC_COMPILER_STRLEN(s) ((sizeof(s)/sizeof(char))-1)
 #endif
 
+#ifdef __DCC_VERSION__
+#pragma warning("-Wno-declaration-in-for")
+#endif
+
 
 #define DCCDAT         extern
 #define DCCFUN         extern
