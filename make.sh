@@ -3,14 +3,13 @@
 CC="gcc"
 F=("-Iinclude" "-DDCC_PRIVATE_API")
 
-#CC_DCC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
+CC_DCC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
 if [ -f "$CC_DCC" ]; then
 	CC="$CC_DCC";
 	F+=("-DDCC_PRIVATE_API")
 	F+=("-D_VA_LIST_DEFINED")
 	F+=("-D__SSE2__")
 	F+=("-ID:/cygwin32/usr/include/w32api")
-	F+=("-LC:/Program Files (x86)/Windows Kits/8.1/Lib/winv6.3/um/x86")
 fi
 
 build() { echo "build/dcc/$1"; }

@@ -91,10 +91,29 @@ __IMP int (vprintf)(char const *,__builtin_va_list);
 __IMP int (vsprintf)(char *,char const *,__builtin_va_list);
 
 #if __STDLIB_VERSION__ >= 201112L
+#if #__CRT(msvc)
+__inline__ int (vsnprintf)(char *__buf, size_t __bufsiz, char const *__format, __builtin_va_list __args) {
+	__IMP int (__msvc_vsnprintf)(char *,size_t,char const *,__builtin_va_list) __asm__("_vsnprintf");
+	__IMP int (__msvc_vscprintf)(char const *,__builtin_va_list) __asm__("_vscprintf");
+	int __result = -1;
+	if (__bufsiz) __result = __msvc_vsnprintf(__buf,__bufsiz,__format,__args);
+	if (__result < 0) __result = __msvc_vscprintf(__format,__args);
+	return __result;
+}
+__inline__ int (snprintf)(char *__buf, size_t __bufsiz, const char *__format, ...) {
+	int __result;
+	__builtin_va_list __va_list;
+	__builtin_va_start(__va_list,__format);
+	__result = (vsnprintf)(__buf,__bufsiz,__format,__va_list);
+	__builtin_va_end(__va_list,__format);
+	return __result;
+}
+#else
 __IMP int (snprintf)(char *,size_t,const char *,...);
+__IMP int (vsnprintf)(char *,size_t,char const *,__builtin_va_list);
+#endif
 __IMP int (vfscanf)(FILE *,char const *,__builtin_va_list);
 __IMP int (vscanf)(char const *,__builtin_va_list);
-__IMP int (vsnprintf)(char *,size_t,char const *,__builtin_va_list);
 __IMP int (vsscanf)(char const *,char const *,__builtin_va_list);
 #endif
 

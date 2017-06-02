@@ -57,7 +57,7 @@ __IMP void *(memset)(void *,int,size_t);
 __IMP __WUNUSED char *(strerror)(int);
 __IMP __WUNUSED size_t (strlen)(char const *);
 
-#ifdef	__USE_XOPEN2K8
+#ifdef __USE_XOPEN2K8
 __IMP __WUNUSED size_t (strnlen)(const char *,size_t);
 #endif
 
@@ -78,5 +78,40 @@ __IMP void *(memccpy)(void *__restrict,void const *__restrict,int,size_t);
 __STDLIB_UNSUPPORTED("memrchr")
 #endif
 #endif
+
+
+#if defined __USE_XOPEN_EXTENDED || defined __USE_XOPEN2K8
+__IMP __WUNUSED char *(strdup)(char const *)
+#if #__CRT(msvc)
+	__asm__("_strdup")
+#endif
+;
+#endif
+
+#ifdef __USE_XOPEN2K8
+#if #__CRT(glibc)
+__IMP __WUNUSED char *(strndup)(const char *,size_t);
+#else
+__STDLIB_UNSUPPORTED("strndup")
+#endif
+#endif
+
+
+#ifdef __USE_GNU
+#define strdupa(s) (__extension__({\
+	const char *const __old = (s);\
+	size_t const __len = strlen(__old)+1;\
+	char *const __new = (char *)__builtin_alloca(__len);\
+	(char *)memcpy(__new,__old,__len);\
+}))
+#define strndupa(s,n) (__extension__({\
+	const char *const __old = (s);\
+	size_t const __len = strnlen(__old,(n));\
+	char *const __new = (char *)__builtin_alloca(__len+1);\
+	__new[__len] = '\0';\
+	(char *)memcpy(__new,__old,__len);\
+}))
+#endif
+
 
 #endif
