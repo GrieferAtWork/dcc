@@ -406,6 +406,65 @@ DCCType_FixComplete(struct DCCType *__restrict self) {
  }
 }
 
+PUBLIC void
+DCCType_FixRedeclaration(struct DCCType *__restrict self,
+                         struct DCCType const *__restrict old_type) {
+ assert(self);
+ assert(old_type);
+ assert(self != old_type);
+ switch (DCCTYPE_GROUP(self->t_type)) {
+
+ case DCCTYPE_BUILTIN:
+  if (self->t_type == (DCCTYPE_AUTO|DCCTYPE_BUILTIN)) {
+   /* Load any typing from 'old_type' into 'self' */
+   assert(!self->t_base);
+   DCCType_InitCopy(self,old_type);
+  }
+  break;
+
+ case DCCTYPE_VARRAY:
+  assert(self->t_base);
+  assert(self->t_base->d_kind == DCC_DECLKIND_ARRAY);
+  if (DCCTYPE_GROUP(old_type->t_type) != DCCTYPE_ARRAY) break;
+  assert(old_type->t_base);
+  assert(old_type->t_base->d_kind == DCC_DECLKIND_ARRAY);
+  assert(self->t_base != old_type->t_base);
+  /* Fix array base types. */
+  DCCType_FixRedeclaration(&self->t_base->d_type,
+                           &old_type->t_base->d_type);
+  if unlikely(!DCCType_IsCompatible(&self->t_base->d_type,
+                                    &old_type->t_base->d_type,
+                                    0)
+              ) return;
+  /* Fix array size. */
+#if 1
+  self->t_type &= ~(DCCTYPE_GROUPMASK);
+  self->t_type |=   DCCTYPE_ARRAY;
+  self->t_base->d_tdecl.td_size = old_type->t_base->d_tdecl.td_size;
+  DCCType_ASSERT(self);
+#else
+  DCCType_MkBase(self);
+  DCCType_MkArray(self,old_type->t_base->d_tdecl.td_size);
+#endif
+  break;
+
+ case DCCTYPE_LVALUE:
+  assert(self->t_base);
+  assert(self->t_base->d_kind&DCC_DECLKIND_TYPE);
+  if (DCCTYPE_GROUP(old_type->t_type) != DCCTYPE_LVALUE) break;
+  if (self->t_base == old_type->t_base) break; /* Prevent an assertion failure. */
+  assert(old_type->t_base);
+  assert(old_type->t_base->d_kind&DCC_DECLKIND_TYPE);
+  /* Fix l-value base type. */
+  DCCType_FixRedeclaration(&self->t_base->d_type,
+                           &old_type->t_base->d_type);
+
+  break;
+
+ default: break;
+ }
+}
+
 
 
 PUBLIC target_siz_t

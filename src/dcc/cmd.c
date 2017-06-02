@@ -142,12 +142,12 @@ consume_argval:
    if (c->c_state == STATE_SUBOPT) {
     arg = strchr(arg,',');
     if (arg) *arg++ = '\0';
-    else     arg = "";
+    else     arg = (char *)"";
     if (*arg == '-') ++arg;
-   } else arg = "";
+   } else arg = (char *)"";
   } else if (opt->o_flags&OPTION_FLAG_EQUAL) {
    if (*arg == '=' || *arg == ',') { ++arg; goto consume_argval; }
-   c->c_val = "";
+   c->c_val = (char *)"";
   } else if (opt->o_flags&OPTION_FLAG_VALUE) {
    /* Value option. */
    if (c->c_state == STATE_SUBOPT) {
@@ -160,7 +160,7 @@ consume_argval:
     ++c->c_argv;
     --c->c_argc;
    } else {
-    c->c_val = ""; /* Empty value. */
+    c->c_val = (char *)""; /* Empty value. */
    }
   } else {
    c->c_val = NULL;

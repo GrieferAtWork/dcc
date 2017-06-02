@@ -179,6 +179,8 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
  if (decl) {
   if (decl->d_kind != DCC_DECLKIND_NONE) {
    int declaration_did_change = 0;
+   /* Fix redeclaration types. */
+   DCCType_FixRedeclaration(&type,&decl->d_type);
    if (decl->d_kind&DCC_DECLKIND_MLOC) {
     /* Warn about re-declarations. */
     if (decl->d_mdecl.md_loc.ml_reg != DCC_RC_CONST) {

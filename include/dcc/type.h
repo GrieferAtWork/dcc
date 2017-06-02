@@ -220,6 +220,16 @@ DCCFUN int DCCType_IsScalar(struct DCCType const *__restrict self);
  * WARNING: This function doesn't guaranty being able to fix _all_ incomplete types! */
 DCCFUN void DCCType_FixComplete(struct DCCType *__restrict self);
 
+/* Fix 'self' when appearing in a type re-declaration with 'old_type'.
+ * This function is used to correctly handle redeclaration with
+ * '__auto_type' or with a variadic array type:
+ * >> int values[] = { 10,20,30 }; // typeof(values) == int[3]
+ * >> extern int values[]; // Don't warn about incompatible types 'int[3]' and 'int[]'
+ * >> extern __auto_type values; // Don't warn about missing type.
+ */
+DCCFUN void DCCType_FixRedeclaration(struct DCCType *__restrict self,
+                                     struct DCCType const *__restrict old_type);
+
 /* Determine size and alignment of the type described by 'self' */
 DCCFUN DCC(target_siz_t)
 DCCType_Sizeof(struct DCCType const *__restrict self,

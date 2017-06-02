@@ -151,9 +151,9 @@ INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
   target_ptr_t addr;
   {
    char *new_secname;
-   if (DCC_MACRO_FALSE) { case OPT_Wl_Tbss:  new_secname = ".bss"; }
-   if (DCC_MACRO_FALSE) { case OPT_Wl_Tbata: new_secname = ".data"; }
-   if (DCC_MACRO_FALSE) { case OPT_Wl_Ttext: new_secname = ".text"; }
+   if (DCC_MACRO_FALSE) { case OPT_Wl_Tbss:  new_secname = (char *)".bss"; }
+   if (DCC_MACRO_FALSE) { case OPT_Wl_Tbata: new_secname = (char *)".data"; }
+   if (DCC_MACRO_FALSE) { case OPT_Wl_Ttext: new_secname = (char *)".text"; }
    addr = hextoint(v);
    v = new_secname;
    goto def_secbase;
