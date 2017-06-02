@@ -1679,7 +1679,9 @@ PUBLIC void
 DCCDisp_LeaReg(struct DCCMemLoc const *__restrict addr,
                rc_t dst) {
       if (addr->ml_reg == DCC_RC_CONST) DCCDisp_CstMovReg(&addr->ml_sad,dst); /* Without a register, simply move the constant address. */
+#if 0 /* LEA is used to prevent CPU-flags side-effects. - So 'add' can't be used here! */
  else if (addr->ml_reg == dst) DCCDisp_AddReg(&addr->ml_sad,dst); /* Special case: Same register. */
+#endif
  else if (!addr->ml_off) DCCDisp_RegMovReg(addr->ml_reg,dst,1); /* Special case: No offset. */
  else if (!(dst&(DCC_RC_I3264|DCC_RC_I16))) {
   /* 8-bit lea. */

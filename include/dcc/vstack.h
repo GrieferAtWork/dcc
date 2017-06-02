@@ -524,6 +524,9 @@ DCCFUN DCC(rc_t) DCC_VSTACK_CALL DCCVStack_CastReg(DCC(rc_t) reg, int reg_unsign
 DCCFUN void DCC_VSTACK_CALL DCCVStack_KillAll(void);
 DCCFUN void DCC_VSTACK_CALL DCCVStack_KillTst(void);
 
+/* Returns 1/0 indicating that the v-stack contains test slots. */
+DCCFUN int DCC_VSTACK_CALL DCCVStack_HasTst(void);
+
 
 #ifdef DCC_PRIVATE_API
 #ifdef __INTELLISENSE__

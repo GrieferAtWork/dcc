@@ -479,7 +479,20 @@ DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
    temp.sa_off = (target_off_t)(self->sv_const.it);
    temp.sa_sym = self->sv_sym;
    if (self->sv_reg2 == DCC_RC_CONST) {
-    DCCDisp_AddReg(&temp,self->sv_reg);
+    /* Must use 'lea' instead of 'add' when the v-stack includes tests. */
+    if (DCCVStack_HasTst()) {
+     struct DCCMemLoc mloc;
+     if (!temp.sa_sym) {
+      if (temp.sa_off == +1) { DCCDisp_UnaryReg(TOK_INC,self->sv_reg); goto done; }
+      if (temp.sa_off == -1) { DCCDisp_UnaryReg(TOK_DEC,self->sv_reg); goto done; }
+     }
+     /* Use 'lea' to fix the register. */
+     mloc.ml_sad = temp;
+     mloc.ml_reg = self->sv_reg;
+     DCCDisp_LeaReg(&mloc,self->sv_reg);
+    } else {
+     DCCDisp_AddReg(&temp,self->sv_reg);
+    }
    } else {
     if (temp.sa_off < 0)
      temp.sa_off = -temp.sa_off,
@@ -491,6 +504,7 @@ DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
      DCCDisp_CstBinReg(TOK_DEC,&temp,self->sv_reg2,0);
     else DCCDisp_CstBinReg(TOK_INC,&temp,self->sv_reg2,0);
    }
+done:
    self->sv_const.it = 0;
    self->sv_sym      = NULL;
   }
@@ -2428,8 +2442,8 @@ DCCVStack_CastReg(rc_t reg, int reg_unsigned,
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_KillAll(void) {
  struct DCCStackValue *iter,*end;
- iter = compiler.c_vstack.v_bottom;
  end  = compiler.c_vstack.v_end;
+ iter = compiler.c_vstack.v_bottom;
  for (; iter != end; ++iter) {
   if (!(iter->sv_flags&DCC_SFLAG_LVALUE) &&
       ((iter->sv_reg != DCC_RC_CONST) ||
@@ -2455,6 +2469,16 @@ DCCVStack_KillTst(void) {
  }
 }
 
+PUBLIC int DCC_VSTACK_CALL
+DCCVStack_HasTst(void) {
+ struct DCCStackValue *iter,*end;
+ iter = compiler.c_vstack.v_bottom;
+ end  = compiler.c_vstack.v_end;
+ for (; iter != end; ++iter) {
+  if (iter->sv_flags&DCC_SFLAG_TEST) return 1;
+ }
+ return 0;
+}
 
 
 
