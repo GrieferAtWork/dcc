@@ -1417,24 +1417,30 @@ end_cmp:
 #undef offsetof
 #define offsetof(s,m) (size_t)&((s *)0)->m
 #endif
-   char temp[sizeof(struct DCCStackValue)-offsetof(struct DCCStackValue,sv_flags)];
-   /* Handle optimizations for commutative operators in rhs.
-    * >> This not only simplifies optimization, but is kind-of
-    *    a requirement to prevent assembly code like:
-    * >> int x = 10+y;
-    *    mov $10, %eax
-    *    mov y, %ecx
-    *    add %eax, %ecx
-    *    mov %ecx, x
-    * >> // Instead of:
-    *    mov y, %eax
-    *    add $10, %eax
-    *    mov %eax, x
-    */
-   memcpy(temp,&self->sv_flags,sizeof(temp));
-   memcpy(&self->sv_flags,&target->sv_flags,sizeof(temp));
-   memcpy(&target->sv_flags,temp,sizeof(temp));
-   goto constant_rhs;
+   target_siz_t reg_siz = DCC_RC_SIZE(self->sv_reg);
+   if (self->sv_reg2 != DCC_RC_CONST) reg_siz += DCC_RC_SIZE(self->sv_reg);
+   /* We must not allow the operands to be swapped
+    * if it would cause one of them to be truncated. */
+   if (reg_siz >= DCCType_Sizeof(&target->sv_ctype,NULL,1)) {
+    char temp[sizeof(struct DCCStackValue)-offsetof(struct DCCStackValue,sv_flags)];
+    /* Handle optimizations for commutative operators in rhs.
+     * >> This not only simplifies optimization, but is kind-of
+     *    a requirement to prevent assembly code like:
+     * >> int x = 10+y;
+     *    mov $10, %eax
+     *    mov y, %ecx
+     *    add %eax, %ecx
+     *    mov %ecx, x
+     * >> // Instead of:
+     *    mov y, %eax
+     *    add $10, %eax
+     *    mov %eax, x
+     */
+    memcpy(temp,&self->sv_flags,sizeof(temp));
+    memcpy(&self->sv_flags,&target->sv_flags,sizeof(temp));
+    memcpy(&target->sv_flags,temp,sizeof(temp));
+    goto constant_rhs;
+   }
   }
   if (!target->sv_sym) {
    ty = DCCTYPE_BASIC(target->sv_ctype.t_type) & ~(DCCTYPE_UNSIGNED);
@@ -1642,7 +1648,7 @@ default_binary:
   dest.ml_sym = target->sv_sym;
   /* Operate with a global variable. */
   DCCStackValue_BinMem(self,op,&dest,
-                          DCCType_Sizeof(&target->sv_ctype,NULL,1));
+                       DCCType_Sizeof(&target->sv_ctype,NULL,1));
  } else {
   /* Operate on a regular, old register. */
   DCCStackValue_FixRegOffset(target);
@@ -3267,7 +3273,7 @@ DCCVStack_Binary(tok_t op) {
       WARN(W_BINARY_CONSTANT_TYPE,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
   if ((vbottom[1].sv_flags&(DCC_SFLAG_RVALUE|DCC_SFLAG_COPY)) == DCC_SFLAG_RVALUE &&
       (DCCTYPE_GROUP(vbottom[1].sv_ctype.t_type) != DCCTYPE_LVALUE))
-      WARN(W_BINARY_RVALUE_TYPE,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
+       WARN(W_BINARY_RVALUE_TYPE,&vbottom->sv_ctype,&vbottom[1].sv_ctype);
  }
  switch (op) {
  case '+':

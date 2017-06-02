@@ -588,6 +588,7 @@ DCCDecltab_NewDecl(struct DCCDecltab *__restrict self,
   pbucket = &self->dt_declv[name->k_id % self->dt_decla];
   result->d_next = *pbucket;
   *pbucket = result; /* Inherit reference. */
+  ++self->dt_declc;
  }
 #if DCC_DEBUG
  if (result && (result->d_kind&DCC_DECLKIND_MLOC))

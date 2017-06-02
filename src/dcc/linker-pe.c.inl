@@ -226,18 +226,15 @@ secty_of(struct DCCSection const *__restrict section) {
    !memcmp(section_name->k_name,s,sizeof(s)-sizeof(char)))
  if (!(section->sc_start.sy_flags&DCC_SYMFLAG_SEC_NOALLOC)) {
   if (section->sc_start.sy_flags&DCC_SYMFLAG_SEC_X) return SECTY_TEXT;
-  if (section->sc_start.sy_flags&DCC_SYMFLAG_SEC_W)
-      return (section->sc_text.tb_max == section->sc_text.tb_end) ? SECTY_DATA : SECTY_BSS;
-  if (section->sc_text.tb_begin != section->sc_text.tb_end) {
+  if (section->sc_text.tb_begin != section->sc_text.tb_max) {
    /* section with actual data inside. */
    if (CHECK_NAME(".rsrc"))  return SECTY_RSRC;
    if (CHECK_NAME(".iedat")) return SECTY_IDATA;
    if (CHECK_NAME(".pdata")) return SECTY_PDATA;
+   if ((section->sc_start.sy_flags&DCC_SYMFLAG_SEC_W) &&
+       (section->sc_text.tb_begin == section->sc_text.tb_end))
+       return SECTY_BSS;
    return (section->sc_start.sy_flags&DCC_SYMFLAG_SEC_R) ? SECTY_DATA : SECTY_OTHER;
-  } else if ((section->sc_start.sy_flags&DCC_SYMFLAG_SEC_W) &&
-             (section->sc_text.tb_max != section->sc_text.tb_begin)) {
-   /* non-empty, writable section. */
-   return SECTY_BSS;
   }
  } else if (!(section->sc_start.sy_flags&DCC_SYMFLAG_SEC_ISIMPORT)) {
   if (CHECK_NAME(".reloc")) return SECTY_RELOC;
@@ -1011,13 +1008,16 @@ pe_mk_writefile(stream_t fd) {
 #undef DEFDIR
 }
 
-
+LOCAL int is_sym_defined(char const *__restrict name) {
+ struct DCCSym *sym = DCCUnit_GetSyms(name);
+ return sym && !DCCSym_ISFORWARD(sym);
+}
 
 /* Generate PE runtime information. */
 PRIVATE void pe_mk_genrt(void) {
  char const *entry_point;
       if (linker.l_flags&DCC_LINKER_FLAG_SHARED) pe.pe_type = PETYPE_DLL;
- else if (DCCUnit_GetSyms(PE_STDSYM("WinMain","@16"))) pe.pe_type = PETYPE_GUI;
+ else if (is_sym_defined(PE_STDSYM("WinMain","@16"))) pe.pe_type = PETYPE_GUI;
  else pe.pe_type = PETYPE_EXE;
  entry_point = pe.pe_type == PETYPE_DLL ? PE_STDSYM2("__dllstart","@12") :
                pe.pe_type == PETYPE_GUI ?            "__winstart"

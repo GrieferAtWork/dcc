@@ -221,9 +221,12 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
  {
  case KWD_regparm:
  case KWD_aligned:
+ case KWD_align:
   YIELD();
   DCCParse_ParPairBegin();
-  if (function->k_id == KWD_aligned) {
+  if (function->k_id == KWD_regparm) {
+   self->a_regparm = (uint8_t)DCCParse_CExpr(0);
+  } else {
    if (DCCATTRDECL_HASALIAS(self)) {
     WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
     assert(!(self->a_specs&DCC_ATTRSPEC_SECTION));
@@ -234,8 +237,6 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
    self->a_specs |= DCC_ATTRSPEC_FIXEDALIGN;
    if (self->a_align&(self->a_align-1))
        WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
-  } else {
-   self->a_regparm = (uint8_t)DCCParse_CExpr(0);
   }
   DCCParse_ParPairEnd();
  } break;

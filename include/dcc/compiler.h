@@ -202,6 +202,13 @@ struct DCCDecltab {
                                     *   Hash-map of c-declarations. */
 };
 
+#define DCCDecltab_ENUM(d,self) \
+ for (struct DCCDecl **_d_iter = (self)->dt_declv,\
+                     **_d_end = _d_iter+(self)->dt_decla;\
+      _d_iter != _d_end; ++_d_iter) \
+ for ((d) = *_d_iter; (d); (d) = (d)->d_next)
+
+
 #define DCCDecltab_Init(self) memset(self,0,sizeof(struct DCCDecltab))
 DCCFUN void DCCDecltab_Quit(struct DCCDecltab *__restrict self, DCC(scopedepth_t) depth);
 

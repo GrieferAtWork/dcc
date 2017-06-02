@@ -302,6 +302,7 @@ KWD_FLAGS(KWD_deprecated,TPP_KEYWORDFLAG_HAS_BUILTIN|
                          TPP_KEYWORDFLAG_HAS_DECLSPEC_ATTRIBUTE)
 DEFINE_ATTRIBUTE(constructor)
 DEFINE_ATTRIBUTE(destructor)
+DEFINE_ATTRIBUTE(align)
 DEFINE_ATTRIBUTE(aligned)
 DEFINE_ATTRIBUTE(packed)
 DEFINE_ATTRIBUTE(alloc_size)
@@ -425,6 +426,9 @@ ARCH_MACRO3(i686)
 #endif
 #if DCC_TARGET_CPU == DCC_CPU_X86_64
 PREDEFINED_MACRO_IF(__x86_64__,TPPLexer_HasExtension(EXT_CPU_MACROS),"1")
+#endif
+#ifdef DCC_TARGET_X86
+PREDEFINED_MACRO_IF(_X86_,TPPLexer_HasExtension(EXT_CPU_MACROS),"1")
 #endif
 
 #if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
@@ -695,7 +699,7 @@ DEF_K(st)
 #undef DEF_OPCODE
 
 /* Keywords for assembly directives. */
-DEF_K(align)
+/* DEF_K(align) */
 DEF_K(skip)
 DEF_K(space)
 DEF_K(quad)
@@ -807,7 +811,7 @@ WGROUP(WG_NESTED_FUNCTIONS,"nested-functions",WSTATE_ERROR)              /*< War
 WGROUP(WG_EMPTY_STRUCTURES,"empty-structures",WSTATE_ERROR)              /*< Warn about empty structures. */
 WGROUP(WG_OLD_FUNCTION_DECL,"old-function-decl",WSTATE_ERROR)            /*< Warn about old-style function declarations. */
 WGROUP(WG_OLD_VARIABLE_INIT,"old-variable-init",WSTATE_ERROR)            /*< Warn about old-style variable initialization. */
-WGROUP(WG_MIXED_DECLARATIONS,"mixed-declarations",WSTATE_ERROR)          /*< Warn about declarations mixed with statements. */
+WGROUP(WG_MIXED_DECLARATIONS,"declaration-after-statement",WSTATE_ERROR) /*< Warn about declarations mixed with statements. */
 WGROUP(WG_TYPE_IN_EXPRESSION,"type-in-expression",WSTATE_ERROR)          /*< Warn if c++-style calls to types are used in expressions. */
 WGROUP(WG_ASSIGN_INITIALIZER,"assign-initializer",WSTATE_ERROR)          /*< Warn if brace-initializer are used during assignment. */
 WGROUP(WG_ASSIGN_VOID_VOID,"assign-void",WSTATE_ERROR)                   /*< Warn about assigning void-to-void (Also warned when returning a void-expression in a void-function). */

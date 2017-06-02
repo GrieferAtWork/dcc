@@ -343,6 +343,12 @@ def_secbase:
   else if (!strcmp(v,"magiclf")) SETFLAGI(preproc.p_flags,DCC_PREPROCESSOR_FLAG_NOMAGICLF);
   else if (!strcmp(v,"decode")) SETFLAGI(preproc.p_flags,DCC_PREPROCESSOR_FLAG_NODECODETOK);
   else if (!strcmp(v,"unify-pragma")) SETFLAGI(preproc.p_flags,DCC_PREPROCESSOR_FLAG_NOUNIFYPRGM);
+  else if (!strcmp(v,"directives-only") && enable)
+   TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_NO_MACROS);
+  else if (!strcmp(v,"preprocessed") && enable)
+   TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_NO_MACROS|
+                                 TPPLEXER_FLAG_NO_DIRECTIVES|
+                                 TPPLEXER_FLAG_NO_BUILTIN_MACROS);
   else {
    enable = TPPLexer_SetExtension(v,enable);
    if (!enable) WARN(W_UNKNOWN_EXTENSION,v);
