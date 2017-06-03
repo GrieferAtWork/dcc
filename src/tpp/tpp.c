@@ -1824,8 +1824,8 @@ TPP_Unescape(char *buf, char const *data, size_t size) {
       if (iter == end) goto abort_hex;
       ch = *iter;
            if (ch >= '0' && ch <= '9') partval = (unsigned char)(ch-'0');
-      else if (ch >= 'a' && ch <= 'f') partval = (unsigned char)(ch-'a');
-      else if (ch >= 'A' && ch <= 'F') partval = (unsigned char)(ch-'A');
+      else if (ch >= 'a' && ch <= 'f') partval = (unsigned char)(10+(ch-'a'));
+      else if (ch >= 'A' && ch <= 'F') partval = (unsigned char)(10+(ch-'A'));
       else if (!ith) {abort_hex: iter = start_iter; goto def_putch; }
       else break;
       val = (unsigned char)((val << 4)|partval);
