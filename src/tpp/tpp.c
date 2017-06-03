@@ -1705,30 +1705,23 @@ TPPFile_NextChunk(struct TPPFile *__restrict self, int flags) {
   newchunk->s_text[newchunk->s_size] = '\0';
   if (!read_bufsize) {
    /* True input stream EOF. */
+   assert(self->f_name     != (char *)(uintptr_t)-1);
+   assert(self->f_namesize != (size_t)-1);
    self->f_textfile.f_stream = TPP_STREAM_INVALID;
+   assert(self->f_name     != (char *)(uintptr_t)-1);
+   assert(self->f_namesize != (size_t)-1);
    if (self->f_textfile.f_ownedstream != TPP_STREAM_INVALID) {
     stream_close(self->f_textfile.f_ownedstream);
     self->f_textfile.f_ownedstream = TPP_STREAM_INVALID;
    }
    /* There may be ~some~ data available... */
-#ifdef __DCC_VERSION__
-   __builtin_breakpoint();
-#endif
    self->f_end = self->f_text->s_text+self->f_text->s_size;
-#ifdef __DCC_VERSION__
-   printf("There may be ~some~ data available -> %p\n",self->f_end);
-   printf("self->f_text->s_text = %p\n",self->f_text->s_text);
-   printf("self->f_text->s_size = %p\n",self->f_text->s_size);
-#endif
    break;
   }
   effective_end = self->f_text->s_text+self->f_text->s_size;
 search_suitable_end_again:
   self->f_end = string_find_suitable_end(self->f_begin,(size_t)
                                         (effective_end-self->f_begin));
-#ifdef __DCC_VERSION__
-  printf("string_find_suitable_end() -> %p\n",self->f_end);
-#endif
   if (self->f_end) {
    char *iter,*end,ch,*last_zero_mode;
    int mode = 0,termstring_onlf;
@@ -1803,9 +1796,6 @@ extend_more:
   flags |= TPPFILE_NEXTCHUNK_FLAG_EXTEND; /* Extend the data some more... */
   assert(self->f_text->s_size);
   self->f_end = self->f_text->s_text+self->f_text->s_size;
-#ifdef __DCC_VERSION__
-  printf("extend_more -> %p\n",self->f_end);
-#endif
   self->f_textfile.f_prefixdel = newchunk->s_text[0];
   assert(!self->f_end || !*self->f_end ||
          *self->f_end == self->f_textfile.f_prefixdel);

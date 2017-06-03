@@ -1993,7 +1993,8 @@ DCCStackValue_AddOffset(struct DCCStackValue *__restrict self,
 
 LEXPRIV struct DCCStructField *
 DCCDecl_FindStructField(struct DCCDecl const *__restrict self,
-                        struct TPPKeyword const *__restrict member_name) {
+                        struct TPPKeyword const *__restrict member_name,
+                        target_off_t *path_offset) {
  struct DCCStructField *iter,*end,*result;
  struct DCCDecl *field_decl;
  assert(self);
@@ -2012,8 +2013,8 @@ DCCDecl_FindStructField(struct DCCDecl const *__restrict self,
    assert(field_decl->d_type.t_base->d_kind == DCC_DECLKIND_STRUCT ||
           field_decl->d_type.t_base->d_kind == DCC_DECLKIND_UNION);
    /* Recursively search unnamed (aka. inlined) structures/unions. */
-   result = DCCDecl_FindStructField(field_decl->d_type.t_base,member_name);
-   if (result) return result;
+   result = DCCDecl_FindStructField(field_decl->d_type.t_base,member_name,path_offset);
+   if (result) { if (path_offset) *path_offset += iter->sf_off; return result; }
   }
  }
  return NULL;
@@ -2025,6 +2026,7 @@ DCCStackValue_Subscript(struct DCCStackValue *__restrict self,
                         struct TPPKeyword const *__restrict member_name) {
  struct DCCStructField *field;
  struct DCCDecl *field_type_base;
+ target_off_t path_offset = 0;
  assert(self);
  assert(member_name);
  assert(!(self->sv_flags&DCC_SFLAG_TEST));
@@ -2033,9 +2035,9 @@ DCCStackValue_Subscript(struct DCCStackValue *__restrict self,
  if (DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_STRUCTURE) goto err;
  /* NOTE: No need to check the 'DCC_SYMFLAG_FORWARD' flag.
   *       If the struct is only forward-declared, it will have an empty field vector. */
- field = DCCDecl_FindStructField(self->sv_ctype.t_base,member_name);
+ field = DCCDecl_FindStructField(self->sv_ctype.t_base,member_name,&path_offset);
  if unlikely(!field) goto err;
- DCCStackValue_AddOffset(self,field->sf_off);
+ DCCStackValue_AddOffset(self,field->sf_off+path_offset);
  /* Inherit the typing of this field. */
  field_type_base = field->sf_decl->d_type.t_base;
  if (field_type_base) DCCDecl_Incref(field_type_base);

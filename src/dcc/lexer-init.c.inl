@@ -63,6 +63,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
   int kind;
   struct DCCStructField *field_curr,*field_end;
   struct DCCMemLoc base_target,elem_target;
+  target_off_t field_offset;
   /* - Current index within an array initializer. */
   target_ptr_t target_maxindex,target_index;
   target_ptr_t elem_size,elem_align;
@@ -75,6 +76,7 @@ parse_braceblock:
   elem_align      = 0;
   field_curr      =
   field_end       = NULL;
+  field_offset    = 0;
   /* Warn about initializer-assignment to constant target. */
   if (!(flags&DCCPARSE_INITFLAG_INITIAL) &&
         type->t_type&DCCTYPE_CONST)
@@ -225,8 +227,9 @@ parse_field_name:
      assert(type->t_base);
      assert(type->t_base->d_kind == DCC_DECLKIND_STRUCT ||
             type->t_base->d_kind == DCC_DECLKIND_UNION);
-     next_field = DCCDecl_FindStructField(type->t_base,TOKEN.t_kwd);
-     if (!next_field) WARN(W_UNKNOWN_FIELD,type,TOKEN.t_kwd);
+     field_offset = 0;
+     next_field = DCCDecl_FindStructField(type->t_base,TOKEN.t_kwd,&field_offset);
+     if (!next_field) WARN(W_UNKNOWN_FIELD,type,TOKEN.t_kwd),field_offset = 0;
      else field_curr = next_field; /* Select the explicit field. */
      YIELD();
      if (!cxx_field_name) {
@@ -262,7 +265,7 @@ parse_field:
      assert(field_curr->sf_decl);
      assert(field_curr->sf_decl->d_kind&DCC_DECLKIND_TYPE);
      elem_target         = base_target;
-     elem_target.ml_off += field_curr->sf_off;
+     elem_target.ml_off += field_curr->sf_off+field_offset;
      field_type          = &field_curr->sf_decl->d_type;
      if (field_curr->sf_bitfld) {
       push_target(field_type,&elem_target);

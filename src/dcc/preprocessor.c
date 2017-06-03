@@ -25,6 +25,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "cmd.h"
 
 DCC_DECL_BEGIN
@@ -284,6 +285,10 @@ static void pp_emit_raw(struct pp_state *__restrict s) {
  }
 }
 static void pp_emit(struct pp_state *__restrict s) {
+ assert(TPPLexer_Current->l_token.t_file);
+ assertf(TPPLexer_Current->l_token.t_file->f_name != (char *)(uintptr_t)-1,
+         "%d:'%.*s'",TOKEN.t_id,(unsigned)(TOKEN.t_end-TOKEN.t_begin),TOKEN.t_begin);
+ assert(TPPLexer_Current->l_token.t_file->f_namesize != (size_t)-1);
  if (s->last_token_file != TPPLexer_Current->l_token.t_file ||
     (s->last_token_end != TPPLexer_Current->l_token.t_begin &&
      s->file_offset != get_file_offset(TPPLexer_Current->l_token.t_begin))) {

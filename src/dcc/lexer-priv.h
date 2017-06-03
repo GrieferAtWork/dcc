@@ -113,7 +113,8 @@ DCCParse_Typedef(struct DCCType *__restrict base,
 
 LEXDECL struct DCCStructField *
 DCCDecl_FindStructField(struct DCCDecl const *__restrict self,
-                        struct TPPKeyword const *__restrict member_name);
+                        struct TPPKeyword const *__restrict member_name,
+                        target_off_t *path_offset);
 
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinTypeStr(void);           /* char const (&__builtin_typestr(type t))[]; */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinConstantP(void);         /* _Bool __builtin_constant_p(expr x); */
