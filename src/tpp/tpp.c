@@ -550,6 +550,7 @@ funop_putarg(funop_t *piter, size_t arg) {
 #define PP_CAT2(a,b) a##b
 #define PP_CAT(a,b) PP_CAT2(a,b)
 #define pp_hashof2_0(result,str) result
+#pragma warning(disable: 108) /* Index out-of-bounds in '__TPP_EVAL' */
 
 /* Using some sick-a$$ TPP extensions, we can actually
  * calculate keyword hashes within the preprocessor! */
@@ -3175,23 +3176,6 @@ PRIVATE char const *const wgroup_names[WG_COUNT+1] = {
  NULL
 };
 
-#ifndef __INTELLISENSE__
-#define EXPAND_GROUPS(...)  {__VA_ARGS__,-1}
-#define WARNING(name,groups,default) PRIVATE wgroup_t const wgroups_##name[] = EXPAND_GROUPS groups;
-#include "tpp-defs.inl"
-#undef WARNING
-#undef EXPAND_GROUPS
-#endif
-
-PRIVATE wgroup_t const *const w_associated_groups[W_COUNT] = {
-#ifndef __INTELLISENSE__
-#define WARNING(name,groups,default) wgroups_##name,
-#include "tpp-defs.inl"
-#undef WARNING
-#endif
-};
-
-
 PUBLIC int TPPLexer_PushWarnings(void) {
  struct TPPWarningState *newstate,*curstate;
  assert(TPPLexer_Current);
@@ -3425,6 +3409,22 @@ PRIVATE wstate_t do_invoke_wid(int wid) {
  return state;
 }
 
+#ifndef __INTELLISENSE__
+#define EXPAND_GROUPS(...)  {__VA_ARGS__,-1}
+#define WARNING(name,groups,default) PRIVATE wgroup_t const wgroups_##name[] = EXPAND_GROUPS groups;
+#include "tpp-defs.inl"
+#undef WARNING
+#undef EXPAND_GROUPS
+#endif
+
+PRIVATE wgroup_t const *const w_associated_groups[W_COUNT] = {
+#ifndef __INTELLISENSE__
+#define WARNING(name,groups,default) wgroups_##name,
+#include "tpp-defs.inl"
+#undef WARNING
+#endif
+};
+
 PUBLIC int TPPLexer_InvokeWarning(int wnum) {
  wstate_t state; int found_warn = 0;
  wgroup_t const *group_iter;
@@ -3436,6 +3436,8 @@ PUBLIC int TPPLexer_InvokeWarning(int wnum) {
   if (state == WSTATE_SUPPRESS ||
       state == WSTATE_DISABLED) return TPP_WARNINGMODE_IGNORE;
   found_warn |= state == WSTATE_WARN;
+  assert(wid >= WG_COUNT && wid < (WG_COUNT+W_COUNT));
+  assert(group_iter);
   if (*group_iter < 0) break;
   state = do_invoke_wid(*group_iter++);
  }

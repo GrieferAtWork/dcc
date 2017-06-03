@@ -505,7 +505,7 @@ WGROUP(WG_DEPRECATED,          "deprecated",          WSTATE_ERROR)
 
 /* NOTE: These warnings are arranged to mirror those from the old TPP. */
 /* 0*/DEF_WARNING(W_EXPECTED_KEYWORD_AFTER_DEFINE,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after #define, but got " TOK_S,TOK_A)) /*< OLD(TPPWarn_ExpectedKeywordAfterDefine). */
-/* 1*/DEF_WARNING(W_REDEFINING_BUILTIN_KEYWORD,(WG_MACROS),WSTATE_DISABLED,WARNF("Redefining builtin macro " Q("%s"),KWDNAME())) /*< [struct TPPKeyword *] OLD(TPPWarn_RedefiningBuiltinKeyword). */
+/* 1*/DEF_WARNING(W_REDEFINING_BUILTIN_KEYWORD,(WG_MACROS),WSTATE_DISABLED,WARNF("Defining macro for builtin keyword " Q("%s"),KWDNAME())) /*< [struct TPPKeyword *] OLD(TPPWarn_RedefiningBuiltinKeyword). */
 /* 2*/DEF_WARNING(W_UNKNOWN_PREPROCESSOR_DIRECTIVE,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown preprocessor directive " TOK_S,TOK_A)) /*< OLD(TPPWarn_UnknownPreprocessorDirective). */
 /* 3*/DEF_WARNING(W_STARSLASH_OUTSIDE_OF_COMMENT,(WG_COMMENT,WG_COMMENTS),WSTATE_WARN,WARNF(Q("*" "/") " outside of comment")) /*< [char *] OLD(TPPWarn_StarSlashOutsideOfComment). */
 /* 4*/DEF_WARNING(W_ERROR,(WG_USER),WSTATE_ERROR,{ char *temp = ARG(char *); WARNF("ERROR : %.*s",(int)ARG(size_t),temp); }) /*< [char const *,size_t] OLD(TPPWarn_DirectiveError). */
@@ -660,7 +660,7 @@ DEF_WARNING(W_FUNCTION_MACRO_ALREADY_ONSTACK,(WG_MACROS),WSTATE_DISABLED,WARNF("
 DEF_WARNING(W_NOT_ENGOUH_MACRO_ARGUMENTS,(WG_MACROS),WSTATE_WARN,WARNF("Too enough arguments for " Q("%s"),FILENAME())) /*< [struct TPPFile *]. */
 DEF_WARNING(W_CHARACTER_TOO_LONG,(WG_VALUE),WSTATE_WARN,WARNF("Character sequence is too long")) /*< . */
 DEF_WARNING(W_MULTICHAR_NOT_ALLOWED,(WG_VALUE),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("The multi-character sequence " Q("%.*s") " is not not allowed",(int)ARG(size_t),temp); }) /*< [char const *,size_t]. */
-DEF_WARNING(W_INDEX_OUT_OF_BOUNDS,(WG_VALUE),WSTATE_DISABLED,{ ptrdiff_t temp = ARG(ptrdiff_t); WARNF("Index %ld is out-of-bounds of 0..%lu",temp,ARG(struct TPPString *)->s_size); }) /*< [struct TPPString *,ptrdiff_t]. */
+DEF_WARNING(W_INDEX_OUT_OF_BOUNDS,(WG_VALUE),WSTATE_DISABLED,{ struct TPPString *s = ARG(struct TPPString *); WARNF("Index %ld is out-of-bounds of 0..%lu",(unsigned long)s->s_size,(unsigned long)ARG(ptrdiff_t)); }) /*< [struct TPPString *,ptrdiff_t]. */
 DEF_WARNING(W_STRING_TERMINATED_BY_LINEFEED,(WG_SYNTAX),WSTATE_WARN,WARNF("String was terminated by a linefeed")) /*< . */
 DEF_WARNING(W_STRING_TERMINATED_BY_EOF,(WG_SYNTAX),WSTATE_WARN,WARNF("String was terminated by EOF")) /*< . */
 DEF_WARNING(W_COMMENT_TERMINATED_BY_EOF,(WG_SYNTAX),WSTATE_WARN,WARNF("Comment was terminated by EOF")) /*< . */

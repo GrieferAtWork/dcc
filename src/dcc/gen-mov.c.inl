@@ -468,7 +468,7 @@ DCCDisp_TextMovMem(struct DCCCompilerText const *__restrict text,
                                void const *__restrict src, target_siz_t src_bytes,
                    struct DCCMemLoc const *__restrict dst, target_siz_t dst_bytes,
                    int src_unsigned){
- target_ptr_t src_addr; size_t i;
+ target_ptr_t src_addr; size_t i,rel_end;
  struct DCCSection *src_sec;
  struct DCCMemLoc dst_iter;
  assert(text);
@@ -480,8 +480,9 @@ DCCDisp_TextMovMem(struct DCCCompilerText const *__restrict text,
  src_addr = text->ct_base;
  dst_iter = *dst;
  i = text->ct_relv-src_sec->sc_relv;
- assert(!text->ct_relc || i+text->ct_relc <= src_sec->sc_relc);
- for (; i < text->ct_relc; ++i) {
+ rel_end = i+text->ct_relc;
+ assert(!text->ct_relc || rel_end <= src_sec->sc_relc);
+ for (; i < rel_end; ++i) {
   target_ptr_t jump; width_t relw;
   struct DCCSymAddr symaddr;
   struct DCCRel *rel = &src_sec->sc_relv[i];
