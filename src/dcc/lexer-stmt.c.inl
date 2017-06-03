@@ -244,11 +244,13 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_IfStmt(void) {
  if unlikely(!jmp_sym) goto end;
  if (visconst_bool()) {
   int is_true = vgtconst_bool();
+  int is_alive = 0;
   vpop(1);
   jmp_sym2 = NULL;
   if (!is_true) {
    pushf();
    DCCParse_DeadStmt(jmp_sym);
+   if (!(compiler.c_flags&DCC_COMPILER_FLAG_DEAD)) is_alive = 1;
    vpop(1);
    if (TOK == KWD_else) {
     /* If there is an else-block, and the true block contained
@@ -274,15 +276,33 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_IfStmt(void) {
     }
     pushf();
     DCCParse_DeadStmt(jmp_sym2);
+    if (!(compiler.c_flags&DCC_COMPILER_FLAG_DEAD)) is_alive = 1;
     popf();
    } else {
     DCCParse_Stmt(DCC_PFLAG_NONE);
    }
    vpop(1);
   }
+  /* When either if-statement is alive, the if-statement it, too.
+   * >> switch (TOK) {
+   * >> {
+   * >>     char const *name;
+   * >>     // Each of these if-statements is alive!
+   * >>     if (0) { case '+': name = "ADD"; }
+   * >>     if (0) { case '-': name = "SUB"; }
+   * >>     if (0) { case '*': name = "MUL"; }
+   * >>     if (0) { case '/': name = "DIV"; }
+   * >>     return name;
+   * >> }
+   * >> default: break;
+   * >> }
+   */
+  if (is_alive) compiler.c_flags &= ~(DCC_COMPILER_FLAG_NOCGEN|
+                                      DCC_COMPILER_FLAG_DEAD);
   if (jmp_sym2) t_defsym(jmp_sym2);
  } else {
   int is_dead = 0;
+  int is_alive = 0;
   /* We've not using the return value of the blocks.
    * a statement-style 'if' always returns 'void'. */
   vpushs(jmp_sym); /* Push the jump target used when the condition fails. */
@@ -293,6 +313,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_IfStmt(void) {
   DCCParse_Stmt(DCC_PFLAG_NONE);
   vpop(1);
   if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD) is_dead |= 1;
+  else                                         is_alive = 1;
   if (TOK == KWD_else) {
    jmp_sym2 = DCCUnit_AllocSym();
    if unlikely(!jmp_sym2) goto end;
@@ -313,12 +334,16 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_IfStmt(void) {
    DCCParse_Stmt(DCC_PFLAG_NONE);
    vpop(1);
    if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD) is_dead |= 2;
+   else                                         is_alive = 1;
    popf();
   }
   if (is_dead == (1|2)) {
    /* Both branches lead to dead code (e.g.: both contain a return statement)
     * >> Considering that, we know that this if-statement is _always_ dead. */
    compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|DCC_COMPILER_FLAG_DEAD);
+  } else if (is_alive) {
+   /* If either branch is alive, the statement itself is, too. */
+   compiler.c_flags &= ~(DCC_COMPILER_FLAG_NOCGEN|DCC_COMPILER_FLAG_DEAD);
   }
   /* Define the jump target. */
   t_defsym(jmp_sym);
