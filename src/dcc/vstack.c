@@ -320,7 +320,7 @@ DCCStackValue_LoadClass(struct DCCStackValue *__restrict self,
  /* Generate the store. */
  DCCStackValue_Store(self,&local_target,1);
  if (self->sv_sym) DCCSym_Decref(self->sv_sym);
- memcpy(self,&local_target,sizeof(struct DCCStackValue));
+ *self = local_target;
 }
 PUBLIC void DCC_VSTACK_CALL
 DCCStackValue_LoadExplicit(struct DCCStackValue *__restrict self, rc_t rcr) {
@@ -1826,9 +1826,8 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
     * Yet if the size is lowered, we can simply re-use
     * the l-value without having to change anything or
     * generating code. */
-   if (cls_size[tn] > cls_size[to])
-       DCCStackValue_Load(self); /* Load the value if the size increases. */
-   goto done;
+   if (cls_size[tn] <= cls_size[to]) goto done;
+   DCCStackValue_Load(self); /* Load the value if the size increases. */
   }
   if (self->sv_reg == DCC_RC_CONST) {
    /* Cast a constant operand.
@@ -3241,6 +3240,12 @@ DCCVStack_Unary(tok_t op) {
    multiplier.sv_reg          = DCC_RC_CONST;
    multiplier.sv_reg2         = DCC_RC_CONST;
    multiplier.sv_sym          = NULL;
+   /* Mark 'vbottom' for copy-on-write, as we're about to modify it. */
+   vbottom->sv_flags |= DCC_SFLAG_COPY;
+   /* Make sure the multiplier base is of proper (and sufficient) typing. */
+   { struct DCCType t = {DCCTYPE_INTPTR,NULL};
+     DCCStackValue_Cast(vbottom,&t);
+   }
    DCCStackValue_Binary(&multiplier,vbottom,op == TOK_INC ? '+' : '-');
    /* Make sure 'gen2' didn't swap the operands (which it shouldn't) */
    assert(!multiplier.sv_sym);
@@ -3377,6 +3382,10 @@ DCCVStack_Binary(tok_t op) {
    }
    /* Mark 'vbottom' for copy-on-write, as we're about to modify it. */
    vbottom->sv_flags |= DCC_SFLAG_COPY;
+   /* Make sure the multiplier base is of proper (and sufficient) typing. */
+   { struct DCCType t = {DCCTYPE_INTPTR,NULL};
+     DCCStackValue_Cast(vbottom,&t);
+   }
    DCCStackValue_Binary(&multiplier,vbottom,'*');
    goto genbinary;
   }

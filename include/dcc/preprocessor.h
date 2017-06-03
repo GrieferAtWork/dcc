@@ -50,13 +50,13 @@ DCC_DECL_BEGIN
 #define DCC_PREPROCESSOR_FLAG_HELPLIB     0x00000200 /*< Emit help about library paths. */
 #define DCC_PREPROCESSOR_MASK_HELP        0x00000300 /*< Mask for help flags. */
 
-#define DCC_PREPROCESSOR_FLAG_NOMAGICLF   0x00010000 /*< Disable ~magic~ tokens for small line-shifts to prevent a #line being emit. */
-#define DCC_PREPROCESSOR_FLAG_NODECODETOK 0x00020000 /*< Decode stuff like escape sequences and trigraphs before writing to out. */
-#define DCC_PREPROCESSOR_FLAG_NOUNIFYPRGM 0x00040000 /*< Unify #pragma directives. */
-#define DCC_PREPROCESSOR_FLAG_DEPSYSTEM   0x00080000 /*< Include system headers in dependency information. */
-#define DCC_PREPROCESSOR_FLAG_DEPDUMMY    0x00100000 /*< Emit a dummy target for every dependency. */
-#define DCC_PREPROCESSOR_FLAG_DEPESCAPE   0x00200000 /*< Escape character special to make inside the dependency target name. */
-#define DCC_PREPROCESSOR_FLAG_COMPILEONLY 0x00400000 /*< Don't generate a binary, but output an object file. */
+#define DCC_PREPROCESSOR_FLAG_NOMAGICLF   0x00010000 /*< ["-fmagiclf"] Disable ~magic~ tokens for small line-shifts to prevent a #line being emit. */
+#define DCC_PREPROCESSOR_FLAG_NODECODETOK 0x00020000 /*< ["-fdecode"] Decode stuff like escape sequences and trigraphs before writing to out. */
+#define DCC_PREPROCESSOR_FLAG_NOUNIFYPRGM 0x00040000 /*< ["-funify-pragma"] Unify #pragma directives. */
+#define DCC_PREPROCESSOR_FLAG_DEPSYSTEM   0x00080000 /*< ["-M"|"-MD"] Include system headers in dependency information. */
+#define DCC_PREPROCESSOR_FLAG_DEPDUMMY    0x00100000 /*< ["-MP"] Emit a dummy target for every dependency. */
+#define DCC_PREPROCESSOR_FLAG_DEPESCAPE   0x00200000 /*< ["-MQ"] Escape character special to make inside the dependency target name. */
+#define DCC_PREPROCESSOR_FLAG_COMPILEONLY 0x00400000 /*< ["-c"] Don't generate a binary, but output an object file. */
 #define DCC_PREPROCESSOR_FLAG_OWNSOUTFILE 0x00800000 /*< The 'p_outfile' string is owned. */
 #define DCC_PREPROCESSOR_FLAG_OUTNAMEAUTO 0x01000000 /*< The 'p_outfile' string was automatically deduced. */
 
