@@ -260,7 +260,7 @@ DCCDisp_MemBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
    if ((dst&7) != DCC_ASMREG_EDX) edx = DCCVStack_GetRegExact(edx);
    /* Move dst into eax. */
    DCCDisp_RegMovReg(dst,eax,1);
-   DCCDisp_RegBinReg('^',edx,edx,1);
+   DCCDisp_IntMovReg(0,edx);
    /* Generate the div/idiv instruction. */
    if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    t_putb(0xf6+!!(dst&DCC_RC_I16));
@@ -325,7 +325,7 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
    /* 8-bit mul. */
    temp = DCCVStack_GetReg(DCC_RC_I16,0);
    assertf(temp&DCC_RC_I8,"Must always be the case for non-pointer classes.");
-   DCCDisp_RegBinReg('^',temp,temp,1); /* Clear the 16-bit temp register. */
+   DCCDisp_IntMovReg(0,temp); /* Clear the 16-bit temp register. */
    DCCDisp_MemMovReg(dst,temp&~(DCC_RC_I16));
    /* imul %src, %temp */
    t_putb(0x0f);
@@ -501,7 +501,7 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
    if ((original_src&7) != DCC_ASMREG_EDX && (dst&7) != DCC_ASMREG_EDX) edx = DCCVStack_GetRegExact(edx);
    /* Setup the register to where 'dst' resides in EAX and EDX is filled with ZERO(0). */
    DCCDisp_RegMovReg(dst,eax,1);
-   DCCDisp_RegBinReg('^',edx,edx,1);
+   DCCDisp_IntMovReg(0,edx);
    /* Generate the div/idiv instruction. */
    if ((src&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    t_putb(0xf6+!!(src&DCC_RC_I16));
@@ -789,7 +789,7 @@ DCCDisp_CstBinMem(tok_t op,
    temp = DCCVStack_GetReg(width == 4 ? DCC_RC_I32 : DCC_RC_I16,width != 1);
    assertf(width != 1 || temp&DCC_RC_I8,"Must always be the case for non-pointer classes.");
    if (width == 1) {
-    DCCDisp_RegBinReg('^',temp,temp,1);
+    DCCDisp_IntMovReg(0,temp);
     DCCDisp_MemMovReg(dst,temp&~(DCC_RC_I16));
     DCCDisp_CstBinReg(op,val,temp,src_unsigned);
     temp &= ~(DCC_RC_I16);

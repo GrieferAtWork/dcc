@@ -265,7 +265,7 @@ DCCDisp_FFSMem(struct DCCMemLoc const *__restrict src,
                rc_t dst, target_siz_t n_bytes) {
  /* Special optimizations for small/empty sources. */
  switch (n_bytes) {
- case 0: DCCDisp_RegBinReg('^',dst,dst,1); return;
+ case 0: DCCDisp_IntMovReg(0,dst); return;
  case 1: case 2: case 4: DCCDisp_FFSMem_fixed(src,dst,n_bytes); return;
  default: break;
  }
@@ -359,7 +359,7 @@ DCCDisp_CLZMem(struct DCCMemLoc const *__restrict src,
                rc_t dst, target_siz_t n_bytes) {
  /* Special optimizations for small/empty sources. */
  switch (n_bytes) {
- case 0: DCCDisp_RegBinReg('^',dst,dst,1); return;
+ case 0: DCCDisp_IntMovReg(0,dst); return;
  case 1: case 2: case 4: DCCDisp_CLZMem_fixed(src,dst,n_bytes); return;
  default: break;
  }

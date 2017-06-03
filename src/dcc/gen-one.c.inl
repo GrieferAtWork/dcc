@@ -85,7 +85,7 @@ DCCDisp_UnaryMemWidth(tok_t op, struct DCCMemLoc const *__restrict dst,
    /* 8-bit call. */
    rc_t temp = DCCVStack_GetReg(DCC_RC_I16,0);
    rc_t high_order = (temp&~(DCC_RC_I16))+4;
-   DCCDisp_RegBinReg('^',high_order,high_order,1);
+   DCCDisp_IntMovReg(0,high_order);
    DCCDisp_MemMovReg(dst,temp&~(DCC_RC_I16));
    DCCDisp_UnaryReg(op,temp);
   } else {

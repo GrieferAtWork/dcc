@@ -871,6 +871,8 @@ outside_function:
  case KWD___builtin_isalnum: case KWD___builtin_ispunct:
  case KWD___builtin_isgraph: case KWD___builtin_isprint:
  case KWD___builtin_tolower: case KWD___builtin_toupper: DCCParse_BuiltinCType(); break;
+  /* min/max functions. */
+ case KWD___builtin_min: case KWD___builtin_max: DCCParse_BuiltinMinMax(); break;
   /* bit-scanning functions. */
  case KWD___builtin_ffs:  case KWD___builtin_ffsll:
  case KWD___builtin_ffsl: case KWD___builtin_ffscc:

@@ -265,5 +265,8 @@
     <None Include="..\src\dcc\lexer-builtins-string.c.inl">
       <Filter>src\dcc</Filter>
     </None>
+    <None Include="..\src\dcc\lexer-builtins-util.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
   </ItemGroup>
 </Project>

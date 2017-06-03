@@ -56,7 +56,7 @@ DCCDisp_MemsMovReg(struct DCCMemLoc const *__restrict src,
                    target_siz_t src_bytes, rc_t dst,
                    int src_unsigned) {
  target_siz_t dst_siz = DCC_RC_SIZE(dst); assert(src);
- if unlikely(!src_bytes) { DCCDisp_RegBinReg('^',dst,dst,1); return; }
+ if unlikely(!src_bytes) { DCCDisp_IntMovReg(0,dst); return; }
  if (src_bytes >= dst_siz) { DCCDisp_MemMovReg(src,dst); return; } /* Simply copy from src. */
  assert(src_bytes < DCC_TARGET_SIZEOF_GP_REGISTER);
  /* use movsx/movzx to extend the source memory location into 'dst'. */
@@ -246,7 +246,7 @@ DCCDisp_DoRepMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_
    else if (dst_bytes >= 2) ax = DCC_RC_I16|DCC_ASMREG_AX;
    else                     ax = DCC_RC_I8|DCC_ASMREG_AL;
    ax = DCCVStack_GetRegExact(ax);
-   if (src_unsigned) DCCDisp_RegBinReg('^',ax,ax,1);
+   if (src_unsigned) DCCDisp_IntMovReg(0,ax);
    else DCCDisp_MemSignExtendReg(&src_last,ax);
    DCCDisp_AXMovDI(4,dst_bytes);
   }
@@ -364,7 +364,7 @@ DCCDisp_DoRepByrMovMem(rc_t                               src, target_siz_t src_
   if (src_unsigned) {
    ax |= DCC_RC_I32|DCC_RC_I16|DCC_RC_I8;
    max_width = 4;
-   DCCDisp_RegBinReg('^',ax,ax,1);
+   DCCDisp_IntMovReg(0,ax);
   } else {
    DCCDisp_SignExtendReg(ax);
   }
@@ -872,24 +872,10 @@ DCCDisp_CstMovRegRaw(struct DCCSymAddr const *__restrict val, rc_t dst) {
 PUBLIC void
 DCCDisp_CstMovReg(struct DCCSymAddr const *__restrict val, rc_t dst) {
  assert(val);
- if (!val->sa_off) {
-  if (!val->sa_sym) {
-   /* Special case: mov $0, %reg --> xor %reg, %reg */
-   DCCDisp_RegBinReg('^',dst,dst,1);
-   return;
-#if 0
-  } else if (val->sa_off == 1) {
-   /* Special case: movl $1, %reg --> xor %reg, %reg; inc %reg */
-   DCCDisp_RegBinReg('^',dst,dst,1);
-   DCCDisp_UnaryReg(TOK_INC,dst);
-   return;
-  } else if (val->sa_off == reg_max(dst)) {
-   /* Special case: movl $0xffffffff, %reg --> xor %reg, %reg; dec %reg */
-   DCCDisp_RegBinReg('^',dst,dst,1);
-   DCCDisp_UnaryReg(TOK_DEC,dst);
-   return;
-#endif
-  }
+ if (!val->sa_off && !val->sa_sym && !DCCVStack_HasTst()) {
+  /* Special case: mov $0, %reg --> xor %reg, %reg */
+  DCCDisp_RegBinReg('^',dst,dst,1);
+  return;
  }
  /* mov $symaddr, %reg */
  DCCDisp_CstMovRegRaw(val,dst);

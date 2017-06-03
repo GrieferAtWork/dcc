@@ -467,11 +467,8 @@ apply_masks:
  } else {
   /* Store in regular, old register. */
   if (self->sv_flags&DCC_SFLAG_TEST) {
-   DCCDisp_SccReg((test_t)DCC_SFLAG_GTTEST(self->sv_flags),
-                 target_reg);
-   if (target->sv_reg2 != DCC_RC_CONST) {
-    DCCDisp_RegBinReg('^',target->sv_reg2,target->sv_reg2,1);
-   }
+   DCCDisp_SccReg((test_t)DCC_SFLAG_GTTEST(self->sv_flags),target_reg);
+   if (target->sv_reg2 != DCC_RC_CONST) DCCDisp_IntMovReg(0,target->sv_reg2);
   } else {
    DCCStackValue_BinReg(self,'=',target->sv_reg,target->sv_reg2);
   }
@@ -1111,7 +1108,7 @@ DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
   temp.sa_off = self->sv_const.it;
   temp.sa_sym = self->sv_sym;
   DCCDisp_CstBinReg(op,&temp,dst,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
-  if (dst2 != DCC_RC_CONST) DCCDisp_RegBinReg('^',dst2,dst2,1);
+  if (dst2 != DCC_RC_CONST) DCCDisp_IntMovReg(0,dst2);
 #endif
  } else {
   /* *op %source_reg, target */
@@ -1572,9 +1569,11 @@ constant_rhs:
     int_t n; int shift;
    case '*':
     if (!iv) {
+     struct DCCStackValue zero;
 set_zero:
-     /* 'foo *= 0' --> 'foo ^= foo' */
-     DCCStackValue_Binary(target,target,'^');
+     /* 'foo *= 0' --> 'foo = 0' */
+     memset(&zero,0,sizeof(struct DCCStackValue));
+     DCCStackValue_Store(&zero,target,0);
      return;
     }
     if (iv == 1) return; /* 'foo *= 1' --> 'foo()' */
@@ -1877,7 +1876,7 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
     DCCDisp_RegMovReg(self->sv_reg2,self->sv_reg2,1);
     DCCDisp_SignExtendReg(self->sv_reg2);
    } else {
-    DCCDisp_RegBinReg('^',self->sv_reg2,self->sv_reg2,1);
+    DCCDisp_IntMovReg(0,self->sv_reg2);
    }
   }
 #endif
@@ -3870,6 +3869,8 @@ DCCVStack_MinMax(tok_t mode) {
   if (!(vbottom[1].sv_flags&DCC_SFLAG_LVALUE) &&
        (vbottom[1].sv_reg == DCC_RC_CONST))
         DCCStackValue_Load(&vbottom[1]);
+  else  DCCStackValue_Cow(&vbottom[1]);
+  vbottom[1].sv_flags &= ~(DCC_SFLAG_RVALUE);
   jmp = DCCUnit_AllocSym();
   jmp ? vpushs(jmp) : vpushv();
   vgen1('&');

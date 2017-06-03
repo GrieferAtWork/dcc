@@ -170,6 +170,7 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinScanner(void);           /* int __bu
                                                                       * int __builtin_clz(int x),__builtin_clzl(long x),__builtin_clzll(long long x),__builtin_clzcc(auto x, size_t s); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinCType(void);             /* int __builtin_(is|to)XXX(int ch); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinNoop(void);              /* int __builtin_noop(...),__noop(...); */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMinMax(void);            /* auto __builtin_min(...),__builtin_max(...); */
 
 
 LEXDECL void DCC_VSTACK_CALL DCCVStack_PushSym_vpfun(struct DCCSym *__restrict sym); /* void *sym(); */

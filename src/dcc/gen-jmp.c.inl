@@ -163,7 +163,7 @@ DCCDisp_MemJmp(struct DCCMemLoc const *__restrict src,
   rc_t temp_reg;
   /* Need at least 16-bit register. */
   temp_reg = DCCVStack_GetReg(DCC_RC_I16,0);
-  DCCDisp_RegBinReg('^',temp_reg,temp_reg,1);
+  DCCDisp_IntMovReg(0,temp_reg);
   DCCDisp_MemMovReg(src,temp_reg&~(DCC_RC_I16));
   DCCDisp_RegJmp(temp_reg);
  } else if (n) {
@@ -172,7 +172,7 @@ DCCDisp_MemJmp(struct DCCMemLoc const *__restrict src,
   asm_modmem(4,src);
  } else {
   rc_t temp = DCCVStack_GetReg(DCC_RC_PTR,1);
-  DCCDisp_RegBinReg('^',temp,temp,1);
+  DCCDisp_IntMovReg(0,temp);
   DCCDisp_RegJmp(temp);
  }
 }

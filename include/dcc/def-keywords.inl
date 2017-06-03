@@ -199,8 +199,8 @@ DEF_BUILTIN(__builtin_clzll)
 DEF_BUILTIN(__builtin_clzcc) /* See above */
 
 /* Returns the lowest/greatest of all given arguments. */
-//DEF_BUILTIN(__builtin_min)
-//DEF_BUILTIN(__builtin_max)
+DEF_BUILTIN(__builtin_min)
+DEF_BUILTIN(__builtin_max)
 
 // TODO: __builtin_ctz
 // TODO: __builtin_popcount
