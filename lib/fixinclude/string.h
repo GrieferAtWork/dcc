@@ -43,6 +43,7 @@ typedef __SIZE_TYPE__ size_t;
 #define memset(dst,byt,size)  __builtin_memset((dst),(byt),(size))
 #define memcmp(a,b,size)      __builtin_memcmp((a),(b),(size))
 #define strlen(str)           __builtin_strlen((str))
+#define strnlen(str,maxlen)   __builtin_strnlen((str),(maxlen))
 
 
 

@@ -449,6 +449,7 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Bitfldf(DCC(sflag_t) flags);              
 DCCFUN int  DCC_VSTACK_CALL DCCVStack_IsSame(int same_declaration);                        /* -2, +2 (Return non-ZERO if 'vbottom[0]' and 'vbottom[1]' contain the same value) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Subscript(struct TPPKeyword const *__restrict name); /* -1, +1 (Access the a member 'name' in the current structure) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PromInt2(void);                                      /* -2, +2 (Promote integer types between the top 2 stack values, conforming to STD-C conventions for binary operations) */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_MinMax(DCC(tok_t) mode);                             /* -2, +1: vbottom[1] = min|max(vbottom[0],vbottom[1]); @param: mode: The compare operator (usually '<' for min or '>' for max) */
 
 /* Rotate 'n' stack entries left (towards to v_bottom) by 1 slots,
  * placing the previously bottom-most entry at index 'n'
@@ -580,6 +581,7 @@ extern struct DCCStackValue *vbottom;
 #define vbitfld    DCCVStack_Bitfld
 #define vbitfldf   DCCVStack_Bitfldf
 #define vsubscript DCCVStack_Subscript
+#define vminmax    DCCVStack_MinMax
 
 #define vprom()    DCCStackValue_Promote(vbottom)
 #define vpromi()   DCCStackValue_PromoteInt(vbottom)

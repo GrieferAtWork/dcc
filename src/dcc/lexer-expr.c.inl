@@ -861,7 +861,8 @@ outside_function:
  case KWD___builtin_memmove: DCCParse_BuiltinMemcpy(); break;
  case KWD___builtin_memset: DCCParse_BuiltinMemset(); break;
  case KWD___builtin_memcmp: DCCParse_BuiltinMemcmp(); break;
- case KWD___builtin_strlen: DCCParse_BuiltinStrlen(); break;
+ case KWD___builtin_strlen:
+ case KWD___builtin_strnlen: DCCParse_BuiltinStrlen(); break;
   /* Builtin ctype operations. */
  case KWD___builtin_iscntrl: case KWD___builtin_isblank:
  case KWD___builtin_isspace: case KWD___builtin_isupper:

@@ -198,6 +198,10 @@ DEF_BUILTIN(__builtin_clzl)
 DEF_BUILTIN(__builtin_clzll)
 DEF_BUILTIN(__builtin_clzcc) /* See above */
 
+/* Returns the lowest/greatest of all given arguments. */
+//DEF_BUILTIN(__builtin_min)
+//DEF_BUILTIN(__builtin_max)
+
 // TODO: __builtin_ctz
 // TODO: __builtin_popcount
 // TODO: __builtin_parity
@@ -214,6 +218,7 @@ DEF_BUILTIN(__builtin_memmove)
 DEF_BUILTIN(__builtin_memset)
 DEF_BUILTIN(__builtin_memcmp)
 DEF_BUILTIN(__builtin_strlen)
+DEF_BUILTIN(__builtin_strnlen)
 
 /* Builtin character trait functions.
  * WARNING: The order of these is important! */

@@ -1137,6 +1137,14 @@ DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
  else                          iv = (int_t)self->sv_const.s32;
  switch (op) {
 
+ case '=':
+  /* Re-assign a stack-value. */
+  iv = exprval->e_int;
+  DCCSym_XIncref(exprval->e_sym);
+  DCCSym_XDecref(self->sv_sym);
+  self->sv_sym = exprval->e_sym;
+  break;
+
  case '+':
  case TOK_INC:
   iv += exprval->e_int;
@@ -3832,6 +3840,41 @@ DCCVStack_IsSame(int same_declaration) {
   return 0;
  }
  return 1;
+}
+
+
+
+
+//////////////////////////////////////////////////////////////////////////
+// 
+//  MINMAX
+// 
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_MinMax(tok_t mode) {
+ struct DCCSym *jmp;
+ vdup(0);     /* target, other, other */
+ vrrot(3);    /* other, other, target */
+ vdup(0);     /* other, other, target, target */
+ vrrot(3);    /* other, target, other, target */
+ vgen2(mode); /* other, target, other#target */
+ if (visconst_bool()) {
+  /* Constant condition. */
+  int reassign_target = !vgtconst_bool();
+  vpop(1); /* other, target */
+  vswap(); /* target, other */
+  if (reassign_target)
+       vgen2('=');
+  else vpop(1);
+ } else {
+  /* TODO: Use cmov */
+  jmp = DCCUnit_AllocSym();
+  jmp ? vpushs(jmp) : vpushv();
+  vgen1('&');
+  vjcc(1);   /* Skip the re-assignment when necessary. */
+  vswap();   /* target, other */
+  vstore(0); /* target */
+  if (jmp) t_defsym(jmp);
+ }
 }
 
 
