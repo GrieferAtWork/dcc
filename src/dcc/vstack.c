@@ -3867,10 +3867,13 @@ DCCVStack_MinMax(tok_t mode) {
   else vpop(1);
  } else {
   /* TODO: Use cmov */
+  if (!(vbottom[1].sv_flags&DCC_SFLAG_LVALUE) &&
+       (vbottom[1].sv_reg == DCC_RC_CONST))
+        DCCStackValue_Load(&vbottom[1]);
   jmp = DCCUnit_AllocSym();
   jmp ? vpushs(jmp) : vpushv();
   vgen1('&');
-  vjcc(1);   /* Skip the re-assignment when necessary. */
+  vjcc(0);   /* Skip the re-assignment when necessary. */
   vswap();   /* target, other */
   vstore(0); /* target */
   if (jmp) t_defsym(jmp);
