@@ -510,6 +510,7 @@ imcomplete:
    result = DCC_TARGET_SIZEOF_POINTER;
   } else {
    result *= self->t_base->d_tdecl.td_size;
+   if (!result && align) *align = 0; /* Fix alignment for empty array types. */
   }
   goto end;
  } break;
