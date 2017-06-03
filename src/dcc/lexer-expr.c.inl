@@ -1027,6 +1027,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprOr(void) {
 
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLAnd(void) {
  struct DCCSym *sym = NULL;
+ test_t common_test = DCC_UNITST_FIRST;
  DCCParse_ExprOr();
  while (TOK == TOK_LAND) {
   YIELD();
@@ -1041,23 +1042,25 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLAnd(void) {
     old_deadjmp = compiler.c_deadjmp;
     compiler.c_deadjmp = sym;
     compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
-                             DCC_COMPILER_FLAG_DEAD);
+                         DCC_COMPILER_FLAG_DEAD);
     DCCParse_ExprOr();
     compiler.c_deadjmp = old_deadjmp;
     popf();
     vpop(1);
    }
+   vgen1('!'),vgen1('!'); /* Force the second expression into a boolean. */
   } else {
-   DCCVStack_KillAll(1); /* Kill all registers before doing the jump.
-                          * NOTE: This mustn't modify EFLAGS, so we're safe! */
+   common_test = DCCVStack_UniTst(common_test);
+   DCCVStack_KillAll(1);  /* Kill all registers before doing the jump.
+                           * NOTE: This mustn't modify EFLAGS, so we're safe! */
    vpushs(sym);
    vgen1('&');
-   vjcc(1);           /* Jump over the second operand(s) if first was false. */
+   vjcc(1);               /* Jump over the second operand(s) if first was false. */
    pushf();
-   DCCParse_ExprOr(); /* Parse the second operand. */
+   DCCParse_ExprOr();     /* Parse the second operand. */
+   common_test = DCCVStack_UniTst(common_test);
    popf();
   }
-  vgen1('!'),vgen1('!'); /* Force the second expression into a boolean. */
  }
  if (sym) t_defsym(sym);
 }
@@ -1073,6 +1076,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLXor(void) {
 }
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
  struct DCCSym *sym = NULL;
+ test_t common_test = DCC_UNITST_FIRST;
  DCCParse_ExprLXor();
  while (TOK == TOK_LOR) {
   YIELD();
@@ -1093,7 +1097,9 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
     vpop(1);
     DCCParse_ExprLXor();
    }
+   vgen1('!'),vgen1('!'); /* Force the second expression into a boolean. */
   } else {
+   common_test = DCCVStack_UniTst(common_test);
    DCCVStack_KillAll(1); /* Kill all registers before doing the jump.
                           * NOTE: This mustn't modify EFLAGS, so we're safe! */
    vpushs(sym);
@@ -1101,9 +1107,9 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
    vjcc(0);             /* Jump over the second operand(s) if first was true. */
    pushf();
    DCCParse_ExprLXor(); /* Parse the second operand. */
+   common_test = DCCVStack_UniTst(common_test);
    popf();
   }
-  vgen1('!'),vgen1('!'); /* Force the second expression into a boolean. */
  }
  if (sym) t_defsym(sym);
 }

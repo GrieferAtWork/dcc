@@ -172,6 +172,10 @@ int main(int argc, char *argv[]) {
     /* True commandline options allow for a few more settings. */
     exec_cmd(&c,1);
    }
+   printf("argc     = %d\n",argc);
+   printf("argv     = %p\n",argv);
+   printf("c.c_argc = %d\n",c.c_argc);
+   printf("c.c_argv = %p\n",c.c_argv);
    argc = c.c_argc;
    argv = c.c_argv;
  }

@@ -227,7 +227,7 @@ DCCFUN void DCCDisp_PopMem(struct DCCMemLoc const *__restrict dst, DCC(width_t) 
 DCCFUN void DCCDisp_PopReg(DCC(rc_t) dst);
 
 /* Sign-extend the given register into itself, essentially meaning
- * that all bits will be set to a copy of the 8'th bit. */
+ * that all bits will be set to a copy of the most significant bit. */
 DCCFUN void DCCDisp_SignExtendReg(DCC(rc_t) dst);
 DCCFUN void DCCDisp_SignExtendMem(struct DCCMemLoc const *__restrict dst, DCC(target_siz_t) n_bytes);
 
@@ -274,6 +274,7 @@ typedef uint8_t DCC(test_t);
 #define DCC_TEST_NG   0xe /* test: not greater (ZF=1 or SF<>OF). */
 #define DCC_TEST_G    0xf /* test: greater (ZF=0 and SF=OF). */
 #define DCC_TEST_NLE  0xf /* test: not less or equal (ZF=0 and SF=OF). */
+
 
 
 /* Unconditionally jump to/call the given
