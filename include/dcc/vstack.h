@@ -435,8 +435,9 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Unary(DCC(tok_t) op);                     
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Binary(DCC(tok_t) op);                               /* -2, +1 ('+', '-', '|', '&', '^', TOK_INC, TOK_DEC, '*', '/', '%', TOK_SHL, TOK_SHR, '?') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Cast(struct DCCType const *__restrict t, int explicit_case); /* -1, +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_CastTst(uint8_t test);                               /* -1, +1 (Set EFLAGS according to 'test' when 'vbottom' evaluates to TRUE. Required for merging test branches in conditional expressions)
-                                                                                            * WARNING: 'test' must be one of 'DCC_TEST_Z', 'DCC_TEST_NZ' */
-DCCFUN uint8_t DCC_VSTACK_CALL DCCVStack_UniTst(uint8_t test);                             /* -1, +1 (Unify test conditions. - Always returns 'test', unless 'DCC_UNISTS_FIRST' is passed, in which case a common test is determined that should be performed for all other conditions) */
+                                                                                            * WARNING: 'test' must be one of 'DCC_TEST_Z', 'DCC_TEST_NZ'. NOTE: no-op for constant expressions. */
+DCCFUN uint8_t DCC_VSTACK_CALL DCCVStack_UniTst(uint8_t test);                             /* -1, +1 (Unify test conditions. - Always returns 'test', unless 'DCC_UNISTS_FIRST' is passed, in which case a common test is
+                                                                                            *         determined that should be performed for all other conditions; NOTE: no-op for constant expressions) */
 #define DCC_UNITST_FIRST 0xff
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Store(int initial_store);                            /* -2, +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Call(size_t n_args);                                 /* -n_args, -1, +1 (NOTE: Args are popped first, and in reverse, meaning that the last argument should be in 'vbottom') */

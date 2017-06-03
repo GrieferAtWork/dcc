@@ -3894,7 +3894,7 @@ DCCVStack_CastTst(uint8_t test) {
  assert(test == DCC_TEST_Z || test == DCC_TEST_NZ);
  /* Make sure we're actually working with a test. */
  if (!(vbottom->sv_flags&DCC_SFLAG_TEST)) vgen1('!'),vgen1('!');
- assert(vbottom->sv_flags&DCC_SFLAG_TEST);
+ if (!(vbottom->sv_flags&DCC_SFLAG_TEST)) return; /* Probably a constant expression. */
  old_test = DCC_SFLAG_GTTEST(vbottom->sv_flags);
  if (old_test != test) {
   /* Update the EFLAGS registers. */
@@ -3910,12 +3910,13 @@ PUBLIC uint8_t DCC_VSTACK_CALL
 DCCVStack_UniTst(uint8_t test) {
  if (test == DCC_UNITST_FIRST) {
   vgen1('!'),vgen1('!');
-  assert(vbottom->sv_flags&DCC_SFLAG_TEST);
-  test = DCC_SFLAG_GTTEST(vbottom->sv_flags);
-  if (test != DCC_TEST_Z && test != DCC_TEST_NZ) {
-   /* Must force into a valid common test. */
-   test = DCC_TEST_Z; /* Default to using ZERO tests (the inversion of non-ZERO, which are generally more common). */
-   goto cast_test;
+  if (vbottom->sv_flags&DCC_SFLAG_TEST) {
+   test = DCC_SFLAG_GTTEST(vbottom->sv_flags);
+   if (test != DCC_TEST_Z && test != DCC_TEST_NZ) {
+    /* Must force into a valid common test. */
+    test = DCC_TEST_Z; /* Default to using ZERO tests (the inversion of non-ZERO, which are generally more common). */
+    goto cast_test;
+   }
   }
  } else {
 cast_test:
