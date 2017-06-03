@@ -1288,7 +1288,6 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
    DCCStackValue_Swap(lhs,rhs);
    for (;; ++iter) {
     if (op == iter->a) { op = iter->b; break; }
-    if (op == iter->b) { op = iter->a; break; }
    }
   }
   if (!(lhs->sv_flags&DCC_SFLAG_LVALUE) &&
@@ -1462,7 +1461,7 @@ end_cmp:
   /* NOTE: two-sided constant binary is handled later. */
   if (self->sv_reg == DCC_RC_CONST) goto default_binary;
   if ((op == '+' || op == '*' || op == '&' ||
-       op == '|' || op == '^' || op == '?') &&
+       op == '|' || op == '^'/* || op == '?'*/) &&
       DCCTYPE_GROUP(self  ->sv_ctype.t_type) != DCCTYPE_LVALUE &&
       DCCTYPE_GROUP(target->sv_ctype.t_type) != DCCTYPE_LVALUE) {
 #ifdef __INTELLISENSE__

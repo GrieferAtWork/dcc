@@ -1705,10 +1705,10 @@ TPPFile_NextChunk(struct TPPFile *__restrict self, int flags) {
   newchunk->s_text[newchunk->s_size] = '\0';
   if (!read_bufsize) {
    /* True input stream EOF. */
-   assert(self->f_name     != (char *)(uintptr_t)-1);
+   assert(self->f_name != (char *)(uintptr_t)-1);
    assert(self->f_namesize != (size_t)-1);
    self->f_textfile.f_stream = TPP_STREAM_INVALID;
-   assert(self->f_name     != (char *)(uintptr_t)-1);
+   assert(self->f_name != (char *)(uintptr_t)-1);
    assert(self->f_namesize != (size_t)-1);
    if (self->f_textfile.f_ownedstream != TPP_STREAM_INVALID) {
     stream_close(self->f_textfile.f_ownedstream);
@@ -3970,7 +3970,11 @@ rehash_keywords(size_t newsize) {
  assert(newsize);
  assert(CURRENT.l_keywords.km_bucketc);
  assert(CURRENT.l_keywords.km_bucketv);
- assert(newsize > CURRENT.l_keywords.km_bucketc);
+ assertf(newsize > CURRENT.l_keywords.km_bucketc,
+        ("New size %lu isn't greater than old size %lu (%lu entires)",
+        (unsigned long)newsize,
+        (unsigned long)CURRENT.l_keywords.km_bucketc,
+        (unsigned long)CURRENT.l_keywords.km_entryc));
  newvec = (struct TPPKeyword **)calloc(newsize,sizeof(struct TPPKeyword *));
  if unlikely(!newvec) return; /* Ignore errors here. */
  bucket_end = (bucket_iter = CURRENT.l_keywords.km_bucketv)+
@@ -4000,6 +4004,10 @@ TPPLexer_LookupKeyword(char const *name, size_t namelen,
  namehash = hashof(name,namelen);
  /* Try to rehash the keyword map. */
  if (TPPKeywordMap_SHOULDHASH(&CURRENT.l_keywords)) {
+  assertf(CURRENT.l_keywords.km_entryc > CURRENT.l_keywords.km_bucketc,
+         ("New size %lu isn't greater than old size %lu",
+         (unsigned long)CURRENT.l_keywords.km_entryc,
+         (unsigned long)CURRENT.l_keywords.km_bucketc));
   rehash_keywords(CURRENT.l_keywords.km_entryc);
  }
  assert(CURRENT.l_keywords.km_bucketc);
@@ -4070,7 +4078,7 @@ do_fix_filename(char *filename, size_t *pfilename_size) {
 #endif
  /* Remove whitespace before & after slashes. */
  for (text_iter = filename; text_iter != text_end;) {
-  assert(text_iter < text_end);
+  assertf(text_iter < text_end,("text_iter = %p\ntext_end = %p",text_iter,text_end));
   if (*text_iter == SEP) {
    while (text_iter != filename && tpp_isspace(text_iter[-1])) {
     memmove(text_iter-1,text_iter, /* NOTE: This also moves the '\0'-terminator. */
