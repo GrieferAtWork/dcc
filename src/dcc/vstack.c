@@ -3240,8 +3240,7 @@ DCCVStack_Unary(tok_t op) {
    multiplier.sv_reg          = DCC_RC_CONST;
    multiplier.sv_reg2         = DCC_RC_CONST;
    multiplier.sv_sym          = NULL;
-   /* Mark 'vbottom' for copy-on-write, as we're about to modify it. */
-   vbottom->sv_flags |= DCC_SFLAG_COPY;
+   //vbottom->sv_flags |= DCC_SFLAG_COPY; /* DON'T! This is an in-place operation! */
    /* Make sure the multiplier base is of proper (and sufficient) typing. */
    { struct DCCType t = {DCCTYPE_INTPTR,NULL};
      DCCStackValue_Cast(vbottom,&t);
