@@ -2603,6 +2603,21 @@ DCCVStack_PushSym(struct DCCSym *__restrict sym) {
 }
 
 PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushMloc(struct DCCType const *__restrict type,
+                   struct DCCMemLoc *__restrict loc) {
+ struct DCCStackValue slot;
+ assert(type);
+ assert(loc);
+ slot.sv_reg      = loc->ml_reg;
+ slot.sv_const.it = (int_t)loc->ml_off;
+ slot.sv_sym      = loc->ml_sym;
+ slot.sv_flags    = DCC_SFLAG_LVALUE;
+ slot.sv_reg2     = DCC_RC_CONST;
+ slot.sv_ctype    = *type;
+ vpush(&slot);
+}
+
+PUBLIC void DCC_VSTACK_CALL
 DCCVStack_PushSymt(struct DCCType const *__restrict type,
                    struct DCCSym *__restrict sym) {
  struct DCCStackValue slot;

@@ -27,6 +27,7 @@
 #include <dcc/gen.h>
 
 #include "lexer-priv.h"
+#include "x86_util.h"
 
 #include <string.h>
 
@@ -501,7 +502,6 @@ end_brace:
    }
   }
 #endif
-  if (target) push_target(type,target);
   DCCParse_Expr1();
   if (vbottom->sv_reg != DCC_RC_CONST) {
    if (!compiler.c_fun) WARN(W_NON_CONSTANT_GLOBAL_INITIALIZER,type);
@@ -510,10 +510,42 @@ end_brace:
    }
   }
   if (target) {
+   push_target(type,target);
+   vswap();
    vstore(flags&DCCPARSE_INITFLAG_INITIAL);
   }
  }
 }
+
+
+
+PUBLIC void DCC_PARSE_CALL
+DCCParse_VInit(uint32_t flags) {
+ assert(vsize >= 1);
+ /* Special case: When 'vbottom' is static, or offset from
+  * a protected register, it can be use as direct target. */
+ if ((vbottom->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_COPY|
+                         DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) ==
+                        (DCC_SFLAG_LVALUE) &&
+     (vbottom->sv_reg  == DCC_RC_CONST || DCC_ASMREG_ISPROTECTED(vbottom->sv_reg&DCC_RI_MASK)) &&
+     (vbottom->sv_reg2 == DCC_RC_CONST || DCC_ASMREG_ISPROTECTED(vbottom->sv_reg2&DCC_RI_MASK))) {
+  struct DCCMemLoc vtarget;
+  struct DCCType target_type;
+  vtarget.ml_reg = vbottom->sv_reg;
+  vtarget.ml_off = vbottom->sv_const.offset;
+  vtarget.ml_sym = vbottom->sv_sym;
+  target_type    = vbottom->sv_ctype;
+  vbottom->sv_ctype.t_base = NULL; /* Inherit reference. */
+  vpop(1); /* Pop the target. (It will be re-pushed by the init call below) */
+  DCCParse_Init(&target_type,NULL,&vtarget,flags);
+  DCCType_Quit(&target_type);
+ } else {
+  DCCParse_Init(&vbottom->sv_ctype,NULL,NULL,flags);
+  vstore(flags&DCCPARSE_INITFLAG_INITIAL);
+ }
+}
+
+
 
 DCC_DECL_END
 

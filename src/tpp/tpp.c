@@ -184,12 +184,14 @@ extern void __debugbreak(void);
 #endif
 
 #undef assert
+#undef assertf
 #if TPP_CONFIG_DEBUG
 PRIVATE
 #ifndef TPP_BREAKPOINT
 __attribute__((__noreturn__))
 #endif
-void tpp_assertion_failed(char const *expr, char const *file, int line) {
+void tpp_assertion_failed(char const *expr, char const *file, int line,
+                          char const *format, ...) {
  fprintf(stderr,
 #ifdef _MSC_VER
         (!TPPLexer_Current || (TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT))
@@ -198,21 +200,42 @@ void tpp_assertion_failed(char const *expr, char const *file, int line) {
 #endif
          ? "%s(%d) : " : "%s:%d: ",file,line);
  fprintf(stderr,"Assertion failed : %s\n",expr);
+ if (format) {
+  va_list args;
+  va_start(args,format);
+  vfprintf(stderr,format,args);
+  va_end(args);
+ }
 #ifndef TPP_BREAKPOINT
  exit(1);
 #endif
 }
+#define TPP_EXPAND_FORMAT(...) __VA_ARGS__
+
 #ifdef TPP_BREAKPOINT
-#define assert(expr) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__),TPP_BREAKPOINT(),0))
+#define assert(expr)    ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),TPP_BREAKPOINT(),0))
+#ifdef TPP_EXPAND_FORMAT
+#define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,TPP_EXPAND_FORMAT f),TPP_BREAKPOINT(),0))
 #else
-#define assert(expr) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__),0))
+#define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),TPP_BREAKPOINT(),0))
+#endif
+#else
+#define assert(expr)    ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),0))
+#ifdef TPP_EXPAND_FORMAT
+#define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,TPP_EXPAND_FORMAT f),0))
+#else
+#define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),0))
+#endif
 #endif
 #elif defined(_MSC_VER)
-#define assert        __assume
+#define assert          __assume
+#define assertf(expr,f) __assume(expr)
 #elif __has_builtin(__builtin_assume)
-#define assert        __builtin_assume
+#define assert          __builtin_assume
+#define assertf(expr,f) __builtin_assume(expr)
 #else /* TPP_CONFIG_DEBUG */
-#define assert(expr) (void)0
+#define assert(expr)    (void)0
+#define assertf(expr,f) (void)0
 #endif /* !TPP_CONFIG_DEBUG */
 
 #define CH_ISALPHA     0x01
@@ -1688,16 +1711,29 @@ TPPFile_NextChunk(struct TPPFile *__restrict self, int flags) {
     self->f_textfile.f_ownedstream = TPP_STREAM_INVALID;
    }
    /* There may be ~some~ data available... */
+#ifdef __DCC_VERSION__
+   __builtin_breakpoint();
+#endif
    self->f_end = self->f_text->s_text+self->f_text->s_size;
+#ifdef __DCC_VERSION__
+   printf("There may be ~some~ data available -> %p\n",self->f_end);
+   printf("self->f_text->s_text = %p\n",self->f_text->s_text);
+   printf("self->f_text->s_size = %p\n",self->f_text->s_size);
+#endif
    break;
   }
   effective_end = self->f_text->s_text+self->f_text->s_size;
 search_suitable_end_again:
   self->f_end = string_find_suitable_end(self->f_begin,(size_t)
                                         (effective_end-self->f_begin));
+#ifdef __DCC_VERSION__
+  printf("string_find_suitable_end() -> %p\n",self->f_end);
+#endif
   if (self->f_end) {
    char *iter,*end,ch,*last_zero_mode;
    int mode = 0,termstring_onlf;
+   assert(self->f_end >= self->f_begin);
+   assert(self->f_end <= effective_end);
    /* Special case: If we managed to read something, but
     * the suitable end didn't increase, just read some more! */
    if (end_offset == (size_t)(self->f_end-self->f_text->s_text)) goto extend_more;
@@ -1767,18 +1803,33 @@ extend_more:
   flags |= TPPFILE_NEXTCHUNK_FLAG_EXTEND; /* Extend the data some more... */
   assert(self->f_text->s_size);
   self->f_end = self->f_text->s_text+self->f_text->s_size;
+#ifdef __DCC_VERSION__
+  printf("extend_more -> %p\n",self->f_end);
+#endif
   self->f_textfile.f_prefixdel = newchunk->s_text[0];
   assert(!self->f_end || !*self->f_end ||
          *self->f_end == self->f_textfile.f_prefixdel);
  }
- assert(self->f_pos   >= self->f_begin);
- assert(self->f_pos   <= self->f_end);
- assert(self->f_begin <= self->f_end);
- assert(self->f_end   >= self->f_text->s_text);
- assert(self->f_end   <= self->f_text->s_text+self->f_text->s_size);
- assert(self->f_begin >= self->f_text->s_text);
- assert(self->f_begin <= self->f_text->s_text+self->f_text->s_size);
+#define DBG_INFO \
+ ("self->f_begin        = %p\n"\
+  "self->f_pos          = %p\n"\
+  "self->f_end          = %p\n"\
+  "self->f_text         = %p\n"\
+  "self->f_text->s_text = %p\n"\
+  "self->f_text->s_size = %p\n"\
+  "end(self->f_text)    = %p\n"\
+ ,self->f_begin,self->f_pos,self->f_end\
+ ,self->f_text,self->f_text->s_text,self->f_text->s_size\
+ ,self->f_text->s_text+self->f_text->s_size)
+ assertf(self->f_pos   >= self->f_begin,DBG_INFO);
+ assertf(self->f_pos   <= self->f_end,  DBG_INFO);
+ assertf(self->f_begin <= self->f_end,  DBG_INFO);
+ assertf(self->f_end    >= self->f_text->s_text,DBG_INFO);
+ assertf(self->f_end    <= self->f_text->s_text+self->f_text->s_size,DBG_INFO);
+ assertf(self->f_begin  >= self->f_text->s_text,DBG_INFO);
+ assertf(self->f_begin  <= self->f_text->s_text+self->f_text->s_size,DBG_INFO);
  assert(!self->f_text->s_text[self->f_text->s_size]);
+#undef DBG_INFO
  self->f_textfile.f_prefixdel = *self->f_end;
  *self->f_end = '\0';
  if unlikely(!self->f_text->s_size) {

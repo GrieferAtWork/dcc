@@ -1316,17 +1316,11 @@ PUBLIC void DCC_PARSE_CALL DCCParse_Expr1(void) {
   /* Set the initializer target to directly modify vbottom */
   if ((vbottom->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_BITFLD|DCC_SFLAG_TEST)) ==
                          (DCC_SFLAG_LVALUE)) {
-   struct DCCMemLoc target;
-   target.ml_reg = vbottom->sv_reg;
-   target.ml_sym = vbottom->sv_sym;
-   target.ml_off = vbottom->sv_const.offset;
    if (vbottom->sv_ctype.t_type&DCCTYPE_CONST)
        WARN(W_ASSIGN_CONSTANT_TYPE,&vbottom->sv_ctype,&vbottom->sv_ctype);
    if (vbottom->sv_flags&DCC_SFLAG_RVALUE)
        WARN(W_ASSIGN_RVALUE_TYPE,&vbottom->sv_ctype,&vbottom->sv_ctype);
-   DCCParse_Init(&vbottom->sv_ctype,NULL,&target,
-                 DCCPARSE_INITFLAG_NONE);
-   vpop(0);
+   DCCParse_VInit(DCCPARSE_INITFLAG_NONE);
   } else {
    DCCParse_Init(&vbottom->sv_ctype,NULL,NULL,
                  DCCPARSE_INITFLAG_NONE);
