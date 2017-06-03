@@ -691,30 +691,6 @@ fix_zero_signal:
  vpushv(); /* void */
 }
 
-LEXPRIV void DCC_VSTACK_CALL
-DCCVStack_PushSym_vpfun(struct DCCSym *__restrict sym) {
- struct DCCType type = {DCCTYPE_VOID,NULL};
- DCCType_MkPointer(&type);
- DCCType_MkOldFunc(&type);
- vpushst(&type,sym);
- DCCType_Quit(&type);
-}
-LEXPRIV void DCC_VSTACK_CALL
-DCCVStack_PushSym_ifun(struct DCCSym *__restrict sym) {
- struct DCCType type = {DCCTYPE_INT,NULL};
- DCCType_MkOldFunc(&type);
- vpushst(&type,sym);
- DCCType_Quit(&type);
-}
-LEXPRIV void DCC_VSTACK_CALL
-DCCVStack_PushSym_szfun(struct DCCSym *__restrict sym) {
- struct DCCType type = {DCCTYPE_SIZE|DCCTYPE_UNSIGNED,NULL};
- DCCType_MkOldFunc(&type);
- vpushst(&type,sym);
- DCCType_Quit(&type);
-}
-
-
 #define ASCII_ISCNTRL(ch)  ((uint8_t)(ch) <= 0x1f || (uint8_t)(ch) == 0x7f)
 #define ASCII_ISBLANK(ch)  ((uint8_t)(ch) == 0x09 || (uint8_t)(ch) == 0x20)
 #define ASCII_ISSPACE(ch)  (((uint8_t)(ch) >= 0x09 && (uint8_t)(ch) <= 0x0d) || (uint8_t)(ch) == 0x20)

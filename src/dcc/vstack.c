@@ -3846,46 +3846,6 @@ DCCVStack_IsSame(int same_declaration) {
 
 //////////////////////////////////////////////////////////////////////////
 // 
-//  MINMAX
-// 
-PUBLIC void DCC_VSTACK_CALL
-DCCVStack_MinMax(tok_t mode) {
- struct DCCSym *jmp;
- vdup(0);     /* target, other, other */
- vrrot(3);    /* other, other, target */
- vdup(0);     /* other, other, target, target */
- vrrot(3);    /* other, target, other, target */
- vgen2(mode); /* other, target, other#target */
- if (visconst_bool()) {
-  /* Constant condition. */
-  int reassign_target = !vgtconst_bool();
-  vpop(1); /* other, target */
-  vswap(); /* target, other */
-  if (reassign_target)
-       vgen2('=');
-  else vpop(1);
- } else {
-  /* TODO: Use cmov */
-  if (!(vbottom[1].sv_flags&DCC_SFLAG_LVALUE) &&
-       (vbottom[1].sv_reg == DCC_RC_CONST))
-        DCCStackValue_Load(&vbottom[1]);
-  else  DCCStackValue_Cow(&vbottom[1]);
-  vbottom[1].sv_flags &= ~(DCC_SFLAG_RVALUE);
-  jmp = DCCUnit_AllocSym();
-  jmp ? vpushs(jmp) : vpushv();
-  vgen1('&');
-  vjcc(0);   /* Skip the re-assignment when necessary. */
-  vswap();   /* target, other */
-  vstore(0); /* target */
-  if (jmp) t_defsym(jmp);
- }
-}
-
-
-
-
-//////////////////////////////////////////////////////////////////////////
-// 
 //  PROMOTION
 // 
 PUBLIC void DCC_VSTACK_CALL

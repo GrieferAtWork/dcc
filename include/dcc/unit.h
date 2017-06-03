@@ -806,6 +806,21 @@ DCCSection_GetText(struct DCCSection *__restrict self,
                    DCC(target_ptr_t) addr,
                    DCC(target_siz_t) size);
 
+/* Attempt to access section memory at a given, unvalidated offset 'addr'.
+ * HINT: Unlike 'DCCSection_GetText', 'self' is allowed
+ *       to be the currently selected text section.
+ * @param: max_msize: When non-NULL, filled with the max amount of
+ *                    compile-time memory accessible, starting at '@return'
+ * @param: max_vsize: The max amount of virtual memory (Always >= '*max_msize')
+ *                    This memory size also considers unallocated (aka. ZERO-)memory.
+ * @return: NULL: Invalid address (When given, '*max_msize' and '*max_vsize' are set to ZERO(0))
+ * @return: * :   Compile-time address of text data. */
+DCCFUN void *
+DCCSection_TryGetText(struct DCCSection *__restrict self,
+                      DCC(target_ptr_t) addr,
+                      size_t            *max_msize,
+                      DCC(target_siz_t) *max_vsize);
+
 
 /* Allocates zero-initialized section memory.
  * @requires: !DCCSection_ISIMPORT(self) */

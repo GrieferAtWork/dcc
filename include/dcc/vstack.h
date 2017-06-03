@@ -449,7 +449,6 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Bitfldf(DCC(sflag_t) flags);              
 DCCFUN int  DCC_VSTACK_CALL DCCVStack_IsSame(int same_declaration);                        /* -2, +2 (Return non-ZERO if 'vbottom[0]' and 'vbottom[1]' contain the same value) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Subscript(struct TPPKeyword const *__restrict name); /* -1, +1 (Access the a member 'name' in the current structure) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PromInt2(void);                                      /* -2, +2 (Promote integer types between the top 2 stack values, conforming to STD-C conventions for binary operations) */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_MinMax(DCC(tok_t) mode);                             /* -2, +1: vbottom[1] = min|max(vbottom[0],vbottom[1]); @param: mode: The compare operator (usually '<' for min or '>' for max) */
 
 /* Rotate 'n' stack entries left (towards to v_bottom) by 1 slots,
  * placing the previously bottom-most entry at index 'n'
@@ -537,6 +536,29 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_KillTst(void);
 
 /* Returns 1/0 indicating that the v-stack contains test slots. */
 DCCFUN int DCC_VSTACK_CALL DCCVStack_HasTst(void);
+
+
+/* ************************************* */
+/* VStack extensions from 'vstack-ext.c' */
+/* ************************************* */
+
+/* [-2, +1]: push(min|max(vbottom[0],vbottom[1]));
+ * @param: mode: The compare operator (usually '<' for min or '>' for max) */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_MinMax(DCC(tok_t) mode);
+
+/* [-1, +1]: push(strlen(vbottom[0]));
+ * [-2, +1]: push(strnlen(vbottom[1],vbottom[0])); */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_Strlen(int nlen_mode);
+
+/* [-3, +1]: push(memcmp(vbottom[2],vbottom[1],vbottom[0])); */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_Memcmp(void);
+
+/* [-3, +1]: push(memset(vbottom[2],vbottom[1],vbottom[0])); */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_Memset(void);
+
+/* [-3, +1]: push(memcpy|memmove(vbottom[2],vbottom[1],vbottom[0])); */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_Memcpy(int may_overlap);
+
 
 
 #ifdef DCC_PRIVATE_API

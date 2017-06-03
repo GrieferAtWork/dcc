@@ -27,6 +27,7 @@
     <ClCompile Include="..\src\dcc\unit-import.c" />
     <ClCompile Include="..\src\dcc\unit-merge.c" />
     <ClCompile Include="..\src\dcc\unit.c" />
+    <ClCompile Include="..\src\dcc\vstack-ext.c" />
     <ClCompile Include="..\src\dcc\vstack.c" />
     <ClCompile Include="..\src\dcc\x86_util-instrlen.c" />
     <ClCompile Include="..\src\main.c" />

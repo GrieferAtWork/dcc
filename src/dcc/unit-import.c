@@ -50,10 +50,10 @@ DCC_DECL_BEGIN
  {f,LIBLOADER_FLAGS(d,s,msiz),__VA_ARGS__}
 
 INTERN struct LibLoaderDef const dcc_libloaders[] = {
-#if DCC_LIBFORMAT_PE_STATIC /* '*.exe/*.dll' PE binaries (static mode). */
+#if DCC_LIBFORMAT_PE_STATIC /* '*.exe|*.dll' PE binaries (static mode). */
  LOADDEF(0,1,&DCCUnit_StaLoadPE,2,{'M','Z'}),
 #endif /* DCC_LIBFORMAT_PE_STATIC */
-#if DCC_LIBFORMAT_PE_DYNAMIC /* '*.exe/*.dll' PE binaries (dynamic mode). */
+#if DCC_LIBFORMAT_PE_DYNAMIC /* '*.exe|*.dll' PE binaries (dynamic mode). */
  LOADDEF(1,0,&DCCUnit_DynLoadPE,2,{'M','Z'}),
 #endif /* DCC_LIBFORMAT_PE_DYNAMIC */
 #if DCC_LIBFORMAT_ELF /* ELF binary/library files. */

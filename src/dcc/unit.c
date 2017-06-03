@@ -1247,6 +1247,30 @@ seterr: TPPLexer_SetErr();
  return NULL;
 }
 
+PUBLIC void *
+DCCSection_TryGetText(struct DCCSection *__restrict self,
+                      target_ptr_t addr,
+                      size_t       *max_msize,
+                      target_siz_t *max_vsize) {
+ struct DCCTextBuf *text;
+ uint8_t *section_off,*section_end;
+ assert(self);
+ text = self == unit.u_curr ? &unit.u_tbuf : &self->sc_text;
+ section_off = text->tb_begin+addr;
+ section_end = text->tb_end;
+ if (section_end > text->tb_max)
+     section_end = text->tb_max;
+ if (section_off >= section_end) {
+  if (max_msize) *max_msize = 0;
+  if (max_vsize) *max_vsize = 0;
+  return NULL;
+ }
+ if (max_msize) *max_msize = (size_t)(section_end-section_off);
+ if (max_vsize) *max_vsize = (target_siz_t)(text->tb_max-section_off);
+ return section_off;
+}
+
+
 
 PUBLIC target_ptr_t
 DCCSection_DAlloc(struct DCCSection *__restrict self,

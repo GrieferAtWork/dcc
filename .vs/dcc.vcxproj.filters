@@ -78,6 +78,9 @@
     <ClCompile Include="..\src\dcc\preprocessor.c">
       <Filter>src\dcc</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\dcc\vstack-ext.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcc\lexer.h">

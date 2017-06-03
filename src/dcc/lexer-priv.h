@@ -164,6 +164,7 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemcpy(void);            /* void *__
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemset(void);            /* void *__builtin_memset(void *dst, int byte, size_t size); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemcmp(void);            /* int __builtin_memcmp(void const *a, void const *b, size_t size); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinStrlen(void);            /* size_t __builtin_strlen(char const *str),__builtin_strnlen(char const *str, size_t max); */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinStrcmp(void);            /* int __builtin_strcmp(char const *a, char const *b); */
 
 /* MISC */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinScanner(void);           /* int __builtin_ffs(int x),__builtin_ffsl(long x),__builtin_ffsll(long long x),__builtin_ffscc(auto x, size_t s);
@@ -173,9 +174,9 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinNoop(void);              /* int __bu
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMinMax(void);            /* auto __builtin_min(...),__builtin_max(...); */
 
 
-LEXDECL void DCC_VSTACK_CALL DCCVStack_PushSym_vpfun(struct DCCSym *__restrict sym); /* void *sym(); */
-LEXDECL void DCC_VSTACK_CALL DCCVStack_PushSym_ifun(struct DCCSym *__restrict sym);  /* int sym(); */
-LEXDECL void DCC_VSTACK_CALL DCCVStack_PushSym_szfun(struct DCCSym *__restrict sym); /* size_t sym(); */
+INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_vpfun(struct DCCSym *__restrict sym); /* void *sym(); */
+INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_ifun(struct DCCSym *__restrict sym);  /* int sym(); */
+INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_szfun(struct DCCSym *__restrict sym); /* size_t sym(); */
 
 LEXDECL /*ref*/struct TPPString *DCC_PARSE_CALL DCCParse_GetFunction(void);
 LEXDECL /*ref*/struct TPPString *DCC_PARSE_CALL DCCParse_GetPrettyFunction(void);
