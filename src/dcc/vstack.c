@@ -1492,6 +1492,14 @@ end_cmp:
     memcpy(temp,&self->sv_flags,sizeof(temp));
     memcpy(&self->sv_flags,&target->sv_flags,sizeof(temp));
     memcpy(&target->sv_flags,temp,sizeof(temp));
+    /* With the operands swapped, 'self' now contains
+     * a value that the caller does not expect to modify.
+     * With that in mind, we simply mark 'self' for COW,
+     * so-as to ensure it will not be modified:
+     * >> int x = 42;
+     * >> int y = 10+x; // Otherwise, this may compile as 'y = (x += 10);'
+     */
+    target->sv_flags |= DCC_SFLAG_COPY;
     goto constant_rhs;
    }
   }
