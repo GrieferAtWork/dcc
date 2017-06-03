@@ -501,6 +501,7 @@ end_brace:
    }
   }
 #endif
+  if (target) push_target(type,target);
   DCCParse_Expr1();
   if (vbottom->sv_reg != DCC_RC_CONST) {
    if (!compiler.c_fun) WARN(W_NON_CONSTANT_GLOBAL_INITIALIZER,type);
@@ -509,8 +510,6 @@ end_brace:
    }
   }
   if (target) {
-   push_target(type,target);
-   vswap();
    vstore(flags&DCCPARSE_INITFLAG_INITIAL);
   }
  }

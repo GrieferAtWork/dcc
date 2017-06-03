@@ -387,7 +387,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprIf(void) {
  is_true = visconst_bool() ? vgtconst_bool() : 2;
  tt_label = DCCUnit_AllocSym();
  if unlikely(!tt_label) return;
- DCCVStack_KillAll(); /* Kill all registers before the jump. */
+ DCCVStack_KillAll(1); /* Kill all registers before the jump. */
  vpushs(tt_label);
  vgen1('&');
  vjcc(1);             /* Jump across the true-branch. */
@@ -1048,8 +1048,8 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLAnd(void) {
     vpop(1);
    }
   } else {
-   DCCVStack_KillAll(); /* Kill all registers before doing the jump.
-                         * NOTE: This mustn't modify EFLAGS, so we're safe! */
+   DCCVStack_KillAll(1); /* Kill all registers before doing the jump.
+                          * NOTE: This mustn't modify EFLAGS, so we're safe! */
    vpushs(sym);
    vgen1('&');
    vjcc(1);           /* Jump over the second operand(s) if first was false. */
@@ -1094,8 +1094,8 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
     DCCParse_ExprLXor();
    }
   } else {
-   DCCVStack_KillAll(); /* Kill all registers before doing the jump.
-                         * NOTE: This mustn't modify EFLAGS, so we're safe! */
+   DCCVStack_KillAll(1); /* Kill all registers before doing the jump.
+                          * NOTE: This mustn't modify EFLAGS, so we're safe! */
    vpushs(sym);
    vgen1('&');
    vjcc(0);             /* Jump over the second operand(s) if first was true. */
@@ -1186,13 +1186,13 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
    if unlikely(!tt_label) return;
    if (TOK == ':' && HAS(EXT_GCC_IFELSE)) {
     /* Special case: gcc's if-else. */
-    vdup(1);             /* Duplicate the condition for use as true-operand. */
-    DCCVStack_KillAll(); /* Kill all registers (including the condition value). */
+    vdup(1);              /* Duplicate the condition for use as true-operand. */
+    DCCVStack_KillAll(1); /* Kill all registers (including the condition value). */
     vpushs(tt_label);
     vgen1('&');
-    vjcc(1);             /* Jump across the true-branch. */
+    vjcc(1);              /* Jump across the true-branch. */
    } else {
-    DCCVStack_KillAll(); /* Kill all registers before the jump. */
+    DCCVStack_KillAll(1); /* Kill all registers before the jump. */
     vpushs(tt_label);
     vgen1('&');
     vjcc(1);             /* Jump across the true-branch. */
@@ -1315,9 +1315,9 @@ PUBLIC void DCC_PARSE_CALL DCCParse_Expr1(void) {
    target.ml_sym = vbottom->sv_sym;
    target.ml_off = vbottom->sv_const.offset;
    if (vbottom->sv_ctype.t_type&DCCTYPE_CONST)
-       WARN(W_BINARY_CONSTANT_TYPE,&vbottom->sv_ctype,&vbottom->sv_ctype);
+       WARN(W_ASSIGN_CONSTANT_TYPE,&vbottom->sv_ctype,&vbottom->sv_ctype);
    if (vbottom->sv_flags&DCC_SFLAG_RVALUE)
-       WARN(W_BINARY_RVALUE_TYPE,&vbottom->sv_ctype,&vbottom->sv_ctype);
+       WARN(W_ASSIGN_RVALUE_TYPE,&vbottom->sv_ctype,&vbottom->sv_ctype);
    DCCParse_Init(&vbottom->sv_ctype,NULL,&target,
                  DCCPARSE_INITFLAG_NONE);
    vpop(0);

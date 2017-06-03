@@ -89,7 +89,7 @@ DCCDisp_LargeBinLLong(tok_t op, int src_unsigned) {
  case '%':         funloc.ml_sym = DCCUnit_NewSyms(src_unsigned ? "__umodti3" : "__modti3",DCC_SYMFLAG_NONE); break;
  default:          funloc.ml_sym = DCCUnit_NewSyms("__multi3",DCC_SYMFLAG_NONE); break;
  }
- DCCVStack_KillAll();
+ DCCVStack_KillAll(0);
  DCCDisp_LocCll(&funloc);
  cleanup.sa_off = 2*DCC_TARGET_SIZEOF_LONG_LONG;
  cleanup.sa_sym = NULL;
@@ -130,7 +130,7 @@ DCCDisp_LargeMemBinMem_fixed(tok_t op,
  case '%':         funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,src_unsigned ? "__xumod%lu" : "__xdiv%lu",(unsigned long)n_bytes); break;
  default:          funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xmul%lu",(unsigned long)n_bytes); break;
  }
- DCCVStack_KillAll();
+ DCCVStack_KillAll(0);
  DCCDisp_LocCll(&funloc);
  cleanup.sa_off = 2*DCC_TARGET_SIZEOF_POINTER;
  cleanup.sa_sym = NULL;

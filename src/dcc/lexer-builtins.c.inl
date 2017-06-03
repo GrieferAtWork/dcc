@@ -794,7 +794,7 @@ DCCParse_BuiltinSetJmp(void) {
  DCCParse_ParPairEnd();
  DCCStackValue_LoadLValue(vbottom);
  DCCType_CheckWritable(&vbottom->sv_ctype);
- DCCVStack_KillAll(); /* Kill all registers. */
+ DCCVStack_KillAll(1); /* Kill all registers. */
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(vbottom);
  assert(vbottom->sv_flags&DCC_SFLAG_LVALUE);
  if (DCCType_Sizeof(&vbottom->sv_ctype,NULL,1) != DCC_TARGET_SIZEOF_JMP_BUF)

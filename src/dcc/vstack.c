@@ -2480,10 +2480,11 @@ DCCVStack_CastReg(rc_t reg, int reg_unsigned,
 }
 
 PUBLIC void DCC_VSTACK_CALL
-DCCVStack_KillAll(void) {
+DCCVStack_KillAll(size_t n_skip) {
  struct DCCStackValue *iter,*end;
+ assert(n_skip <= vsize);
  end  = compiler.c_vstack.v_end;
- iter = compiler.c_vstack.v_bottom;
+ iter = compiler.c_vstack.v_bottom+n_skip;
  for (; iter != end; ++iter) {
   if (((iter->sv_reg&DCC_RC_I) && !DCC_ASMREG_ISPROTECTED(iter->sv_reg&DCC_RI_MASK)) ||
       ((iter->sv_reg2&DCC_RC_I) && !DCC_ASMREG_ISPROTECTED(iter->sv_reg2&DCC_RI_MASK))) {
@@ -3212,18 +3213,17 @@ DCCVStack_Unary(tok_t op) {
    /* Pointer arithmetic: Add/Sub the size of the pointer base. */
    assert(target_type->t_base);
    assert(target_type->t_base->d_kind&DCC_DECLKIND_TYPE);
-   multiplier.sv_const.ptr = DCCType_Sizeof(&target_type->t_base->d_type,NULL,0);
-   if (!multiplier.sv_const.ptr) {
-    if (HAS(EXT_VOID_ARITHMETIC)) multiplier.sv_const.ptr = 1;
+   multiplier.sv_const.it = (int_t)DCCType_Sizeof(&target_type->t_base->d_type,NULL,0);
+   if (!multiplier.sv_const.it) {
+    if (HAS(EXT_VOID_ARITHMETIC)) multiplier.sv_const.it = 1;
     else { WARN(W_POINTER_ARITHMETIC_VOID,&vbottom->sv_ctype.t_base->d_type); return; }
    }
-   if (multiplier.sv_const.ptr == 1) goto gen_unary; /* Compile as a regular inc/dec. */
+   if (multiplier.sv_const.it == 1) goto gen_unary; /* Compile as a regular inc/dec. */
    multiplier.sv_ctype.t_type = DCCTYPE_SIZE|DCCTYPE_UNSIGNED;
    multiplier.sv_ctype.t_base = NULL;
    multiplier.sv_flags        = DCC_SFLAG_NONE;
    multiplier.sv_reg          = DCC_RC_CONST;
    multiplier.sv_reg2         = DCC_RC_CONST;
-   multiplier.sv_const.it     = 0;
    multiplier.sv_sym          = NULL;
    DCCStackValue_Binary(&multiplier,vbottom,op == TOK_INC ? '+' : '-');
    /* Make sure 'gen2' didn't swap the operands (which it shouldn't) */
@@ -4207,12 +4207,8 @@ warn_argc:
 #error FIXME
 #endif
 
- DCCVStack_KillAll(); /* Kill all temporary registers still in use. */
+ DCCVStack_KillAll(1); /* Kill all temporary registers still in use. */
  DCCStackValue_GetReturn(&return_value,funty_decl);
- //if (!(return_value.sv_flags&DCC_SFLAG_LVALUE) &&
- //      return_value.sv_reg != DCC_RC_CONST)
- //      DCCVStack;
-
 
  DCCStackValue_Call(function); /* Generate the call instructions. */
  vpop(1); /* Pop the function. */

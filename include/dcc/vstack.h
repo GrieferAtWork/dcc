@@ -525,7 +525,7 @@ DCCFUN DCC(rc_t) DCC_VSTACK_CALL DCCVStack_KillXNon(DCC(rc_t) rcr);
 DCCFUN DCC(rc_t) DCC_VSTACK_CALL DCCVStack_CastReg(DCC(rc_t) reg, int reg_unsigned, DCC(rc_t) new_class);
 
 /* Kill all registers. (Performed before calling a function) */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_KillAll(void);
+DCCFUN void DCC_VSTACK_CALL DCCVStack_KillAll(size_t n_skip);
 DCCFUN void DCC_VSTACK_CALL DCCVStack_KillTst(void);
 
 /* Returns 1/0 indicating that the v-stack contains test slots. */
