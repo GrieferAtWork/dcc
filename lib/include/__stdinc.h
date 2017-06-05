@@ -22,14 +22,13 @@
 #if __has_include_next(<__stdinc.h>)
 #include_next <__stdinc.h>
 #else
-#define __NOEXPAND
-#define __DCC_ATTR   __attribute__ __NOEXPAND
 
 #ifdef __PE__
-#   define __IMP __DCC_ATTR((__dllimport__))
+#   define __IMP __attribute__((__dllimport__))
 #else
 #   define __IMP
 #endif
+#define __WUNUSED __attribute__((__warn_unused_result__))
 
 #if defined(_WIN32) || defined(__CYGWIN32__)
 #   assert __CRT(msvc)
@@ -38,7 +37,6 @@
 #endif
 
 #define __STDLIB_VERSION__ 201112L /* C11 */
-#define __WUNUSED __DCC_ATTR((__warn_unused_result__))
 
 #define __STDLIB_UNSUPPORTED(x)
 #endif

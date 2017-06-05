@@ -1559,7 +1559,8 @@ end_cmp:
  }
  if (self->sv_reg == DCC_RC_CONST) {
 constant_rhs:
-  if (!self->sv_sym) {
+  if (!(self->sv_sym) &&
+      !(self->sv_flags&(DCC_SFLAG_TEST|DCC_SFLAG_LVALUE))) {
    assert(self->sv_reg == DCC_RC_CONST);
    ty = DCCTYPE_BASIC(self->sv_ctype.t_type) & ~(DCCTYPE_UNSIGNED);
         if (ty == DCCTYPE_INT64) iv = (int_t)self->sv_const.s64;
@@ -2056,6 +2057,46 @@ DCCDecl_FindStructField(struct DCCDecl const *__restrict self,
  return NULL;
 }
 
+INTDEF size_t /* From 'tpp.c' */
+fuzzy_match(char const *__restrict a, size_t alen,
+            char const *__restrict b, size_t blen);
+
+LEXPRIV struct DCCStructField *
+DCCDecl_FindLikelyStructField(struct DCCDecl const *__restrict self,
+                              struct TPPKeyword const *__restrict member_name,
+                              size_t *pscore) {
+ struct DCCStructField *iter,*end,*newfield;
+ struct DCCStructField *result = NULL;
+ struct DCCDecl *field_decl;
+ size_t new_score,score = (size_t)-1;
+ assert(self);
+ assert(member_name);
+ assert(self->d_kind == DCC_DECLKIND_STRUCT ||
+        self->d_kind == DCC_DECLKIND_UNION);
+ end = (iter = self->d_tdecl.td_fieldv)+
+               self->d_tdecl.td_size;
+ for (; iter != end; ++iter) {
+  field_decl = iter->sf_decl;
+  assert(field_decl);
+  if (field_decl->d_name != &TPPKeyword_Empty) {
+   new_score = fuzzy_match(field_decl->d_name->k_name,
+                           field_decl->d_name->k_size,
+                           member_name->k_name,
+                           member_name->k_size);
+   if (new_score < score) { result = iter; score = new_score; }
+  } else if (DCCTYPE_GROUP(field_decl->d_type.t_type) == DCCTYPE_STRUCTURE) {
+   assert(field_decl->d_type.t_base);
+   assert(field_decl->d_type.t_base->d_kind == DCC_DECLKIND_STRUCT ||
+          field_decl->d_type.t_base->d_kind == DCC_DECLKIND_UNION);
+   /* Recursively search unnamed (aka. inlined) structures/unions. */
+   newfield = DCCDecl_FindLikelyStructField(field_decl->d_type.t_base,
+                                            member_name,&new_score);
+   if (new_score < score) { result = newfield; score = new_score; }
+  }
+ }
+ if (pscore) *pscore = score;
+ return result;
+}
 
 PRIVATE void DCC_VSTACK_CALL
 DCCStackValue_Subscript(struct DCCStackValue *__restrict self,
@@ -2069,8 +2110,6 @@ DCCStackValue_Subscript(struct DCCStackValue *__restrict self,
  DCCStackValue_LoadLValue(self);
  assert(DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_LVALUE);
  if (DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_STRUCTURE) goto err;
- /* NOTE: No need to check the 'DCC_SYMFLAG_FORWARD' flag.
-  *       If the struct is only forward-declared, it will have an empty field vector. */
  field = DCCDecl_FindStructField(self->sv_ctype.t_base,member_name,&path_offset);
  if unlikely(!field) goto err;
  DCCStackValue_AddOffset(self,field->sf_off+path_offset);
@@ -2097,7 +2136,14 @@ DCCStackValue_Subscript(struct DCCStackValue *__restrict self,
  }
  return;
 err:
- WARN(W_UNKNOWN_FIELD,&self->sv_ctype,member_name);
+ /* Search for a likely match for the given member name. */
+ if (DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_STRUCTURE) field = NULL;
+ else field = DCCDecl_FindLikelyStructField(self->sv_ctype.t_base,member_name,NULL);
+ assert(!field || field->sf_decl);
+ assert(!field || field->sf_decl->d_name);
+ assert(!field || field->sf_decl->d_name != &TPPKeyword_Empty);
+ WARN(W_UNKNOWN_FIELD,&self->sv_ctype,member_name,
+      field ? field->sf_decl->d_name->k_name : "??" "?");
 }
 
 

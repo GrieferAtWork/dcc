@@ -1257,7 +1257,9 @@ DEF_WARNING(W_AUTO_STORAGE_ALREADY_BY_DEFAULT,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WA
 DEF_WARNING(W_RESTRICT_EXPECTS_POINTER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF(Q("restrict") " is only allowed for pointer types"))
 DEF_WARNING(W_UNKNOWN_FIELD,(WG_TYPE,WG_UNDEFINED),WSTATE_WARN,{
  struct TPPString *tyrepr = DCCType_ToTPPString(ARG(struct DCCType *),NULL);
- WARNF("Type " Q("%s") " has no member " Q("%s"),tyrepr->s_text,KWDNAME());
+ char *kname = KWDNAME();
+ WARNF("Type " Q("%s") " has no member " Q("%s") " (Did you mean " Q("%s") "?)",
+       tyrepr->s_text,kname,ARG(char *));
  TPPString_Decref(tyrepr);
 })
 DEF_WARNING(W_DEREF_VOID,(WG_TYPE,WG_VALUE),WSTATE_WARN,WARNF("Dereference yields a void/function type"))
