@@ -72,6 +72,7 @@ PRIVATE void DCC_VSTACK_CALL DCCStackValue_Subscript(struct DCCStackValue *__res
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Dup(struct DCCStackValue *__restrict self);
 PRIVATE int  DCC_VSTACK_CALL DCCStackValue_IsDuplicate(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict duplicate);
+PRIVATE int  DCC_VSTACK_CALL DCCStackValue_IsCopyDuplicate(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict duplicate);
 
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_LodTest(struct DCCStackValue *__restrict self); /* The opposite of 'DCCStackValue_FixTest': Force 'self' to be a test. */
 
@@ -716,6 +717,17 @@ DCCStackValue_LoadLValue(struct DCCStackValue *__restrict self) {
  }
 }
 
+PRIVATE int
+DCCStackValue_HasDuplicate(struct DCCStackValue *__restrict self) {
+ struct DCCStackValue *iter,*end;
+ iter = compiler.c_vstack.v_bottom;
+ end  = compiler.c_vstack.v_end;
+ for (; iter != end; ++iter) {
+  if (iter != self && DCCStackValue_IsDuplicate(self,iter)) return 1;
+ }
+ return 0;
+}
+
 PRIVATE void DCC_VSTACK_CALL
 DCCStackValue_Dup(struct DCCStackValue *__restrict self) {
  struct DCCStackValue copy;
@@ -723,8 +735,10 @@ DCCStackValue_Dup(struct DCCStackValue *__restrict self) {
  int is_basic_type;
  assert(vsize >= 1);
  if ((!(self->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_XREGISTER)) &&
-      /* Must still _always_ copy restricted pointers (e.g.: '%esp') */
-      !DCCStackValue_ISPROTECTED(self)) ||
+       /* Must still _always_ copy restricted pointers (e.g.: '%esp') */
+       !DCCStackValue_ISPROTECTED(self) &&
+       /* No need to copy stack-values without duplicates! */
+       !DCCStackValue_HasDuplicate(self)) ||
       /* No need to duplicate constant expressions. */
      (!(self->sv_flags&DCC_SFLAG_LVALUE) &&
         self->sv_reg == DCC_RC_CONST &&
@@ -782,6 +796,19 @@ DCCStackValue_IsDuplicate(struct DCCStackValue *__restrict self,
  assert(self);
  assert(duplicate);
  /* If 'self' is identical to 'duplicate', remove the COPY flag from 'duplicate' */
+ return self->sv_reg == duplicate->sv_reg &&
+        self->sv_sym == duplicate->sv_sym &&
+        self->sv_const.it == duplicate->sv_const.it &&
+      ((self->sv_flags&FMASK) == (duplicate->sv_flags&FMASK));
+#undef FMASK
+}
+PRIVATE int DCC_VSTACK_CALL
+DCCStackValue_IsCopyDuplicate(struct DCCStackValue *__restrict self,
+                              struct DCCStackValue *__restrict duplicate) {
+#define FMASK (DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_TEST_MASK)
+ assert(self);
+ assert(duplicate);
+ /* If 'self' is identical to 'duplicate', remove the COPY flag from 'duplicate' */
  return (duplicate->sv_flags&DCC_SFLAG_COPY) &&
          self->sv_reg == duplicate->sv_reg &&
          self->sv_sym == duplicate->sv_sym &&
@@ -809,9 +836,9 @@ DCCStackValue_Cow(struct DCCStackValue *__restrict self) {
   /* NOTE: Technically, we'd have to search the entire vstack
    *       for duplicates, but this is sufficient for now! */
   if (self != compiler.c_vstack.v_bottom &&
-      DCCStackValue_IsDuplicate(self,self-1)) --self;
+      DCCStackValue_IsCopyDuplicate(self,self-1)) --self;
   else if (self != compiler.c_vstack.v_end &&
-           DCCStackValue_IsDuplicate(self,self+1)) ++self;
+           DCCStackValue_IsCopyDuplicate(self,self+1)) ++self;
   else goto done;
   DCCStackValue_Dup(self);
  }

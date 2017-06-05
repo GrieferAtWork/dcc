@@ -458,7 +458,7 @@ DCCFUN uint8_t DCC_VSTACK_CALL DCCVStack_UniTst(uint8_t test);                  
                                                                                             *         determined that should be performed for all other conditions; NOTE: no-op for constant expressions) */
 #define DCC_UNITST_FIRST 0xff
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Store(int initial_store);                            /* -2, +1 */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_StoreCC(int invert_test, int initial_store);         /* -3, +1: if (vbottom[0]) vbottom[2] = vbottom[1]; LEAVE(vbottom[2]); */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_StoreCC(int invert_test, int initial_store);         /* -3, +1: <target, source, cond>: if (vbottom[0] ^ invert_test) vbottom[2] = vbottom[1]; LEAVE(vbottom[2]); */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Call(size_t n_args);                                 /* -n_args, -1, +1 (NOTE: Args are popped first, and in reverse, meaning that the last argument should be in 'vbottom') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Jcc(int invert);                                     /* -2 (Jump to 'vbottom[0]' if 'vbottom[1]^invert' is true) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Jmp(void);                                           /* -1 (Jump to 'vbottom[0]') */
@@ -578,9 +578,9 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Strlen(int nlen_mode);
  * WARNING: For full functionality, the runtime must support at least:
  * >> void *memchr(void const *p, int c, size_t s);
  * >> void *memrchr(void const *p, int c, size_t s);
+ * Optionally, the runtime may also support:
  * >> size_t strlen(char const *s);
  * >> size_t strnlen(char const *s, size_t max);
- * Optionally, the runtime may also support:
  * >> void  *rawmemchr(void const *p, int c);
  * >> void  *rawmemrchr(void const *p, int c); // non-standard
  * >> void  *rawmemend(void const *p, int c); // non-standard

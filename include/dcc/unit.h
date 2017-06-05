@@ -276,6 +276,7 @@ DCCFUN void _DCCSym_Delete(struct DCCSym *__restrict self);
 /* Load the effective address of a given symbol, resolving symbol aliasing.
  * WARNING: This function should only be called during linkage, once all symbols are known.
  * WARNING: 'result->sa_sym' is _NOT_ filled with a reference, but simply a dangling pointer.
+ * HINT: Upon success, 'result' is always filled with a symbol that is defined inside some section.
  * @param: self: The symbol to load.
  * @param: load_weak: When non-ZERO, allow loading of weak symbols (which may be re-defined)
  * @return: 0: Failed to resolve the symbol as it, or a symbol it is aliasing is not defined.
@@ -693,7 +694,7 @@ DCCSection_Delrel(struct DCCSection *__restrict self,
 
 /* Check if there are relocations within the given address range.
  * @return: 0 : No relocations where found.
- * @return: !0 : At least one relocation was found.
+ * @return: 1 : At least one relocation was found.
  * @requires: !DCCSection_ISIMPORT(self) */
 DCCFUN int
 DCCSection_Hasrel(struct DCCSection *__restrict self,
@@ -814,7 +815,8 @@ DCCSection_GetText(struct DCCSection *__restrict self,
  * @param: max_vsize: The max amount of virtual memory (Always >= '*max_msize')
  *                    This memory size also considers unallocated (aka. ZERO-)memory.
  * @return: NULL: Invalid address (When given, '*max_msize' and '*max_vsize' are set to ZERO(0))
- * @return: * :   Compile-time address of text data. */
+ * @return: * :   Compile-time address of text data.
+ *                WARNING: Both '*max_msize' and '*max_vsize' may still be set to ZERO(0)! */
 DCCFUN void *
 DCCSection_TryGetText(struct DCCSection *__restrict self,
                       DCC(target_ptr_t) addr,

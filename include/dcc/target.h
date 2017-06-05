@@ -413,6 +413,25 @@ DCC_DECL_BEGIN
 #define DCC_TARGET_ATOMIC_SEQ_CST 5
 
 
+
+/* Optional functions that DCC can assume to always be provided by the runtime. */
+#define DCC_TARGET_RT_HAVE_STRLEN     1 /* size_t strlen(char const *s); */
+#define DCC_TARGET_RT_HAVE_STRNLEN    1 /* size_t strnlen(char const *s, size_t max); */
+#define DCC_TARGET_RT_HAVE_STREND     0 /* char *strend(char const *s); */
+#define DCC_TARGET_RT_HAVE_STRNEND    0 /* char *strnend(char const *s, size_t max); */
+#define DCC_TARGET_RT_HAVE_RAWMEMLEN  0 /* size_t rawmemlen(void const *p, int c); */
+#define DCC_TARGET_RT_HAVE_RAWMEMRLEN 0 /* size_t rawmemrlen(void const *p, int c); */
+#define DCC_TARGET_RT_HAVE_RAWMEMCHR  0 /* void *rawmemchr(void const *p, int c); */
+#define DCC_TARGET_RT_HAVE_RAWMEMRCHR 0 /* void *rawmemrchr(void const *p, int c); */
+#define DCC_TARGET_RT_HAVE_MEMLEN     0 /* size_t memlen(void const *p, int c, size_t s); */
+#define DCC_TARGET_RT_HAVE_MEMRLEN    0 /* size_t memrlen(void const *p, int c, size_t s); */
+#define DCC_TARGET_RT_HAVE_MEMEND     0 /* void *memend(void const *p, int c, size_t s); */
+#define DCC_TARGET_RT_HAVE_MEMREND    0 /* void *memrend(void const *p, int c, size_t s); */
+/* NOTE: For full functionality, the runtime should implement at least:
+ *    >> void *memchr(void const *p, int c, size_t s);
+ *    >> void *memrchr(void const *p, int c, size_t s); */
+
+
 #if DCC_TARGET_SIZEOF_CHAR == 1
 #    define DCC_TARGET_TYPE_S1   "signed char"
 #    define DCC_TARGET_TYPE_U1   "unsigned char"

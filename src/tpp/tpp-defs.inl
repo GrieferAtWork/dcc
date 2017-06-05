@@ -693,7 +693,11 @@ DEF_WARNING(W_EXPECTED_STRING_AFTER_GCC_DIAG,(WG_VALUE),WSTATE_WARN,WARNF("Expec
 DEF_WARNING(W_CANT_POP_EXTENSIONS,(WG_VALUE),WSTATE_WARN,WARNF("Can't pop extensions")) /*< . */
 DEF_WARNING(W_CANT_POP_INCLUDE_PATH,(WG_VALUE),WSTATE_WARN,WARNF("Can't pop #include paths")) /*< . */
 DEF_WARNING(W_CONSIDER_PAREN_AROUND_LAND,(WG_QUALITY),WSTATE_WARN,WARNF("Consider adding parenthesis around " Q("&&") " to prevent confusion with " Q("||"))) /*< . */
-DEF_WARNING(W_INTEGRAL_OVERFLOW,(WG_VALUE),WSTATE_WARN,WARNF("Integral constant overflow")) /*< [int_t,int_t]. */
+#if TPP_HAVE_LONGLONG
+DEF_WARNING(W_INTEGRAL_OVERFLOW,(WG_VALUE),WSTATE_WARN,{ int_t old = ARG(int_t); WARNF("Integral constant overflow from " Q("%lld") " to " Q("%lld"),(long long)old,(long long)ARG(int_t)); }) /*< [int_t,int_t]. */
+#else
+DEF_WARNING(W_INTEGRAL_OVERFLOW,(WG_VALUE),WSTATE_WARN,{ int_t old = ARG(int_t); WARNF("Integral constant overflow from " Q("%ld") " to " Q("%ld"),(long)old,(long)ARG(int_t)); }) /*< [int_t,int_t]. */
+#endif
 DEF_WARNING(W_INTEGRAL_CLAMPED,(WG_VALUE),WSTATE_WARN,WARNF("Integral constant clamped to fit")) /*< [int_t,int_t]. */
 DEF_WARNING(W_UNKNOWN_INCLUDE_PATH,(WG_VALUE),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("Unknown system #include-path " Q("%.*s"),(int)ARG(size_t),temp); }) /*< [char const *,size_t]. */
 DEF_WARNING(W_INCLUDE_PATH_ALREADY_EXISTS,(WG_VALUE),WSTATE_WARN,{ char *temp = ARG(char *); WARNF("System #include-path " Q("%.*s") " already exists",(int)ARG(size_t),temp); }) /*< [char const *,size_t]. */

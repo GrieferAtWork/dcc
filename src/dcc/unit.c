@@ -1260,7 +1260,7 @@ DCCSection_TryGetText(struct DCCSection *__restrict self,
  section_end = text->tb_end;
  if (section_end > text->tb_max)
      section_end = text->tb_max;
- if (section_off >= section_end) {
+ if (section_off > section_end) {
   if (max_msize) *max_msize = 0;
   if (max_vsize) *max_vsize = 0;
   return NULL;

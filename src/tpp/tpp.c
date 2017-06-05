@@ -5283,14 +5283,28 @@ PRIVATE int parse_include_string(char **begin, char **end) {
   else {
    /* Continue parsing _AFTER_ the '>' character! */
    TOKEN.t_file->f_pos = (*end)+1;
-   --end;
   }
  } else {
   WARN(W_EXPECTED_INCLUDE_STRING);
   TOKEN.t_file->f_pos = TOKEN.t_begin;
   result = 0;
  }
- assert(!result || *begin <= *end);
+ assertf(!result || *begin <= *end,
+        ("result                = %d\n"
+         "*begin                = %p\n"
+         "*end                  = %p\n"
+         "TOKEN.t_begin         = %p\n"
+         "TOKEN.t_end           = %p\n"
+         "TOKEN.t_file->f_begin = %p\n"
+         "TOKEN.t_file->f_pos   = %p\n"
+         "TOKEN.t_file->f_end   = %p\n"
+        ,result,*begin,*end
+        ,TOKEN.t_begin
+        ,TOKEN.t_end
+        ,TOKEN.t_file->f_begin
+        ,TOKEN.t_file->f_pos
+        ,TOKEN.t_file->f_end
+        ));
  popf();
  return result;
 }
@@ -6367,6 +6381,8 @@ create_int_file:
     incfile = TPPLexer_OpenFile(mode,include_begin,
                                (size_t)(include_end-include_begin),
                                 NULL);
+    assert(!(incfile) || !(incfile->f_prev) ||
+           !(mode&TPPLEXER_OPENFILE_FLAG_NEXT));
     if (function == KWD___TPP_LOAD_FILE && !incfile) {
      WARN(W_FILE_NOT_FOUND,include_begin,
                   (size_t)(include_end-include_begin));
@@ -9584,7 +9600,6 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
  int macro_name_size,behavior; wgroup_t const *wgroups;
  struct TPPString *temp_string = NULL;
  struct TPPFile *effective_file;
- unsigned int wid;
 #if 0 /* Don't warn when already in an error-state. */
  if (CURRENT.l_flags&TPPLEXER_FLAG_ERROR) return 0;
 #endif
@@ -9683,17 +9698,19 @@ PUBLIC int TPPLexer_Warn(int wnum, ...) {
  }
  WARNF("%c%04d(",(behavior == TPP_WARNINGMODE_ERROR) ? 'E' : 'W',wnum);
  /* print a list of all groups associated with the warning. */
- wid = wnum2id(wnum);
- if (wid_isvalid(wid)) {
-  wgroups = w_associated_groups[wid-WG_COUNT];
+ {
+  unsigned int wid = wnum2id(wnum);
+  if (wid_isvalid(wid)) {
+   wgroups = w_associated_groups[wid-WG_COUNT];
 #if 1
-  if (*wgroups >= 0) WARNF("\"-W%s\"",wgroup_names[*wgroups]);
+   if (*wgroups >= 0) WARNF("\"-W%s\"",wgroup_names[*wgroups]);
 #else
-  while (*wgroups >= 0) {
-   char const *name = wgroup_names[*wgroups++];
-   WARNF("\"-W%s\"%s",name,(*wgroups >= 0) ? "," : "");
-  }
+   while (*wgroups >= 0) {
+    char const *name = wgroup_names[*wgroups++];
+    WARNF("\"-W%s\"%s",name,(*wgroups >= 0) ? "," : "");
+   }
 #endif
+  }
  }
  IFC(sizeof(TPP_WARNF_ERROR_END) != sizeof("") ||
      sizeof(TPP_WARNF_WARN_END)  != sizeof("")) {
