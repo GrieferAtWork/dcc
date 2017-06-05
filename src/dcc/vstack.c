@@ -939,7 +939,10 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
   if (!(self->sv_ctype.t_type&DCCTYPE_POINTER))
    WARN(W_EXPECTED_POINTER_FOR_DEREF,&self->sv_ctype);
   else DCCType_MkBase(&self->sv_ctype);
-  self->sv_flags |= DCC_SFLAG_LVALUE;
+  self->sv_flags |=   DCC_SFLAG_LVALUE;
+  /* Make sure to delete the COW flag, as it was
+   * only meant for the underlying pointer value. */
+  self->sv_flags &= ~(DCC_SFLAG_COPY);
   assert(!(self->sv_flags&DCC_SFLAG_TEST));
   assert(!(self->sv_flags&DCC_SFLAG_BITFLD));
   return;
