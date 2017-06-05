@@ -218,8 +218,21 @@ DEF_BUILTIN(__builtin_memcpy)
 DEF_BUILTIN(__builtin_memmove)
 DEF_BUILTIN(__builtin_memset)
 DEF_BUILTIN(__builtin_memcmp)
-DEF_BUILTIN(__builtin_strlen)
-DEF_BUILTIN(__builtin_strnlen)
+
+/* Builtin memory scanning functions.
+ * WARNING: The order of these is important! */
+DEF_BUILTIN(__builtin_strlen)     /* char  *__builtin_strlen(char const *p); */
+DEF_BUILTIN(__builtin_strnlen)    /* char  *__builtin_strnlen(char const *p, size_t s); */
+DEF_BUILTIN(__builtin_memchr)     /* void  *__builtin_memchr(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_memlen)     /* size_t __builtin_memlen(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_memend)     /* void  *__builtin_memend(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_memrchr)    /* void  *__builtin_memrchr(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_memrlen)    /* size_t __builtin_memrlen(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_memrend)    /* void  *__builtin_memrend(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_rawmemchr)  /* void  *__builtin_rawmemchr(void const *p, int c); */
+DEF_BUILTIN(__builtin_rawmemlen)  /* size_t __builtin_rawmemlen(void const *p, int c); */
+DEF_BUILTIN(__builtin_rawmemrchr) /* void  *__builtin_rawmemrchr(void const *p, int c); */
+DEF_BUILTIN(__builtin_rawmemrlen) /* size_t __builtin_rawmemrlen(void const *p, int c); */
 
 /* Builtin character trait functions.
  * WARNING: The order of these is important! */

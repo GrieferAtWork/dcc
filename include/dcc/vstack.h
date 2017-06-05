@@ -567,10 +567,6 @@ DCCFUN int DCC_VSTACK_CALL DCCVStack_HasTst(void);
  * @param: mode: The compare operator (usually '<' for min or '>' for max) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_MinMax(DCC(tok_t) mode);
 
-/* [-1, +1]: push(strlen(vbottom[0]));
- * [-2, +1]: push(strnlen(vbottom[1],vbottom[0])); */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_Strlen(int nlen_mode);
-
 /* [-3, +1]: Locate a pointer/offset to a given memory character;
  *        >> VBOTTOM[2]: void const *ptr;       // Search base pointer.
  *        >> VBOTTOM[1]: int         character; // Search query character.
@@ -592,11 +588,19 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Strlen(int nlen_mode);
  * >> size_t rawmemlen(void const *p, int c); // non-standard
  * >> size_t rawmemrlen(void const *p, int c); // non-standard */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Scas(uint32_t flags);
-#define DCC_VSTACK_MEMCHR_FLAG_NONE 0x00000000
-#define DCC_VSTACK_MEMCHR_FLAG_SIZE 0x00000001 /*< Return the offset from the the string as 'size_t'. */
-#define DCC_VSTACK_MEMCHR_FLAG_NULL 0x00000002 /*< Return NULL when the character was not found (Ignored when 'DCC_VSTACK_MEMCHR_FLAG_SIZE' is set).
-                                                *  When not set, return one element past the last search character. */
-#define DCC_VSTACK_MEMCHR_FLAG_REV  0x00000004 /*< Search in reverse, starting at 'ptr+(size-1)' and ending with 'ptr' (both inclusive). */
+#define DCC_VSTACK_SCAS_FLAG_NONE 0x00000000
+#define DCC_VSTACK_SCAS_FLAG_SIZE 0x00000001 /*< Return the offset from the the string as 'size_t'. */
+#define DCC_VSTACK_SCAS_FLAG_NULL 0x00000002 /*< Return NULL when the character was not found (Ignored when 'DCC_VSTACK_SCAS_FLAG_SIZE' is set).
+                                              *  When not set, return one element past the last search character. */
+#define DCC_VSTACK_SCAS_FLAG_REV  0x00000004 /*< Search in reverse, starting at 'ptr+(size-1)' and ending with 'ptr' (both inclusive). */
+
+#define DCC_VSTACK_SCAS_MEMCHR   (DCC_VSTACK_SCAS_FLAG_NULL)
+#define DCC_VSTACK_SCAS_MEMEND   (DCC_VSTACK_SCAS_FLAG_NONE)
+#define DCC_VSTACK_SCAS_MEMLEN   (DCC_VSTACK_SCAS_FLAG_SIZE)
+#define DCC_VSTACK_SCAS_MEMRCHR  (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_NULL)
+#define DCC_VSTACK_SCAS_MEMREND  (DCC_VSTACK_SCAS_FLAG_REV)
+#define DCC_VSTACK_SCAS_MEMRLEN  (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_SIZE)
+
 
 /* [-3, +1]: push(memcmp(vbottom[2],vbottom[1],vbottom[0])); */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Memcmp(void);

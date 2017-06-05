@@ -95,15 +95,62 @@ DCCParse_BuiltinStrlen(void) {
  YIELD();
  DCCParse_ParPairBegin();
  DCCParse_Expr1(),vcast_pt(DCCTYPE_CHAR|DCCTYPE_CONST,0),vused();
+ vpushi(DCCTYPE_INT,'\0'); /* The search character (ZERO) */
  if (nlen_mode) {
   if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
   DCCParse_Expr1(),vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0),vused();
+ } else {
+  vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1);
  }
- DCCVStack_Strlen(nlen_mode);
+ DCCVStack_Scas(DCC_VSTACK_SCAS_FLAG_SIZE);
  vwunused();
  if (TOK == ',') YIELD(),DCCParse_ExprDiscard();
  DCCParse_ParPairEnd();
 }
+
+#define DCC_SCAS_FLAG_UNLIMITED 0x80000000 /*< Don't parse a 3rd argument specifying the max amount of bytes to search, but assume (size_t)-1. */
+#define DCC_SCAS_MASK_VSTACK    0x00ffffff /*< Mask for flags to pass to the v-stack's 'DCCVStack_Scas' function. */
+
+#define SCAS_MODE(name) ((name)-KWD___builtin_memchr)
+PRIVATE uint32_t scas_mode[] = {
+ /* [SCAS_MODE(KWD___builtin_memchr)]     = */DCC_VSTACK_SCAS_MEMCHR,
+ /* [SCAS_MODE(KWD___builtin_memlen)]     = */DCC_VSTACK_SCAS_MEMLEN,
+ /* [SCAS_MODE(KWD___builtin_memend)]     = */DCC_VSTACK_SCAS_MEMEND,
+ /* [SCAS_MODE(KWD___builtin_memrchr)]    = */DCC_VSTACK_SCAS_MEMRCHR,
+ /* [SCAS_MODE(KWD___builtin_memrlen)]    = */DCC_VSTACK_SCAS_MEMRLEN,
+ /* [SCAS_MODE(KWD___builtin_memrend)]    = */DCC_VSTACK_SCAS_MEMREND,
+ /* [SCAS_MODE(KWD___builtin_rawmemchr)]  = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMCHR,
+ /* [SCAS_MODE(KWD___builtin_rawmemlen)]  = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMLEN,
+ /* [SCAS_MODE(KWD___builtin_rawmemrchr)] = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMCHR,
+ /* [SCAS_MODE(KWD___builtin_rawmemrlen)] = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMLEN,
+};
+
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_BuiltinScas(void) {
+ uint32_t mode; /* ... (Various string scanning builtins); */
+ assert(TOK >= KWD___builtin_memchr &&
+        TOK <= KWD___builtin_rawmemrlen);
+ mode = SCAS_MODE(TOK);
+ YIELD();
+ DCCParse_ParPairBegin();
+ DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID|DCCTYPE_CONST,0),vused();
+ if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
+ DCCParse_Expr1(),vcast_t(DCCTYPE_INT,0),vused();
+ /* In unlimited-mode, simply use (size_t)-1 for size.
+  * The v-stack will detect this and be able
+  * to generated optimized code accordingly. */
+ if (mode&DCC_SCAS_FLAG_UNLIMITED)
+     vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1);
+ else {
+  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
+  DCCParse_Expr1(),vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0),vused();
+ }
+ DCCVStack_Scas(mode&DCC_SCAS_MASK_VSTACK); /* Invoke SCAS */
+ vwunused();
+ if (TOK == ',') YIELD(),DCCParse_ExprDiscard();
+ DCCParse_ParPairEnd();
+}
+
 
 DCC_DECL_END
 

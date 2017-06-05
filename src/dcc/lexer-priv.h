@@ -163,8 +163,9 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinExtractReturnAddr(void); /* void *__
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemcpy(void);            /* void *__builtin_memcpy(void *dst, void const *src, size_t size),__builtin_memmove(void *dst, void const *src, size_t size); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemset(void);            /* void *__builtin_memset(void *dst, int byte, size_t size); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemcmp(void);            /* int __builtin_memcmp(void const *a, void const *b, size_t size); */
-LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinStrlen(void);            /* size_t __builtin_strlen(char const *str),__builtin_strnlen(char const *str, size_t max); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinStrcmp(void);            /* int __builtin_strcmp(char const *a, char const *b); */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinStrlen(void);            /* size_t __builtin_strlen(char const *str),__builtin_strnlen(char const *str, size_t max); */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinScas(void);              /* ... (Various string scanning builtins); */
 
 /* MISC */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinScanner(void);           /* int __builtin_ffs(int x),__builtin_ffsl(long x),__builtin_ffsll(long long x),__builtin_ffscc(auto x, size_t s);

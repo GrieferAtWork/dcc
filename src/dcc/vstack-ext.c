@@ -67,50 +67,6 @@ DCCVStack_MinMax(tok_t mode) {
 }
 
 PUBLIC void DCC_VSTACK_CALL
-DCCVStack_Strlen(int nlen_mode) {
-#if 1
- if (!nlen_mode) vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1);
- vpushi(DCCTYPE_INT,0); /* s, max, 0 */
- vswap();               /* s, 0, max */
- DCCVStack_Scas(DCC_VSTACK_MEMCHR_FLAG_SIZE);
-#else
- struct DCCStackValue *str = vbottom+!!nlen_mode;
- assert(vsize >= (size_t)(nlen_mode ? 2 : 1));
- if (!(str->sv_flags&DCC_SFLAG_LVALUE) &&
-       str->sv_reg == DCC_RC_CONST && str->sv_sym &&
-       DCCSym_ISDEFINED(str->sv_sym)) {
-  /* Special case: The address of the string is known at compile-time. */
-  size_t s_max;
-  char *s = (char *)DCCSection_TryGetText(DCCSym_SECTION(str->sv_sym),
-                                          str->sv_sym->sy_addr,&s_max,NULL);
-  s_max = strnlen(s,s_max);
-  if (nlen_mode) vswap();
-  vpop(1); /* [max] */
-  /* Push the actual string length. */
-  vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,s_max);
-  if (nlen_mode) {
-   vrcopy();     /* maxd */
-   vswap();      /* maxd, clen */
-   vminmax('<'); /* min(maxd,clen) */
-   vrval();
-  }
- } else {
-  struct DCCSym *funsym;
-  funsym = DCCUnit_NewSyms(nlen_mode ? "strnlen" : "strlen",DCC_SYMFLAG_NONE);
-  if (funsym) DCCVStack_PushSym_szfun(funsym);
-  else vpushv(); /* str, [max], strlen */
-  if (nlen_mode) {
-   vlrot(3); /* strlen, str, max */
-   vcall(2); /* ret */
-  } else {
-   vswap();  /* strlen, str */
-   vcall(1); /* ret */
-  }
- }
-#endif
-}
-
-PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Memcmp(void) {
  /* a, b, size */
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
@@ -341,9 +297,9 @@ DCCVStack_Scas(uint32_t flags) {
    /* Empty search range: Never found. */
    vpop(1); /* ptr, char */
    vpop(1); /* ptr */
-   if (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE)
+   if (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
        vpop(1),vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0);
-   else if (flags&DCC_VSTACK_MEMCHR_FLAG_NULL)
+   else if (flags&DCC_VSTACK_SCAS_FLAG_NULL)
        vpop(1),vpushc(&DCCType_BuiltinPointers[DCCTYPE_VOID],0);
    else vcast_pt(DCCTYPE_VOID,1);
    return;
@@ -377,7 +333,7 @@ DCCVStack_Scas(uint32_t flags) {
         search_size   = cc_ptr_msize;
         is_oob_search = (cc_char == 0 && cc_ptr_vsize > cc_ptr_msize);
        }
-       if (is_oob_search && (flags&DCC_VSTACK_MEMCHR_FLAG_REV)) {
+       if (is_oob_search && (flags&DCC_VSTACK_SCAS_FLAG_REV)) {
         /* In reverse search mode, the first ZERO-character
          * is the last out-of-bounds pointer! */
         assert(!cc_char);
@@ -385,7 +341,7 @@ DCCVStack_Scas(uint32_t flags) {
             ct_size = cc_ptr_vsize;
         cc_locptr = (void *)((uintptr_t)cc_ptr_data+(size_t)ct_size);
        } else {
-        cc_locptr = (flags&DCC_VSTACK_MEMCHR_FLAG_REV)
+        cc_locptr = (flags&DCC_VSTACK_SCAS_FLAG_REV)
            ? memrchr(cc_ptr_data,cc_char,search_size)
            :  memchr(cc_ptr_data,cc_char,search_size);
         /* For failed ZERO-searches, the first out-of-bounds
@@ -407,21 +363,21 @@ DCCVStack_Scas(uint32_t flags) {
         /* Either push '(size_t)cc_ptr_offset' or '(void *)(ptr+cc_ptr_offset)' */
         vpop(1); /* ptr, char */
         vpop(1); /* ptr */
-        if (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE) {
+        if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
          vpop(1); /* . */
          vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,cc_ptr_offset);
                   /* size */
         } else {
          vbottom->sv_const.offset += cc_ptr_offset;
         }
-       } else if (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE) {
+       } else if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
         /* Only keep 'size' on the stack (in a memlen-style way). */
         vswap(); /* ptr, size, char */
         vpop(1); /* ptr, size */
         vswap(); /* size, ptr */
         vpop(1); /* size */
         vrval(); /* rsize */
-       } else if (flags&DCC_VSTACK_MEMCHR_FLAG_NULL) {
+       } else if (flags&DCC_VSTACK_SCAS_FLAG_NULL) {
         /* We're supposed to return NULL for this case! */
         vpop(1); /* ptr, char */
         vpop(1); /* ptr */
@@ -429,7 +385,7 @@ DCCVStack_Scas(uint32_t flags) {
         vpushc(&DCCType_BuiltinPointers[DCCTYPE_VOID],0);
        } else {
         /* Return a pointer after the last character searched (memend-style) */
-        if (flags&DCC_VSTACK_MEMCHR_FLAG_REV) {
+        if (flags&DCC_VSTACK_SCAS_FLAG_REV) {
          vpop(1); /* ptr, char */
          vpop(1); /* ptr */
          vcast_t(DCCTYPE_INTPTR|DCCTYPE_UNSIGNED,1);
@@ -450,9 +406,9 @@ DCCVStack_Scas(uint32_t flags) {
     }
    }
 no_compiletime:
-   if (!cc_char && !(flags&DCC_VSTACK_MEMCHR_FLAG_REV)) {
+   if (!cc_char && !(flags&DCC_VSTACK_SCAS_FLAG_REV)) {
     /* Generate a str(n)len/str(n)end function calls. */
-    if (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE) {
+    if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
      if ((funsym = (ct_size == (target_siz_t)-1)
         ? GET_SYM(DCC_TARGET_RT_HAVE_STRLEN,"strlen")
         : GET_SYM(DCC_TARGET_RT_HAVE_STRNLEN,"strnlen")) != NULL) {
@@ -495,17 +451,17 @@ no_compiletime:
       }
       return;
      }
-    } /* !(flags&DCC_VSTACK_MEMCHR_FLAG_SIZE) */
-   } /* !search_char && !(flags&DCC_VSTACK_MEMCHR_FLAG_REV) */
+    } /* !(flags&DCC_VSTACK_SCAS_FLAG_SIZE) */
+   } /* !search_char && !(flags&DCC_VSTACK_SCAS_FLAG_REV) */
   } /* DCCSTACKVALUE_ISCONST_INT(VS_CHAR) */
   if (ct_size == (target_siz_t)-1) {
    /* Try to generate calls to 'rawmemchr'/'rawmemrchr'/'rawmemlen'/'rawmemrlen' */
-   if (!(flags&DCC_VSTACK_MEMCHR_FLAG_REV)) {
-    if ((funsym = (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE)
+   if (!(flags&DCC_VSTACK_SCAS_FLAG_REV)) {
+    if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
        ? GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMLEN,"rawmemlen")
        : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMCHR,"rawmemchr")) != NULL) {
      vpop(1); /* ptr, char */
-     (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE)
+     (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
       ? DCCVStack_PushSym_szfun(funsym)
       : DCCVStack_PushSym_vpfun(funsym); /* ptr, char, func */
      vlrot(3); /* func, ptr, char */
@@ -513,7 +469,7 @@ no_compiletime:
      return;
     }
    } else {
-    if ((funsym = (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE)
+    if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
        ? GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMRLEN,"rawmemrlen")
        : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMRCHR,"rawmemrchr")) != NULL) {
                /* ptr, char, size */
@@ -524,7 +480,7 @@ no_compiletime:
      vgen2('+');     /* char, ptr+size */
      vgen1(TOK_DEC); /* char, (ptr+size)-1 */
      vswap();        /* (ptr+size)-1, char */
-     (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE)
+     (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
       ? DCCVStack_PushSym_szfun(funsym)
       : DCCVStack_PushSym_vpfun(funsym);
      vlrot(3); /* func, (ptr+size)-1, char */
@@ -534,9 +490,9 @@ no_compiletime:
    }
   }
  }
- if (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE) {
+ if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
   /* Try to call memlen/memrlen */
-  if ((funsym = (flags&DCC_VSTACK_MEMCHR_FLAG_REV)
+  if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_REV)
      ? GET_SYM(DCC_TARGET_RT_HAVE_MEMLEN,"memlen")
      : GET_SYM(DCC_TARGET_RT_HAVE_MEMRLEN,"memrlen")) != NULL) {
    DCCVStack_PushSym_szfun(funsym);
@@ -545,9 +501,9 @@ no_compiletime:
    vcall(3); /* ret. */
    return;
   }
- } else if (flags&DCC_VSTACK_MEMCHR_FLAG_NULL) {
+ } else if (flags&DCC_VSTACK_SCAS_FLAG_NULL) {
   /* Try to call memend/memrend */
-  if ((funsym = (flags&DCC_VSTACK_MEMCHR_FLAG_REV)
+  if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_REV)
      ? GET_SYM(DCC_TARGET_RT_HAVE_MEMEND,"memend")
      : GET_SYM(DCC_TARGET_RT_HAVE_MEMREND,"memrend")) != NULL) {
    DCCVStack_PushSym_vpfun(funsym);
@@ -560,20 +516,20 @@ no_compiletime:
 
  /* Fallback: Call memchr/memrchr */
 
-#define CASE_REVERSE_MEMCHR   (DCC_VSTACK_MEMCHR_FLAG_REV|DCC_VSTACK_MEMCHR_FLAG_NULL)
-#define CASE_REVERSE_MEMEND   (DCC_VSTACK_MEMCHR_FLAG_REV)
-#define CASE_REVERSE_MEMLEN   (DCC_VSTACK_MEMCHR_FLAG_REV|DCC_VSTACK_MEMCHR_FLAG_SIZE)
-#define CASE_FORWARD_MEMCHR   (DCC_VSTACK_MEMCHR_FLAG_NULL)
-#define CASE_FORWARD_MEMEND   (DCC_VSTACK_MEMCHR_FLAG_NONE)
-#define CASE_FORWARD_MEMLEN   (DCC_VSTACK_MEMCHR_FLAG_SIZE)
+#define CASE_REVERSE_MEMCHR   (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_NULL)
+#define CASE_REVERSE_MEMEND   (DCC_VSTACK_SCAS_FLAG_REV)
+#define CASE_REVERSE_MEMLEN   (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_SIZE)
+#define CASE_FORWARD_MEMCHR   (DCC_VSTACK_SCAS_FLAG_NULL)
+#define CASE_FORWARD_MEMEND   (DCC_VSTACK_SCAS_FLAG_NONE)
+#define CASE_FORWARD_MEMLEN   (DCC_VSTACK_SCAS_FLAG_SIZE)
  /* Generate with inline code calling either 'memchr' or 'memrchr'
   * NOTE: This is why DCC assumes that the runtime be implementing at least these! */
- funsym = DCCUnit_NewSyms(flags&DCC_VSTACK_MEMCHR_FLAG_REV ?
+ funsym = DCCUnit_NewSyms(flags&DCC_VSTACK_SCAS_FLAG_REV ?
                           "memrchr" : "memchr",DCC_SYMFLAG_NONE);
 again:
- switch (flags&(DCC_VSTACK_MEMCHR_FLAG_SIZE|
-                DCC_VSTACK_MEMCHR_FLAG_NULL|
-                DCC_VSTACK_MEMCHR_FLAG_REV)) {
+ switch (flags&(DCC_VSTACK_SCAS_FLAG_SIZE|
+                DCC_VSTACK_SCAS_FLAG_NULL|
+                DCC_VSTACK_SCAS_FLAG_REV)) {
 
  {
  case CASE_REVERSE_MEMCHR: /* >> return memrchr(ptr,char,size); */
@@ -668,8 +624,8 @@ again:
  } break;
 
  default: /* The NULL-flag is ignored by some cases. */
-  assert(flags&DCC_VSTACK_MEMCHR_FLAG_NULL);
-  flags &= ~(DCC_VSTACK_MEMCHR_FLAG_NULL);
+  assert(flags&DCC_VSTACK_SCAS_FLAG_NULL);
+  flags &= ~(DCC_VSTACK_SCAS_FLAG_NULL);
   goto again;
  }
 
