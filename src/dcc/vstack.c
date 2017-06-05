@@ -1827,17 +1827,19 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
   rc_t new_class;
   int to,tn,was_unsigned;
   if (group == DCCTYPE_POINTER || group == DCCTYPE_FUNCTION)
-       to = DCCTYPE_SIZE,was_unsigned = 1;
+       to = DCCTYPE_INTPTR,was_unsigned = 1;
   else to = DCCTYPE_BASIC(self->sv_ctype.t_type),
        was_unsigned = DCCTYPE_ISUNSIGNED(type->t_type);
-  if (DCCTYPE_GROUP(type->t_type) == DCCTYPE_POINTER) tn = DCCTYPE_SIZE;
+  if (DCCTYPE_GROUP(type->t_type) == DCCTYPE_POINTER ||
+      DCCTYPE_GROUP(type->t_type) == DCCTYPE_FUNCTION)
+       tn = DCCTYPE_INTPTR;
   else tn = DCCTYPE_BASIC(type->t_type);
   if (DCCTYPE_ISFLOAT(to) || DCCTYPE_ISFLOAT(tn)) {
    /* TODO: Cast to/from/between floating point types. */
   }
   /* Handle any other types (such as 'void' or 'auto') as int. */
-  if (to > DCCTYPE_UNSIGNED) to = DCCTYPE_INT;
-  if (tn > DCCTYPE_UNSIGNED) tn = DCCTYPE_INT;
+  if (to >= DCCTYPE_FLOAT) to = DCCTYPE_INT;
+  if (tn >= DCCTYPE_FLOAT) tn = DCCTYPE_INT;
   to &= ~(DCCTYPE_UNSIGNED);
   tn &= ~(DCCTYPE_UNSIGNED);
   /* Special case: No change in size. */
