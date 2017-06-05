@@ -2035,6 +2035,7 @@ TPP_SizeofEscape(char const *data, size_t size) {
 PUBLIC char *
 TPP_Itos(char *buf, int_t i) {
  char *result;
+ assert(buf);
  if (i < 0) *buf++ = '-',i = -i;
  result = (buf += TPP_SizeofItos(i));
  do *--buf = (char)('0'+(i % 10));
@@ -2044,6 +2045,7 @@ TPP_Itos(char *buf, int_t i) {
 PUBLIC size_t
 TPP_SizeofItos(int_t i) {
  size_t result = 0;
+ assert(i != 0 || i == 0);
  if (i < 0) ++result,i = -i;
  do ++result;
  while ((i /= 10) != 0);

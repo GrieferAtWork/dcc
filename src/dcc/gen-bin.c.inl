@@ -1524,9 +1524,9 @@ DCCDisp_VecBinMem(tok_t op,   void const *__restrict src, target_siz_t src_bytes
   common_size        -= width;
        if (op == '+') op = TOK_INC;
   else if (op == '-') op = TOK_DEC;
-  else if (op == '?' && common_size && !jsym) {
+  else if (op == '?' && common_size) {
    /* Special handling for compare operations. */
-   if ((jsym = DCCUnit_AllocSym()) != NULL)
+   if (jsym || (jsym = DCCUnit_AllocSym()) != NULL)
         DCCDisp_SymJcc(DCC_TEST_NE,jsym);
   }
  }
@@ -1586,9 +1586,9 @@ DCCDisp_BytBinMem(tok_t op, int                      src, target_siz_t src_bytes
   common_size     -= width;
        if (op == '+') op = TOK_INC;
   else if (op == '-') op = TOK_DEC;
-  else if (op == '?' && common_size && !jsym) {
+  else if (op == '?' && common_size) {
    /* Special handling for compare operations. */
-   if ((jsym = DCCUnit_AllocSym()) != NULL)
+   if (jsym || (jsym = DCCUnit_AllocSym()) != NULL)
         DCCDisp_SymJcc(DCC_TEST_NE,jsym);
   }
  }

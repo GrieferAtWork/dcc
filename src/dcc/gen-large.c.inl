@@ -49,7 +49,7 @@ DCCMemLoc_MinAlign(struct DCCMemLoc const *__restrict self) {
  int i; assert(self);
  offset = self->ml_off;
  if (self->ml_sym) {
-  if (DCCSym_SECTION(self->ml_sym))
+  if (DCCSym_ISDEFINED(self->ml_sym))
       return self->ml_sym->sy_align;
   result = 1;
  }
@@ -327,12 +327,21 @@ DCCDisp_LargeCstBinRegs(tok_t op, struct DCCSymExpr const *__restrict val,
 #if defined(LARGEMEM_STACK_LLONG) && \
    (LARGEMEM_STACK_LLONG == DCC_TARGET_SIZEOF_GP_REGISTER*2)
  struct DCCSymAddr addr;
+#if (DCC_TARGET_BYTEORDER == 1234) ^ DCC_TARGET_STACKDOWN
  addr.sa_off = (target_off_t)val->e_int;
  addr.sa_sym = val->e_sym;
  DCCDisp_CstPush(&addr,DCC_TARGET_SIZEOF_GP_REGISTER);
  addr.sa_off = (target_off_t)(val->e_int >> 32);
  addr.sa_sym = NULL;
  DCCDisp_CstPush(&addr,DCC_TARGET_SIZEOF_GP_REGISTER);
+#else
+ addr.sa_off = (target_off_t)(val->e_int >> 32);
+ addr.sa_sym = NULL;
+ DCCDisp_CstPush(&addr,DCC_TARGET_SIZEOF_GP_REGISTER);
+ addr.sa_off = (target_off_t)val->e_int;
+ addr.sa_sym = val->e_sym;
+ DCCDisp_CstPush(&addr,DCC_TARGET_SIZEOF_GP_REGISTER);
+#endif
  DCCDisp_RegPush(dst2|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
  DCCDisp_RegPush(dst|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
  DCCDisp_LargeBinLLong(op,src_unsigned);

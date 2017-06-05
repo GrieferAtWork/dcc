@@ -982,6 +982,7 @@ PUBLIC void
 DCCDisp_MemPush(struct DCCMemLoc const *__restrict src,
                 target_siz_t n_bytes) {
  struct DCCMemLoc temp;
+ /* TODO: Compile-time constant optimizations? */
  if (n_bytes == 1) {
   /* Special handling for 8-bit push. */
   temp.ml_off = 0;  
@@ -1012,9 +1013,16 @@ DCCDisp_MemPush(struct DCCMemLoc const *__restrict src,
  }
 #endif
  temp = *src; /* FALLBACK: Push each value individually. */
+#if DCC_TARGET_STACKDOWN
+ temp.ml_off += n_bytes;
+ if    (n_bytes &  1) { temp.ml_off -= 1,n_bytes -= 1; DCCDisp_MemPush(&temp,1); }
+ if    (n_bytes &  2) { temp.ml_off -= 2,n_bytes -= 2; DCCDisp_MemPush(&temp,2); }
+ while (n_bytes >= 4) { temp.ml_off -= 4,n_bytes -= 4; DCCDisp_MemPush(&temp,4); }
+#else
  while (n_bytes >= 4) { DCCDisp_MemPush(&temp,4); temp.ml_off += 4,n_bytes -= 4; }
  if    (n_bytes &  2) { DCCDisp_MemPush(&temp,2); temp.ml_off += 2; }
  if    (n_bytes &  1) { DCCDisp_MemPush(&temp,1); }
+#endif
 }
 PUBLIC void
 DCCDisp_MemRevPush(struct DCCMemLoc const *__restrict src,
