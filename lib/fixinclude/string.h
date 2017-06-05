@@ -19,15 +19,15 @@
 #pragma once
 #pragma GCC system_header
 
+#if __has_include_next(<string.h>)
 #pragma push_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
                          "realloc","cfree","memalign","aligned_alloc","pvalloc",\
                          "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
-#if __has_include_next(<string.h>)
 #include_next <string.h>
-#endif
 #pragma pop_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
                         "realloc","cfree","memalign","aligned_alloc","pvalloc",\
                         "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
+#endif
 
 /* Fixed/optimized system header <string.h> for DCC */
 #undef size_t
@@ -104,6 +104,10 @@ typedef __SIZE_TYPE__ size_t;
 #endif /* !__STDC_PURE__ */
 #endif /* __KOS__ */
 
+#ifdef _GNU_SOURCE
+#   define ffsl(x)  __builtin_ffsl((x))
+#   define ffsll(x) __builtin_ffsll((x))
+#endif
 
 
 
