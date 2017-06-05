@@ -594,6 +594,7 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Scas(uint32_t flags);
                                               *  When not set, return one element past the last search character. */
 #define DCC_VSTACK_SCAS_FLAG_REV  0x00000004 /*< Search in reverse, starting at 'ptr+(size-1)' and ending with 'ptr' (both inclusive). */
 
+/* Pre-generated scas flag sets for generic memory scanning functions. */
 #define DCC_VSTACK_SCAS_MEMCHR   (DCC_VSTACK_SCAS_FLAG_NULL)
 #define DCC_VSTACK_SCAS_MEMEND   (DCC_VSTACK_SCAS_FLAG_NONE)
 #define DCC_VSTACK_SCAS_MEMLEN   (DCC_VSTACK_SCAS_FLAG_SIZE)

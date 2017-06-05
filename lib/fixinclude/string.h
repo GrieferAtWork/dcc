@@ -45,6 +45,72 @@ typedef __SIZE_TYPE__ size_t;
 #define strlen(str)           __builtin_strlen((str))
 #define strnlen(str,maxlen)   __builtin_strnlen((str),(maxlen))
 
+#define memchr(p,c,s)         __builtin_memchr((p),(c),(s))
+
+/* Additional memory functions offered by DCC as extension.
+ * NOTE: A 'character' is always as 'byte'!
+ * >> __memrchr(p,c,s)      --> Same as memchr(p,c,s), but scanning in
+ *                              reverse order, the first character checked
+ *                              is 'p+(s-1)' and the last is 'p'.
+ *                              When 'c' is not found, NULL is returned.
+ * >> __strend(str)         --> Same as: str+strlen(str)
+ * >> __strnend(str,maxlen) --> Same as: str+strnlen(str,maxlen)
+ * >> __mem(r)end(p,c,s)    --> Same as mem(r)chr(p,c,s), but where memchr
+ *                              would normally return NULL for a character
+ *                              not found, return the one index past the
+ *                              last searched character (aka. 'p-1' or 'p+s')
+ *                              HINT: strend() could then be implemented using
+ *                                    "(char *)__memend(s,'\0',(size_t)-1)"
+ * >> __mem(r)len(p,c,s)    --> Sase as mem(r)end(p,c,s), but return the offset
+ *                              from 'p' to the found character as size_t.
+ *                              HINT: strlen() could then be implemented using
+ *                                    "__memlen(s,'\0',(size_t)-1)"
+ * >> __rawmem(r)len(p,c)   --> Same as __mem(r)len(p,c,(size_t)-1)
+ * >> __rawmem(r)chr(p,c)   --> Same as __mem(r)chr(p,c,(size_t)-1)
+ *                              HINT: Because of the infinite search size,
+ *                                    this function will probably crash
+ *                                    before returning NULL, and depending
+ *                                    on its implementation, may not even
+ *                                    be able to return NULL for that reason!
+ */
+#define __memrchr(p,c,s)      __builtin_memrchr((p),(c),(s))
+#define __strend(str)         __builtin_rawmemlen((str),'\0')
+#define __strnend(str,maxlen) __builtin_memlen((str),'\0',(maxlen))
+#define __memlen(p,c,s)       __builtin_memlen((p),(c),(s))
+#define __memend(p,c,s)       __builtin_memend((p),(c),(s))
+#define __memrlen(p,c,s)      __builtin_memrlen((p),(c),(s))
+#define __memrend(p,c,s)      __builtin_memrend((p),(c),(s))
+#define __rawmemchr(p,c)      __builtin_rawmemchr((p),(c))
+#define __rawmemlen(p,c)      __builtin_rawmemlen((p),(c))
+#define __rawmemrchr(p,c)     __builtin_rawmemrchr((p),(c))
+#define __rawmemrlen(p,c)     __builtin_rawmemrlen((p),(c))
+
+#ifdef _GNU_SOURCE
+#   define memrchr   __memrchr
+#   define rawmemchr __rawmemchr
+#endif
+
+#ifdef __KOS__
+/* KOS actually has some of these. */
+#   define _strend    __strend
+#   define _strnend   __strnend
+#   define _memend    __memend
+#   define _umemend   rawmemchr
+#ifndef __STDC_PURE__
+#   define strend     __strend
+#   define strnend    __strnend
+#   define memend     __memend
+#   define umemend    rawmemchr
+#endif /* !__STDC_PURE__ */
+#endif /* __KOS__ */
+
+
+
+
+
+
+
+
 
 
 
