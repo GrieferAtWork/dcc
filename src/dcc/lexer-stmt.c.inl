@@ -747,6 +747,10 @@ pushv_semi:
   goto check_semi;
  } break;
 
+ case KWD__Static_assert:
+  DCCParse_StaticAssert();
+  goto pushv_semi;
+
  default:
   if (TPP_ISKEYWORD(TOK)) {
    /* WARNING: Due to how this is implemented, a label name may
@@ -852,6 +856,24 @@ check_semi:
  return result;
 }
 
+PUBLIC void DCC_PARSE_CALL
+DCCParse_StaticAssert(void) {
+ struct DCCSymExpr val;
+ struct TPPString *message;
+ assert(TOK == KWD__Static_assert);
+ YIELD();
+ DCCParse_ParPairBegin();
+ DCCParse_CExpr2(1,&val);
+ if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
+ if (TOK == TOK_STRING) message = DCCParse_String();
+ else WARN(W_STATIC_ASSERT_EXPECTED_STRING),message = NULL;
+ /* Check to confirm that the asserted condition is true. */
+ if (!val.e_int && !val.e_sym)
+      WARN(W_STATIC_ASSERT_FAILED,message ? message->s_text : "");
+ if (message) TPPString_Decref(message);
+ DCCParse_ParPairEnd();
+}
+
 PUBLIC int DCC_PARSE_CALL DCCParse_DeclOrExpr(void) {
  int result = DCCParse_Decl();
  if (!result) DCCParse_Expr();
@@ -880,10 +902,15 @@ PUBLIC void DCC_PARSE_CALL DCCParse_Global(void) {
  case KWD___asm:
  case KWD___asm__:
   DCCParse_AsmStmt(1);
-//pushv_semi:
+pushv_semi:
   vpushv();
   goto check_semi;
  } break;
+
+ case KWD__Static_assert:
+  DCCParse_StaticAssert();
+  goto pushv_semi;
+
 
  { /* Parse a declaration. */
   int decl_error;

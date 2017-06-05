@@ -93,18 +93,20 @@ DCCDisp_MemsBinRegs(tok_t op, struct DCCMemLoc const *__restrict src,
   DCCDisp_LargeMemsBinRegs(op,src,src_bytes,dst,dst2,src_unsigned);
   return;
  }
- if (op == '?') {
-  /* TODO: Special handling for compare operations. */
- }
  if (dst2 != DCC_RC_CONST) {
   target_siz_t s = DCC_RC_SIZE(dst);
+  struct DCCSym *jsym = NULL;
   if (s > src_bytes) s = src_bytes;
   DCCDisp_MemsBinReg(op,src,s,dst,src_unsigned);
+  if (op == '?' &&
+     (jsym = DCCUnit_AllocSym()) != NULL)
+      DCCDisp_SymJcc(DCC_TEST_NE,jsym);
   new_src = *src,new_src.ml_off += s;
   src_bytes -= s;
        if (op == '+') op = TOK_INC;
   else if (op == '-') op = TOK_DEC;
   DCCDisp_MemsBinReg(op,&new_src,src_bytes,dst2,src_unsigned);
+  if (jsym) t_defsym(jsym);
  } else {
   DCCDisp_MemsBinReg(op,src,src_bytes,dst,src_unsigned);
  }
@@ -118,9 +120,6 @@ DCCDisp_RegsBinMems(tok_t op, rc_t src, rc_t src2,
  if (dst_bytes > DCC_TARGET_SIZEOF_ARITH_MAX && IS_LARGE_OP(op)) {
   DCCDisp_LargeRegsBinMems(op,src,src2,dst,dst_bytes,src_unsigned);
   return;
- }
- if (op == '?') {
-  /* TODO: Special handling for compare operations. */
  }
 #ifdef DCC_RC_I64
  if (dst_bytes < 8) src &= ~(DCC_RC_I64);
@@ -137,9 +136,15 @@ DCCDisp_RegsBinMems(tok_t op, rc_t src, rc_t src2,
  else if (src&DCC_RC_I16) dst_bytes -= 2,dst2.ml_off += 2;
  else                     dst_bytes -= 1,dst2.ml_off += 1;
  if (dst_bytes) {
+  struct DCCSym *jsym = NULL;
   /* Fill additional memory. */
        if (op == '+') op = TOK_INC;
   else if (op == '-') op = TOK_DEC;
+  else if (op == '?') {
+   /* Special handling for compare operations. */
+   if ((jsym = DCCUnit_AllocSym()) != NULL)
+        DCCDisp_SymJcc(DCC_TEST_NE,jsym);
+  }
   if (src2) {
 #ifdef DCC_RC_I64
    if (dst_bytes < 8) src2 &= ~(DCC_RC_I64);
@@ -164,6 +169,7 @@ DCCDisp_RegsBinMems(tok_t op, rc_t src, rc_t src2,
     DCCDisp_ByrBinMem(op,src,dst_bytes,&dst2,dst_bytes,0);
    }
   }
+  if (jsym) t_defsym(jsym);
  }
 }
 
@@ -629,19 +635,23 @@ DCCDisp_RegsBinRegs(tok_t op, rc_t src, rc_t src2,
   DCCDisp_LargeRegsBinRegs(op,src,src2,dst,dst2,src_unsigned);
   return;
  }
- if (op == '?' && (src2 != DCC_RC_CONST || dst2 != DCC_RC_CONST)) {
-  /* TODO: Special handling for compare operations. */
- }
  DCCDisp_RegBinReg(op,src,dst,src_unsigned);
  if (dst2 != DCC_RC_CONST) {
+  struct DCCSym *jsym = NULL;
        if (op == '+') op = TOK_INC;
   else if (op == '-') op = TOK_DEC;
+  else if (op == '?') {
+   /* Special handling for compare operations. */
+   if ((jsym = DCCUnit_AllocSym()) != NULL)
+        DCCDisp_SymJcc(DCC_TEST_NE,jsym);
+  }
   if (src2 != DCC_RC_CONST) {
    DCCDisp_RegBinReg(op,src2,dst2,src_unsigned);
   } else {
    struct DCCSymAddr val = {0,NULL};
    DCCDisp_CstBinReg(op,&val,dst2,src_unsigned);
   }
+  if (jsym) t_defsym(jsym);
  }
 }
 
@@ -1480,6 +1490,7 @@ DCCDisp_VecBinMem(tok_t op,   void const *__restrict src, target_siz_t src_bytes
                   int src_unsigned) {
  void *cdst; struct DCCSymAddr cst;
  struct DCCMemLoc dst_iter;
+ struct DCCSym *jsym = NULL;
  target_siz_t common_size;
  /* Special case: Static, compile-time operation. */
  if ((cdst = DCCMemLoc_CompilerAddrUpdate(dst,(void **)&src,dst_bytes)) != NULL) {
@@ -1494,9 +1505,6 @@ DCCDisp_VecBinMem(tok_t op,   void const *__restrict src, target_siz_t src_bytes
                          src_unsigned);
   return;
  }
- if (op == '?') {
-  /* TODO: Special handling for compare operations. */
- }
  common_size = src_bytes < dst_bytes ? src_bytes : dst_bytes;
  dst_bytes -= common_size;
  cst.sa_sym = NULL;
@@ -1510,16 +1518,21 @@ DCCDisp_VecBinMem(tok_t op,   void const *__restrict src, target_siz_t src_bytes
        if (common_size >= 4) width = 4,cst.sa_off = (target_off_t)*(int32_t *)src;
   else if (common_size >= 2) width = 2,cst.sa_off = (target_off_t)*(int16_t *)src;
   else                       width = 1,cst.sa_off = (target_off_t)*(int8_t *)src;
-  cst.sa_off = 0;
   DCCDisp_CstBinMem(op,&cst,&dst_iter,width,src_unsigned);
   dst_iter.ml_off    += width;
   *(uintptr_t *)&src += width;
   common_size        -= width;
        if (op == '+') op = TOK_INC;
   else if (op == '-') op = TOK_DEC;
+  else if (op == '?' && common_size && !jsym) {
+   /* Special handling for compare operations. */
+   if ((jsym = DCCUnit_AllocSym()) != NULL)
+        DCCDisp_SymJcc(DCC_TEST_NE,jsym);
+  }
  }
  /* Handle the remainder. */
  DCCDisp_BytBinMem(op,0,dst_bytes,dst,dst_bytes,src_unsigned);
+ if (jsym) t_defsym(jsym);
 }
 PUBLIC void
 DCCDisp_BytBinMem(tok_t op, int                      src, target_siz_t src_bytes,
@@ -1528,6 +1541,7 @@ DCCDisp_BytBinMem(tok_t op, int                      src, target_siz_t src_bytes
  void *cdst;
  struct DCCSymAddr cst;
  struct DCCMemLoc dst_iter;
+ struct DCCSym *jsym = NULL;
  target_siz_t common_size;
  if (!dst_bytes) return;
  if (!src_bytes) {
@@ -1546,9 +1560,6 @@ DCCDisp_BytBinMem(tok_t op, int                      src, target_siz_t src_bytes
                             dst,dst_bytes,
                          src_unsigned);
   return;
- }
- if (op == '?') {
-  /* TODO: Special handling for compare operations. */
  }
  common_size = src_bytes < dst_bytes ? src_bytes : dst_bytes;
  dst_bytes -= common_size;
@@ -1575,10 +1586,16 @@ DCCDisp_BytBinMem(tok_t op, int                      src, target_siz_t src_bytes
   common_size     -= width;
        if (op == '+') op = TOK_INC;
   else if (op == '-') op = TOK_DEC;
+  else if (op == '?' && common_size && !jsym) {
+   /* Special handling for compare operations. */
+   if ((jsym = DCCUnit_AllocSym()) != NULL)
+        DCCDisp_SymJcc(DCC_TEST_NE,jsym);
+  }
  }
  /* Handle the remainder. */
  src = src_unsigned || !(src&0x80) ? 0 : 0xff;
  DCCDisp_BytBinMem(op,src,dst_bytes,&dst_iter,dst_bytes,src_unsigned);
+ if (jsym) t_defsym(jsym);
 }
 
 PRIVATE void
@@ -1600,15 +1617,13 @@ DCCDisp_ByrBinMem(tok_t op, rc_t                     src, target_siz_t src_bytes
                   int src_unsigned) {
  target_siz_t common_size;
  struct DCCMemLoc new_dst;
+ struct DCCSym *jsym = NULL;
  if (op == '=') { DCCDisp_ByrMovMem(src,src_bytes,dst,dst_bytes,src_unsigned); return; }
  if (dst_bytes > DCC_TARGET_SIZEOF_ARITH_MAX && IS_LARGE_OP(op)) {
   DCCDisp_LargeByrBinMem(op,src,src_bytes,
                             dst,dst_bytes,
                          src_unsigned);
   return;
- }
- if (op == '?') {
-  /* TODO: Special handling for compare operations. */
  }
  /* Fallback. */
  src = DCCVStack_CastReg(src,src_unsigned,DCC_RC_I8);
@@ -1617,19 +1632,27 @@ DCCDisp_ByrBinMem(tok_t op, rc_t                     src, target_siz_t src_bytes
   DCCDisp_ByrBinMem_fixed(op,src,dst,common_size);
        if (op == '+') op = TOK_INC;
   else if (op == '-') op = TOK_DEC;
+  else if (op == '?' && common_size != dst_bytes) {
+   /* Special handling for compare operations. */
+   if ((jsym = DCCUnit_AllocSym()) != NULL)
+        DCCDisp_SymJcc(DCC_TEST_NE,jsym);
+  }
  }
 
  /* zero-/sign-extend the remainder. */
  new_dst         = *dst;
  new_dst.ml_off += common_size;
  common_size = dst_bytes-common_size;
- if (common_size && !src_unsigned) {
-  /* sign-extend: src = (uint8_t)sign_extend(src); */
-  DCCDisp_SignExtendReg(src);
-  DCCDisp_ByrBinMem(op,src,common_size,&new_dst,common_size,1);
- } else {
-  DCCDisp_BytBinMem(op,0,common_size,&new_dst,common_size,1);
+ if (common_size) {
+  if (!src_unsigned) {
+   /* sign-extend: src = (uint8_t)sign_extend(src); */
+   DCCDisp_SignExtendReg(src);
+   DCCDisp_ByrBinMem(op,src,common_size,&new_dst,common_size,1);
+  } else {
+   DCCDisp_BytBinMem(op,0,common_size,&new_dst,common_size,1);
+  }
  }
+ if (jsym) t_defsym(jsym);
 }
 
 

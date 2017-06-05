@@ -1285,7 +1285,7 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
  case TOK_GREATER_EQUAL:
 #define lhs  target
 #define rhs  self
-  if (!(lhs->sv_flags&DCC_SFLAG_LVALUE) &&
+  if (!(lhs->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST)) &&
        (lhs->sv_reg == DCC_RC_CONST)) {
    struct cmppair const *iter = compare_pairs;
    /* Lhs is a constant operand.
@@ -3538,6 +3538,35 @@ genstore:
 donepop:
  vpop(1);
 }
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_StoreCC(int invert_test,
+                  int initial_store) {
+ assert(vsize >= 3);
+ if (visconst_bool()) {
+  /* Compile-time constant condition. */
+  int should_assign = vgtconst_bool() ^ invert_test;
+  vpop(1);
+  if (should_assign) vgen2('=');
+  else               vpop(1);
+ } else {
+  /* TODO: Use cmovCC */
+  struct DCCSym *skip_jmp;
+  /* Make sure that the target can be modified at runtime. */
+  if (!(vbottom[2].sv_flags&DCC_SFLAG_LVALUE) &&
+       (vbottom[2].sv_reg == DCC_RC_CONST))
+        DCCStackValue_Load(&vbottom[2]);
+  else  DCCStackValue_Cow(&vbottom[2]);
+  vbottom[2].sv_flags &= ~(DCC_SFLAG_RVALUE);
+  skip_jmp = DCCUnit_AllocSym();
+  skip_jmp ? vpushs(skip_jmp) : vpushv();
+  /* Skip the assignment when the test is true. */
+  vgen1('&'),vjcc(!invert_test);
+  /* Generate a regular, old store. */
+  vstore(initial_store);
+  if (skip_jmp) t_defsym(skip_jmp);
+ }
+}
+
 
 
 static target_ptr_t const basic_type_weights[] = {

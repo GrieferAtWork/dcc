@@ -58,35 +58,12 @@ DCCVStack_PushSym_szfun(struct DCCSym *__restrict sym) {
 // 
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_MinMax(tok_t mode) {
- struct DCCSym *jmp;
- vdup(0);     /* target, other, other */
+ vdup(1);     /* target, other, other */
  vrrot(3);    /* other, other, target */
- vdup(0);     /* other, other, target, target */
- vrrot(3);    /* other, target, other, target */
- vgen2(mode); /* other, target, other#target */
- if (visconst_bool()) {
-  /* Constant condition. */
-  int reassign_target = !vgtconst_bool();
-  vpop(1); /* other, target */
-  vswap(); /* target, other */
-  if (reassign_target)
-       vgen2('=');
-  else vpop(1);
- } else {
-  /* TODO: Use cmov */
-  if (!(vbottom[1].sv_flags&DCC_SFLAG_LVALUE) &&
-       (vbottom[1].sv_reg == DCC_RC_CONST))
-        DCCStackValue_Load(&vbottom[1]);
-  else  DCCStackValue_Cow(&vbottom[1]);
-  vbottom[1].sv_flags &= ~(DCC_SFLAG_RVALUE);
-  jmp = DCCUnit_AllocSym();
-  jmp ? vpushs(jmp) : vpushv();
-  vgen1('&');
-  vjcc(0);   /* Skip the re-assignment when necessary. */
-  vswap();   /* target, other */
-  vstore(0); /* target */
-  if (jmp) t_defsym(jmp);
- }
+ vdup(1);     /* other, other, target, target */
+ vlrot(4);    /* target, other, other, target */
+ vgen2(mode); /* target, other, other#target */
+ vstorecc(0,0); /* e.g.: if (other < target) target = other; */
 }
 
 PUBLIC void DCC_VSTACK_CALL
@@ -323,6 +300,176 @@ call_extern:
  }
 }
 
+
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_Scas(uint32_t flags) {
+ struct DCCSym *funsym;
+#define VS_PTR  (&vbottom[2])
+#define VS_CHAR (&vbottom[1])
+#define VS_SIZE (&vbottom[0])
+ /* ptr, char, size */
+ assert(vsize >= 2);
+ if (DCCSTACKVALUE_ISCONST_INT(VS_SIZE)) {
+  /* Size is known at compile-time. */
+  target_siz_t size;
+  size = (target_siz_t)DCCSTACKVALUE_GTCONST_INT(VS_SIZE);
+  if unlikely(!size) {
+   /* Empty search range: Never found. */
+   vpop(1); /* ptr, char */
+   vpop(1); /* ptr */
+   if (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE)
+       vpop(1),vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0);
+   else if (flags&DCC_VSTACK_MEMCHR_FLAG_NULL)
+       vpop(1),vpushc(&DCCType_BuiltinPointers[DCCTYPE_VOID],0);
+   else vcast_pt(DCCTYPE_VOID,1);
+   return;
+  }
+  if (DCCSTACKVALUE_ISCONST_INT(VS_CHAR)) {
+   /* The search character is known at compile-time. */
+   int search_char;
+   search_char = (int)(uint8_t)DCCSTACKVALUE_GTCONST_INT(VS_CHAR);
+   if (DCCSTACKVALUE_ISCONST_XVAL(VS_PTR)) {
+    /* TODO: Full compile-time search. */
+   }
+   if (!search_char && !(flags&DCC_VSTACK_MEMCHR_FLAG_REV)) {
+    /* Generate a str(n)len/str(n)end function calls. */
+    if (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE) {
+     vswap(); /* ptr, size, char */
+     vpop(1); /* ptr, size */
+     if (size == (target_siz_t)-1) {
+      /* Maxlen (aka. unlimited search --> strlen) */
+      vpop(1); /* ptr */
+      funsym = DCCUnit_NewSyms("strlen",DCC_SYMFLAG_NONE);
+      funsym ? DCCVStack_PushSym_szfun(funsym) : vpushv();
+      vcall(1); /* ret */
+     } else {
+      funsym = DCCUnit_NewSyms("strnlen",DCC_SYMFLAG_NONE);
+      funsym ? DCCVStack_PushSym_szfun(funsym) : vpushv();
+      vcall(2); /* ret */
+     }
+     return;
+    } else {
+     if ((funsym = (size == (target_siz_t)-1)
+        ? DCCUnit_GetSyms("strend")
+        : DCCUnit_GetSyms("strnend")) != NULL) {
+      /* The symbol has been declared, so we assume it exists! */
+      vswap(); /* ptr, size, char */
+      vpop(1); /* ptr, size */
+      if (size == (target_siz_t)-1) {
+       /* Maxlen (aka. unlimited search --> strlen) */
+       vpop(1); /* ptr */
+       DCCVStack_PushSym_vpfun(funsym);
+       vcall(1); /* ret */
+      } else {
+       DCCVStack_PushSym_vpfun(funsym);
+       vcall(2); /* ret */
+      }
+      return;
+     }
+    } /* !(flags&DCC_VSTACK_MEMCHR_FLAG_SIZE) */
+   } /* !search_char && !(flags&DCC_VSTACK_MEMCHR_FLAG_REV) */
+  } /* DCCSTACKVALUE_ISCONST_INT(VS_CHAR) */
+  if (size == (target_siz_t)-1) {
+   /* Try to generate calls to 'rawmemchr'/'rawmemrchr'/'rawmemlen'/'rawmemrlen' */
+   if (!(flags&DCC_VSTACK_MEMCHR_FLAG_REV)) {
+    if ((funsym = (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE)
+       ? DCCUnit_GetSyms("rawmemlen")
+       : (flags&DCC_VSTACK_MEMCHR_FLAG_NULL)
+       ? DCCUnit_GetSyms("rawmemchr")
+       : DCCUnit_GetSyms("rawmemend")) != NULL) {
+     vpop(1); /* ptr, char */
+     (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE)
+      ? DCCVStack_PushSym_szfun(funsym)
+      : DCCVStack_PushSym_vpfun(funsym); /* ptr, char, func */
+     vlrot(3); /* func, ptr, char */
+     vcall(2); /* ret */
+     return;
+    }
+   } else {
+    if ((funsym = (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE)
+       ? DCCUnit_GetSyms("rawmemrlen")
+       : (flags&DCC_VSTACK_MEMCHR_FLAG_NULL)
+       ? DCCUnit_GetSyms("rawmemrchr")
+       : DCCUnit_GetSyms("rawmemrend")) != NULL) {
+     /* ptr, char, size */
+     vrrot(3); /* char, size, ptr */
+     vcast_t(DCCTYPE_INTPTR|DCCTYPE_UNSIGNED,1);
+     vrcopy();
+     vswap();        /* char, ptr, size */
+     vgen2('+');     /* char, ptr+size */
+     vgen1(TOK_DEC); /* char, (ptr+size)-1 */
+     vswap();        /* (ptr+size)-1, char */
+     (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE)
+      ? DCCVStack_PushSym_szfun(funsym)
+      : DCCVStack_PushSym_vpfun(funsym);
+     vlrot(3); /* func, (ptr+size)-1, char */
+     vcall(2); /* ret */
+     return;
+    }
+   }
+  }
+ }
+ if (flags&DCC_VSTACK_MEMCHR_FLAG_SIZE) {
+  /* Try to call memlen/memrlen */
+ } else if (flags&DCC_VSTACK_MEMCHR_FLAG_NULL) {
+  /* Try to call memend/memrend */
+ }
+
+ /* Fallback: Call memchr/memrchr */
+
+ /* TODO (Generate with inline code):
+  * >> void  *_p,*p_result;
+  * >> size_t _s,*s_result;
+  * >> switch (mode) {
+  * >>
+  * >> case REVERSE_MEMCHR:
+  * >>    p_result = memrchr(p,s);
+  * >>    break;
+  * >>
+  * >> case REVERSE_MEMEND:
+  * >>    _p = p-1;
+  * >>    p_result = memrchr(p,s);
+  * >>    if (!p_result) p_result = _p;
+  * >>    break;
+  * >>
+  * >> case REVERSE_MEMLEN:
+  * >>    _p = p;
+  * >>    p_result = memrchr(p,s);
+  * >>    if (!p_result) s_result = -1;
+  * >>    else           s_result = p_result-_p;
+  * >>    break;
+  * >>
+  * >> case MEMCHR:
+  * >>    p_result = memchr(p,s);
+  * >>    break;
+  * >>
+  * >> case MEMEND:
+  * >>    _p = p+s;
+  * >>    p_result = memchr(p,s);
+  * >>    if (!p_result) p_result = _p;
+  * >>    break;
+  * >>
+  * >> case MEMLEN:
+  * >>    _p = p;
+  * >>    _s = s;
+  * >>    p_result = memrchr(p,s);
+  * >>    if (!p_result) s_result = _s;
+  * >>    else           s_result = p_result-_p;
+  * >>    break;
+  * >>    
+  * >> }
+  */
+ funsym = DCCUnit_NewSyms(flags&DCC_VSTACK_MEMCHR_FLAG_REV ?
+                          "memrchr" : "memchr",DCC_SYMFLAG_NONE);
+ DCCVStack_PushSym_vpfun(funsym); /* [...], ptr, char, size, func */
+ vlrot(4); /* [...], func, ptr, char, size */
+ vcall(3); /* [...], ret */
+
+#undef VS_SIZE
+#undef VS_CHAR
+#undef VS_PTR
+}
 
 
 

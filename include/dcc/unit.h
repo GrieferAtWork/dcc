@@ -821,6 +821,9 @@ DCCSection_TryGetText(struct DCCSection *__restrict self,
                       size_t            *max_msize,
                       DCC(target_siz_t) *max_vsize);
 
+#define DCCSection_TEXTOFF(self,p) \
+ (target_ptr_t)((uint8_t *)(p)-((self) == unit.u_curr ? unit.u_tbuf.tb_begin : (self)->sc_text.tb_begin))
+
 
 /* Allocates zero-initialized section memory.
  * @requires: !DCCSection_ISIMPORT(self) */

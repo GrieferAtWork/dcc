@@ -44,6 +44,7 @@ DEF_K(while) DEF_K(do) DEF_K(for)
 DEF_K(break) DEF_K(continue)
 DEF_K(goto) DEF_K(return)
 DEF_K(switch) DEF_K(case) DEF_K(_Generic)
+DEF_K(_Static_assert)
 
 /* Used-defined type keywords. */
 DEF_K(struct) DEF_K(union) DEF_K(enum)
@@ -342,6 +343,13 @@ DEFINE_ATTRIBUTE(arithmetic) /* Allow arithmetic operations on structure types. 
 DEFINE_ATTRIBUTE(noalias)
 DEFINE_ATTRIBUTE(restrict)
 #undef DEFINE_ATTRIBUTE
+
+#define HAS_EXTFEATURE(name) KWD(KWD_##name,#name) KWD_FLAGS(KWD_##name,TPP_KEYWORDFLAG_HAS_FEATURE|TPP_KEYWORDFLAG_HAS_EXTENSION)
+HAS_EXTFEATURE(c_alignas)
+HAS_EXTFEATURE(c_generic_selections)
+HAS_EXTFEATURE(c_static_assert)
+#undef HAS_EXTFEATURE
+
 
 DEF_K(QI) /*< An integer that is as wide as the smallest addressable unit, usually 8 bits. */
 DEF_K(HI) /*< An integer, twice as wide as a QI mode integer, usually 16 bits. */
@@ -943,6 +951,8 @@ DEF_WARNING(W_EXPECTED_LBRACE,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("{") "
 DEF_WARNING(W_EXPECTED_RBRACE,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("}") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_EXPECTED_SEMICOLON,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q(";") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_SIZEOF_WITHOUT_PARENTHESIS,(WG_QUALITY),WSTATE_WARN,WARNF("Encountered " Q("%s") " without parenthesis",KWDNAME()))
+DEF_WARNING(W_STATIC_ASSERT_FAILED,(WG_USER),WSTATE_ERROR,WARNF("Static assertion failure: " Q("%s"),ARG(char *)))
+DEF_WARNING(W_STATIC_ASSERT_EXPECTED_STRING,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string after " Q("_Static_assert") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_IASM_EXPECTED_KEYWORD_FOR_NAMED_OPERAND,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword for named assembly operand, but got " TOK_S,TOK_A))
 DEF_WARNING(W_IASM_EXPECTED_STRING_FOR_CONSTRAINTS,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string for assembly constraints, but got " TOK_S,TOK_A))
 DEF_WARNING(W_IASM_UNKNOWN_CONSTRAINT,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown assembly constraint " Q("%c")))

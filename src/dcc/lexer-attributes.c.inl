@@ -21,6 +21,8 @@
 
 #include <dcc/lexer.h>
 #include <dcc/unit.h>
+#include <dcc/type.h>
+#include <dcc/compiler.h>
 
 #include "lexer-priv.h"
 
@@ -149,6 +151,30 @@ DCCAttrDecl_IsEmpty(struct DCCAttrDecl const *__restrict self) {
 }
 
 
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_AttrAlignas(struct DCCAttrDecl *__restrict self) {
+ struct DCCAttrDecl align_attr = DCCATTRDECL_INIT;
+ struct DCCType     align_type;
+ struct TPPKeyword *align_name;
+ assert(self);
+ if (DCCATTRDECL_HASALIAS(self)) {
+  WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
+  assert(!(self->a_specs&DCC_ATTRSPEC_SECTION));
+  DCCSym_Decref(self->a_alias);
+  self->a_alias = NULL;
+ }
+ align_name = DCCParse_CType(&align_type,&align_attr);
+ DCCAttrDecl_Quit(&align_attr);
+ if (align_name) {
+  DCCType_Sizeof(&align_type,&self->a_align,1);
+  DCCType_Quit(&align_type);
+ } else {
+  self->a_align = (target_siz_t)DCCParse_CExpr(0);
+ }
+ self->a_specs |= DCC_ATTRSPEC_FIXEDALIGN;
+ if (self->a_align&(self->a_align-1))
+     WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
+}
 
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
@@ -225,20 +251,9 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
  case KWD_align:
   YIELD();
   DCCParse_ParPairBegin();
-  if (function->k_id == KWD_regparm) {
-   self->a_regparm = (uint8_t)DCCParse_CExpr(0);
-  } else {
-   if (DCCATTRDECL_HASALIAS(self)) {
-    WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
-    assert(!(self->a_specs&DCC_ATTRSPEC_SECTION));
-    DCCSym_Decref(self->a_alias);
-    self->a_alias = NULL;
-   }
-   self->a_align  = (target_siz_t)DCCParse_CExpr(0);
-   self->a_specs |= DCC_ATTRSPEC_FIXEDALIGN;
-   if (self->a_align&(self->a_align-1))
-       WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
-  }
+  if (function->k_id == KWD_regparm)
+       self->a_regparm = (uint8_t)DCCParse_CExpr(0);
+  else DCCParse_AttrAlignas(self);
   DCCParse_ParPairEnd();
  } break;
 
@@ -571,16 +586,7 @@ again:
  case KWD__Alignas:
   YIELD();
   DCCParse_ParPairBegin();
-  if (DCCATTRDECL_HASALIAS(self)) {
-   WARN(W_ATTRIBUTE_ALIGNED_WITH_ALIAS);
-   assert(!(self->a_specs&DCC_ATTRSPEC_SECTION));
-   DCCSym_Decref(self->a_alias);
-   self->a_alias = NULL;
-  }
-  self->a_align  = (target_siz_t)DCCParse_CExpr(0);
-  self->a_specs |= DCC_ATTRSPEC_FIXEDALIGN;
-  if (self->a_align&(self->a_align-1))
-      WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
+  DCCParse_AttrAlignas(self);
   DCCParse_ParPairEnd();
  } goto again;
 

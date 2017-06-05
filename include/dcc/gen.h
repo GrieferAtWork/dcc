@@ -290,6 +290,7 @@ DCCFUN void DCCDisp_LocCll(struct DCCMemLoc const *__restrict addr);
 DCCFUN void DCCDisp_RegJcc(DCC(test_t) t, DCC(rc_t) reg);
 DCCFUN void DCCDisp_MemJcc(DCC(test_t) t, struct DCCMemLoc const *__restrict src, DCC(target_siz_t) n);
 DCCFUN void DCCDisp_LocJcc(DCC(test_t) t, struct DCCMemLoc const *__restrict addr);
+DCCFUN void DCCDisp_SymJcc(DCC(test_t) t, struct DCCSym *__restrict sym);
 
 /* Conditionally move 'src' into 'dst'. */
 DCCFUN void DCCDisp_RegCMovReg(DCC(test_t) t, DCC(rc_t) src, DCC(rc_t) dst, int src_unsigned);

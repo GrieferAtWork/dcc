@@ -317,6 +317,23 @@ struct DCCStackValue {
                                   *   NOTE: Must only be a reference within the vstack. */
 };
 
+#define DCCSTACKVALUE_ISCONST_BOOL(self) \
+ (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
+   ((self)->sv_reg == DCC_RC_CONST))
+#define DCCSTACKVALUE_GTCONST_BOOL(self) \
+ ((self)->sv_sym || (self)->sv_const.it)
+
+#define DCCSTACKVALUE_ISCONST_INT(self) \
+ (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
+   ((self)->sv_reg == DCC_RC_CONST) && !((self)->sv_sym))
+#define DCCSTACKVALUE_GTCONST_INT(self) ((self)->sv_const.it)
+
+/* Check if 'self' is a constant expression value (symbol+offset) */
+#define DCCSTACKVALUE_ISCONST_XVAL(self) \
+ (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
+   ((self)->sv_reg == DCC_RC_CONST))
+
+
 #define DCCStackValue_ISCONST(self) \
  ((self)->sv_reg == DCC_RC_CONST && !((self)->sv_flags&DCC_SFLAG_LVALUE))
 #define DCCStackValue_MUSTCOPY(self) \
@@ -441,6 +458,7 @@ DCCFUN uint8_t DCC_VSTACK_CALL DCCVStack_UniTst(uint8_t test);                  
                                                                                             *         determined that should be performed for all other conditions; NOTE: no-op for constant expressions) */
 #define DCC_UNITST_FIRST 0xff
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Store(int initial_store);                            /* -2, +1 */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_StoreCC(int invert_test, int initial_store);         /* -3, +1: if (vbottom[0]) vbottom[2] = vbottom[1]; LEAVE(vbottom[2]); */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Call(size_t n_args);                                 /* -n_args, -1, +1 (NOTE: Args are popped first, and in reverse, meaning that the last argument should be in 'vbottom') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Jcc(int invert);                                     /* -2 (Jump to 'vbottom[0]' if 'vbottom[1]^invert' is true) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Jmp(void);                                           /* -1 (Jump to 'vbottom[0]') */
@@ -550,6 +568,33 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_MinMax(DCC(tok_t) mode);
  * [-2, +1]: push(strnlen(vbottom[1],vbottom[0])); */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Strlen(int nlen_mode);
 
+/* [-3, +1]: Locate a pointer/offset to a given memory character;
+ *        >> VBOTTOM[2]: void const *ptr;       // Search base pointer.
+ *        >> VBOTTOM[1]: int         character; // Search query character.
+ *        >> VBOTTOM[0]: size_t      size;      // Search size.
+ * WARNING: For full functionality, the runtime must support at least:
+ * >> void *memchr(void const *p, int c, size_t s);
+ * >> void *memrchr(void const *p, int c, size_t s);
+ * >> size_t strlen(char const *s);
+ * >> size_t strnlen(char const *s, size_t max);
+ * Optionally, the runtime may also support:
+ * >> void  *rawmemchr(void const *p, int c);
+ * >> void  *rawmemrchr(void const *p, int c); // non-standard
+ * >> void  *rawmemend(void const *p, int c); // non-standard
+ * >> void  *rawmemrend(void const *p, int c); // non-standard
+ * >> char  *strend(char const *s); // non-standard
+ * >> char  *strnend(char const *s, size_t max); // non-standard
+ * >> size_t memlen(void const *p, int c, size_t s); // non-standard
+ * >> size_t memrlen(void const *p, int c, size_t s); // non-standard
+ * >> size_t rawmemlen(void const *p, int c); // non-standard
+ * >> size_t rawmemrlen(void const *p, int c); // non-standard */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_Scas(uint32_t flags);
+#define DCC_VSTACK_MEMCHR_FLAG_NONE 0x00000000
+#define DCC_VSTACK_MEMCHR_FLAG_SIZE 0x00000001 /*< Return the offset from the the string as 'size_t'. */
+#define DCC_VSTACK_MEMCHR_FLAG_NULL 0x00000002 /*< Return NULL when the character was not found (Ignored when 'DCC_VSTACK_MEMCHR_FLAG_SIZE' is set).
+                                                *  When not set, return one element past the last search character. */
+#define DCC_VSTACK_MEMCHR_FLAG_REV  0x00000004 /*< Search in reverse, starting at 'ptr+(size-1)' and ending with 'ptr' (both inclusive). */
+
 /* [-3, +1]: push(memcmp(vbottom[2],vbottom[1],vbottom[0])); */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Memcmp(void);
 
@@ -597,6 +642,7 @@ extern struct DCCStackValue *vbottom;
 #define vgen2      DCCVStack_Binary
 #define vcast      DCCVStack_Cast
 #define vstore     DCCVStack_Store
+#define vstorecc   DCCVStack_StoreCC
 #define vcall      DCCVStack_Call
 #define vjcc       DCCVStack_Jcc
 #define vjmp       DCCVStack_Jmp
@@ -624,21 +670,14 @@ DCC_LOCAL void vcast_t(DCC(tyid_t) id, int explicit_cast) {
  * NOTE: Due to relocation, there is a difference
  *       between a constant bool and a constant it!
  */
-#define visconst_bool() \
- (!(vbottom->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
-   (vbottom->sv_reg == DCC_RC_CONST))
-#define vgtconst_bool() (vbottom->sv_sym ? 1 : !!vbottom->sv_const.it)
+#define visconst_bool() DCCSTACKVALUE_ISCONST_BOOL(vbottom)
+#define vgtconst_bool() DCCSTACKVALUE_GTCONST_BOOL(vbottom)
 
-#define visconst_int() \
- (!(vbottom->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
-   (vbottom->sv_reg == DCC_RC_CONST) && \
-  !(vbottom->sv_sym))
-#define vgtconst_int() (vbottom->sv_const.it)
+#define visconst_int()  DCCSTACKVALUE_ISCONST_INT(vbottom)
+#define vgtconst_int()  DCCSTACKVALUE_GTCONST_INT(vbottom)
 
 /* Check if vbottom is a constant expression value (symbol+offset) */
-#define visconst_xval() \
- (!(vbottom->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
-   (vbottom->sv_reg == DCC_RC_CONST))
+#define visconst_xval() DCCSTACKVALUE_ISCONST_XVAL(vbottom)
 
 #endif /* DCC_PRIVATE_API */
 

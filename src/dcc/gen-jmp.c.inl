@@ -87,6 +87,14 @@ DCCDisp_LocJcc(test_t t, struct DCCMemLoc const *__restrict addr) {
  }
 }
 PUBLIC void
+DCCDisp_SymJcc(DCC(test_t) t, struct DCCSym *__restrict sym) {
+ struct DCCMemLoc addr;
+ addr.ml_reg = DCC_RC_CONST;
+ addr.ml_off = 0;
+ addr.ml_sym = sym;
+ DCCDisp_LocJcc(t,&addr);
+}
+PUBLIC void
 DCCDisp_LocJmp(struct DCCMemLoc const *__restrict addr) {
  if (addr->ml_reg != DCC_RC_CONST) {
   rc_t preg = DCCDisp_AddProtReg(&addr->ml_sad,

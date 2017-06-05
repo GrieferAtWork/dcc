@@ -9397,7 +9397,7 @@ yield_after_extension:
       char const *name = extname.c_data.c_string->s_text;
       if (*name == '-') ++name;
       if (*name == 'f') ++name;
-      if (!memcmp(name,"no-",3)) name += 3,mode = 0;
+      if (!memcmp(name,"no-",3*sizeof(char))) name += 3,mode = 0;
       ext_error = TPPLexer_SetExtension(name,mode);
       if unlikely(!ext_error) ext_error = WARN(W_UNKNOWN_EXTENSION,name);
       TPPString_Decref(extname.c_data.c_string);

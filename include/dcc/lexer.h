@@ -326,6 +326,12 @@ typedef int DCC(pflag_t); /*< A set of 'DCC_PFLAG_*' */
  * @return: 2: A declaration that didn't require a ';' was parsed. */
 DCCFUN int DCC_PARSE_CALL DCCParse_Stmt(DCC(pflag_t) f);
 
+/* Parse a static assertion:
+ * >> _Static_assert(sizeof(int) == 4,"Oh no!");
+ *    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ * The caller is responsible to ensure that the
+ * current token is '_Static_assert' upon entry. */
+DCCFUN void DCC_PARSE_CALL DCCParse_StaticAssert(void);
 
 #define TPP_ISSTRING(t) \
   ((t) == DCC(TOK_STRING) || \
