@@ -2213,6 +2213,7 @@ DCCVStack_GetReg(rc_t rc, int allow_ptr_regs) {
 #endif
  if (rc&DCC_RC_I32) rc |= DCC_RC_I16;
  if (rc&DCC_RC_I16) rc |= DCC_RC_I8;
+ if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return rc;
  pref = rc&7,rc &= ~7;
 again:
  iter = compiler.c_vstack.v_bottom;
@@ -2329,6 +2330,7 @@ DCCVStack_GetRegExact(rc_t rcr) {
 #endif
  if (rcr&DCC_RC_I32) rcr |= DCC_RC_I16;
  if (rcr&DCC_RC_I16 && !(rcr&4)) rcr |= DCC_RC_I8;
+ if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return rcr;
 again:
  iter = compiler.c_vstack.v_bottom;
  end  = compiler.c_vstack.v_end;
@@ -2373,6 +2375,11 @@ again:
   wanted_set &= ~((1 << 6)|(1 << 7)); /* There is no 6'th, or 7'th segment register. */
  }
  assertf(wanted_set != 0,"An empty or protected wanted-set was given");
+ if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) {
+  rc_t rid = 0; /* Fake-allocate the first register when no code should be generated. */
+  while (!(wanted_set&1)) wanted_set >>= 1,++rid;
+  return rc|rid;
+ }
  /* Don't consider any registers not part of the wanted-set. */
  in_use = ~(wanted_set);
  if (rc&DCC_RC_I) {
@@ -2498,6 +2505,7 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_KillAll(size_t n_skip) {
  struct DCCStackValue *iter,*end;
  assert(n_skip <= vsize);
+ if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  end  = compiler.c_vstack.v_end;
  iter = compiler.c_vstack.v_bottom+n_skip;
  for (; iter != end; ++iter) {
@@ -2512,16 +2520,20 @@ DCCVStack_KillAll(size_t n_skip) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_KillInt(uint8_t mask) {
  struct DCCStackValue *iter,*end;
+ if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  end   = compiler.c_vstack.v_end;
  iter  = compiler.c_vstack.v_bottom;
- mask &= ~(DCC_ASMREG_EBP|DCC_ASMREG_ESP
+ mask &= ~((1 << DCC_ASMREG_EBP)
+          |(1 << DCC_ASMREG_ESP)
 #ifdef IA32_PROTECTED_REGISTERS
-          |DCC_ASMREG_EBX|DCC_ASMREG_ESI|DCC_ASMREG_EDI
+          |(1 << DCC_ASMREG_EBX)
+          |(1 << DCC_ASMREG_ESI)
+          |(1 << DCC_ASMREG_EDI)
 #endif
           );
- for (; iter != end; ++iter) {
-  if (((iter->sv_reg&DCC_RC_I)  && (mask << (iter->sv_reg&DCC_RI_MASK))&1) ||
-      ((iter->sv_reg2&DCC_RC_I) && (mask << (iter->sv_reg2&DCC_RI_MASK))&1)) {
+ if (mask) for (; iter != end; ++iter) {
+  if (((iter->sv_reg&DCC_RC_I)  && (mask&(1 << (iter->sv_reg&DCC_RI_MASK)))) ||
+      ((iter->sv_reg2&DCC_RC_I) && (mask&(1 << (iter->sv_reg2&DCC_RI_MASK))))) {
    /* Kill this stack value. */
    DCCStackValue_Kill(iter);
    assert(iter->sv_flags&DCC_SFLAG_LVALUE);
@@ -2532,6 +2544,7 @@ DCCVStack_KillInt(uint8_t mask) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_KillTst(void) {
  struct DCCStackValue *iter,*end;
+ if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  iter = compiler.c_vstack.v_bottom;
  end  = compiler.c_vstack.v_end;
  for (; iter != end; ++iter) {
