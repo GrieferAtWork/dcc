@@ -869,7 +869,7 @@ DCCParse_StaticAssert(void) {
  else WARN(W_STATIC_ASSERT_EXPECTED_STRING),message = NULL;
  /* Check to confirm that the asserted condition is true. */
  if (!val.e_int && !val.e_sym)
-      WARN(W_STATIC_ASSERT_FAILED,message ? message->s_text : "");
+      WARN(W_STATIC_ASSERT_FAILED,message ? message->s_text : (char *)"");
  if (message) TPPString_Decref(message);
  DCCParse_ParPairEnd();
 }

@@ -531,13 +531,20 @@ DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
      DCCDisp_AddReg(&temp,self->sv_reg);
     }
    } else {
+    DCCVStack_KillTst(); /* Maybe try not to do this? */
     if (temp.sa_off < 0)
      temp.sa_off = -temp.sa_off,
      DCCDisp_CstBinReg('-',&temp,self->sv_reg,0);
     else DCCDisp_CstBinReg('+',&temp,self->sv_reg,0);
     temp.sa_off = (target_off_t)(self->sv_const.it >> 32);
     if (temp.sa_off < 0)
-     temp.sa_off = -temp.sa_off,
+     /* NOTE: This must be '~' instead of '-' because of the carry-extension.
+      *       Consider a small number '-5': 0xfffffffffffffffb
+      *       Its high memory is equal to '0xffffffff',
+      *       which when negated would equal '1'.
+      *       That '1' is the carry bit that can simply be
+      *       ignored by using '~', which will result in '0'. */
+     temp.sa_off = ~temp.sa_off,
      DCCDisp_CstBinReg(TOK_DEC,&temp,self->sv_reg2,0);
     else DCCDisp_CstBinReg(TOK_INC,&temp,self->sv_reg2,0);
    }
@@ -1876,7 +1883,20 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
    self->sv_reg2 = DCCVStack_GetReg(DCC_RC_I32,1);
    if (!DCCTYPE_ISUNSIGNED_OR_PTR(type->t_type)) {
     /* sign-extend 'self->sv_reg' into 'self->sv_reg2' */
-    DCCDisp_RegMovReg(self->sv_reg2,self->sv_reg2,1);
+#if 0
+    DCCStackValue_FixRegOffset(self);
+#else
+    if (self->sv_const.it || self->sv_sym) {
+     struct DCCMemLoc off;
+     off.ml_reg = self->sv_reg;
+     off.ml_off = (target_off_t)self->sv_const.it;
+     off.ml_sym = self->sv_sym;
+     DCCDisp_LeaReg(&off,self->sv_reg2);
+    } else
+#endif
+    {
+     DCCDisp_RegMovReg(self->sv_reg,self->sv_reg2,1);
+    }
     DCCDisp_SignExtendReg(self->sv_reg2);
    } else {
     DCCDisp_IntMovReg(0,self->sv_reg2);
