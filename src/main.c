@@ -138,9 +138,6 @@ static void load_stdlib(void) {
  }
 }
 
-
-#include <errno.h>
-
 int main(int argc, char *argv[]) {
  int result = 0;
 

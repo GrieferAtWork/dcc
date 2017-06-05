@@ -105,6 +105,10 @@ DCCDecl_CalculateFunctionOffsets(struct DCCDecl *__restrict funtydecl) {
   assert(decl);
   assert(decl->d_kind == DCC_DECLKIND_TYPE);
   DCCType_PromoteFunArg(&decl->d_type);
+#if 1
+  s = DCCType_Sizeof(&decl->d_type,NULL,1);
+  a = DCC_TARGET_STACKALIGN; /* ??? */
+#else
   s = DCCType_Sizeof(&decl->d_type,&a,1);
   if (a < DCC_TARGET_STACKALIGN) a = DCC_TARGET_STACKALIGN;
   if (decl->d_attr) {
@@ -114,6 +118,7 @@ DCCDecl_CalculateFunctionOffsets(struct DCCDecl *__restrict funtydecl) {
     a = decl->d_attr->a_align;
    }
   }
+#endif
   current_offset  = (current_offset+(a-1)) & ~(a-1);
   iter->sf_off    =  current_offset;
   current_offset += s;
