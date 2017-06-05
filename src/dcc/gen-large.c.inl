@@ -89,7 +89,6 @@ DCCDisp_LargeBinLLong(tok_t op, int src_unsigned) {
  case '%':         funloc.ml_sym = DCCUnit_NewSyms(src_unsigned ? "__umodti3" : "__modti3",DCC_SYMFLAG_NONE); break;
  default:          funloc.ml_sym = DCCUnit_NewSyms("__multi3",DCC_SYMFLAG_NONE); break;
  }
- DCCVStack_KillAll(0);
  DCCDisp_LocCll(&funloc);
  cleanup.sa_off = 2*DCC_TARGET_SIZEOF_LONG_LONG;
  cleanup.sa_sym = NULL;
@@ -111,6 +110,7 @@ DCCDisp_LargeMemBinMem_fixed(tok_t op,
  if (n_bytes == LARGEMEM_STACK_LLONG) {
   DCCDisp_MemPush(src,REQSIZE(op,LARGEMEM_STACK_LLONG));
   DCCDisp_MemPush(dst,LARGEMEM_STACK_LLONG);
+  DCCVStack_KillAll(0);
   DCCDisp_LargeBinLLong(op,src_unsigned);
   DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,dst,LARGEMEM_STACK_LLONG,1);
   return;
@@ -148,6 +148,7 @@ DCCDisp_LargeMemBinMem(tok_t op,
  if (dst_bytes == LARGEMEM_STACK_LLONG) {
   DCCDisp_MemPushs(src,src_bytes,reqbytes,src_unsigned);
   DCCDisp_MemPush (dst,LARGEMEM_STACK_LLONG);
+  DCCVStack_KillAll(0);
   DCCDisp_LargeBinLLong(op,src_unsigned);
   DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,dst,dst_bytes,1);
   return;
@@ -173,6 +174,8 @@ DCCDisp_LargeMemsBinRegs(tok_t op, struct DCCMemLoc const *__restrict src,
  DCCDisp_MemPushs(src,src_bytes,REQSIZE(op,LARGEMEM_STACK_LLONG),src_unsigned);
  DCCDisp_RegPush(dst2|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
  DCCDisp_RegPush(dst|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
+ DCCVStack_KillInt(~(uint8_t)((1 << (dst&DCC_RI_MASK))|
+                              (1 << (dst2&DCC_RI_MASK))));
  DCCDisp_LargeBinLLong(op,src_unsigned);
  DCCDisp_RegsBinRegs('=',DCC_RR_XAX,DCC_RR_XDX,dst,dst2,1);
 #else
@@ -207,6 +210,9 @@ DCCDisp_LargeRegsBinMems(tok_t op, rc_t src, rc_t src2,
   }
   DCCDisp_RegPush(src|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
   DCCDisp_MemPush(dst,LARGEMEM_STACK_LLONG);
+  DCCVStack_KillInt(~(uint8_t)((1 << (src&DCC_RI_MASK))|
+                               (src2 == DCC_RC_CONST ? 0 :
+                                1 << (src2&DCC_RI_MASK))));
   DCCDisp_LargeBinLLong(op,src_unsigned);
   DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,dst,LARGEMEM_STACK_LLONG,1);
   return;
@@ -303,6 +309,9 @@ DCCDisp_LargeRegsBinRegs(tok_t op, rc_t src, rc_t src2,
  DCCDisp_RegPush(src|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
  DCCDisp_RegPush(dst2|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
  DCCDisp_RegPush(dst|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
+ DCCVStack_KillInt(~(uint8_t)((1 << (src&DCC_RI_MASK))|
+                              (1 << (dst&DCC_RI_MASK))|
+                              (1 << (dst2&DCC_RI_MASK))));
  DCCDisp_LargeBinLLong(op,src_unsigned);
  DCCDisp_RegsBinRegs('=',DCC_RR_XAX,DCC_RR_XDX,dst,dst2,1);
 #else
@@ -344,6 +353,8 @@ DCCDisp_LargeCstBinRegs(tok_t op, struct DCCSymExpr const *__restrict val,
 #endif
  DCCDisp_RegPush(dst2|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
  DCCDisp_RegPush(dst|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
+ DCCVStack_KillInt(~(uint8_t)((1 << (dst&DCC_RI_MASK))|
+                              (1 << (dst2&DCC_RI_MASK))));
  DCCDisp_LargeBinLLong(op,src_unsigned);
  DCCDisp_RegsBinRegs('=',DCC_RR_XAX,DCC_RR_XDX,dst,dst2,1);
 #else

@@ -552,6 +552,9 @@ DCCFUN DCC(rc_t) DCC_VSTACK_CALL DCCVStack_CastReg(DCC(rc_t) reg, int reg_unsign
 DCCFUN void DCC_VSTACK_CALL DCCVStack_KillAll(size_t n_skip);
 DCCFUN void DCC_VSTACK_CALL DCCVStack_KillTst(void);
 
+/* Kill all integer registers apart of the given 'mask' */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_KillInt(uint8_t mask);
+
 /* Returns 1/0 indicating that the v-stack contains test slots. */
 DCCFUN int DCC_VSTACK_CALL DCCVStack_HasTst(void);
 

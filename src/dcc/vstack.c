@@ -2509,6 +2509,25 @@ DCCVStack_KillAll(size_t n_skip) {
   }
  }
 }
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_KillInt(uint8_t mask) {
+ struct DCCStackValue *iter,*end;
+ end   = compiler.c_vstack.v_end;
+ iter  = compiler.c_vstack.v_bottom;
+ mask &= ~(DCC_ASMREG_EBP|DCC_ASMREG_ESP
+#ifdef IA32_PROTECTED_REGISTERS
+          |DCC_ASMREG_EBX|DCC_ASMREG_ESI|DCC_ASMREG_EDI
+#endif
+          );
+ for (; iter != end; ++iter) {
+  if (((iter->sv_reg&DCC_RC_I)  && (mask << (iter->sv_reg&DCC_RI_MASK))&1) ||
+      ((iter->sv_reg2&DCC_RC_I) && (mask << (iter->sv_reg2&DCC_RI_MASK))&1)) {
+   /* Kill this stack value. */
+   DCCStackValue_Kill(iter);
+   assert(iter->sv_flags&DCC_SFLAG_LVALUE);
+  }
+ }
+}
 
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_KillTst(void) {
