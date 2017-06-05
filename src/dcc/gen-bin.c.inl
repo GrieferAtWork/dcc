@@ -1413,8 +1413,6 @@ DCCDisp_MemBinMem(tok_t op,
   return;
  }
  common_size = src_bytes < dst_bytes ? src_bytes : dst_bytes;
- temp = DCCVStack_GetReg(DCC_RC_FORSIZE(common_size),
-                      !!(common_size != 1));
  if (op == '?' && (dst_bytes != common_size || !CHECK_WIDTH(common_size))) {
   /* Special handling for compare operations.
    * >> Required for handling unaligned, or very large comparisons. */
@@ -1459,6 +1457,8 @@ DCCDisp_MemBinMem(tok_t op,
   t_defsym(jmp.ml_sym);
   return;
  }
+ temp = DCCVStack_GetReg(DCC_RC_FORSIZE(common_size),
+                      !!(common_size != 1));
  dst_bytes -= common_size;
  while (common_size) {
   part = common_size >= DCC_TARGET_SIZEOF_ARITH_MAX ? DCC_TARGET_SIZEOF_ARITH_MAX :
@@ -1468,10 +1468,10 @@ DCCDisp_MemBinMem(tok_t op,
          common_size >= 2 ? 2 :
                           1;
   curr = temp;
-       if (part == 1) curr &= ~(DCC_RC_I16);
-  else if (part == 2) curr &= ~(DCC_RC_I32|DCC_RC_I16);
+       if (part == 1) curr &= ~(DCC_RC_I3264|DCC_RC_I16);
+  else if (part == 2) curr &= ~(DCC_RC_I3264);
 #if DCC_RC_I64
-  else if (part == 4) curr &= ~(DCC_RC_I64|DCC_RC_I32|DCC_RC_I16);
+  else if (part == 4) curr &= ~(DCC_RC_I64);
 #endif
   DCCDisp_MemMovReg(&curr_src,curr);
   DCCDisp_RegBinMem(op,curr,&curr_dst,src_unsigned);
