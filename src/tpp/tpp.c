@@ -541,14 +541,22 @@ do{ tok_t              _old_tok_id    = TOKEN.t_id;\
 
 
 /* Debug logging helpers */
-#define LOG_CALLMACRO   1
-#define LOG_LEGACYGUARD 2
-#define LOG_PRAGMA      3
-#define LOG_ENCODING    4
-#define LOG_LEVEL       0x7fff
-#define LOG_RAW         0x8000
-#if TPP_CONFIG_DEBUG
-#define HAVELOG(level) (0 && ((level)&LOG_LEVEL) == LOG_CALLMACRO) /* Change this to select active logs. */
+#define LOG_CALLMACRO   0x00000001
+#define LOG_LEGACYGUARD 0x00000002
+#define LOG_PRAGMA      0x00000004
+#define LOG_ENCODING    0x00000008
+#define LOG_MC_OPGEN    0x00000010
+//#define LOG_LEVEL     0x00000000 /* Change this to select active logs. */
+#ifndef LOG_LEVEL
+#ifdef __DCC_VERSION__
+#   define LOG_LEVEL    0x7fffffff
+#else
+#   define LOG_LEVEL    0x00000000
+#endif
+#endif
+#define LOG_RAW         0x80000000
+#if TPP_CONFIG_DEBUG && (LOG_LEVEL != 0)
+#define HAVELOG(level) (!!((level)&LOG_LEVEL)) /* Change this to select active logs. */
 LOCAL void tpp_log(char const *fmt, ...) {
  struct TPPLCInfo info;
  va_list args;
@@ -2175,17 +2183,26 @@ codewriter_putp(struct codewriter *self,
  return 1;
 }
 LOCAL int codewriter_put0(struct codewriter *self, funop_t op) {
+ LOG(LOG_MC_OPGEN,("[MC] OPx0: %lx -> %x\n",
+                  (unsigned long)(self->cw_pos-self->cw_begin),
+                  (unsigned int)op));
  return codewriter_putp(self,&op,1);
 }
 LOCAL int codewriter_put1(struct codewriter *self, funop_t op, size_t a1) {
  funop_t buf[1+ceildiv(sizeof(size_t)*8,7)];
  funop_t *iter = buf; *iter++ = op;
+ LOG(LOG_MC_OPGEN,("[MC] OPx1: %lx -> %x (%lx)\n",
+                  (unsigned long)(self->cw_pos-self->cw_begin),
+                  (unsigned int)op,(unsigned long)a1));
  iter = funop_putarg(iter,a1);
  return codewriter_putp(self,buf,(size_t)(iter-buf));
 }
 LOCAL int codewriter_put2(struct codewriter *self, funop_t op, size_t a1, size_t a2) {
  funop_t buf[1+ceildiv(sizeof(size_t)*8,7)];
  funop_t *iter = buf; *iter++ = op;
+ LOG(LOG_MC_OPGEN,("[MC] OPx2: %lx -> %x (%lx, %lx)\n",
+                  (unsigned long)(self->cw_pos-self->cw_begin),
+                  (unsigned int)op,(unsigned long)a1,(unsigned long)a2));
  iter = funop_putarg(iter,a1);
  iter = funop_putarg(iter,a2);
  return codewriter_putp(self,buf,(size_t)(iter-buf));
@@ -7098,8 +7115,10 @@ expand_function_macro_impl(struct TPPFile *__restrict macro,
   size_t arg,temp;
 #if TPP_CONFIG_DEBUG
   uint8_t *op_start = code;
-# define DBG_TEXT    "[%x | %p..%p (%lu) <%s>] "
-# define DBG_DATA    (unsigned int)*op_start,op_start,code,\
+# define DBG_TEXT    "[%x | %lx..%lx (%lu) <%s>] "
+# define DBG_DATA    (unsigned int)*op_start,\
+                     (unsigned long)(op_start-macro->f_macro.m_function.f_expand),\
+                     (unsigned long)(code-macro->f_macro.m_function.f_expand),\
                      (unsigned long)(code-op_start),\
                       tpp_hexrepr(op_start,(size_t)(code-op_start)),
 #else

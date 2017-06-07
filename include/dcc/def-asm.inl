@@ -1420,7 +1420,7 @@ DEF_OPCODE(push,{
     /* push %r32   */OVERLOAD_1(0x50,  32,0,DCC_ASMOPC_REG,               DCC_ASMOPT_R_32)
     /* push r/m16  */OVERLOAD_1(0xff,  16,6,DCC_ASMOPC_MODRM|DCC_ASMOPC_D16,/*DCC_ASMOPT_R_16|*/DCC_ASMOPT_EA)
     /* push r/m32  */OVERLOAD_1(0xff,  32,6,DCC_ASMOPC_MODRM,               /*DCC_ASMOPT_R_32|*/DCC_ASMOPT_EA)
-    /* push $imm8  */OVERLOAD_1(0x6a,  8, 0,0,             DCC_ASMOPT_IMM_8)
+   //* push $imm8  */OVERLOAD_1(0x6a,  8, 0,0,             DCC_ASMOPT_IMM_8)
     /* push $imm16 */OVERLOAD_1(0x68,  16,0,DCC_ASMOPC_D16,DCC_ASMOPT_IMM_16)
     /* push $imm32 */OVERLOAD_1(0x68,  32,0,0,             DCC_ASMOPT_IMM_32)
     /* push %ds    */OVERLOAD_1(0x1e,  16,0,0,DCC_ASMOPT_R_SEG|DCC_ASMOPT_DS)

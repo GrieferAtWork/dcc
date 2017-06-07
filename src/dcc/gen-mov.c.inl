@@ -973,9 +973,17 @@ DCCDisp_CstPush(struct DCCSymAddr const *__restrict val,
                 width_t width) {
  assert(val);
  assert(CHECK_WIDTH(width));
+ if (width == 1) {
+  struct DCCMemLoc esp_loc;
+  DCCDisp_UnaryReg(TOK_DEC,DCC_RR_XSP);
+  esp_loc.ml_off = 0;
+  esp_loc.ml_sym = NULL;
+  esp_loc.ml_reg = DCC_RR_XSP;
+  DCCDisp_CstMovMem(val,&esp_loc,1);
+  return;
+ }
  if (width == 2) t_putb(0x66);
- if (width == 1) t_putb(0x6a);
- else            t_putb(0x68);
+ t_putb(0x68);
  DCCDisp_SymAddr(val,width);
 }
 PUBLIC void
@@ -1115,9 +1123,16 @@ DCCDisp_VecPush(void const *__restrict src, target_siz_t n_bytes) {
   t_putw(*(uint16_t *)iter);
  }
  if (n_bytes&1) {
+  struct DCCMemLoc  esp_loc;
+  struct DCCSymAddr esp_val;
   iter -= 1;
-  t_putb(0x6a);
-  t_putb(*(uint8_t *)iter);
+  DCCDisp_UnaryReg(TOK_DEC,DCC_RR_XSP);
+  esp_loc.ml_off = 0;
+  esp_loc.ml_sym = NULL;
+  esp_loc.ml_reg = DCC_RR_XSP;
+  esp_val.sa_off = (target_off_t)*(uint8_t *)iter;
+  esp_val.sa_sym = NULL;
+  DCCDisp_CstMovMem(&esp_val,&esp_loc,1);
  }
 }
 PUBLIC void
@@ -1149,8 +1164,15 @@ DCCDisp_BytPush(int src, target_siz_t n_bytes) {
   t_putw(*(uint16_t *)data);
  }
  if (n_bytes&1) {
-  t_putb(0x6a);
-  t_putb(*(uint8_t *)data);
+  struct DCCMemLoc  esp_loc;
+  struct DCCSymAddr esp_val;
+  DCCDisp_UnaryReg(TOK_DEC,DCC_RR_XSP);
+  esp_loc.ml_off = 0;
+  esp_loc.ml_sym = NULL;
+  esp_loc.ml_reg = DCC_RR_XSP;
+  esp_val.sa_off = (target_off_t)*(uint8_t *)data;
+  esp_val.sa_sym = NULL;
+  DCCDisp_CstMovMem(&esp_val,&esp_loc,1);
  }
 }
 PUBLIC void
