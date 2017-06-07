@@ -16,6 +16,12 @@
     <Filter Include="src\tpp">
       <UniqueIdentifier>{5f7bb787-b613-4aa3-af94-0cf9c5734398}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lib">
+      <UniqueIdentifier>{5eeb3a99-ce44-45be-ae7d-12412541b408}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lib\src">
+      <UniqueIdentifier>{cb8ab338-fc6b-4b1f-a572-4be866ed9ff5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.c">
@@ -79,6 +85,15 @@
       <Filter>src\dcc</Filter>
     </ClCompile>
     <ClCompile Include="..\src\dcc\vstack-ext.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\common-addr2line.c">
+      <Filter>lib\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\addr2line.c">
+      <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\dcc\unit-debug.c">
       <Filter>src\dcc</Filter>
     </ClCompile>
   </ItemGroup>
@@ -160,6 +175,12 @@
     </ClInclude>
     <ClInclude Include="..\include\dcc_winmin.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\src\addr2line.h">
+      <Filter>lib\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcc\addr2line.h">
+      <Filter>include\dcc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

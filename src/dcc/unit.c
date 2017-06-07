@@ -47,6 +47,12 @@
 DCC_DECL_BEGIN
 
 
+#if 0
+/* The size of memory affected relocations (in bytes).
+ * NOTE: Relocations with unknown affect ranges have this set to ZERO(0). */
+DCCDAT size_t const DCC_relsize[DCC_R_NUM];
+#define DCC_RELSIZE(r) ((size_t)(r) >= DCC_R_NUM ? 0 : DCC_relsize[r])
+
 PUBLIC size_t const DCC_relsize[DCC_R_NUM] = {
 #if DCC_TARGET_IA32(386)
  /* [R_386_NONE        ] = */0,
@@ -116,6 +122,7 @@ PUBLIC size_t const DCC_relsize[DCC_R_NUM] = {
 #error FIXME
 #endif
 };
+#endif
 
 LOCAL void DCCSection_Destroy(struct DCCSection *__restrict self);
 INTDEF void DCCSection_InsSym(struct DCCSection *__restrict self, struct DCCSym *__restrict sym);
@@ -327,6 +334,9 @@ DCCSection_Destroy(struct DCCSection *__restrict self) {
      iter = next;
     }
   }
+
+  /* Delete debug information. */
+  DCCA2lWriter_Quit(&self->sc_a2l);
 
   /* Delete base memory. */
 #ifdef DCC_SYMFLAG_SEC_OWNSBASE
@@ -1098,12 +1108,14 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
    assertf(DCCSection_HASBASE(symaddr.sa_sym->sy_sec),
            "Section '%s' is missing its base",
            symaddr.sa_sym->sy_sec->sc_start.sy_name->k_name);
-   rel_value  = symaddr.sa_off+symaddr.sa_sym->sy_addr;
-   rel_value += DCCSection_BASE(symaddr.sa_sym->sy_sec);
+   rel_value = symaddr.sa_off+DCCSection_BASE(symaddr.sa_sym->sy_sec);
+   if (!DCCSym_ISSECTION(symaddr.sa_sym))
+        rel_value += symaddr.sa_sym->sy_addr;
   }
   assert(reldata >= relbase);
   assert(reldata <  relbase+(self->sc_text.tb_end-
                              self->sc_text.tb_begin));
+  if (rel_value == 0x802000) __debugbreak();
   switch (iter->r_type) {
 #if DCC_TARGET_IA32(386)
   case R_386_8:       *(int8_t  *)reldata += (int8_t )rel_value; break;
@@ -1123,6 +1135,12 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
 #else
 #   error FIXME
 #endif
+  case DCC_R_SIZE:
+   if (DCCSym_ISSECTION(symaddr.sa_sym))
+        *(target_siz_t *)reldata += (target_siz_t)(DCCSym_TOSECTION(symaddr.sa_sym)->sc_text.tb_max-
+                                                   DCCSym_TOSECTION(symaddr.sa_sym)->sc_text.tb_begin);
+   else *(target_siz_t *)reldata += symaddr.sa_sym->sy_size;
+   break;
   default: break;
   }
   /* Turn this relocation into an empty one (Need to be
@@ -1504,7 +1522,7 @@ memeq_sized(uint8_t const *a, size_t a_size,
 PUBLIC target_ptr_t
 DCCSection_DAllocMem(struct DCCSection *__restrict self,
                      void const *__restrict memory,
-                     target_siz_t mem_size, target_siz_t size,
+                     size_t mem_size, target_siz_t size,
                      target_siz_t align, target_siz_t offset) {
  target_ptr_t result; void *secdat;
  uint8_t *iter,*end;
@@ -1753,6 +1771,17 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_free.fd_begin        */NULL},
  /* sc_alloc                */NULL,
  /* sc_merge                */0,
+ /* sc_a2l                  */{
+ /* sc_a2l.w_state          */{
+ /* sc_a2l.w_state.s_code   */NULL,
+ /* sc_a2l.w_state.s_addr   */0,
+ /* sc_a2l.w_state.s_line   */0,
+ /* sc_a2l.w_state.s_col    */0,
+ /* sc_a2l.w_state.s_path   */0,
+ /* sc_a2l.w_state.s_file   */0,
+ /* sc_a2l.w_state.s_features*/0},
+ /* sc_a2l.w_cbegin         */NULL,
+ /* sc_a2l.w_cend           */NULL},
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
  /* sc_elflnk               */NULL,
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */

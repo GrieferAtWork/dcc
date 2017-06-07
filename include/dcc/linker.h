@@ -122,6 +122,7 @@ struct DCCLibPaths {
                                                  * 'ntdll.dll' on windows, which happens to export its own version of 'strlen' (which is probably already linked against 'msvcrt.dll')
                                                  *  NOTE: This flag is implicitly set for the definition of a symbol with a [[lib(...)]] attribute.
                                                  *  NOTE: Depending on this flag an import-redefinition emits 'W_SYMBOL_ALREADY_DEFINED_IMP_IMP/W_SYMBOL_ALREADY_DEFINED_IMP_IMP_NOT'. */
+#define DCC_LINKER_FLAG_GENDEBUG     0x00000100 /*< Generate debug informations and link against 'addr2line.o'. */
 #define DCC_LINKER_FLAG_O_NOMERGESYM 0x00010000 /*< OPTIMIZATION: Don't merge symbols during compilation (e.g.: same-string optimizations). */
 #define DCC_LINKER_FLAG_O_CLRUNUSED  0x00020000 /*< OPTIMIZATION: Clear unused symbols during the last phases of linking (whole-program optimization). */
 #define DCC_LINKER_FLAG_O_COLLSEC    0x00040000 /*< OPTIMIZATION: Collapse & merge section symbols to reclaim unused memory. */

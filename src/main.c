@@ -124,17 +124,18 @@ static void load_stdlib(void) {
 #endif
    {0,NULL,0,0,0,0,0,NULL},
   };
-#undef STDLIB
+#define LINK_STATIC(x) DCCUnit_Push(); DCCUnit_Import(x); DCCUnit_Pop(OK)
+  static struct DCCLibDef addr2line = STDLIB("addr2line.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC);
   struct DCCLibDef *chain = default_stdlib;
+  if (linker.l_flags&DCC_LINKER_FLAG_GENDEBUG) LINK_STATIC(&addr2line);
   for (; chain->ld_name; ++chain) {
    if (chain->ld_flags&DCC_LIBDEF_FLAG_STATIC) {
-    DCCUnit_Push();
-    DCCUnit_Import(chain);
-    DCCUnit_Pop(OK);
+    LINK_STATIC(chain);
    } else {
     DCCUnit_Import(chain);
    }
   }
+#undef STDLIB
  }
 }
 
@@ -307,6 +308,8 @@ int main(int argc, char *argv[]) {
   *       https://linux.die.net/man/1/ld */
  linker.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 #endif
+
+ DCCUnit_MkDebugSym();
 
  if (preproc.p_flags&DCC_PREPROCESSOR_FLAG_COMPILEONLY) {
   /* NOTE: Only clear obsolete symbols here, as they'd otherwise be

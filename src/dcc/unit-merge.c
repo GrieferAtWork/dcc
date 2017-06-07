@@ -23,6 +23,7 @@
 
 #include <dcc/common.h>
 #include <dcc/compiler.h>
+#include <dcc/linker.h>
 #include <dcc/stream.h>
 #include <dcc/target.h>
 #include <dcc/unit.h>
@@ -227,6 +228,20 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
       iter->fr_next = ins;
      }
     }
+   }
+  }
+ }
+
+ /* Merge debug informations. */
+ if ((linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) {
+  target_ptr_t text_merge = other->u_dbgstr ? other->u_dbgstr->sc_merge : 0;
+  for (srcsec = other->u_secs; srcsec; srcsec = srcsec->sc_next) {
+   struct DCCSection *dstsec;
+   dstsec = DCCUnit_GetSec(srcsec->sc_start.sy_name);
+   if (dstsec) {
+    /* Merge debug informations. */
+    DCCA2lWriter_Merge(&dstsec->sc_a2l,&srcsec->sc_a2l,
+                        srcsec->sc_merge,text_merge);
    }
   }
  }

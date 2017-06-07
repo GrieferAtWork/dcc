@@ -396,6 +396,9 @@ struct TPPTextFile {
  struct TPPKeyword       *f_newguard;    /*< [0..1] The keyword of the #ifndef block that was determined to be located at the start of the file.
                                           *         When the file is popped from the #include-stack, this is non-NULL and 'f_noppguard' is ZERO,
                                           *         this keyword will be copied into the 'f_guard' field if not already set. */
+#ifdef TPP_USERTEXTDATA
+ TPP_USERTEXTDATA /* Optional user-defined data memory (when present, initialized to ZERO) */
+#endif
 };
 
 /* HINT: something like

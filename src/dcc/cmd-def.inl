@@ -96,6 +96,7 @@ GROUP_BEGIN(grp_main) /* Main options group */
    OPTION_O(OPT_I,OPTION_FLAG_VALUE,"I",NULL,NULL) /* -Iinclude */
    OPTION_O(OPT_o,OPTION_FLAG_VALUE,"o",NULL,NULL) /* -o a.exe */
    OPTION_O(OPT_c,OPTION_FLAG_NONE, "c",NULL,NULL) /* -c */
+   OPTION_O(OPT_g,OPTION_FLAG_NONE, "g",NULL,NULL) /* -g */
    OPTION_O(OPT_L,OPTION_FLAG_VALUE,"L",NULL,NULL) /* -L/usr/lib */
    OPTION_O(OPT_O,OPTION_FLAG_VALUE,"O",NULL,NULL) /* -O3 */
 

@@ -361,6 +361,13 @@ def_secbase:
  /* Preprocessor flags. */
  case OPT_o: CMD_ONLY(); preproc.p_outfile = v; break;
  case OPT_c: CMD_ONLY(); preproc.p_flags |= DCC_PREPROCESSOR_FLAG_COMPILEONLY; break;
+ case OPT_g: CMD_ONLY();
+  linker.l_flags |= DCC_LINKER_FLAG_GENDEBUG;
+  /* The linker currently can't handle debug
+   * informations w/ unused optimizations. */
+  linker.l_flags &= ~(DCC_LINKER_FLAG_O_CLRUNUSED|
+                      DCC_LINKER_FLAG_O_COLLSEC);
+  break;
  case OPT_E: CMD_ONLY();
   preproc.p_flags = DCC_PREPROCESSOR_SET_PPMODE(preproc.p_flags,DCC_PREPROCESSOR_FLAG_PPPREPROC);
   TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_WANTSPACE|

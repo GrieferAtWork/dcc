@@ -548,7 +548,7 @@ do{ tok_t              _old_tok_id    = TOKEN.t_id;\
 #define LOG_MC_OPGEN    0x00000010
 //#define LOG_LEVEL     0x00000000 /* Change this to select active logs. */
 #ifndef LOG_LEVEL
-#ifdef __DCC_VERSION__
+#if defined(__DCC_VERSION__) && 0
 #   define LOG_LEVEL    0x7fffffff
 #else
 #   define LOG_LEVEL    0x00000000
@@ -1101,18 +1101,12 @@ TPPFile_OpenStream(stream_t stream, char const *name) {
  struct TPPFile *result;
  result = (struct TPPFile *)malloc(TPPFILE_SIZEOF_TEXT);
  if unlikely(!result) return NULL;
- result->f_textfile.f_lineoff     = 0;
+ memset(&result->f_textfile,0,sizeof(result->f_textfile));
  result->f_textfile.f_stream      = stream;
  result->f_textfile.f_ownedstream = TPP_STREAM_INVALID;
- result->f_textfile.f_cacheentry  = NULL;
- result->f_textfile.f_usedname    = NULL;
- result->f_textfile.f_guard       = NULL;
- result->f_textfile.f_cacheinc    = 0;
- result->f_textfile.f_rdata       = 0;
- result->f_textfile.f_prefixdel   = 0;
- result->f_textfile.f_flags       = TPP_TEXTFILE_FLAG_NONE;
+#if TPP_ENCODING_UTF8
  result->f_textfile.f_encoding    = TPP_ENCODING_UTF8;
- result->f_textfile.f_newguard    = NULL;
+#endif
  result->f_refcnt                 = 1;
  result->f_kind                   = TPPFILE_KIND_TEXT;
  result->f_prev                   = NULL;

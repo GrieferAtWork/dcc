@@ -418,6 +418,7 @@ end2: popscope_local();
 
 PUBLIC int DCC_PARSE_CALL DCCParse_Stmt(pflag_t f) {
  int result = 0;
+ DCCUnit_MkDebugDef();
 again:
  switch (TOK) {
 
@@ -901,6 +902,7 @@ PUBLIC void DCC_PARSE_CALL DCCParse_Global(void) {
   if (!HAS(EXT_SHORT_EXT_KEYWORDS)) break;
  case KWD___asm:
  case KWD___asm__:
+  DCCUnit_MkDebugDef();
   DCCParse_AsmStmt(1);
 pushv_semi:
   vpushv();

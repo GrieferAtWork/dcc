@@ -23,6 +23,7 @@
 #include "target.h"
 #include "lexer.h"
 #include "stream.h"
+#include "addr2line.h"
 #include "../elf.h"
 
 #include <stddef.h>
@@ -402,10 +403,7 @@ typedef uint32_t DCC(rel_t); /* One of 'DCC_R_*', or CPU-specific ELF relocation
 #   error FIXME
 #endif
 
-/* The size of memory affected relocations (in bytes).
- * NOTE: Relocations with unknown affect ranges have this set to ZERO(0). */
-DCCDAT size_t const DCC_relsize[DCC_R_NUM];
-#define DCC_RELSIZE(r) ((size_t)(r) >= DCC_R_NUM ? 0 : DCC_relsize[r])
+#   define DCC_R_SIZE     (R_386_NUM+0) /* NOTE: Compile-time only: Add the symbol size as 'target_siz_t'. */
 
 
 struct DCCRel {
@@ -520,6 +518,7 @@ struct DCCSection {
   * ALSO: This will be required for object-file hard aliases. */
  struct DCCAllocRange *sc_alloc; /*< [0..1][chain(->ar_next->...)] Reference-counted tracking of section text. */
  DCC(target_ptr_t)     sc_merge; /*< Used during merging: Base address of merge destination. */
+ struct DCCA2lWriter   sc_a2l;   /*< Addr2Line debug information. */
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
  struct DCCSection    *sc_elflnk; /*< [0..1] Used by ELF: Link section. */
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
@@ -886,7 +885,7 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
 DCCFUN DCC(target_ptr_t)
 DCCSection_DAllocMem(struct DCCSection *__restrict self,
                      void const *__restrict memory,
-                     DCC(target_siz_t) mem_size, DCC(target_siz_t) size,
+                     size_t mem_size, DCC(target_siz_t) size,
                      DCC(target_siz_t) align, DCC(target_siz_t) offset);
 
 /* A further simplification for 'DCCSection_DAllocMem', that returns
@@ -1011,6 +1010,11 @@ struct DCCUnit {
  struct DCCSection     *u_data;  /*< [0..1] Default section: '.data' (Used for read-only data) */
  struct DCCSection     *u_bss;   /*< [0..1] Default section: '.text' (Used for read/write data) */
  struct DCCSection     *u_str;   /*< [0..1] Default section: '.str'  (Used for read-only, mergeable data) */
+#ifdef __INTELLISENSE__
+ struct DCCSection     *u_dbgstr;/*< [0..1] Section used for debug strings for __dcc_dbg_addr2line. */
+#else
+#define u_dbgstr        u_str
+#endif
  struct DCCSection     *u_prev;  /*< [0..1] The section selected before the current one (or NULL if none was). */
  struct DCCSection     *u_curr;  /*< [0..1] Currently selected section (target for writing text). */
  struct DCCTextBuf      u_tbuf;  /*< Current text buffer (in-lined local cache for 'u_curr->sc_text') */
@@ -1201,6 +1205,14 @@ DCCFUN size_t DCCUnit_ClearStatic(void);
  *       invoked as well. - All that this function can ever do is also
  *       performed by 'DCCUnit_ClearUnused'! */
 DCCFUN size_t DCCUnit_ClearObsolete(void);
+
+/* Create debug symbols required for Addr2Line intrinsic functionality.
+ * NOTE: This function is a no-op when 'DCC_LINKER_FLAG_GENDEBUG' isn't set. */
+DCCFUN void DCCUnit_MkDebugSym(void);
+
+/* Add a addr2line entry for the current text address and the current lexer position.
+ * NOTE: This function is a no-op when 'DCC_LINKER_FLAG_GENDEBUG' isn't set. */
+DCCFUN void DCCUnit_MkDebugDef(void);
 
 /* Lookup/Create a new symbol/section 'name'.
  * Note, that every section is implicitly a symbol!

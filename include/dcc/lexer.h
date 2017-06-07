@@ -24,6 +24,11 @@
 
 #include <stddef.h>
 
+
+#define TPP_USERTEXTDATA \
+ target_ptr_t f_dbg_pathaddr; /*< When non-ZERO, offset in 'unit.u_dbgstr' to the path of this file. */\
+ target_ptr_t f_dbg_fileaddr; /*< When non-ZERO, offset in 'unit.u_dbgstr' to the filename of this file. */\
+
 #undef TPP
 #define TPP   DCC
 #include DCC_TPP_FILE(tpp.h)
