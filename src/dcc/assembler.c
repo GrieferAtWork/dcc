@@ -1132,8 +1132,9 @@ fill_data:
 
  { /* Define symbol visibility. */
   uint16_t new_vis;
- case KWD_extern: case KWD_weak:
-  if (DCC_MACRO_FALSE) { case KWD_global: case KWD_globl: new_vis = DCC_SYMFLAG_NONE; }
+ case KWD_extern: case KWD_weak: case KWD_local:
+ case KWD_global: case KWD_globl: case KWD_used:
+ case KWD_unused: new_vis = DCC_SYMFLAG_NONE;
   if (DCC_MACRO_FALSE) { case KWD_protected: new_vis = DCC_SYMFLAG_PROTECTED; }
   if (DCC_MACRO_FALSE) { case KWD_hidden:    new_vis = DCC_SYMFLAG_PRIVATE; }
   if (DCC_MACRO_FALSE) { case KWD_internal:  new_vis = DCC_SYMFLAG_INTERNAL; }
@@ -1146,7 +1147,10 @@ fill_data:
    }
    sym = DCCUnit_NewSym(TOKEN.t_kwd,new_vis);
    if unlikely(!sym) break;
-   if (mode == KWD_weak) sym->sy_flags |= DCC_SYMFLAG_WEAK;
+        if (mode == KWD_weak)   sym->sy_flags |= DCC_SYMFLAG_WEAK;
+   else if (mode == KWD_local)  sym->sy_flags |= DCC_SYMFLAG_STATIC;
+   else if (mode == KWD_used)   sym->sy_flags |= DCC_SYMFLAG_USED;
+   else if (mode == KWD_unused) sym->sy_flags |= DCC_SYMFLAG_UNUSED;
    else if (mode != KWD_extern) {
     sym->sy_flags &= ~(DCC_SYMFLAG_VISIBILITY);
     sym->sy_flags |=   new_vis;

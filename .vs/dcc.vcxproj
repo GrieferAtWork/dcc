@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\lib\src\common-addr2line.c" />
+    <ClCompile Include="..\lib\src\addr2line-common.c" />
     <ClCompile Include="..\src\dcc\addr2line.c" />
     <ClCompile Include="..\src\dcc\assembler.c" />
     <ClCompile Include="..\src\dcc\cmd-help.c" />

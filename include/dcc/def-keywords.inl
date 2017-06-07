@@ -763,6 +763,7 @@ DEF_K(globl)
 DEF_K(protected)
 DEF_K(hidden)
 DEF_K(internal)
+DEF_K(local)
 /* DEF_K(weak) // Already an __attribute__ */
 DEF_K(string)
 DEF_K(ascii)

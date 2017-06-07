@@ -87,14 +87,14 @@
     <ClCompile Include="..\src\dcc\vstack-ext.c">
       <Filter>src\dcc</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\src\common-addr2line.c">
-      <Filter>lib\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\dcc\addr2line.c">
       <Filter>src\dcc</Filter>
     </ClCompile>
     <ClCompile Include="..\src\dcc\unit-debug.c">
       <Filter>src\dcc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\addr2line-common.c">
+      <Filter>lib\src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
