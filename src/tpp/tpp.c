@@ -186,26 +186,80 @@ extern void __debugbreak(void);
 #undef assert
 #undef assertf
 #if TPP_CONFIG_DEBUG
+PRIVATE void tpp_vlogerrf(char const *format, va_list args) {
+#ifdef _WIN32
+ char buffer[4096];
+ vsprintf(buffer,format,args);
+ OutputDebugStringA(buffer);
+ fwrite(buffer,sizeof(char),strlen(buffer),stderr);
+#else
+ vfprintf(stderr,format,args);
+#endif
+}
+PRIVATE void tpp_logerrf(char const *format, ...) {
+ va_list args;
+ va_start(args,format);
+ tpp_vlogerrf(format,args);
+ va_end(args);
+}
+
+PRIVATE char *tpp_hexrepr(void const *start, size_t size) {
+ char *result = (char *)malloc(((size*2)+1)*sizeof(char));
+ if (result) {
+  char *iter = result;
+  uint8_t temp,byte,*data = (uint8_t *)start;
+  while (size--) {
+   byte = *data++;
+   temp = (byte&0xf0) >> 4;
+   *iter++ = (char)(temp >= 10 ? 'a'+(temp-10) : '0'+temp);
+   temp = (byte&0x0f);
+   *iter++ = (char)(temp >= 10 ? 'a'+(temp-10) : '0'+temp);
+  }
+  *iter = '\0';
+ }
+ return result;
+}
+
 PRIVATE
 #ifndef TPP_BREAKPOINT
+#if defined(__GNUC__) || __has_attribute(__noreturn__)
 __attribute__((__noreturn__))
+#elif defined(_MSC_VER)
+__declspec(noreturn)
+#endif
 #endif
 void tpp_assertion_failed(char const *expr, char const *file, int line,
                           char const *format, ...) {
- fprintf(stderr,
 #ifdef _MSC_VER
-        (!TPPLexer_Current || (TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT))
+#define USE_MSVC_FORMAT (!TPPLexer_Current || (TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT))
 #else
-        (TPPLexer_Current && (TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT))
+#define USE_MSVC_FORMAT (TPPLexer_Current && (TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT))
 #endif
-         ? "%s(%d) : " : "%s:%d: ",file,line);
- fprintf(stderr,"Assertion failed : %s\n",expr);
+ tpp_logerrf("\n");
+ tpp_logerrf(USE_MSVC_FORMAT ? "%s(%d) : " : "%s:%d: ",file,line);
+ tpp_logerrf("Assertion failed : %s\n",expr);
  if (format) {
   va_list args;
   va_start(args,format);
-  vfprintf(stderr,format,args);
+  tpp_vlogerrf(format,args);
   va_end(args);
+  tpp_logerrf("\n");
  }
+ {
+  static int in_assertion = 0;
+  if (!in_assertion && TPPLexer_Current) {
+   struct TPPLCInfo info;
+   char const *lx_file;
+   ++in_assertion;
+   TPPLexer_LC(&info);
+   lx_file = TPPLexer_FILE(NULL);
+   --in_assertion;
+   tpp_logerrf(USE_MSVC_FORMAT ? "%s(%d,%d) : " : "%s:%d:%d: ",
+               lx_file,info.lc_line+1,info.lc_col+1);
+   tpp_logerrf("See reference to current lexer position\n");
+  }
+ }
+#undef USE_MSVC_FORMAT
 #ifndef TPP_BREAKPOINT
  exit(1);
 #endif
@@ -213,29 +267,29 @@ void tpp_assertion_failed(char const *expr, char const *file, int line,
 #define TPP_EXPAND_FORMAT(...) __VA_ARGS__
 
 #ifdef TPP_BREAKPOINT
-#define assert(expr)    ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),TPP_BREAKPOINT(),0))
+#   define assert(expr)    ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),TPP_BREAKPOINT(),0))
 #ifdef TPP_EXPAND_FORMAT
-#define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,TPP_EXPAND_FORMAT f),TPP_BREAKPOINT(),0))
+#   define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,TPP_EXPAND_FORMAT f),TPP_BREAKPOINT(),0))
 #else
-#define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),TPP_BREAKPOINT(),0))
+#   define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),TPP_BREAKPOINT(),0))
 #endif
 #else
-#define assert(expr)    ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),0))
+#   define assert(expr)    ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),0))
 #ifdef TPP_EXPAND_FORMAT
-#define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,TPP_EXPAND_FORMAT f),0))
+#   define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,TPP_EXPAND_FORMAT f),0))
 #else
-#define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),0))
+#   define assertf(expr,f) ((expr) || (tpp_assertion_failed(#expr,__FILE__,__LINE__,NULL),0))
 #endif
 #endif
 #elif defined(_MSC_VER)
-#define assert          __assume
-#define assertf(expr,f) __assume(expr)
+#   define assert          __assume
+#   define assertf(expr,f) __assume(expr)
 #elif __has_builtin(__builtin_assume)
-#define assert          __builtin_assume
-#define assertf(expr,f) __builtin_assume(expr)
+#   define assert          __builtin_assume
+#   define assertf(expr,f) __builtin_assume(expr)
 #else /* TPP_CONFIG_DEBUG */
-#define assert(expr)    (void)0
-#define assertf(expr,f) (void)0
+#   define assert(expr)    (void)0
+#   define assertf(expr,f) (void)0
 #endif /* !TPP_CONFIG_DEBUG */
 
 #define CH_ISALPHA     0x01
@@ -7042,15 +7096,37 @@ expand_function_macro_impl(struct TPPFile *__restrict macro,
  /* We know all the performance characteristics for the arguments. */
  for (;;) {
   size_t arg,temp;
-  assert(dest_iter   <= dest_end);
-  assert(source_iter <= source_end);
+#if TPP_CONFIG_DEBUG
+  uint8_t *op_start = code;
+# define DBG_TEXT    "[%x | %p..%p (%lu) <%s>] "
+# define DBG_DATA    (unsigned int)*op_start,op_start,code,\
+                     (unsigned long)(code-op_start),\
+                      tpp_hexrepr(op_start,(size_t)(code-op_start)),
+#else
+# define DBG_TEXT    /* nothing */
+# define DBG_DATA    /* nothing */
+#endif
+  assertf(dest_iter   <= dest_end,
+         (DBG_TEXT "Destination iterator %p is out-of-bounds from %p by %lu characters",
+          DBG_DATA dest_iter,dest_end,
+         (unsigned long)(dest_iter-dest_end)));
+  assertf(source_iter <= source_end,
+         (DBG_TEXT "Source iterator %p is out-of-bounds from %p by %lu characters",
+          DBG_DATA source_iter,source_end,
+         (unsigned long)(source_iter-source_end)));
   switch (*code++) {
 
    case TPP_FUNOP_ADV:
     /* Advance: Simply copy text from src --> dst. */
     arg = funop_getarg(code);
-    assert(arg <= (size_t)(dest_end-dest_iter));
-    assert(arg <= (size_t)(source_end-source_iter));
+    assertf(arg <= (size_t)(dest_end-dest_iter),
+           (DBG_TEXT "Insufficient memory for text advancing in DST (Required: %lu; Available: %lu)",
+            DBG_DATA (unsigned long)(arg),
+                     (unsigned long)(dest_end-dest_iter)));
+    assertf(arg <= (size_t)(source_end-source_iter),
+           (DBG_TEXT "Insufficient memory for text advancing in SRC (Required: %lu; Available: %lu)",
+            DBG_DATA (unsigned long)(arg),
+                     (unsigned long)(source_end-source_iter)));
     memcpy(dest_iter,source_iter,arg*sizeof(char));
     dest_iter   += arg;
     source_iter += arg;
@@ -7059,7 +7135,9 @@ expand_function_macro_impl(struct TPPFile *__restrict macro,
    case TPP_FUNOP_INS:
     /* INSERT: Insert an argument without expansion. */
     arg = funop_getarg(code);
-    assert(arg < ARGC);
+    assertf(arg < ARGC,
+           (DBG_TEXT "Out-of-bound argument index %lu is greater than %lu",
+            DBG_DATA (unsigned long)arg,(unsigned long)ARGC));
     arg_iter = &ARGCACHE(arg);
     temp = (size_t)(arg_iter->ac_end-arg_iter->ac_begin);
     assert((size_t)(dest_end-dest_iter) >= temp);
@@ -7070,9 +7148,15 @@ expand_function_macro_impl(struct TPPFile *__restrict macro,
    case TPP_FUNOP_INS_EXP:
     /* INSERT_EXP: Insert an argument with expansion. */
     arg = funop_getarg(code);
-    assert(arg < ARGC);
+    assertf(arg < ARGC,
+           (DBG_TEXT "Out-of-bound argument index %lu is greater than %lu",
+            DBG_DATA (unsigned long)arg,
+                     (unsigned long)ARGC));
     arg_iter = &ARGCACHE(arg);
-    assert((size_t)(dest_end-dest_iter) >= arg_iter->ac_expand_size);
+    assertf((size_t)(dest_end-dest_iter) >= arg_iter->ac_expand_size,
+           (DBG_TEXT "Insufficient memory for expanded argument insertion (Required: %lu; Available: %lu)",
+            DBG_DATA (unsigned long)(arg_iter->ac_expand_size),
+                     (unsigned long)(dest_end-dest_iter)));
     memcpy(dest_iter,arg_iter->ac_expand_begin,
            arg_iter->ac_expand_size*sizeof(char));
     dest_iter += arg_iter->ac_expand_size;
@@ -7080,24 +7164,37 @@ expand_function_macro_impl(struct TPPFile *__restrict macro,
 
     if (FALSE) { case TPP_FUNOP_INS_STR: temp = '\"'; }
     if (FALSE) { case TPP_FUNOP_INS_CHR: temp = '\''; }
-    assert(dest_iter < dest_end),*dest_iter++ = (char)temp;
+    assert(dest_iter < dest_end);
+    *dest_iter++ = (char)temp;
     arg = funop_getarg(code);
-    assert(arg < ARGC);
+    assertf(arg < ARGC,
+           (DBG_TEXT "Out-of-bound argument index %lu is greater than %lu",
+            DBG_DATA (unsigned long)arg,(unsigned long)ARGC));
     arg_iter = &ARGCACHE(arg);
-    assert((size_t)(dest_end-dest_iter) >=
-            TPP_SizeofEscape(arg_iter->ac_begin,
-           (size_t)(arg_iter->ac_end-arg_iter->ac_begin)));
+    assertf((size_t)(dest_end-dest_iter) >=
+             TPP_SizeofEscape(arg_iter->ac_begin,
+                             (size_t)(arg_iter->ac_end-
+                                      arg_iter->ac_begin)),
+            (DBG_TEXT "Insufficient memory for string escape (available: %lu; required: %lu)",
+             DBG_DATA (unsigned long)(dest_end-dest_iter),
+                      (unsigned long)TPP_SizeofEscape(arg_iter->ac_begin,
+                                                     (size_t)(arg_iter->ac_end-
+                                                              arg_iter->ac_begin))));
     /* Insert the escaped, non-expanded argument text. */
     dest_iter = TPP_Escape(dest_iter,arg_iter->ac_begin,
                           (size_t)(arg_iter->ac_end-arg_iter->ac_begin));
-    assert(dest_iter < dest_end),*dest_iter++ = (char)temp;
+    assert(dest_iter < dest_end);
+    *dest_iter++ = (char)temp;
     goto advance_src;
 
    case TPP_FUNOP_DEL:
 advance_src:
     /* Delete: Simply advance the source text pointer. */
     arg = funop_getarg(code);
-    assert(arg <= (size_t)(source_end-source_iter));
+    assertf(arg <= (size_t)(source_end-source_iter),
+           (DBG_TEXT "Delete operand %lu larger than %lu",
+            DBG_DATA (unsigned long)(arg),
+                     (unsigned long)(source_end-source_iter)));
     source_iter += arg;
     break;
 
@@ -7108,23 +7205,36 @@ advance_src:
 
    case TPP_FUNOP_VA_NARGS:
     /* VA_NARGS: Insert an integral representation of the variadic argument size. */
-    assert((size_t)(dest_end-dest_iter) >= TPP_SizeofItos((int_t)va_size));
+    assertf((size_t)(dest_end-dest_iter) >= TPP_SizeofItos((int_t)va_size),
+           (DBG_TEXT "Insufficient buffer space for ITOS (remaining: %lu; required: %lu)",
+            DBG_DATA (unsigned long)(dest_end-dest_iter),
+                     (unsigned long)TPP_SizeofItos((int_t)va_size)));
     dest_iter = TPP_Itos(dest_iter,(int_t)va_size);
     goto advance_src;
 
    default:
-    assert(code[-1] == TPP_FUNOP_END);
+    assertf(code[-1] == TPP_FUNOP_END,
+           (DBG_TEXT "Invalid trailing opcode %x",
+            DBG_DATA (int)code[-1]));
     goto done_exec;
   }
+#undef DBG_DATA
+#undef DBG_TEXT
  }
 done_exec:
  /* Copy the remaining source text. */
- assert(dest_iter   <= dest_end);
- assert(source_iter <= source_end);
- assert((size_t)(dest_end-dest_iter) ==
-        (size_t)(source_end-source_iter) &&
-        "Difference between the overflow buffer sizes. "
-        "This means that either the cache generator, or interpreter is flawed.");
+ assertf(dest_iter <= dest_end,
+        ("The final DST iterator %p is out-of-bounds of %p by %lu characters",
+         dest_iter,dest_end,(unsigned long)(dest_iter-dest_end)));
+ assertf(source_iter <= source_end,
+        ("The final SRC iterator %p is out-of-bounds of %p by %lu characters",
+         source_iter,source_end,(unsigned long)(source_iter-source_end)));
+ assertf((size_t)(dest_end-dest_iter) ==
+         (size_t)(source_end-source_iter),
+        ("Difference between the overflow buffer sizes (%lu != %lu).\n"
+         "This means that either the cache generator, or interpreter is flawed.",
+        (unsigned long)(dest_end-dest_iter),
+        (unsigned long)(source_end-source_iter)));
  memcpy(dest_iter,source_iter,(size_t)(source_end-source_iter));
 
  result = (struct TPPFile *)malloc(TPPFILE_SIZEOF_MACRO_EXPANDED);
@@ -7133,7 +7243,11 @@ done_exec:
  result->f_text     = result_text; /*< Inherit reference. */
  result->f_pos      =
  result->f_begin    = result_text->s_text;
- assert(dest_end == result_text->s_text+result_text->s_size);
+ assertf(dest_end == result_text->s_text+
+                     result_text->s_size,
+        ("The destination end pointer %p isn't the end of the test at %p.\n"
+         "%ld bytes remain unused",dest_end,result_text->s_text+result_text->s_size,
+        (long)((result_text->s_text+result_text->s_size)-dest_end)));
  result->f_end      = dest_end;
 result_common:
  result->f_refcnt   = 1;

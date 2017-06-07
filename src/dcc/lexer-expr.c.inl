@@ -962,7 +962,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprShift(void) {
   YIELD();
   vrcopy();           /* dx */
   DCCParse_ExprSum(); /* dx, y */
-  vpromi2();          /* dxi, yi */
+  //vpromi2();          /* dxi, yi */
   vgen2(func);        /* dxi#yi */
   vrval();            /* rdxi#yi */
  }

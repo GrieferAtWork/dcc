@@ -34,213 +34,66 @@ DCC_DECL_BEGIN
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_BuiltinBSwap(void) {
  tok_t mode = TOK;
- target_siz_t size,arg_size;
  YIELD();
  DCCParse_ParPairBegin();
+ DCCParse_Expr1(),vused(),vrcopy();
  switch (mode) {
+ case KWD___builtin_bswap16: vcast_t(DCCTYPE_INT16|DCCTYPE_UNSIGNED,0); break;
+ case KWD___builtin_bswap32: vcast_t(DCCTYPE_INT32|DCCTYPE_UNSIGNED,0); break;
+ case KWD___builtin_bswap64: vcast_t(DCCTYPE_INT64|DCCTYPE_UNSIGNED,0); break;
  default:
-  DCCParse_Expr1(),vused();
-  vprom();
   if (TOK == ',') {
+   target_siz_t size;
    YIELD();
    size = (target_siz_t)DCCParse_CExpr(1);
-  } else {
-   size = DCCType_Sizeof(&vbottom->sv_ctype,NULL,0);
+   if (size != DCCType_Sizeof(&vbottom->sv_ctype,NULL,0))
+       WARN(W_BUILTIN_BSWAP_INCORRECT_SIZE,&vbottom->sv_ctype,size);
   }
   break;
- {
-  if (DCC_MACRO_FALSE) { case KWD___builtin_bswap16: size = 2; }
-  if (DCC_MACRO_FALSE) { case KWD___builtin_bswap32: size = 4; }
-  if (DCC_MACRO_FALSE) { case KWD___builtin_bswap64: size = 8; }
-  DCCParse_Expr1(),vused();
-  vprom();
- } break;
  }
- DCCParse_ParPairEnd();
- DCCStackValue_LoadLValue(vbottom);
- DCCStackValue_Cow(vbottom);
- DCCStackValue_FixTest(vbottom);
- DCCStackValue_FixBitfield(vbottom);
- if (vbottom->sv_flags&DCC_SFLAG_LVALUE) vrcopy();
- switch (size) {
- {
-  struct DCCType arg_type;
-#ifdef DCCTYPE_IB1
-  if (DCC_MACRO_FALSE) { case 1: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_IB1; }
-#endif
-#ifdef DCCTYPE_IB2
-  if (DCC_MACRO_FALSE) { case 2: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_IB2; }
-#endif
-#ifdef DCCTYPE_IB4
-  if (DCC_MACRO_FALSE) { case 4: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_IB4; }
-#endif
-  if (DCC_MACRO_FALSE) { case 8: arg_type.t_type = DCCTYPE_UNSIGNED|DCCTYPE_IB8; }
-  arg_type.t_base = NULL;
-  vcast(&arg_type,0);
- } break;
- default: break;
- }
- if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
-       vbottom->sv_reg == DCC_RC_CONST) {
-  if (vbottom->sv_sym) DCCStackValue_Load(vbottom);
-  else { /* Constant optimizations. */
-   switch (size) {
-   case 1: return;
-   case 2: vbottom->sv_const.u16 = DCC_BSWAP16(vbottom->sv_const.u16); break;
-   case 4: vbottom->sv_const.u32 = DCC_BSWAP32(vbottom->sv_const.u32); break;
-   case 8: vbottom->sv_const.u64 = DCC_BSWAP64(vbottom->sv_const.u64); break;
-   default: goto copy_elem;
-   }
-   return;
-  }
- } else {
-copy_elem:
-  /* Create a copy of the argument. */
-  vrcopy();
- }
- arg_size = DCCType_Sizeof(&vbottom->sv_ctype,NULL,0);
- if (arg_size != size) {
-  WARN(W_BUILTIN_BSWAP_INCORRECT_SIZE,&vbottom->sv_ctype,size);
-  if (size < arg_size) arg_size = size;
- }
- if (vbottom->sv_flags&DCC_SFLAG_LVALUE) {
-  struct DCCMemLoc loc;
-  loc.ml_reg = vbottom->sv_reg;
-  loc.ml_off = vbottom->sv_const.offset;
-  loc.ml_sym = vbottom->sv_sym;
-  DCCDisp_BSwapMem(&loc,arg_size);
- } else {
-  assert(vbottom->sv_reg);
-  DCCDisp_BSwapReg(vbottom->sv_reg);
-  if (vbottom->sv_reg2) {
-   rc_t temp;
-   /* Swap the second register. */
-   DCCDisp_BSwapReg(vbottom->sv_reg2);
-   /* Exchange the registers. */
-   temp = vbottom->sv_reg2;
-   vbottom->sv_reg2 = vbottom->sv_reg;
-   vbottom->sv_reg = temp;
-  }
- }
+ DCCVStack_BSwap();
+ vrval();
  vwunused();
+ DCCParse_ParPairEnd();
 }
 
 
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_BuiltinScanner(void) {
- target_siz_t arg_size,size;
- rc_t result_register;
- int clz_mode = 0;
  tok_t mode = TOK; YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1(),vused();
+ DCCParse_Expr1(),vused(),vrcopy();
  switch (mode) {
- case KWD___builtin_clz:   clz_mode = 1;
- case KWD___builtin_ffs:   size = DCC_TARGET_SIZEOF_INT; break;
- case KWD___builtin_clzl:  clz_mode = 1;
- case KWD___builtin_ffsl:  size = DCC_TARGET_SIZEOF_LONG; break;
- case KWD___builtin_clzll: clz_mode = 1;
- case KWD___builtin_ffsll: size = DCC_TARGET_SIZEOF_LONG_LONG; break;
- case KWD___builtin_clzcc: clz_mode = 1;
- default:
-  if (TOK != ',') size = DCCType_Sizeof(&vbottom->sv_ctype,NULL,0);
-  else YIELD(),size = (target_siz_t)DCCParse_CExpr(1);
+ case KWD___builtin_ffs:
+ case KWD___builtin_clz:
+  vcast_t(DCCTYPE_INT,0);
   break;
- }
- DCCParse_ParPairEnd();
- vprom();
- DCCStackValue_FixBitfield(vbottom);
- if (vbottom->sv_flags&DCC_SFLAG_LVALUE) vrcopy();
- switch (size) {
  {
-  struct DCCType arg_type;
-#ifdef DCCTYPE_IB1
-  if (DCC_MACRO_FALSE) { case 1: arg_type.t_type = DCCTYPE_IB1; }
-#endif
-#ifdef DCCTYPE_IB2
-  if (DCC_MACRO_FALSE) { case 2: arg_type.t_type = DCCTYPE_IB2; }
-#endif
-#ifdef DCCTYPE_IB4
-  if (DCC_MACRO_FALSE) { case 4: arg_type.t_type = DCCTYPE_IB4; }
-#endif
-#ifdef DCCTYPE_IB8
-  if (DCC_MACRO_FALSE) { case 8: arg_type.t_type = DCCTYPE_IB8; }
-#endif
-  arg_type.t_base = NULL;
-  vcast(&arg_type,0);
+  if (DCC_MACRO_FALSE) { case KWD___builtin_ffsl: mode = KWD___builtin_ffs; }
+  if (DCC_MACRO_FALSE) { case KWD___builtin_clzl: mode = KWD___builtin_clz; }
+  vcast_t(DCCTYPE_LONG|DCCTYPE_ALTLONG,0);
  } break;
- default: break;
- }
- if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
-       vbottom->sv_reg == DCC_RC_CONST) {
-  if (vbottom->sv_sym)cstdef: DCCStackValue_Load(vbottom);
-  else { /* Constant optimizations. */
-   uint64_t iv,shift; int result;
-   switch (size) {
-   case 1: iv = (uint64_t)vbottom->sv_const.u8; break;
-   case 2: iv = (uint64_t)vbottom->sv_const.u16; break;
-   case 4: iv = (uint64_t)vbottom->sv_const.u32; break;
-   case 8: iv = (uint64_t)vbottom->sv_const.u64; break;
-   default: goto default_ffs;
-   }
-   if (clz_mode) {
-    result = 0,shift = (uint64_t)1 << 63;
-    while (!(iv&shift)) {
-     /* Generate code and let the CPU decide on undefined behavior! */
-     if (++result == 64) goto cstdef;
-     shift >>= 1;
-    }
-    /* Adjust for zero-padding on constants. */
-    result -= (8-size)*8;
-   } else {
-    result = 1,shift = 1;
-    while (!(iv&shift)) {
-     if (++result == 64) break;
-     shift <<= 1;
-    }
-   }
-   DCCType_Quit(&vbottom->sv_ctype);
-   vbottom->sv_ctype.t_type = DCCTYPE_INT;
-   vbottom->sv_ctype.t_base = NULL;
-   assert(!vbottom->sv_sym);
-   vbottom->sv_const.it = (int_t)result;
-   vbottom->sv_flags    = DCC_SFLAG_NONE;
-   return;
+ {
+  if (DCC_MACRO_FALSE) { case KWD___builtin_ffsll: mode = KWD___builtin_ffs; }
+  if (DCC_MACRO_FALSE) { case KWD___builtin_clzll: mode = KWD___builtin_clz; }
+  vcast_t(DCCTYPE_LLONG,0);
+ } break;
+ {
+  if (DCC_MACRO_FALSE) { case KWD___builtin_ffscc: mode = KWD___builtin_ffs; }
+  if (DCC_MACRO_FALSE) { case KWD___builtin_clzcc: mode = KWD___builtin_clz; }
+ default:
+  if (TOK == ',') {
+   target_siz_t size; YIELD();
+   size = (target_siz_t)DCCParse_CExpr(1);
+   if (size != DCCType_Sizeof(&vbottom->sv_ctype,NULL,0))
+       WARN(W_BUILTIN_FFS_INCORRECT_SIZE,&vbottom->sv_ctype,size);
   }
+ } break;
  }
-default_ffs:
- arg_size = DCCType_Sizeof(&vbottom->sv_ctype,NULL,0);
- if (arg_size != size) {
-  WARN(W_BUILTIN_FFS_INCORRECT_SIZE,&vbottom->sv_ctype,size);
-  if (size < arg_size) arg_size = size;
- }
- if ((vbottom->sv_reg&DCC_RC_IN(DCC_TARGET_SIZEOF_INT)) &&
-     !(vbottom->sv_flags&(DCC_SFLAG_COPY|DCC_SFLAG_TEST)) &&
-     !DCC_ASMREG_ISSPTR(vbottom->sv_reg&DCC_RI_MASK)
-     ) result_register = vbottom->sv_reg;
- else result_register = DCCVStack_GetReg(DCC_RC_IN(DCC_TARGET_SIZEOF_INT),1);
- if (vbottom->sv_flags&DCC_SFLAG_TEST) {
-  /* Special optimization: Since a test is either 0/1, its ffs-value is equal to it! */
-  vcast_t(DCCTYPE_INT,1);
-  return;
- }
- vpushr(result_register); /* x, res */
- vswap();                 /* res, x */
- if (vbottom->sv_flags&DCC_SFLAG_LVALUE) {
-  struct DCCMemLoc loc;
-  loc.ml_reg = vbottom->sv_reg;
-  loc.ml_off = vbottom->sv_const.offset;
-  loc.ml_sym = vbottom->sv_sym;
-  clz_mode ? DCCDisp_CLZMem(&loc,result_register,arg_size)
-           : DCCDisp_FFSMem(&loc,result_register,arg_size);
- } else {
-  /* Scan register(s). */
-  clz_mode ? DCCDisp_CLZRegs(vbottom->sv_reg,vbottom->sv_reg2,result_register)
-           : DCCDisp_FFSRegs(vbottom->sv_reg,vbottom->sv_reg2,result_register);
- }
- vpop(1);                 /* res */
- vrval();                 /* rres */
+ DCCVStack_Scanner(mode);
+ vrval();
  vwunused();
+ DCCParse_ParPairEnd();
 }
 
 // TODO: int __builtin_ctz(unsigned int x);

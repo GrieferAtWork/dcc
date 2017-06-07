@@ -178,6 +178,22 @@ push_default:
   }
  }
 }
+LOCAL int DCC_VSTACK_CALL
+DCCStackValue_IsUnsignedReg(struct DCCStackValue const *__restrict self) {
+ /* Special case: A lower-order register apart of a signed larger type is considered unsigned:
+  *            >> int x = (int)%al; // Even though 'al' is typed as 'int', don't sign-extend it! */
+ if (!(self->sv_flags&DCC_SFLAG_LVALUE) &&
+       self->sv_reg != DCC_RC_CONST) {
+  rc_t ty_rc = DCC_RC_FORTYPE(&self->sv_ctype);
+  if (DCC_RC_SIZE(self->sv_reg) < DCC_RC_SIZE(ty_rc)) return 1;
+ }
+ return 0;
+}
+LOCAL int DCC_VSTACK_CALL
+DCCStackValue_IsUnsignedOrPtr(struct DCCStackValue const *__restrict self) {
+ if (DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type)) return 1;
+ return DCCStackValue_IsUnsignedReg(self);
+}
 
 
 LOCAL void DCC_VSTACK_CALL
@@ -491,7 +507,7 @@ DCCStackValue_FixRegister(struct DCCStackValue *__restrict self) {
   if (!self->sv_const.offset) {
    /* mov %self->sv_reg, %new_register */
    DCCDisp_RegMovReg(self->sv_reg,new_register,
-                     DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
+                     DCCStackValue_IsUnsignedOrPtr(self));
   } else {
    /* lea self->sv_const.it(%self->sv_reg), %new_register */
    struct DCCMemLoc src;
@@ -632,9 +648,7 @@ load_reg: /* Make sure we're operating on a register. */
    val.sv_const.it     = bits-(off+siz);
    DCCStackValue_Binary(&val,self,TOK_SHL);
    val.sv_const.it     = bits-siz;
-   DCCStackValue_Binary(&val,self,
-                        DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type)
-                        ? TOK_RANGLE3 : TOK_SHR);
+   DCCStackValue_Binary(&val,self,DCCStackValue_IsUnsignedOrPtr(self) ? TOK_RANGLE3 : TOK_SHR);
   }
  }
 }
@@ -1092,7 +1106,7 @@ DCCStackValue_BinMem(struct DCCStackValue *__restrict self, tok_t op,
   src.ml_off = self->sv_const.offset;
   src.ml_sym = self->sv_sym;
   DCCDisp_MemBinMem(op,&src,DCCType_Sizeof(&self->sv_ctype,NULL,1),
-                    target,n,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
+                    target,n,DCCStackValue_IsUnsignedOrPtr(self));
   return;
  }
 
@@ -1103,21 +1117,21 @@ DCCStackValue_BinMem(struct DCCStackValue *__restrict self, tok_t op,
   case 1: temp.sa_off = (target_off_t)self->sv_const.u8; goto integral_common;
   case 2: temp.sa_off = (target_off_t)DCC_H2T16(self->sv_const.u16); goto integral_common;
   case 4: temp.sa_off = (target_off_t)DCC_H2T32(self->sv_const.u32);
-integral_common: DCCDisp_CstBinMem(op,&temp,target,n,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type)); break;
+integral_common: DCCDisp_CstBinMem(op,&temp,target,n,DCCStackValue_IsUnsignedOrPtr(self)); break;
 #ifdef DCC_RC_I64
   case 8: temp.sa_off = (target_off_t)DCC_H2T64(self->sv_const.u64); goto integral_common;
 #endif
   default:
    DCCDisp_VecBinMem(op,&self->sv_const,sizeof(self->sv_const),
-                     target,n,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
+                     target,n,DCCStackValue_IsUnsignedOrPtr(self));
    break;
   }
   return;
  }
  /* mov %reg, symaddr */
  DCCStackValue_FixRegOffset(self);
- DCCDisp_RegsBinMems(op,self->sv_reg,self->sv_reg2,target,n,
-                     DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
+ DCCDisp_RegsBinMems(op,self->sv_reg,self->sv_reg2,target,
+                     n,DCCStackValue_IsUnsignedOrPtr(self));
 }
 PRIVATE void DCC_VSTACK_CALL
 DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
@@ -1132,26 +1146,26 @@ DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
   src.ml_sym = self->sv_sym;
   src.ml_off = self->sv_const.offset;
   DCCDisp_MemsBinRegs(op,&src,DCCType_Sizeof(&self->sv_ctype,NULL,1),
-                      dst,dst2,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
+                      dst,dst2,DCCStackValue_IsUnsignedOrPtr(self));
  } else if (source_reg == DCC_RC_CONST) {
 #if DCC_TARGET_SIZEOF_ARITH_MAX < 8
   struct DCCSymExpr temp;
   temp.e_int = self->sv_const.it;
   temp.e_sym = self->sv_sym;
   DCCDisp_CstBinRegs(op,&temp,dst,dst2,
-                     DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
+                     DCCStackValue_IsUnsignedOrPtr(self));
 #else
   struct DCCSymAddr temp;
   temp.sa_off = self->sv_const.it;
   temp.sa_sym = self->sv_sym;
-  DCCDisp_CstBinReg(op,&temp,dst,DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
+  DCCDisp_CstBinReg(op,&temp,dst,DCCStackValue_IsUnsignedOrPtr(self));
   if (dst2 != DCC_RC_CONST) DCCDisp_IntMovReg(0,dst2);
 #endif
  } else {
   /* *op %source_reg, target */
   DCCStackValue_FixRegOffset(self);
   DCCDisp_RegsBinRegs(op,self->sv_reg,self->sv_reg2,dst,dst2,
-                      DCCTYPE_ISUNSIGNED_OR_PTR(self->sv_ctype.t_type));
+                      DCCStackValue_IsUnsignedOrPtr(self));
  }
 }
 
@@ -1641,7 +1655,7 @@ set_zero:
       * ...
       */
      self->sv_const.it = (int_t)shift;
-     op = DCCTYPE_ISUNSIGNED_OR_PTR(target->sv_ctype.t_type) ? TOK_RANGLE3 : TOK_SHR;
+     op = DCCStackValue_IsUnsignedOrPtr(target) ? TOK_RANGLE3 : TOK_SHR;
     }
    } break;
 
@@ -3551,7 +3565,8 @@ DCCVStack_Binary(tok_t op) {
    WARN(W_SHIFT_OPERATOR_ON_POINTER_TYPE,&vbottom[0].sv_ctype);
    goto unsigned_shift;
   }
-  if (DCCTYPE_ISUNSIGNED(target_type->t_type)) {
+  if (DCCTYPE_ISUNSIGNED(target_type->t_type) ||
+      DCCStackValue_IsUnsignedReg(&vbottom[1])) {
 unsigned_shift:
    if (op == TOK_SHR) op = TOK_RANGLE3; /* Use the unsigned opcode. */
   }

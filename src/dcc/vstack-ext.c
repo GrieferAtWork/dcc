@@ -25,6 +25,7 @@
 #include <dcc/gen.h>
 #include <dcc/type.h>
 #include <dcc/compiler.h>
+#include <dcc/byteorder.h>
 
 DCC_DECL_BEGIN
 
@@ -51,6 +52,149 @@ DCCVStack_PushSym_szfun(struct DCCSym *__restrict sym) {
  DCCType_Quit(&type);
 }
 
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_BSwap(void) {
+ target_siz_t size;
+ assert(vsize >= 1);
+ DCCStackValue_LoadLValue(vbottom);
+ DCCStackValue_Cow(vbottom);
+ DCCStackValue_FixTest(vbottom);
+ DCCStackValue_FixBitfield(vbottom);
+ size = DCCType_Sizeof(&vbottom->sv_ctype,NULL,0);
+ if (DCCSTACKVALUE_ISCONST_XVAL(vbottom)) {
+  if (vbottom->sv_sym) DCCStackValue_Load(vbottom);
+  else { /* Constant optimizations. */
+   switch (size) {
+   case 1: return;
+   case 2: vbottom->sv_const.u16 = DCC_BSWAP16(vbottom->sv_const.u16); break;
+   case 4: vbottom->sv_const.u32 = DCC_BSWAP32(vbottom->sv_const.u32); break;
+   case 8: vbottom->sv_const.u64 = DCC_BSWAP64(vbottom->sv_const.u64); break;
+   default: goto copy_elem;
+   }
+   return;
+  }
+ } else {
+copy_elem:
+  /* Create a copy of the argument. */
+  vrcopy();
+ }
+ if (vbottom->sv_flags&DCC_SFLAG_LVALUE) {
+  struct DCCMemLoc loc;
+  loc.ml_reg = vbottom->sv_reg;
+  loc.ml_off = vbottom->sv_const.offset;
+  loc.ml_sym = vbottom->sv_sym;
+  DCCDisp_BSwapMem(&loc,size);
+ } else {
+  assert(vbottom->sv_reg);
+  DCCDisp_BSwapReg(vbottom->sv_reg);
+  if (vbottom->sv_reg2 != DCC_RC_CONST) {
+   rc_t temp;
+   /* Swap the second register. */
+   DCCDisp_BSwapReg(vbottom->sv_reg2);
+   /* Exchange the registers. */
+   temp = vbottom->sv_reg2;
+   vbottom->sv_reg2 = vbottom->sv_reg;
+   vbottom->sv_reg = temp;
+  }
+ }
+}
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////
+// 
+//  BIT-SCANNER
+// 
+DCCFUN void DCC_VSTACK_CALL
+DCCVStack_Scanner(tok_t mode) {
+ target_siz_t size;
+ rc_t result_register;
+ assert(vsize >= 1);
+ DCCStackValue_FixBitfield(vbottom);
+ size = DCCType_Sizeof(&vbottom->sv_ctype,NULL,0);
+ if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
+      (vbottom->sv_reg == DCC_RC_CONST)) {
+  if (vbottom->sv_sym)
+cstdef: DCCStackValue_Load(vbottom);
+  else { /* Constant optimizations. */
+   uint64_t iv,shift; int result;
+   switch (size) {
+   case 1: iv = (uint64_t)vbottom->sv_const.u8; break;
+   case 2: iv = (uint64_t)vbottom->sv_const.u16; break;
+   case 4: iv = (uint64_t)vbottom->sv_const.u32; break;
+   case 8: iv = (uint64_t)vbottom->sv_const.u64; break;
+   default: goto default_ffs;
+   }
+   if (mode == KWD___builtin_clz) {
+    result = 0,shift = (uint64_t)1 << 63;
+    while (!(iv&shift)) {
+     /* Generate code and let the CPU decide on undefined behavior! */
+     if (++result == 64) goto cstdef;
+     shift >>= 1;
+    }
+    /* Adjust for zero-padding on constants. */
+    result -= (8-size)*8;
+   } else {
+    result = 1,shift = 1;
+    while (!(iv&shift)) {
+     if (++result == 64) break;
+     shift <<= 1;
+    }
+   }
+   DCCType_Quit(&vbottom->sv_ctype);
+   vbottom->sv_ctype.t_type = DCCTYPE_INT;
+   vbottom->sv_ctype.t_base = NULL;
+   assert(!vbottom->sv_sym);
+   vbottom->sv_const.it = (int_t)result;
+   vbottom->sv_flags    = DCC_SFLAG_NONE;
+   return;
+  }
+ }
+default_ffs:
+ if (vbottom->sv_flags&DCC_SFLAG_TEST) {
+  if (mode == KWD___builtin_clz) {
+   /* CLZ for 0/1 is simply 'size*8-(0|1)' */
+   vpushi(DCCTYPE_INT,size*DCC_TARGET_BITPERBYTE); /* test, 32 */
+   vswap();    /* 32, test */
+   vgen2('-'); /* 32-test */
+  } else {
+   /* Special optimization: Since a test is either 0/1,
+    *                       its ffs-value is equal to it! */
+   vcast_t(DCCTYPE_INT,1);
+  }
+  return;
+ }
+ if ((vbottom->sv_reg&DCC_RC_IN(DCC_TARGET_SIZEOF_INT)) &&
+     !(vbottom->sv_flags&(DCC_SFLAG_COPY|DCC_SFLAG_TEST)) &&
+     !DCC_ASMREG_ISSPTR(vbottom->sv_reg&DCC_RI_MASK)
+      ) result_register = vbottom->sv_reg;
+ else result_register = DCCVStack_GetReg(DCC_RC_IN(DCC_TARGET_SIZEOF_INT),1);
+ vpushr(result_register); /* x, res */
+ vswap();                 /* res, x */
+ if (vbottom->sv_flags&DCC_SFLAG_LVALUE) {
+  struct DCCMemLoc loc;
+  loc.ml_reg = vbottom->sv_reg;
+  loc.ml_off = vbottom->sv_const.offset;
+  loc.ml_sym = vbottom->sv_sym;
+  if (mode == KWD___builtin_clz)
+       DCCDisp_CLZMem(&loc,result_register,size);
+  else DCCDisp_FFSMem(&loc,result_register,size);
+ } else {
+  /* Scan register(s). */
+  if (mode == KWD___builtin_clz)
+       DCCDisp_CLZRegs(vbottom->sv_reg,vbottom->sv_reg2,result_register);
+  else DCCDisp_FFSRegs(vbottom->sv_reg,vbottom->sv_reg2,result_register);
+ }
+ vpop(1); /* res */
+}
+
+
+
+
+
 
 //////////////////////////////////////////////////////////////////////////
 // 
@@ -58,6 +202,7 @@ DCCVStack_PushSym_szfun(struct DCCSym *__restrict sym) {
 // 
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_MinMax(tok_t mode) {
+ assert(vsize >= 2);
  vdup(1);     /* target, other, other */
  vrrot(3);    /* other, other, target */
  vdup(1);     /* other, other, target, target */
@@ -68,10 +213,9 @@ DCCVStack_MinMax(tok_t mode) {
 
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Memcmp(void) {
+ assert(vsize >= 3);
  /* a, b, size */
- if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
-       vbottom->sv_reg == DCC_RC_CONST &&
-      !vbottom->sv_sym) {
+ if (DCCSTACKVALUE_ISCONST_INT(vbottom)) {
   struct DCCMemLoc a_loc,b_loc; rc_t resreg,tempreg;
   target_siz_t cmp_size = (target_siz_t)vbottom->sv_const.offset;
   if (!cmp_size) {
@@ -149,9 +293,9 @@ fix_stack:
  }
 }
 
-
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Memset(void) {
+ assert(vsize >= 3);
  /* Compile-time optimizations for known memset sizes. */
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
        vbottom->sv_reg == DCC_RC_CONST &&
@@ -198,6 +342,7 @@ DCCVStack_Memset(void) {
 
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Memcpy(int may_overlap) {
+ assert(vsize >= 3);
  /* dst, src, size */
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
        vbottom->sv_reg == DCC_RC_CONST &&
@@ -281,19 +426,84 @@ dcc_memrchr(void const *p, int c, size_t n) {
   ? DCCUnit_NewSyms(name,DCC_SYMFLAG_NONE)\
   : DCCUnit_GetSyms(name))
 
+#define VS_PTR  (&vbottom[2])
+#define VS_CHAR (&vbottom[1])
+#define VS_SIZE (&vbottom[0])
+
+LOCAL int DCC_VSTACK_CALL
+DCCVStack_Scas_Strnlen(uint32_t flags) {
+ struct DCCSym *funsym;
+ /* Generate a str(n)len/str(n)end function calls. */
+ if (flags&DCC_VSTACK_SCAS_FLAG_NULL) return 0;
+ if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
+  if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STRNLEN,"strnlen")) != NULL) {
+   vswap(); /* ptr, size, char */
+   vpop(1); /* ptr, size */
+   DCCVStack_PushSym_szfun(funsym);
+             /* ptr, size, strnlen */
+   vlrot(3); /* strnlen, ptr, size */
+   vcall(2); /* ret */
+   return 1;
+  }
+ } else {
+  if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STRNEND,"strnend")) != NULL) {
+   /* The symbol has been declared, so we assume it exists! */
+   vswap(); /* ptr, size, char */
+   vpop(1); /* ptr, size */
+   DCCVStack_PushSym_vpfun(funsym);
+             /* ptr, size, strnend */
+   vlrot(3); /* strnend, ptr, size */
+   vcall(2); /* ret */
+   return 1;
+  }
+ } /* !(flags&DCC_VSTACK_SCAS_FLAG_SIZE) */
+ return 0;
+}
+LOCAL int DCC_VSTACK_CALL
+DCCVStack_Scas_Strlen(uint32_t flags, target_siz_t ct_size) {
+ struct DCCSym *funsym;
+ if (ct_size == (target_siz_t)-1) {
+  if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
+   if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STRLEN,"strlen")) != NULL) {
+    vswap(); /* ptr, size, char */
+    vpop(1); /* ptr, size */
+    /* Maxlen (aka. unlimited search --> strlen) */
+    vpop(1); /* ptr */
+    DCCVStack_PushSym_szfun(funsym);
+              /* ptr, strlen */
+    vswap();  /* strlen, ptr */
+    vcall(1); /* ret */
+    return 1;
+   }
+  } else {
+   if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STREND,"strend")) != NULL) {
+    /* The symbol has been declared, so we assume it exists! */
+    vswap(); /* ptr, size, char */
+    vpop(1); /* ptr, size */
+    /* Maxlen (aka. unlimited search --> strlen) */
+    vpop(1);  /* ptr */
+    DCCVStack_PushSym_vpfun(funsym);
+              /* ptr, strend */
+    vswap();  /* strend, ptr */
+    vcall(1); /* ret */
+    return 1;
+   }
+  } /* !(flags&DCC_VSTACK_SCAS_FLAG_SIZE) */
+ }
+ return DCCVStack_Scas_Strnlen(flags);
+}
 
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Scas(uint32_t flags) {
  struct DCCSym *funsym;
-#define VS_PTR  (&vbottom[2])
-#define VS_CHAR (&vbottom[1])
-#define VS_SIZE (&vbottom[0])
+ assert(vsize >= 3);
  /* ptr, char, size */
  assert(vsize >= 2);
  if (DCCSTACKVALUE_ISCONST_INT(VS_SIZE)) {
   /* Size is known at compile-time. */
   target_siz_t ct_size;
-  if unlikely((ct_size = (target_siz_t)DCCSTACKVALUE_GTCONST_INT(VS_SIZE)) == 0) {
+  ct_size = (target_siz_t)DCCSTACKVALUE_GTCONST_INT(VS_SIZE);
+  if unlikely(!ct_size) {
    /* Empty search range: Never found. */
    vpop(1); /* ptr, char */
    vpop(1); /* ptr */
@@ -305,7 +515,7 @@ DCCVStack_Scas(uint32_t flags) {
    return;
   }
   if (DCCSTACKVALUE_ISCONST_INT(VS_CHAR)) {
-   /* The search character is known at compile-time. */
+   /* The search size & character is known at compile-time. */
    int cc_char;
    cc_char = (int)(uint8_t)DCCSTACKVALUE_GTCONST_INT(VS_CHAR);
    if (DCCSTACKVALUE_ISCONST_XVAL(VS_PTR) && VS_PTR->sv_sym) {
@@ -408,52 +618,10 @@ DCCVStack_Scas(uint32_t flags) {
 no_compiletime:
    if (!cc_char && !(flags&DCC_VSTACK_SCAS_FLAG_REV)) {
     /* Generate a str(n)len/str(n)end function calls. */
-    if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
-     if ((funsym = (ct_size == (target_siz_t)-1)
-        ? GET_SYM(DCC_TARGET_RT_HAVE_STRLEN,"strlen")
-        : GET_SYM(DCC_TARGET_RT_HAVE_STRNLEN,"strnlen")) != NULL) {
-      vswap(); /* ptr, size, char */
-      vpop(1); /* ptr, size */
-      if (ct_size == (target_siz_t)-1) {
-       /* Maxlen (aka. unlimited search --> strlen) */
-       vpop(1); /* ptr */
-       DCCVStack_PushSym_szfun(funsym);
-                 /* ptr, strlen */
-       vswap();  /* strlen, ptr */
-       vcall(1); /* ret */
-      } else {
-       DCCVStack_PushSym_szfun(funsym);
-                 /* ptr, size, strnlen */
-       vlrot(3); /* strnlen, ptr, size */
-       vcall(2); /* ret */
-      }
-      return;
-     }
-    } else {
-     if ((funsym = (ct_size == (target_siz_t)-1)
-        ? GET_SYM(DCC_TARGET_RT_HAVE_STREND,"strend")
-        : GET_SYM(DCC_TARGET_RT_HAVE_STRNEND,"strnend")) != NULL) {
-      /* The symbol has been declared, so we assume it exists! */
-      vswap(); /* ptr, size, char */
-      vpop(1); /* ptr, size */
-      if (ct_size == (target_siz_t)-1) {
-       /* Maxlen (aka. unlimited search --> strlen) */
-       vpop(1);  /* ptr */
-       DCCVStack_PushSym_vpfun(funsym);
-                 /* ptr, strend */
-       vswap();  /* strend, ptr */
-       vcall(1); /* ret */
-      } else {
-       DCCVStack_PushSym_vpfun(funsym);
-                 /* ptr, size, strnend */
-       vlrot(3); /* strnend, ptr, size */
-       vcall(2); /* ret */
-      }
-      return;
-     }
-    } /* !(flags&DCC_VSTACK_SCAS_FLAG_SIZE) */
+    if (DCCVStack_Scas_Strlen(flags,ct_size)) return;
    } /* !search_char && !(flags&DCC_VSTACK_SCAS_FLAG_REV) */
   } /* DCCSTACKVALUE_ISCONST_INT(VS_CHAR) */
+  /* Only the search size is known. */
   if (ct_size == (target_siz_t)-1) {
    /* Try to generate calls to 'rawmemchr'/'rawmemrchr'/'rawmemlen'/'rawmemrlen' */
    if (!(flags&DCC_VSTACK_SCAS_FLAG_REV)) {
@@ -490,6 +658,14 @@ no_compiletime:
    }
   }
  }
+ if (DCCSTACKVALUE_ISCONST_INT(VS_CHAR) &&
+    !DCCSTACKVALUE_GTCONST_INT(VS_CHAR) &&
+    !(flags&DCC_VSTACK_SCAS_FLAG_REV)) {
+  /* When only the character is known to be ZERO at compile-time,
+   * still generate calls to to strnlen/strnend */
+  if (DCCVStack_Scas_Strnlen(flags)) return;
+ }
+
  if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
   /* Try to call memlen/memrlen */
   if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_REV)
@@ -515,25 +691,18 @@ no_compiletime:
  }
 
  /* Fallback: Call memchr/memrchr */
-
-#define CASE_REVERSE_MEMCHR   (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_NULL)
-#define CASE_REVERSE_MEMEND   (DCC_VSTACK_SCAS_FLAG_REV)
-#define CASE_REVERSE_MEMLEN   (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_SIZE)
-#define CASE_FORWARD_MEMCHR   (DCC_VSTACK_SCAS_FLAG_NULL)
-#define CASE_FORWARD_MEMEND   (DCC_VSTACK_SCAS_FLAG_NONE)
-#define CASE_FORWARD_MEMLEN   (DCC_VSTACK_SCAS_FLAG_SIZE)
+ funsym = DCCUnit_NewSyms((flags&DCC_VSTACK_SCAS_FLAG_REV) ?
+                          "memrchr" : "memchr",DCC_SYMFLAG_NONE);
  /* Generate with inline code calling either 'memchr' or 'memrchr'
   * NOTE: This is why DCC assumes that the runtime be implementing at least these! */
- funsym = DCCUnit_NewSyms(flags&DCC_VSTACK_SCAS_FLAG_REV ?
-                          "memrchr" : "memchr",DCC_SYMFLAG_NONE);
 again:
  switch (flags&(DCC_VSTACK_SCAS_FLAG_SIZE|
                 DCC_VSTACK_SCAS_FLAG_NULL|
                 DCC_VSTACK_SCAS_FLAG_REV)) {
 
  {
- case CASE_REVERSE_MEMCHR: /* >> return memrchr(ptr,char,size); */
- case CASE_FORWARD_MEMCHR: /* >> return memchr(ptr,char,size); */
+ case DCC_VSTACK_SCAS_MEMRCHR: /* >> return memrchr(ptr,char,size); */
+ case DCC_VSTACK_SCAS_MEMCHR: /* >> return memchr(ptr,char,size); */
   funsym ? DCCVStack_PushSym_vpfun(funsym)
          : vpushv();
             /* ptr, char, size, mem(r)chr */
@@ -545,7 +714,7 @@ again:
     * >> void *result = memrchr(ptr,char,size);
     * >> if (!result) result = temp;
     * >> return result; */
- case CASE_REVERSE_MEMEND:
+ case DCC_VSTACK_SCAS_MEMREND:
   /* ptr, char, size */
   vrrot(3); /* char, size, ptr */
   vdup(1);  /* char, size, ptr, dptr */
@@ -559,7 +728,7 @@ again:
     * >> void *result = memchr(ptr,char,size);
     * >> if (!result) result = temp;
     * >> return result; */
- case CASE_FORWARD_MEMEND:
+ case DCC_VSTACK_SCAS_MEMEND:
    /* ptr, char, size */
    vrrot(3); /* char, size, ptr */
    vdup(1);  /* char, size, ptr, dptr */
@@ -591,7 +760,7 @@ again:
     * >> void *loc_ptr = memrchr(ptr,char,size);
     * >> if (loc_ptr) result = loc_ptr-old_ptr;
     * >> return result; */
- case CASE_REVERSE_MEMLEN:
+ case DCC_VSTACK_SCAS_MEMRLEN:
   vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1); /* ptr, char, size, -1 */
   vlrot(4);                                 /* -1, ptr, char, size */
   if (DCC_MACRO_FALSE) {
@@ -600,7 +769,7 @@ again:
     * >> void  *loc_ptr = memrchr(ptr,char,size);
     * >> if (loc_ptr) result = loc_ptr-old_ptr;
     * >> return result; */
- case CASE_FORWARD_MEMLEN:
+ case DCC_VSTACK_SCAS_MEMLEN:
    vdup(1);  /* ptr, char, size, dsize */
    vlrot(4); /* dsize, ptr, char, size */
   }

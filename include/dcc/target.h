@@ -413,6 +413,24 @@ DCC_DECL_BEGIN
 #define DCC_TARGET_ATOMIC_SEQ_CST 5
 
 
+/* When compiling string operations, prefer generating
+ * code that already knows the length of the string.
+ * While this usually results in larger code, based
+ * on the instruction set of the CPU, it is most of
+ * the time much faster, as intrinsic scanning functions
+ * can be used when code is not forced to handle an
+ * encounter with a '\0'-character as premature terminator.
+ * Essentially, this controls (e.g.) how this is compiled:
+ * >> if (__builtin_strchr(".-!:",c)) return 42;
+ * Compiled as:
+ * >> #if DCC_TARGET_PREFER_STR_WITHLEN
+ * >> if (__builtin_memchr(".-!:",c,4)) return 42;
+ * >> #else
+ * >> if (strchr(".-!:",c)) return 42;
+ * >> #endif
+ */
+#define DCC_TARGET_PREFER_STR_WITHLEN 1
+
 
 /* Optional functions that DCC can assume to always be provided by the runtime. */
 #define DCC_TARGET_RT_HAVE_STRLEN     1 /* size_t strlen(char const *s); */

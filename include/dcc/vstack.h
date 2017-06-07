@@ -563,6 +563,17 @@ DCCFUN int DCC_VSTACK_CALL DCCVStack_HasTst(void);
 /* VStack extensions from 'vstack-ext.c' */
 /* ************************************* */
 
+/* [-1, +1]: push(__builtin_bswapcc(vbottom[0])) */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_BSwap(void);
+
+/* [-1, +1]: push(__builtin_...(vbottom[0]))
+ *  Builtin bit-scanning functions.
+ *  @param: mode: The function to perform. - One of:
+ *              - KWD___builtin_clz
+ *              - KWD___builtin_ffs
+ */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_Scanner(DCC(tok_t) mode);
+
 /* [-2, +1]: push(min|max(vbottom[0],vbottom[1]));
  * @param: mode: The compare operator (usually '<' for min or '>' for max) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_MinMax(DCC(tok_t) mode);
@@ -588,6 +599,7 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_MinMax(DCC(tok_t) mode);
  * >> size_t rawmemlen(void const *p, int c); // non-standard
  * >> size_t rawmemrlen(void const *p, int c); // non-standard */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Scas(uint32_t flags);
+
 #define DCC_VSTACK_SCAS_FLAG_NONE 0x00000000
 #define DCC_VSTACK_SCAS_FLAG_SIZE 0x00000001 /*< Return the offset from the the string as 'size_t'. */
 #define DCC_VSTACK_SCAS_FLAG_NULL 0x00000002 /*< Return NULL when the character was not found (Ignored when 'DCC_VSTACK_SCAS_FLAG_SIZE' is set).
@@ -601,7 +613,6 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Scas(uint32_t flags);
 #define DCC_VSTACK_SCAS_MEMRCHR  (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_NULL)
 #define DCC_VSTACK_SCAS_MEMREND  (DCC_VSTACK_SCAS_FLAG_REV)
 #define DCC_VSTACK_SCAS_MEMRLEN  (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_SIZE)
-
 
 /* [-3, +1]: push(memcmp(vbottom[2],vbottom[1],vbottom[0])); */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Memcmp(void);
@@ -670,7 +681,8 @@ extern struct DCCStackValue *vbottom;
 
 DCC_LOCAL void vcast_t(DCC(tyid_t) id, int explicit_cast) {
  struct DCCType t;
- t.t_type = id,t.t_base = NULL;
+ t.t_type = id;
+ t.t_base = NULL;
  vcast(&t,explicit_cast);
 }
 
