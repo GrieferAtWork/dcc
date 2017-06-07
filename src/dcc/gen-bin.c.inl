@@ -219,7 +219,7 @@ DCCDisp_MemBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
    /* imul offset(%src), %temp */
    t_putb(0x0f);
    t_putb(0xaf);
-   asm_modmem(temp&7,src);
+   asm_modmem(temp&DCC_RI_MASK,src);
    /* Store the multiplication result. */
    DCCDisp_RegMovReg(temp,dst,1);
   } break;
@@ -231,18 +231,18 @@ DCCDisp_MemBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
    eax = DCC_ASMREG_EAX|(dst&DCC_RC_MASK);
    edx = DCC_ASMREG_EDX|(dst&DCC_RC_MASK);
    if (src->ml_reg != DCC_RC_CONST &&
-      (src->ml_reg&7) == DCC_ASMREG_EAX ||
-      (src->ml_reg&7) == DCC_ASMREG_EDX) {
+      (src->ml_reg&DCC_RI_MASK) == DCC_ASMREG_EAX ||
+      (src->ml_reg&DCC_RI_MASK) == DCC_ASMREG_EDX) {
     /* We can either use ECX or EBX as fallback for src.
      * NOTE: Though we have to make sure not to use that of 'dst'*/
     rc_t temp;
-    if ((dst&7) != DCC_ASMREG_ECX &&
+    if ((dst&DCC_RI_MASK) != DCC_ASMREG_ECX &&
         (temp = (dst&DCC_RC_MASK)|DCC_ASMREG_ECX,
         !DCCVStack_GetRegInuse(temp))); /* ECX */
-    else if ((dst&7) != DCC_ASMREG_EBX &&
+    else if ((dst&DCC_RI_MASK) != DCC_ASMREG_EBX &&
              (temp = (dst&DCC_RC_MASK)|DCC_ASMREG_EBX,
              !DCCVStack_GetRegInuse(temp))); /* EBX */
-    else if ((dst&7) != DCC_ASMREG_ECX) {
+    else if ((dst&DCC_RI_MASK) != DCC_ASMREG_ECX) {
      /* ECX (w/kill) */
      temp = DCCVStack_GetRegExact(DCC_ASMREG_ECX|(dst&DCC_RC_MASK));
     } else {
@@ -262,8 +262,8 @@ DCCDisp_MemBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
     return;
    }
    /* Allocate EAX and EDX. */
-   if ((dst&7) != DCC_ASMREG_EAX) eax = DCCVStack_GetRegExact(eax);
-   if ((dst&7) != DCC_ASMREG_EDX) edx = DCCVStack_GetRegExact(edx);
+   if ((dst&DCC_RI_MASK) != DCC_ASMREG_EAX) eax = DCCVStack_GetRegExact(eax);
+   if ((dst&DCC_RI_MASK) != DCC_ASMREG_EDX) edx = DCCVStack_GetRegExact(edx);
    /* Move dst into eax. */
    DCCDisp_RegMovReg(dst,eax,1);
    DCCDisp_IntMovReg(0,edx);
@@ -276,20 +276,29 @@ DCCDisp_MemBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
   } break;
 
   { /* Shift operations. */
-   rc_t cl;
+   rc_t temp;
   case TOK_SHL:
   case TOK_SHR:
   case TOK_RANGLE3:
-   cl = DCCVStack_GetRegExact(DCC_ASMREG_CL|DCC_RC_I8);
-   DCCDisp_MemMovReg(src,cl);
-   DCCDisp_RegBinReg(op,cl,dst,src_unsigned);
+   if ((dst&DCC_RI_MASK) == DCC_ASMREG_CL) {
+    /* Special handling when the destination operand is %CL. */
+    temp = DCCVStack_GetRegOf(dst&DCC_RC_MASK,(uint8_t)~(1 << DCC_ASMREG_CL));
+    DCCDisp_RegMovReg(dst,temp,1);
+    DCCDisp_MemMovReg(src,DCC_ASMREG_CL|DCC_RC_I8);
+    DCCDisp_RegBinReg(op,DCC_ASMREG_CL|DCC_RC_I8,temp,src_unsigned);
+    DCCDisp_RegMovReg(temp,dst,1);
+   } else {
+    temp = DCCVStack_GetRegExact(DCC_ASMREG_CL|DCC_RC_I8);
+    DCCDisp_MemMovReg(src,temp);
+    DCCDisp_RegBinReg(op,temp,dst,src_unsigned);
+   }
   } break;
 
   { /* test */
   case 't':
    if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    t_putb(0x84+!!(dst&DCC_RC_I16));
-   asm_modmem(dst&7,src);
+   asm_modmem(dst&DCC_RI_MASK,src);
   } break;
 
   default: break;
@@ -300,7 +309,7 @@ DCCDisp_MemBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
  if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
  t_putb(bin_op->bo_r_rm8+2+!!(dst&DCC_RC_I16));
 modrm:
- asm_modmem(dst&7,src);
+ asm_modmem(dst&DCC_RI_MASK,src);
 }
 
 
@@ -336,7 +345,7 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
    /* imul %src, %temp */
    t_putb(0x0f);
    t_putb(0xaf);
-   asm_modreg(temp&7,src&7);
+   asm_modreg(temp&DCC_RI_MASK,src&DCC_RI_MASK);
    /* Store the multiplication result. */
    DCCDisp_RegMovMem(temp&~(DCC_RC_I16),dst);
   } break;
@@ -347,8 +356,9 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
   case '%':
    /* Prefer storing the 'dst' in the correct output register. */
    temp = op == '/' ? DCC_ASMREG_EAX : DCC_ASMREG_EDX;
-   if ((src&7) == temp ||
-      (dst->ml_reg != DCC_RC_CONST && (dst->ml_reg&7) == temp)) {
+   if ((src&DCC_RI_MASK) == temp ||
+      (dst->ml_reg != DCC_RC_CONST &&
+      (dst->ml_reg&DCC_RI_MASK) == temp)) {
     /* Either 'src', or 'dst' are already using the true output register.
      * So instead, we must allocate a new register of the same class.
      * WARNING: Having to do this may result in less optimal code. */
@@ -371,11 +381,11 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
    cl = DCC_ASMREG_CL|DCC_RC_I8;
    used_dst = *dst;
    if ((used_dst.ml_reg != DCC_RC_CONST) &&
-       (used_dst.ml_reg&7) == DCC_ASMREG_CL) {
+       (used_dst.ml_reg&DCC_RI_MASK) == DCC_ASMREG_CL) {
     used_dst.ml_reg = DCCVStack_GetReg(DCC_RC_PTR,1);
     DCCDisp_RegMovReg(dst->ml_reg,used_dst.ml_reg,1);
    }
-   if ((src&7) != DCC_ASMREG_CL) {
+   if ((src&DCC_RI_MASK) != DCC_ASMREG_CL) {
     cl = DCCVStack_GetRegExact(cl);
     DCCDisp_RegMovReg(src,cl,src_unsigned);
    }
@@ -398,7 +408,7 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
  if ((src&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
  t_putb(bin_op->bo_r_rm8+!!(src&DCC_RC_I16));
 modrm:
- asm_modmem(src&7,dst);
+ asm_modmem(src&DCC_RI_MASK,dst);
 }
 PUBLIC void
 DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
@@ -412,7 +422,7 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
   case '+':
    if ((src&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
    t_putb(0xd0+!!(dst&DCC_RC_I16));
-   asm_modreg(4,dst&7);
+   asm_modreg(4,dst&DCC_RI_MASK);
    return;
    /* Special case: 'sub %reg, %reg' --> 'xor %reg, %reg' */
   case '-': op = '^'; break;
@@ -455,7 +465,7 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
     t_putb(0x66);
     t_putb(0x0f);
     t_putb(0xaf);
-    asm_modreg(src&7,temp_dst&7);
+    asm_modreg(src&DCC_RI_MASK,temp_dst&DCC_RI_MASK);
     DCCDisp_RegMovReg(temp_dst,dst,1);
     return;
    } else {
@@ -476,18 +486,18 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
    edx = DCC_ASMREG_EDX|(src&DCC_RC_MASK);
    original_src = src;
    /* If 'src' is either 'EAX' or 'EDX', it needs to be stored elsewhere! */
-   if ((src&7) == DCC_ASMREG_EAX ||
-       (src&7) == DCC_ASMREG_EDX) {
+   if ((src&DCC_RI_MASK) == DCC_ASMREG_EAX ||
+       (src&DCC_RI_MASK) == DCC_ASMREG_EDX) {
     /* We can either use ECX or EBX as fallback for src.
      * NOTE: Though we have to make sure not to use that of 'dst'*/
     rc_t temp;
-    if ((dst&7) != DCC_ASMREG_ECX &&
+    if ((dst&DCC_RI_MASK) != DCC_ASMREG_ECX &&
         (temp = (src&DCC_RC_MASK)|DCC_ASMREG_ECX,
         !DCCVStack_GetRegInuse(temp))); /* ECX */
-    else if ((dst&7) != DCC_ASMREG_EBX &&
+    else if ((dst&DCC_RI_MASK) != DCC_ASMREG_EBX &&
              (temp = (src&DCC_RC_MASK)|DCC_ASMREG_EBX,
              !DCCVStack_GetRegInuse(temp))); /* EBX */
-    else if ((dst&7) != DCC_ASMREG_ECX) {
+    else if ((dst&DCC_RI_MASK) != DCC_ASMREG_ECX) {
      /* ECX (w/kill) */
      temp = DCCVStack_GetRegExact(DCC_ASMREG_ECX|(src&DCC_RC_MASK));
     } else {
@@ -500,18 +510,20 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
     src = temp;
    }
    /* Sanity check: 'src' must not be either of these! */
-   assert((src&7) != DCC_ASMREG_EAX);
-   assert((src&7) != DCC_ASMREG_EDX);
+   assert((src&DCC_RI_MASK) != DCC_ASMREG_EAX);
+   assert((src&DCC_RI_MASK) != DCC_ASMREG_EDX);
    /* No need to allocate these registers if they've already been. */
-   if ((original_src&7) != DCC_ASMREG_EAX && (dst&7) != DCC_ASMREG_EAX) eax = DCCVStack_GetRegExact(eax);
-   if ((original_src&7) != DCC_ASMREG_EDX && (dst&7) != DCC_ASMREG_EDX) edx = DCCVStack_GetRegExact(edx);
+   if ((original_src&DCC_RI_MASK) != DCC_ASMREG_EAX &&
+       (dst&DCC_RI_MASK) != DCC_ASMREG_EAX) eax = DCCVStack_GetRegExact(eax);
+   if ((original_src&DCC_RI_MASK) != DCC_ASMREG_EDX &&
+       (dst&DCC_RI_MASK) != DCC_ASMREG_EDX) edx = DCCVStack_GetRegExact(edx);
    /* Setup the register to where 'dst' resides in EAX and EDX is filled with ZERO(0). */
    DCCDisp_RegMovReg(dst,eax,1);
    DCCDisp_IntMovReg(0,edx);
    /* Generate the div/idiv instruction. */
    if ((src&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    t_putb(0xf6+!!(src&DCC_RC_I16));
-   asm_modreg(src_unsigned ? 6 : 7,src&7);
+   asm_modreg(src_unsigned ? 6 : 7,src&DCC_RI_MASK);
    /* Either move the Quotient, or the Remained back into dst */
    DCCDisp_RegMovReg(op == '/' ? eax : edx,dst,1);
   } break;
@@ -522,23 +534,23 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
   case TOK_SHR:
   case TOK_RANGLE3:
    used_dst = dst;
-   if ((dst&7) == DCC_ASMREG_CL) {
+   if ((dst&DCC_RI_MASK) == DCC_ASMREG_CL) {
     /* The destination register overlaps with CL.
      * With that in mind, we need to move it elsewhere. */
     used_dst = DCCVStack_GetRegOf(dst&DCC_RC_MASK,
                                 ~((1 << DCC_ASMREG_CL)|
-                                  (1 << (src&7))));
+                                  (1 << (src&DCC_RI_MASK))));
     DCCDisp_RegMovReg(dst,used_dst,1);
    }
    cl = DCC_ASMREG_CL|DCC_RC_I8;
-   if ((src&7) != DCC_ASMREG_CL) {
+   if ((src&DCC_RI_MASK) != DCC_ASMREG_CL) {
     cl = DCCVStack_GetRegExact(cl);
     DCCDisp_RegMovReg(src,cl,src_unsigned);
    }
    /* Generate the shift instruction. */
    if ((used_dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    t_putb(0xd2+!!(used_dst&DCC_RC_I16));
-   asm_modreg(get_shift_group(op),used_dst&7);
+   asm_modreg(get_shift_group(op),used_dst&DCC_RI_MASK);
    DCCDisp_RegMovReg(used_dst,dst,1);
   } break;
 
@@ -548,7 +560,7 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
    src = DCCVStack_CastReg(src,src_unsigned,c_dst&DCC_RC_MASK);
    if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    t_putb(0x84+!!(dst&DCC_RC_I16));
-   asm_modreg(src&7,dst&7);
+   asm_modreg(src&DCC_RI_MASK,dst&DCC_RI_MASK);
   } break;
 
   default: break;
@@ -587,7 +599,7 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
   goto modreg;
  }
 modreg:
- asm_modreg(src&7,dst&7);
+ asm_modreg(src&DCC_RI_MASK,dst&DCC_RI_MASK);
 }
 
 #if DCC_TARGET_SIZEOF_ARITH_MAX < 8
@@ -676,7 +688,7 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
      /* imul $imm16/32, %r16/32 */
      t_putb(0x69);
     }
-    asm_modreg(dst&7,dst&7);
+    asm_modreg(dst&DCC_RI_MASK,dst&DCC_RI_MASK);
     goto put_expr;
    }
    /* 8-bit mul w/ immediate value. */
@@ -698,7 +710,7 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
     *       or the fixed registers that will be required for the opcode.
     */
 #ifdef IA32_PROTECTED_REGISTERS
-   if ((dst&7) == DCC_ASMREG_ECX) {
+   if ((dst&DCC_RI_MASK) == DCC_ASMREG_ECX) {
     /* Since 'EBX' is protected, ECX is the only register we could use.
      * But as it turns out, that one's already in use by the destination.
      * >> Now we have to push/pop EBX... */
@@ -713,7 +725,7 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
     temp = DCCVStack_GetRegOf(dst&DCC_RC_MASK,
                             ~((1 << DCC_ASMREG_EAX)|
                               (1 << DCC_ASMREG_EDX)|
-                              (1 << (dst&7))));
+                              (1 << (dst&DCC_RI_MASK))));
     DCCDisp_CstMovReg(val,temp);
     DCCDisp_RegBinReg(op,temp,dst,src_unsigned);
    }
@@ -729,10 +741,10 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
    if (!val->sa_sym && val->sa_off == 1) {
     /* Shift by 1. */
     t_putb(0xd0+!!(dst&DCC_RC_I16));
-    asm_modreg(get_shift_group(op),dst&7);
+    asm_modreg(get_shift_group(op),dst&DCC_RI_MASK);
    } else {
     t_putb(0xc0+!!(dst&DCC_RC_I16));
-    asm_modreg(get_shift_group(op),dst&7);
+    asm_modreg(get_shift_group(op),dst&DCC_RI_MASK);
     DCCDisp_SymAddr8(val);
    }
   } break;
@@ -740,11 +752,11 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
   { /* test */
   case 't':
    if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
-   if ((dst&7) == DCC_ASMREG_EAX) {
+   if ((dst&DCC_RI_MASK) == DCC_ASMREG_EAX) {
     t_putb(0xa8+!!(dst&DCC_RC_I16));
    } else {
     t_putb(0xf6+!!(dst&DCC_RC_I16));
-    asm_modreg(0,dst&7);
+    asm_modreg(0,dst&DCC_RI_MASK);
    }
         if (dst&DCC_RC_I3264) DCCDisp_SymAddr32(val);
    else if (dst&DCC_RC_I16)   DCCDisp_SymAddr16(val);
@@ -757,7 +769,7 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
  }
  /* *op symaddr, %reg */
  if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
- if ((dst&7) == DCC_ASMREG_EAX) {
+ if ((dst&DCC_RI_MASK) == DCC_ASMREG_EAX) {
   t_putb(bin_op->bo_r_rm8+4+!!(dst&DCC_RC_I16));
  } else {
   if (!(dst&(DCC_RC_I16|DCC_RC_I3264))) {
@@ -770,7 +782,7 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
    /* 16/32-bit immediate value. */
    t_putb(0x81);
   }
-  asm_modreg(bin_op->bo_im_grp,dst&7);
+  asm_modreg(bin_op->bo_im_grp,dst&DCC_RI_MASK);
  }
 put_expr:
 #ifdef DCC_RC_I64
@@ -808,7 +820,7 @@ DCCDisp_CstBinMem(tok_t op,
     if (width == 2) t_putb(0x66);
     if (!val->sa_sym && val->sa_off == (int8_t)val->sa_off) t_putb(0x6b),width = 1;
     else                                                    t_putb(0x69);
-    asm_modmem(temp&7,dst);
+    asm_modmem(temp&DCC_RI_MASK,dst);
     DCCDisp_SymAddr(val,width);
    }
    /* Store the multiplication result. */
@@ -825,7 +837,7 @@ DCCDisp_CstBinMem(tok_t op,
     */
 #ifdef IA32_PROTECTED_REGISTERS
    if (dst->ml_reg != DCC_RC_CONST &&
-      (dst->ml_reg&7) == DCC_ASMREG_ECX) {
+      (dst->ml_reg&DCC_RI_MASK) == DCC_ASMREG_ECX) {
     /* Since 'EBX' is protected, ECX is the only register we could use.
      * But as it turns out, that one's already in use by the destination.
      * >> Now we have to push/pop EBX... */
@@ -1212,7 +1224,7 @@ DCCDisp_BytCmpMem_impl(int src, struct DCCMemLoc const *__restrict dst,
  unsigned int score = 3;
  if unlikely(!dst_bytes) return;
  if (!DCCVStack_GetRegInuse(DCC_RR_XAX)) --score;
- if ((dst->ml_reg&7) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
+ if ((dst->ml_reg&DCC_RI_MASK) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
  /* Special optimization for _very_ large compare: use 'rep scasb/w/l' */
  if (dst_bytes >= REPMOV_THRESHOLD(score)) {
   DCCDisp_DoRepBytCmpMem_impl(src,dst,dst_bytes,nejmp);
@@ -1248,8 +1260,8 @@ DCCDisp_ByrCmpMem_impl(rc_t src, width_t max_width, struct DCCMemLoc const *__re
  struct DCCMemLoc dst_iter = *dst;
  unsigned int score = 3;
  if unlikely(!dst_bytes) return;
- if ((src&7) == DCC_ASMREG_EAX) --score;
- if ((dst->ml_reg&7) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
+ if ((src&DCC_RI_MASK) == DCC_ASMREG_EAX) --score;
+ if ((dst->ml_reg&DCC_RI_MASK) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
  /* Special optimization for _very_ large compare: use 'rep scasb/w/l' */
  if (dst_bytes >= REPMOV_THRESHOLD(score)) {
   DCCDisp_DoRepByrCmpMem_impl(src,max_width,dst,dst_bytes,nejmp);
@@ -1361,8 +1373,8 @@ DCCDisp_MemCmpMem_fixed(struct DCCMemLoc const *__restrict src,
  struct DCCMemLoc src_iter = *src,dst_iter = *dst;
  unsigned int score = 4;
  if unlikely(!n_bytes) return;
- if ((src->ml_reg&7) == DCC_ASMREG_ESI) score -= (!src->ml_off && !src->ml_sym) ? 2 : 1;
- if ((dst->ml_reg&7) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
+ if ((src->ml_reg&DCC_RI_MASK) == DCC_ASMREG_ESI) score -= (!src->ml_off && !src->ml_sym) ? 2 : 1;
+ if ((dst->ml_reg&DCC_RI_MASK) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
  /* Special optimization for _very_ large moves: use 'rep movsb/w/l' */
  if (n_bytes >= REPMOV_THRESHOLD(score)) {
   DCCDisp_DoRepMemCmpMem_fixed(src,dst,n_bytes,nejmp);
@@ -1713,7 +1725,7 @@ DCCDisp_LeaReg(struct DCCMemLoc const *__restrict addr,
  } else {
   if (!(dst&DCC_RC_I3264)) t_putb(0x66);
   t_putb(0x8d);
-  asm_modmem(dst&7,addr);
+  asm_modmem(dst&DCC_RI_MASK,addr);
  }
 }
 

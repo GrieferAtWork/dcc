@@ -204,7 +204,7 @@ PRIVATE void tpp_logerrf(char const *format, ...) {
 }
 
 PRIVATE char *tpp_hexrepr(void const *start, size_t size) {
- char *result = (char *)malloc(((size*2)+1)*sizeof(char));
+ char *result = (char *)(malloc)(((size*2)+1)*sizeof(char));
  if (result) {
   char *iter = result;
   uint8_t temp,byte,*data = (uint8_t *)start;

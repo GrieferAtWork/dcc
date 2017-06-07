@@ -38,7 +38,7 @@ DCCDisp_MemMovReg(struct DCCMemLoc const *__restrict src,
  if ((dst&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
  if (dst&DCC_RC_I16) t_putb(0x8b);
  else                t_putb(0x8a);
- asm_modmem(dst&7,src);
+ asm_modmem(dst&DCC_RI_MASK,src);
 }
 
 PUBLIC void
@@ -48,7 +48,7 @@ DCCDisp_RegMovMem(rc_t src,
  if ((src&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
  if (src&DCC_RC_I16) t_putb(0x89);
  else                t_putb(0x88);
- asm_modmem(src&7,dst);
+ asm_modmem(src&DCC_RI_MASK,dst);
 }
 
 PUBLIC void
@@ -65,17 +65,17 @@ DCCDisp_MemsMovReg(struct DCCMemLoc const *__restrict src,
   t_putb(0x66);
   t_putb(0x0f);
   t_putb((uint8_t)(src_unsigned ? 0xb6 : 0xbe));
-  asm_modmem(dst&7,src);
+  asm_modmem(dst&DCC_RI_MASK,src);
  } else if (src_bytes == 1) {
   assert(dst&DCC_RC_I32); /* movsx/movzx m8, r32 */
   t_putb(0x0f);
   t_putb((uint8_t)(src_unsigned ? 0xb6 : 0xbe));
-  asm_modmem(dst&7,src);
+  asm_modmem(dst&DCC_RI_MASK,src);
  } else {
   assert(dst&DCC_RC_I32); /* movsx/movzx m16, r32 */
   t_putb(0x0f);
   t_putb((uint8_t)(src_unsigned ? 0xb7 : 0xbf));
-  asm_modmem(dst&7,src);
+  asm_modmem(dst&DCC_RI_MASK,src);
  }
 }
 PUBLIC void
@@ -338,7 +338,7 @@ DCCDisp_DoRepByrMovMem(rc_t                               src, target_siz_t src_
       if (max_width >= 4) ax = DCC_RC_I32|DCC_ASMREG_EAX;
  else if (max_width >= 2) ax = DCC_RC_I16|DCC_ASMREG_AX;
  else                     ax = DCC_RC_I8|DCC_ASMREG_AL;
- if ((src&7) != DCC_ASMREG_EAX) {
+ if ((src&DCC_RI_MASK) != DCC_ASMREG_EAX) {
   ax = DCCVStack_GetRegExact(ax);
   DCCDisp_RegMovReg(src,ax,1);
  }
@@ -384,8 +384,8 @@ DCCDisp_DoMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_byt
  target_siz_t common_size,size_iter,max_block;
  unsigned int score = 5;
  if (src_unsigned) --score;
- if ((src->ml_reg&7) == DCC_ASMREG_ESI) score -= (!src->ml_off && !src->ml_sym) ? 2 : 1;
- if ((dst->ml_reg&7) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
+ if ((src->ml_reg&DCC_RI_MASK) == DCC_ASMREG_ESI) score -= (!src->ml_off && !src->ml_sym) ? 2 : 1;
+ if ((dst->ml_reg&DCC_RI_MASK) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
  /* Special optimization for _very_ large moves: use 'rep movsb/w/l' */
  if ((src_bytes > dst_bytes ? src_bytes : dst_bytes) >= REPMOV_THRESHOLD(score)) {
   DCCDisp_DoRepMemMovMem(src,src_bytes,dst,dst_bytes,src_unsigned);
@@ -406,8 +406,8 @@ DCCDisp_DoMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_byt
                                   2|(int)(!src_unsigned && !(common_size&1)));
  if (!temp_register) {
   temp_register = DCC_ASMREG_EAX;
-  while ((src_iter.ml_reg != DCC_RC_CONST && (src_iter.ml_reg&7) == temp_register) ||
-         (dst_iter.ml_reg != DCC_RC_CONST && (dst_iter.ml_reg&7) == temp_register) ||
+  while ((src_iter.ml_reg != DCC_RC_CONST && (src_iter.ml_reg&DCC_RI_MASK) == temp_register) ||
+         (dst_iter.ml_reg != DCC_RC_CONST && (dst_iter.ml_reg&DCC_RI_MASK) == temp_register) ||
           DCC_ASMREG_ISSPTR(temp_register)) {
    ++temp_register;
    temp_register %= 8;
@@ -709,7 +709,7 @@ DCCDisp_BytMovMem(int                                src, target_siz_t src_bytes
  }
  score = 3;
  if (!DCCVStack_GetRegInuse(DCC_RR_XAX)) --score;
- if ((dst->ml_reg&7) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
+ if ((dst->ml_reg&DCC_RI_MASK) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
  /* Special optimization for _very_ large moves: use 'rep stosb/w/l' */
  if ((dst_bytes > src_bytes ? dst_bytes : src_bytes) >= REPMOV_THRESHOLD(score)) {
   DCCDisp_DoRepBytMovMem(src,src_bytes,dst,dst_bytes,src_unsigned);
@@ -744,8 +744,8 @@ DCCDisp_ByrMovMem(rc_t                               src, target_siz_t src_bytes
  src = DCCVStack_CastReg(src,src_unsigned,DCC_RC_I8);
  common_size = dst_bytes < src_bytes ? dst_bytes : src_bytes;
  score = 3;
- if ((src&7) == DCC_ASMREG_EAX) --score;
- if ((dst->ml_reg&7) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
+ if ((src&DCC_RI_MASK) == DCC_ASMREG_EAX) --score;
+ if ((dst->ml_reg&DCC_RI_MASK) == DCC_ASMREG_EDI) score -= (!dst->ml_off && !dst->ml_sym) ? 2 : 1;
  /* Special optimization for _very_ large moves: use 'rep stosb/w/l' */
  if ((dst_bytes > src_bytes ? dst_bytes : src_bytes) >= REPMOV_THRESHOLD(score)) {
   DCCDisp_DoRepByrMovMem(src,src_bytes,dst,dst_bytes,src_unsigned);
@@ -778,7 +778,7 @@ DCCDisp_RegMovReg(rc_t src, rc_t dst, int src_unsigned) {
  if (c_dst&DCC_RC_I16) c_dst |= DCC_RC_I8;
  if (c_src == c_dst) {
   /* Check for special case: dst&src are identical. */
-  if ((dst&7) == (src&7)) return;
+  if ((dst&DCC_RI_MASK) == (src&DCC_RI_MASK)) return;
   /* Move in same storage class. */
   if ((c_src&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
   t_putb(0x88+!!(c_src&DCC_RC_I16));
@@ -789,7 +789,7 @@ DCCDisp_RegMovReg(rc_t src, rc_t dst, int src_unsigned) {
    *           but apply a mask for EDI/ESI. */
   if (c_dst&(DCC_RC_I16|DCC_RC_I3264)) {
    /* Special case: Move to lower-order storage class. */
-   if ((dst&7) == (src&7)) return;
+   if ((dst&DCC_RI_MASK) == (src&DCC_RI_MASK)) return;
    /* Destination class isn't 8-bit, meaning a lower-order register is always available. */
    if (!(c_dst&DCC_RC_I3264)) t_putb(0x66);
    t_putb(0x89);
@@ -809,16 +809,16 @@ DCCDisp_RegMovReg(rc_t src, rc_t dst, int src_unsigned) {
                    |(1 << DCC_ASMREG_DL)
                    |(1 << DCC_ASMREG_BL);
     temp_register &= ~(dst&3);
-    temp_register = (int8_t)(DCCVStack_GetRegOf(DCC_RC_I8,temp_register)&7);
+    temp_register = (int8_t)(DCCVStack_GetRegOf(DCC_RC_I8,temp_register)&DCC_RI_MASK);
 
     /* movw %src, %temp_register */
     t_putb(0x66);
     t_putb(0x89);
-    asm_modreg(src&7,temp_register);
+    asm_modreg(src&DCC_RI_MASK,temp_register);
 
     /* movb %temp_register, %dst */
     t_putb(0x88);
-    asm_modreg(temp_register,dst&7);
+    asm_modreg(temp_register,dst&DCC_RI_MASK);
     return;
    }
   }
@@ -842,7 +842,7 @@ DCCDisp_RegMovReg(rc_t src, rc_t dst, int src_unsigned) {
   else              goto upcast1632_s;
  }
 modreg:
- asm_modreg(src&7,dst&7);
+ asm_modreg(src&DCC_RI_MASK,dst&DCC_RI_MASK);
 }
 
 
@@ -863,7 +863,7 @@ DCCDisp_CstMovRegRaw(struct DCCSymAddr const *__restrict val, rc_t dst) {
  if ((dst&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
  /* mov $symaddr, %reg */
  opno = (dst&DCC_RC_I16) ? 0xb8 : 0xb0;
- opno += dst&7;
+ opno += dst&DCC_RI_MASK;
  t_putb(opno);
       if (dst&DCC_RC_I32) DCCDisp_SymAddr32(val);
  else if (dst&DCC_RC_I16) DCCDisp_SymAddr16(val);
@@ -1181,7 +1181,7 @@ DCCDisp_RegPush(rc_t src) {
  }
  assert((src&DCC_RC_MASK) != DCC_RC_I8);
  if (!(src&DCC_RC_I32)) t_putb(0x66);
- t_putb(0x50+(src&7));
+ t_putb(0x50+(src&DCC_RI_MASK));
 }
 PUBLIC void
 DCCDisp_PopMem(struct DCCMemLoc const *__restrict dst,
@@ -1216,7 +1216,7 @@ DCCDisp_PopReg(rc_t dst) {
  }
  assert((dst&DCC_RC_MASK) != DCC_RC_I8);
  if (!(dst&DCC_RC_I32)) t_putb(0x66);
- t_putb(0x58+(dst&7));
+ t_putb(0x58+(dst&DCC_RI_MASK));
 }
 
 
@@ -1228,21 +1228,22 @@ DCCDisp_RegCMovReg(test_t t, rc_t src,
  if ((src&DCC_RC_MASK) != (dst&DCC_RC_MASK)) {
   /* mov between different classes. */
   used_src = DCCVStack_GetRegOf(dst&DCC_RC_MASK,(uint8_t)~
-                               ((1 << (src&7))|(1 << (dst&7))));
+                               ((1 << (src&DCC_RI_MASK))|
+                                (1 << (dst&DCC_RI_MASK))));
   DCCDisp_RegMovReg(src,used_src,src_unsigned);
  }
  if (!(dst&(DCC_RC_I16|DCC_RC_I3264))) {
   t_putb(0x70+(t^DCC_TEST_NBIT)); /* Special case: 8-bit conditional mov */
   t_putb(2); /* Exact byte count from next byte until end of mov instruction. */
   t_putb(0x88); /* Place a normal register-jump. */
-  asm_modreg(src&7,dst&7);
+  asm_modreg(src&DCC_RI_MASK,dst&DCC_RI_MASK);
   return;
  }
  /* cmovcc %src, %dst */
  if (!(dst&DCC_RC_I32)) t_putb(0x66);
  t_putb(0x0f);
  t_putb(0x40+t);
- asm_modreg(dst&7,src&7);
+ asm_modreg(dst&DCC_RI_MASK,src&DCC_RI_MASK);
 }
 PUBLIC void
 DCCDisp_MemCMovReg(test_t t, struct DCCMemLoc const *__restrict src,
@@ -1261,7 +1262,7 @@ DCCDisp_MemCMovReg(test_t t, struct DCCMemLoc const *__restrict src,
  if (!(dst&DCC_RC_I32)) t_putb(0x66);
  t_putb(0x0f);
  t_putb(0x40+t);
- asm_modmem(dst&7,src);
+ asm_modmem(dst&DCC_RI_MASK,src);
 }
 
 

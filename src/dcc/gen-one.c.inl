@@ -36,22 +36,22 @@ DCCDisp_UnaryReg(tok_t op, rc_t dst) {
  case '~':
   if (dst&DCC_RC_I16) t_putb(0xf7);
   else                t_putb(0xf6);
-  asm_modreg((op == '-' ? 3 : 2),dst&7);
+  asm_modreg((op == '-' ? 3 : 2),dst&DCC_RI_MASK);
   break;
  case TOK_INC:
   if (dst&(DCC_RC_I16|DCC_RC_I3264)) {
-   t_putb(0x40+(dst&7));
+   t_putb(0x40+(dst&DCC_RI_MASK));
   } else {
    t_putb(0xfe);
-   asm_modreg(0,dst&7);
+   asm_modreg(0,dst&DCC_RI_MASK);
   }
   break;
  case TOK_DEC:
   if (dst&(DCC_RC_I16|DCC_RC_I3264)) {
-   t_putb(0x48+(dst&7));
+   t_putb(0x48+(dst&DCC_RI_MASK));
   } else {
    t_putb(0xfe);
-   asm_modreg(1,dst&7);
+   asm_modreg(1,dst&DCC_RI_MASK);
   }
   break;
  case '(':
@@ -60,7 +60,7 @@ DCCDisp_UnaryReg(tok_t op, rc_t dst) {
   /* call *%dst */
   if (!(dst&DCC_RC_I32)) t_putb(0x66);
   t_putb(0xff);
-  asm_modreg(2,dst&7);
+  asm_modreg(2,dst&DCC_RI_MASK);
   break;
  default: break;
  }

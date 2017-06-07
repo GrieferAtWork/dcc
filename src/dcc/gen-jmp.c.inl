@@ -54,7 +54,7 @@ PUBLIC void DCCDisp_RegJcc(test_t t, rc_t reg) {
  /* Place a normal register-jump. */
  if (!(reg&DCC_RC_I3264)) t_putb(0x66);
  t_putb(0xff);
- asm_modreg(4,reg&7);
+ asm_modreg(4,reg&DCC_RI_MASK);
 }
 PUBLIC void
 DCCDisp_MemJcc(test_t t, struct DCCMemLoc const *__restrict src,
@@ -162,7 +162,7 @@ PUBLIC void DCCDisp_RegJmp(rc_t reg) {
  }
  if (!(reg&DCC_RC_I3264)) t_putb(0x66);
  t_putb(0xff);
- asm_modreg(4,reg&7);
+ asm_modreg(4,reg&DCC_RI_MASK);
 }
 PUBLIC void
 DCCDisp_MemJmp(struct DCCMemLoc const *__restrict src,
@@ -198,7 +198,7 @@ DCCDisp_SccReg(test_t t, rc_t reg) {
      used_reg&4) {
   used_reg = DCCVStack_GetReg(DCC_RC_I8,0);
  }
- used_reg &= 7;
+ used_reg &= DCC_RI_MASK;
  /* setcc %reg */
  t_putb(0x0f);
  t_putb(0x90+t);
