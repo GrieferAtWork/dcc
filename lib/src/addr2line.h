@@ -30,10 +30,10 @@
 
 
 #ifdef DCC_BUILDING_A2L_RUNTIME
-#define A2L_NAME(x) x
+#define A2L_NAME(x) __dcc_dbg_##x
 #define A2L_TYPE(x) x
-#define A2L_DECL    static
-#define A2L_IMPL    static
+#define A2L_DECL    [[visibility("hidden")]]
+#define A2L_IMPL    [[visibility("hidden")]]
 #else
 #define A2L_NAME(x) DCC_##x
 #define A2L_TYPE    DCC

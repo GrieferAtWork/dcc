@@ -19,7 +19,6 @@
 /* Compile with: $ dcc -nostdlib -c -o int64.o int64.c */
 /* Declare everything with hidden visibility. */
 #pragma warning("-Wno-c99")
-#define DCC_BUILDING_A2L_RUNTIME 1
 
 /* NOTE: This file is included when linking with '-g' */
 
@@ -28,7 +27,6 @@
 #include <stdint.h>
 
 #include "addr2line.h"
-#include "common-addr2line.c"
 
 /* NOTE: This data structure must mirror the offsets found in '/src/dcc/unit-debug.c' */
 struct sec_info {
@@ -51,12 +49,12 @@ _Bool __dcc_dbg_addr2line(void *ip, lc_t *info) {
 				(uintptr_t)ip <= (uintptr_t)iter->si_addr+iter->si_size) {
 				/* Found the section associated with this EIP */
 				struct A2LState state; a2l_addr_t addr;
-				printf("Found A2L for %p in %p ... %p at %p\n",
-				       ip,iter->si_addr,iter->si_addr+iter->si_size,iter->si_a2l);
+				//printf("Found A2L for %p in %p ... %p at %p\n",
+				//       ip,iter->si_addr,iter->si_addr+iter->si_size,iter->si_a2l);
 				A2LState_INIT(&state,iter->si_a2l);
 				if (!state.s_code) break;
 				addr = (a2l_addr_t)((uintptr_t)ip-(uintptr_t)iter->si_addr);
-				if (!a2l_exec(&state,addr)) break;
+				if (!A2L_NAME(a2l_exec)(&state,addr)) break;
 				/* Managed to capture the given address!
 				 * Fill in all available information. */
 				info->line = (state.s_features&A2L_STATE_HASLINE) ? state.s_line+1 : 0;

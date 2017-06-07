@@ -3836,7 +3836,7 @@ TPPLexer_Reset(struct TPPLexer *__restrict self, uint32_t flags) {
         rare->kr_flags   &= ~(TPP_KEYWORDFLAG_BUILTINMACRO);
        } else {
         iter->k_macro = rare->kr_defmacro;
-        rare->kr_defmacro = NULL;
+        TPPFile_Incref(iter->k_macro);
        }
       }
      }
@@ -4353,8 +4353,15 @@ TPPLexer_Define(char const *__restrict name, size_t name_size,
  oldfile          = keyword->k_macro; /*< Inherit reference. */
  keyword->k_macro = macro_file;       /*< Inherit reference. */
  /* Define keyword flags. */
- if (flags && TPPKeyword_MAKERARE(keyword))
-     keyword->k_rare->kr_flags |= flags;
+ if (flags && TPPKeyword_MAKERARE(keyword)) {
+  keyword->k_rare->kr_flags |= flags;
+  if (flags&TPPLEXER_DEFINE_FLAG_BUILTIN) {
+   struct TPPFile *olddef = keyword->k_rare->kr_defmacro;
+   keyword->k_rare->kr_defmacro = macro_file;
+   TPPFile_Incref(macro_file);
+   if (olddef) TPPFile_Decref(olddef);
+  }
+ }
  if (oldfile) TPPFile_Decref(oldfile);
  return oldfile ? 2 : 1;
 err_value_string: TPPString_Decref(value_string); return 0;

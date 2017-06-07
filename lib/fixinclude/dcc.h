@@ -23,10 +23,10 @@
 
 /* Compiler-intrinsic functionality for DCC */
 typedef struct {
-	char const *path;   /*< [0..1] Path of the associated source file (Don't print when NULL). */
-	char const *file;   /*< [0..1] File name of the associated source file. */
-	int         line;   /*< 1-based source line, or ZERO(0) when unknown. */
-	int         col;    /*< 1-based source column, or ZERO(0) when unknown. */
+	char const *path; /*< [0..1] Path of the associated source file (Don't print when NULL). */
+	char const *file; /*< [0..1] File name of the associated source file. */
+	int         line; /*< 1-based source line, or ZERO(0) when unknown. */
+	int         col;  /*< 1-based source column, or ZERO(0) when unknown. */
 	void       *__pad[4];
 } lc_t;
 
@@ -39,7 +39,7 @@ typedef struct {
  * HINT: When given '*INFO' is even filled upon failure.
  * @param: IP: Instruction pointer that should be queried.
  * @return: 0: The given IP could not be found. */
-extern _Bool addr2line(void *__ip, lc_t *__info)
+extern _Bool _addr2line(void *__ip, lc_t *__info)
 	__asm__("__dcc_dbg_addr2line");
 
 #pragma extension(pop)

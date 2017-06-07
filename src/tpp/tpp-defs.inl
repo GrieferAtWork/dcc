@@ -536,18 +536,19 @@ WGROUP(WG_DEPRECATED,          "deprecated",          WSTATE_ERROR)
  assert(kwd->k_macro);
  assert(kwd->k_macro->f_kind == TPPFILE_KIND_MACRO);
  assert((kwd->k_macro->f_macro.m_flags&TPP_MACROFILE_KIND) != TPP_MACROFILE_KIND_EXPANDED);
- textfile = kwd->k_macro->f_macro.m_deffile;
- assert(textfile);
- assert(textfile->f_kind == TPPFILE_KIND_TEXT);
  WARNF("Redefining macro " Q("%s") "\n",kwd->k_name); 
- WARNF(TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
-       ? "%s(%d,%d) : " : "%s:%d:%d: "
-       , textfile->f_textfile.f_usedname
-       ? textfile->f_textfile.f_usedname->s_text
-       : textfile->f_name
-       ,(int)(kwd->k_macro->f_macro.m_defloc.lc_line+1)
-       ,(int)(kwd->k_macro->f_macro.m_defloc.lc_col+1));
- WARNF("See reference to previous definition"); 
+ textfile = kwd->k_macro->f_macro.m_deffile;
+ if (textfile) {
+  assert(textfile->f_kind == TPPFILE_KIND_TEXT);
+  WARNF(TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+        ? "%s(%d,%d) : " : "%s:%d:%d: "
+        , textfile->f_textfile.f_usedname
+        ? textfile->f_textfile.f_usedname->s_text
+        : textfile->f_name
+        ,(int)(kwd->k_macro->f_macro.m_defloc.lc_line+1)
+        ,(int)(kwd->k_macro->f_macro.m_defloc.lc_col+1));
+  WARNF("See reference to previous definition"); 
+ }
 })
 /*26*/DEF_WARNING(W_EXPECTED_KEYWORD_AFTER_UNDEF,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after " Q("#undef") ", but got " TOK_S,TOK_A)) /*< OLD(TPPWarn_ExpectedKeywordAfterUndef). */
 /*27*/DEF_WARNING(W_EXPECTED_KEYWORD_AFTER_IFDEF,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after " Q("#ifdef") ", but got " TOK_S,TOK_A)) /*< OLD(TPPWarn_ExpectedKeywordAfterIfdef). */

@@ -50,7 +50,7 @@ A2L_IMPL a2l_arg_t A2L_NAME(a2l_getarg)(a2l_op_t **pcode) {
  return result;
 }
 
-#ifdef __DCC_VERSION__
+#if defined(__DCC_VERSION__) && 0
 extern int printf(char const *,...);
 #define LOG(x) printf x
 #else
