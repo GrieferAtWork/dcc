@@ -1385,8 +1385,9 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
     if unlikely(!oldvec) goto end;
     newvec = (uint8_t *)DCCSection_GetText(self,aligned_result,new_size);
     if unlikely(!newvec) goto end;
-    /* Move relocations. */
+    /* Move relocations & debug informatino. */
     DCCSection_Movrel(self,aligned_result,old_addr,new_size);
+    DCCA2lWriter_Mov(&self->sc_a2l,aligned_result,old_addr,new_size);
     /* Move memory. */
     memmove(newvec,oldvec,new_size);
     DCCSection_DFree(self,old_addr,alignment_offset);
@@ -1417,8 +1418,9 @@ alloc_newblock:
    if unlikely(!oldvec) goto end;
    newvec = (uint8_t *)DCCSection_GetText(self,result,old_size);
    if unlikely(!newvec) goto end;
-   /* Move relocations. */
+   /* Move relocations & debug information. */
    DCCSection_Movrel(self,result,old_addr,old_size);
+   DCCA2lWriter_Mov(&self->sc_a2l,result,old_addr,old_size);
    /* Move the common memory to the new location. */
    memmove(newvec,oldvec,old_size);
    /* Free overlap/the old vector. */
@@ -1638,6 +1640,8 @@ DCCSection_DFree(struct DCCSection *__restrict self,
  assert(self->sc_text.tb_max >= self->sc_text.tb_begin);
  /* Delete all relocations. */
  DCCSection_Delrel(self,addr,size);
+ /* Delete all debug information. */
+ DCCA2lWriter_Delete(&self->sc_a2l,addr,size);
 }
 
 

@@ -32,6 +32,43 @@ struct DCCA2lWriter {
  A2L_TYPE(a2l_op_t) *w_cend;   /*< [0..1] End address of allocated A2L code. */
 };
 
+#define DCCA2lWriter_Init(self) memset(self,0,sizeof(struct DCCA2lWriter))
+DCCFUN void
+DCCA2lWriter_Quit(struct DCCA2lWriter *__restrict self);
+
+/* Merge 'other' offset from 'other_base' into 'self'.
+ * NOTE: During this process, 'other' may be modified,
+ *       but will remain in a valid state.
+ * NOTE: In addition to this, 'string_base' is added to all path/file operands. */
+DCCFUN void
+DCCA2lWriter_Merge(struct DCCA2lWriter *__restrict self,
+                   struct DCCA2lWriter *__restrict other,
+                   target_ptr_t other_base,
+                   target_ptr_t string_base);
+
+/* Move all addr2line debug informations from
+ * 'old_addr..+=n_bytes' to 'new_addr..+=n_bytes' */
+DCCFUN void
+DCCA2lWriter_Mov(struct DCCA2lWriter *__restrict self,
+                 DCC(target_ptr_t) new_addr,
+                 DCC(target_ptr_t) old_addr,
+                 DCC(target_siz_t) n_bytes);
+
+/* Delete all A2L debug informations inside the given address range. */
+DCCFUN void
+DCCA2lWriter_Delete(struct DCCA2lWriter *__restrict self,
+                    target_ptr_t addr, target_siz_t size);
+
+/* Optimize debug information pseudo-code. */
+DCCFUN void
+DCCA2lWriter_Optimize(struct DCCA2lWriter *__restrict self);
+
+
+/* Generate debug information pointing 'addr'
+ * to the current source location from 'tpp'. */
+DCCFUN void DCCA2lWriter_PutLC(struct DCCA2lWriter *__restrict self, target_ptr_t addr);
+DCCFUN void DCCA2lWriter_PutL(struct DCCA2lWriter *__restrict self, target_ptr_t addr);
+
 struct DCCA2lInfo {
  A2L_TYPE(a2l_path_t) ai_path;     /*< Offset in 'unit.u_dbgstr' to the path of the current file. */
  A2L_TYPE(a2l_file_t) ai_file;     /*< Offset in 'unit.u_dbgstr' to the path of the current file. */
@@ -39,26 +76,13 @@ struct DCCA2lInfo {
  uint32_t             ai_features; /*< Available a2l features (Set of 'A2L_STATE_HAS*'). */
 };
 
-#define     DCCA2lWriter_Init(self) memset(self,0,sizeof(struct DCCA2lWriter))
-DCCFUN void DCCA2lWriter_Quit(struct DCCA2lWriter *__restrict self);
+/* Similar to 'DCCA2lWriter_PutLC', but generate information for 'info' instead. */
+DCCFUN void
+DCCA2lWriter_PutEx(struct DCCA2lWriter *__restrict self, target_ptr_t addr,
+                   struct DCCA2lInfo const *__restrict info);
 
 
-/* Generate debug information pointing 'addr'
- * to the current source location from 'tpp'. */
-DCCFUN void DCCA2lWriter_Put(struct DCCA2lWriter *__restrict self, target_ptr_t addr);
 
-/* Similar to 'DCCA2lWriter_Put', but generate information for 'info' instead. */
-DCCFUN void DCCA2lWriter_PutEx(struct DCCA2lWriter *__restrict self, target_ptr_t addr,
-                               struct DCCA2lInfo const *__restrict info);
-
-/* Merge 'other' offset from 'other_base' into 'self'.
- * NOTE: During this process, 'other' may be modified,
- *       but will remain in a valid state.
- * NOTE: In addition to this, 'string_base' is added to all path/file operands. */
-DCCFUN void DCCA2lWriter_Merge(struct DCCA2lWriter *__restrict self,
-                               struct DCCA2lWriter *__restrict other,
-                               target_ptr_t other_base,
-                               target_ptr_t string_base);
 
 
 struct DCCA2lAnswer {

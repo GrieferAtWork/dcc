@@ -1002,7 +1002,10 @@ unknown_instr:
   WARN(W_ASM_EXPECTED_INSTR);
   ops = NULL;
  }
- if (ops) asm_parse_op(ops,size_override);
+ if (ops) {
+  DCCUnit_MkDebugL();
+  asm_parse_op(ops,size_override);
+ }
 done_instr:
  if (TOK == ';' || TOK == '\n' || TOK <= 0) yield_and_return: YIELD();
  else if (!ops || !(ops->o_flags&DCC_ASMOPC_PREFIX)) {

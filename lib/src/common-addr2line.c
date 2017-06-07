@@ -52,11 +52,9 @@ A2L_IMPL a2l_arg_t A2L_NAME(a2l_getarg)(a2l_op_t **pcode) {
 
 #ifdef __DCC_VERSION__
 extern int printf(char const *,...);
-#define LOG(x)  (void)0
-#define LOG2(x) printf x
+#define LOG(x) printf x
 #else
-#define LOG(x)  (void)0
-#define LOG2(x) (void)0
+#define LOG(x) (void)0
 #endif
 
 /* Execute code from a given addr2line state,
@@ -72,6 +70,7 @@ A2L_IMPL int A2L_NAME(a2l_exec)(struct A2LState *s, a2l_addr_t capture) {
   switch (op) {
   case A2L_O_EOF: LOG(("EOF\n")); goto done;
   case A2L_O_RESET: LOG(("RESET\n")); A2LState_RESET(s); break;
+  case A2L_O_NOP: break;
 
   {
    a2l_addr_t old_addr,new_addr;
@@ -81,10 +80,10 @@ A2L_IMPL int A2L_NAME(a2l_exec)(struct A2LState *s, a2l_addr_t capture) {
    s->s_addr = new_addr;
    if (new_addr >= old_addr) {
     LOG(("CHECK_ADDR(%p in %p...%p)\n",capture,old_addr,new_addr));
-    if (capture >= old_addr && capture <= new_addr) goto found;
+    if (capture > old_addr && capture <= new_addr) goto found;
    } else {
     LOG(("CHECK_ADDR(%p in %p...%p)\n",capture,new_addr,old_addr));
-    if (capture >= new_addr && capture <= old_addr) goto found;
+    if (capture > new_addr && capture <= old_addr) goto found;
    }
   } break;
 
@@ -95,8 +94,8 @@ A2L_IMPL int A2L_NAME(a2l_exec)(struct A2LState *s, a2l_addr_t capture) {
 
   case A2L_O_SL: s->s_line  = ARG(); A2LState_DEL_C(s); LOG(("LINE = %d\n",s->s_line)); break;
   case A2L_O_SC: s->s_col   = ARG(); A2LState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
-  case A2L_O_SP: s->s_path  = ARG(); A2LState_SETF(s,A2L_STATE_HASPATH); LOG2(("PATH = %d\n",s->s_path)); break;
-  case A2L_O_SF: s->s_file  = ARG(); A2LState_SETF(s,A2L_STATE_HASFILE); LOG2(("FILE = %d\n",s->s_file)); break;
+  case A2L_O_SP: s->s_path  = ARG(); A2LState_SETF(s,A2L_STATE_HASPATH); LOG(("PATH = %d\n",s->s_path)); break;
+  case A2L_O_SF: s->s_file  = ARG(); A2LState_SETF(s,A2L_STATE_HASFILE); LOG(("FILE = %d\n",s->s_file)); break;
 
   {
    if (DCC_MACRO_FALSE) { case A2L_O_IL_IA: s->s_line += ARG(); }
@@ -135,8 +134,8 @@ A2L_IMPL int A2L_NAME(a2l_exec)(struct A2LState *s, a2l_addr_t capture) {
    if (op >= A2L_O_DEL_L && op <= A2L_O_DEL_P) {
     if (op&A2L_O_DEL_L) A2LState_DEL_L(s),LOG(("DELETE(LINE)\n"));
     if (op&A2L_O_DEL_C) A2LState_DEL_C(s),LOG(("DELETE(COL)\n"));
-    if (op&A2L_O_DEL_F) A2LState_DEL_F(s),LOG2(("DELETE(FILE)\n"));
-    if (op&A2L_O_DEL_P) A2LState_DEL_P(s),LOG2(("DELETE(PATH)\n"));
+    if (op&A2L_O_DEL_F) A2LState_DEL_F(s),LOG(("DELETE(FILE)\n"));
+    if (op&A2L_O_DEL_P) A2LState_DEL_P(s),LOG(("DELETE(PATH)\n"));
    } else {
     /* Unknown opcode (Ignore). */
     unsigned int opc = A2L_GETOPC(op);

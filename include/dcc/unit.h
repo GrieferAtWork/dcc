@@ -901,7 +901,7 @@ DCCSection_DAllocSym(struct DCCSection *__restrict self,
                      DCC(target_siz_t) mem_size, DCC(target_siz_t) size,
                      DCC(target_siz_t) align, DCC(target_siz_t) offset);
 
-/* Free a given section address range & clear all relocations inside.
+/* Free a given section address range & clear all relocations / debug information inside.
  * NOTE: This function differs from section incref/decref,
  *       as associated memory is freed immediately.
  * @requires: !DCCSection_ISIMPORT(self) */
@@ -1212,7 +1212,8 @@ DCCFUN void DCCUnit_MkDebugSym(void);
 
 /* Add a addr2line entry for the current text address and the current lexer position.
  * NOTE: This function is a no-op when 'DCC_LINKER_FLAG_GENDEBUG' isn't set. */
-DCCFUN void DCCUnit_MkDebugDef(void);
+DCCFUN void DCCUnit_MkDebugL(void);
+DCCFUN void DCCUnit_MkDebugLC(void);
 
 /* Lookup/Create a new symbol/section 'name'.
  * Note, that every section is implicitly a symbol!

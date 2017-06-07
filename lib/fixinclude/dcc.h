@@ -36,6 +36,7 @@ typedef struct {
  *          debug information, and the whole application
  *          must be linked with '-g' again to ensure that
  *          this function is defined.
+ * HINT: When given '*INFO' is even filled upon failure.
  * @param: IP: Instruction pointer that should be queried.
  * @return: 0: The given IP could not be found. */
 extern _Bool addr2line(void *__ip, lc_t *__info)

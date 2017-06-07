@@ -114,6 +114,7 @@ struct A2LState {
 /* A2L predefined opcodes. */
 #define A2L_O_EOF      0x00 /* Terminate the A2L command chain. NOTE: _MUST_ Always be ZERO(0)! */
 #define A2L_O_RESET    0x10 /* addr = 0,line = 0,col = 0,path = 0,file = 0,has_line = 0,has_col = 0; */
+#define A2L_O_NOP      0x11 /* no-op */
 
 /* Delete opcodes (May be or'd together, or used as stand-alone) */
 #define A2L_O_DEL_L    0x01 /* A2LState_DEL_L(s); */

@@ -45,12 +45,14 @@ DCC_DECL_BEGIN
 #endif
 
 PRIVATE struct DCCSym * /* Allocate and define a symbol for the A2l data of the given writer. */
-DCCA2lWrite_AllocData(struct DCCA2lWriter const *__restrict writer) {
+DCCA2lWrite_AllocData(struct DCCA2lWriter *__restrict writer) {
  struct DCCSym *result = DCCUnit_AllocSym();
  if likely(result) {
   void        *a2l_data;
   target_ptr_t a2l_addr;
   size_t       a2l_size;
+  /* Try to optimize the A2L code to impact on binary size. */
+  DCCA2lWriter_Optimize(writer);
   a2l_size = (size_t)((writer->w_state.s_code-writer->w_cbegin)*sizeof(a2l_op_t));
   /* NOTE: Allocate 1 additional opcode that is implicitly initialized as 'A2L_O_EOF' */
   a2l_addr = DCCSection_DAlloc(SECTIONFOR_A2LCMD,a2l_size+sizeof(a2l_op_t),
@@ -98,11 +100,17 @@ PUBLIC void DCCUnit_MkDebugSym(void) {
  DCCSym_Define(secinfo_sym,&DCCSection_Abs,0,0,1);
 }
 
-PUBLIC void DCCUnit_MkDebugDef(void) {
+PUBLIC void DCCUnit_MkDebugL(void) {
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
  assert(unit.u_text);
  /* Put a debug addr2line entry. */
- DCCA2lWriter_Put(&unit.u_text->sc_a2l,t_addr);
+ DCCA2lWriter_PutL(&unit.u_text->sc_a2l,t_addr);
+}
+PUBLIC void DCCUnit_MkDebugLC(void) {
+ if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
+ assert(unit.u_text);
+ /* Put a debug addr2line entry. */
+ DCCA2lWriter_PutLC(&unit.u_text->sc_a2l,t_addr);
 }
 
 

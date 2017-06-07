@@ -302,15 +302,41 @@ fix_stringoff:
  }
 }
 
+
+PUBLIC void
+DCCA2lWriter_Mov(struct DCCA2lWriter *__restrict self,
+                 target_ptr_t new_addr,
+                 target_ptr_t old_addr,
+                 target_siz_t n_bytes) {
+ assert(self);
+ (void)new_addr;
+ (void)old_addr;
+ (void)n_bytes;
+ /* TODO */
+}
+
+PUBLIC void
+DCCA2lWriter_Delete(struct DCCA2lWriter *__restrict self,
+                    target_ptr_t addr, target_siz_t size) {
+ assert(self);
+ (void)addr,(void)size;
+ /* TODO */
+}
+
+PUBLIC void
+DCCA2lWriter_Optimize(struct DCCA2lWriter *__restrict self) {
+ assert(self);
+ /* todo: Optional; can wait... */
+}
+
+
 #undef PUT3
 #undef PUT2
 #undef PUT1
 #undef PUT0
 
-
-PUBLIC void
-DCCA2lWriter_Put(struct DCCA2lWriter *__restrict self, target_ptr_t addr) {
- struct DCCA2lInfo info;
+PRIVATE void
+DCCA2lInfo_Capture(struct DCCA2lInfo *__restrict info) {
  struct TPPFile *textfile;
  textfile = TPPLexer_Textfile();
  assert(textfile);
@@ -363,16 +389,29 @@ DCCA2lWriter_Put(struct DCCA2lWriter *__restrict self, target_ptr_t addr) {
  /* Lookup file/column information. */
  if (TOKEN.t_begin >= TOKEN.t_file->f_begin &&
      TOKEN.t_begin <= TOKEN.t_file->f_end) {
-  TPPFile_LCAt(TOKEN.t_file,&info.ai_linecol,TOKEN.t_begin);
+  TPPFile_LCAt(TOKEN.t_file,&info->ai_linecol,TOKEN.t_begin);
  } else {
-  TPPLexer_LC(&info.ai_linecol);
+  TPPLexer_LC(&info->ai_linecol);
  }
- info.ai_file     = textfile->f_textfile.f_dbg_fileaddr-1;
- info.ai_path     = textfile->f_textfile.f_dbg_pathaddr-1;
- info.ai_features = (A2L_STATE_HASLINE|A2L_STATE_HASCOL|
-                     A2L_STATE_HASPATH|A2L_STATE_HASFILE);
- if (info.ai_path == (target_ptr_t)-2) info.ai_path = 0,info.ai_features &= ~(A2L_STATE_HASPATH);
- if (info.ai_file == (target_ptr_t)-2) info.ai_file = 0,info.ai_features &= ~(A2L_STATE_HASFILE);
+ info->ai_file     = textfile->f_textfile.f_dbg_fileaddr-1;
+ info->ai_path     = textfile->f_textfile.f_dbg_pathaddr-1;
+ info->ai_features = (A2L_STATE_HASLINE|A2L_STATE_HASCOL|
+                      A2L_STATE_HASPATH|A2L_STATE_HASFILE);
+ if (info->ai_path == (target_ptr_t)-2) info->ai_path = 0,info->ai_features &= ~(A2L_STATE_HASPATH);
+ if (info->ai_file == (target_ptr_t)-2) info->ai_file = 0,info->ai_features &= ~(A2L_STATE_HASFILE);
+}
+
+PUBLIC void
+DCCA2lWriter_PutLC(struct DCCA2lWriter *__restrict self, target_ptr_t addr) {
+ struct DCCA2lInfo info;
+ DCCA2lInfo_Capture(&info);
+ DCCA2lWriter_PutEx(self,addr,&info);
+}
+PUBLIC void
+DCCA2lWriter_PutL(struct DCCA2lWriter *__restrict self, target_ptr_t addr) {
+ struct DCCA2lInfo info;
+ DCCA2lInfo_Capture(&info);
+ info.ai_features &= ~(A2L_STATE_HASCOL);
  DCCA2lWriter_PutEx(self,addr,&info);
 }
 
