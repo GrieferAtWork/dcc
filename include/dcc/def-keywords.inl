@@ -1696,7 +1696,7 @@ DEF_WARNING(W_LIB_ARCH_UNKNOWN_FORMAT,(WG_LIBLOAD),WSTATE_ERROR,{
 
 WARNING_NAMESPACE(WN_UNITEXPORT,4000)
 DEF_WARNING(W_EXPORT_CANNOT_OPEN,(WG_LIBLOAD),WSTATE_ERROR,
-            WARNF("Cannot export compilation used: Failed to open " Q("%s"),ARG(char *)))
+            WARNF("Cannot export compilation unit: Failed to open " Q("%s"),ARG(char *)))
 DEF_WARNING(W_EXPORT_UNDEFINED_UNNAMED_SYMBOL,(WG_LIBLOAD),WSTATE_ERROR,WARNF("Exporting undefined, unnamed symbol " Q("%lu"),(unsigned long)ARG(uint32_t)))
 
 

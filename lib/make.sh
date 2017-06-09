@@ -2,7 +2,8 @@
 
 CC=dcc
 CC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
-DEPDIR="./.deps"
+DEPDIR=".deps"
+OBJDIR=".objs"
 
 src_changed() {
 	inf="$1"
@@ -24,38 +25,54 @@ src_changed() {
 	return 0
 }
 
-obj() {
+debug_objects=()
+ndebug_objects=()
+
+src() {
 	local objfile
 	local args
+	local mode
+	mode="$1"
+	shift
 	args=()
 	while [[ $1 == "-"* ]]; do
 		args+=("$1")
 		shift
 	done
-	objfile="$1"
-	shift
-	depfile="$DEPDIR/$objfile.d"
-	if ! src_changed "$objfile" "$depfile"; then
-		echo "Compiling: $objfile"
-		$CC "${args[@]}" -DNDEBUG -nostdlib -c -MMD -MF "$depfile" -o "$objfile" $*
+	name="$(basename "$1")"
+	if [[ "$mode" == *"D"* ]]; then
+		objfile="$OBJDIR/dbg-$name.o"
+		debug_objects+=("$objfile")
+		depfile="$DEPDIR/dbg-$name.d"
+		if ! src_changed "$objfile" "$depfile"; then
+			echo "Compiling: $objfile"
+			$CC "${args[@]}" -g -nostdlib -c -MMD -MF "$depfile" -o "$objfile" $*
+		fi
 	fi
-	objfile="dbg-$objfile"
-	depfile="$DEPDIR/$objfile.d"
-	if ! src_changed "$objfile" "$depfile"; then
-		echo "Compiling: $objfile"
-		$CC "${args[@]}" -g -nostdlib -c -MMD -MF "$depfile" -o "$objfile" $*
+	if [[ "$mode" == *"N"* ]]; then
+		objfile="$OBJDIR/ndbg-$name.o"
+		ndebug_objects+=("$objfile")
+		depfile="$DEPDIR/ndbg-$name.d"
+		if ! src_changed "$objfile" "$depfile"; then
+			echo "Compiling: $objfile"
+			$CC "${args[@]}" -DNDEBUG -nostdlib -c -MMD -MF "$depfile" -o "$objfile" $*
+		fi
 	fi
 }
 
+crt-src-c() { src "DN" $*; }
+crt-src-n() { src "N" $*; }
+crt-src-d() { src "D" $*; }
+
 mkdir -p "$DEPDIR" || exit $?
+mkdir -p "$OBJDIR" || exit $?
 
-obj "crt1.o"      "src/crt1.c"
-obj "int64.o"     "src/int64.c"
-obj -DDCC_BUILDING_A2L_RUNTIME \
-    "addr2line.o" "src/addr2line.c" "src/addr2line-common.c"
+crt-src-c                            "src/crt1.c"
+crt-src-c                            "src/int64.c"
+crt-src-d -DDCC_BUILDING_A2L_RUNTIME "src/addr2line.c" "src/addr2line-common.c"
 
-
-
+$CC -g -c -o dbg-crt.o ${debug_objects[@]}
+$CC -c -o crt.o ${ndebug_objects[@]}
 
 
 
