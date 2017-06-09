@@ -25,7 +25,8 @@
 typedef struct {
 	char const *path; /*< [0..1] Path of the associated source file (Don't print when NULL). */
 	char const *file; /*< [0..1] File name of the associated source file. */
-	void       *__pad1[2];
+	char const *name; /*< [0..1] Name of the surrounding function symbol. */
+	void       *__pad1[1];
 	int         line; /*< 1-based source line, or ZERO(0) when unknown. */
 	int         col;  /*< 1-based source column, or ZERO(0) when unknown. */
 	void       *__pad2[2];

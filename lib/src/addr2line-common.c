@@ -52,7 +52,7 @@ A2L_NAME(a2l_getarg)(a2l_op_t const **__restrict pcode) {
  return result;
 }
 
-#if defined(__DCC_VERSION__) && 0
+#if defined(__DCC_VERSION__) && 1
 extern int printf(char const *,...);
 #define LOG(x) printf x
 #else
@@ -103,7 +103,6 @@ A2L_NAME(a2l_exec)(struct A2LState *__restrict s,
   {
    if (DCC_MACRO_FALSE) { case A2L_O_IL_IA: s->s_line += ARG(); }
    if (DCC_MACRO_FALSE) { case A2L_O_DL_IA: s->s_line -= ARG(); }
-   if (DCC_MACRO_FALSE) { case A2L_O_SL_IA: s->s_line  = ARG(); }
    A2LState_SETF(s,A2L_STATE_HASLINE);
    A2LState_DEL_C(s);
    LOG(("LINE = %d\n",s->s_line));
@@ -113,7 +112,6 @@ A2L_NAME(a2l_exec)(struct A2LState *__restrict s,
   {
    if (DCC_MACRO_FALSE) { case A2L_O_IL_DA: s->s_line += ARG(); }
    if (DCC_MACRO_FALSE) { case A2L_O_DL_DA: s->s_line -= ARG(); }
-   if (DCC_MACRO_FALSE) { case A2L_O_SL_DA: s->s_line  = ARG(); }
    A2LState_SETF(s,A2L_STATE_HASLINE);
    A2LState_DEL_C(s);
    LOG(("LINE = %d\n",s->s_line));
@@ -123,7 +121,6 @@ A2L_NAME(a2l_exec)(struct A2LState *__restrict s,
   {
    if (DCC_MACRO_FALSE) { case A2L_O_IL_SC_IA: case A2L_O_IL_SC_DA: s->s_line += ARG(); }
    if (DCC_MACRO_FALSE) { case A2L_O_DL_SC_IA: case A2L_O_DL_SC_DA: s->s_line -= ARG(); }
-   if (DCC_MACRO_FALSE) { case A2L_O_SL_SC_IA: case A2L_O_SL_SC_DA: s->s_line  = ARG(); }
    LOG(("LINE = %d\n",s->s_line));
    s->s_col = ARG();
    A2LState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL);

@@ -167,11 +167,12 @@ SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER);
 static void print_addr(void *p, size_t i) {
  lc_t info;
  _addr2line(p,&info);
- fprintf(stderr,"%s%s%s(%d,%d) : %p (Frame %lu)\n",
+ fprintf(stderr,"%s%s%s(%d,%d) : %s : %p (Frame %lu)\n",
          info.path ? info.path : "",
          info.path ? "/" : "",
-         info.file ? info.file : "???",
+         info.file ? info.file : "??" "?",
          info.line,info.col,
+         info.name ? info.name : "??" "?",
          p,(unsigned long)i);
  fflush(stderr);
 }
