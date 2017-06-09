@@ -61,7 +61,7 @@ src src/*.c
 src src/dcc/*.c
 src lib/src/addr2line-common.c
 
-$CC -o "$out_bin" ${object_list[@]}
+$CC -o "$out_bin" "${object_list[@]}"
 
 
 

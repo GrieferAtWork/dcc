@@ -186,7 +186,7 @@ update_col:
    else if (new_state->s_col < old_state->s_col)
     O(A2L_O_DC),A(old_state->s_col-new_state->s_col);
   } else {
-   O(A2L_O_SC),A(new_state->s_col);
+   O(A2L_O_IC),A(new_state->s_col);
   }
  } else if (old_state->s_features&A2L_STATE_HASCOL) {
   O(A2L_O_DEL_C);
@@ -252,8 +252,8 @@ DCCA2lChunk_RelocString(struct DCCA2lChunk *__restrict self,
  old_last = self->c_code_last-self->c_code_begin;
  self->c_code_last = self->c_code_begin;
  /* Search for opcodes with string operands. */
- while (self->c_code_last != self->c_code_end) {
-  assert(self->c_code_last < self->c_code_end);
+ while (self->c_code_last != self->c_code_pos) {
+  assert(self->c_code_last < self->c_code_pos);
   op = *self->c_code_last++;
   if (op == A2L_O_SP || op == A2L_O_SF || op == A2L_O_SN) {
    arg_end     = self->c_code_last;
@@ -289,7 +289,10 @@ DCCA2lChunk_RelocString(struct DCCA2lChunk *__restrict self,
    self->c_code_last += new_argsize;
   } else {
    unsigned int opc = A2L_GETOPC(op);
-   while (opc--) DCC_a2l_getarg((a2l_op_t const **)&self->c_code_last);
+   while (opc--) {
+    assert(self->c_code_last < self->c_code_pos);
+    DCC_a2l_getarg((a2l_op_t const **)&self->c_code_last);
+   }
   }
  }
  self->c_code_last = self->c_code_begin+old_last;

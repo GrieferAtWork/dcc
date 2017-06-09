@@ -166,8 +166,11 @@ typedef PTOP_LEVEL_EXCEPTION_FILTER LPTOP_LEVEL_EXCEPTION_FILTER;
 static void print_addr(void *p, size_t i) {
  lc_t info;
  _addr2line(p,&info);
- fprintf(stderr,"%s(%d,%d) : %p (Frame %lu)\n",
-         info.file,info.line,info.col,
+ fprintf(stderr,"%s%s%s(%d,%d) : %p (Frame %lu)\n",
+         info.path ? info.path : "",
+         info.path ? "/" : "",
+         info.file ? info.file : "???",
+         info.line,info.col,
          p,(unsigned long)i);
  fflush(stderr);
 }

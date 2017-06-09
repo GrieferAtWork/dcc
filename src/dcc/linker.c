@@ -290,12 +290,12 @@ again:
 
 #define INTPATH_MAXTRAIL 16
 
-#define LIBINT_TRIAL_COUNT 2
+#define LIBINT_TRIAL_COUNT 1
 #define INCINT_TRIAL_COUNT 2
 struct inttrail { char t[INTPATH_MAXTRAIL]; };
 static struct inttrail const
 libint_trails[LIBINT_TRIAL_COUNT+1] = {
- {{'/','l','i','b','s','\0'}},
+ /*{{'/','l','i','b','s','\0'}},*/
  {{'/','l','i','b','\0'}},
  {{'\0'}},
 };

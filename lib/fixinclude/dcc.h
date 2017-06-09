@@ -21,8 +21,6 @@
 
 #include <__stdinc.h>
 
-#pragma extension(push,"-fdefine-utility-macros")
-
 /* Compiler-intrinsic functionality for DCC */
 typedef struct {
 	char const *path; /*< [0..1] Path of the associated source file (Don't print when NULL). */
@@ -39,13 +37,14 @@ typedef struct {
  *          debug information, and the whole application
  *          must be linked with '-g' again to ensure that
  *          this function is defined.
- * HINT: When given '*INFO' is even filled upon failure.
- * @param: IP: Instruction pointer that should be queried.
- * @return: 0: The given IP could not be found. */
+ * HINT: When given, '*INFO' is filled even upon failure.
+ * @param: IP:   Instruction pointer that should be queried.
+ * @param: INFO: User-provided buffer to fill with information.
+ * @return: 0:   The given IP could not be found. */
 extern _Bool _addr2line(void *__ip, lc_t *__info)
 	__asm__("__dcc_dbg_addr2line");
 
-#pragma extension(pop)
+
 
 
 

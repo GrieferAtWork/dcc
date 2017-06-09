@@ -127,8 +127,6 @@ struct A2LState {
 #define A2L_O_DEL_P    0x08 /* A2LState_DEL_F(s); */
 #define A2L_O_DEL_N    0x10 /* A2LState_DEL_N(s); */
 
-/* TODO: Redo this and get rid of any way of decrementing the address. (Other than a reset?) */
-
 #define A2L_O_IA       0x40 /* [CAPTURE] s->s_addr += ARG(0); */
 #define A2L_O_DA       0x41 /* [CAPTURE] s->s_addr -= ARG(0); */
 #define A2L_O_IL       0x42 /*           s->s_line += ARG(0); A2LState_DEL_C(s); */
@@ -136,11 +134,9 @@ struct A2LState {
 #define A2L_O_IC       0x44 /*           s->s_col  += ARG(0); A2LState_SETF(s,A2L_STATE_HASCOL); */
 #define A2L_O_DC       0x45 /*           s->s_col  -= ARG(0); A2LState_SETF(s,A2L_STATE_HASCOL); */
 
-#define A2L_O_SL       0x47 /*           s->s_line  = ARG(0); A2LState_DEL_C(s); */
-#define A2L_O_SC       0x48 /*           s->s_col   = ARG(0); A2LState_SETF(s,A2L_STATE_HASCOL); */
-#define A2L_O_SP       0x49 /*           s->s_path  = ARG(0); A2LState_SETF(s,A2L_STATE_HASPATH); */
-#define A2L_O_SF       0x4a /*           s->s_file  = ARG(0); A2LState_SETF(s,A2L_STATE_HASFILE); */
-#define A2L_O_SN       0x4b /*           s->s_name  = ARG(0); A2LState_SETF(s,A2L_STATE_HASNAME); */
+#define A2L_O_SP       0x46 /*           s->s_path  = ARG(0); A2LState_SETF(s,A2L_STATE_HASPATH); */
+#define A2L_O_SF       0x47 /*           s->s_file  = ARG(0); A2LState_SETF(s,A2L_STATE_HASFILE); */
+#define A2L_O_SN       0x48 /*           s->s_name  = ARG(0); A2LState_SETF(s,A2L_STATE_HASNAME); */
 
 #define A2L_O_IL_IA    0x80 /* [CAPTURE] s->s_line += ARG(0); A2LState_SETF(s,A2L_STATE_HASLINE); A2LState_DEL_C(s); s->s_addr += ARG(1); */
 #define A2L_O_DL_IA    0x81 /* [CAPTURE] s->s_line -= ARG(0); A2LState_SETF(s,A2L_STATE_HASLINE); A2LState_DEL_C(s); s->s_addr += ARG(1); */

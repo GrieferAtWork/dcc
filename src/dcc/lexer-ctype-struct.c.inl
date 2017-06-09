@@ -119,7 +119,7 @@ check_align:
        self,self->d_attr->a_align,max_alignment);
  }
  self->d_tdecl.td_struct_size  = max_size;
- self->d_tdecl.td_struct_align = max_alignment;
+ self->d_tdecl.td_struct_align = max_size ? max_alignment : 0;
 }
 
 
