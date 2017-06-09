@@ -49,9 +49,10 @@ obj() {
 
 mkdir -p "$DEPDIR" || exit $?
 
-obj "crt1.o"   "src/crt1.c"
-obj "int64.o"  "src/int64.c"
-obj -DDCC_BUILDING_A2L_RUNTIME "addr2line.o" "src/addr2line.c" "src/addr2line-common.c"
+obj "crt1.o"      "src/crt1.c"
+obj "int64.o"     "src/int64.c"
+obj -DDCC_BUILDING_A2L_RUNTIME \
+    "addr2line.o" "src/addr2line.c" "src/addr2line-common.c"
 
 
 

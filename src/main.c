@@ -100,42 +100,61 @@ static void tpp_clrfile(void) {
  if (TOKEN.t_id > 0) TOKEN.t_id = TOK_EOF;
 }
 
-
-static void load_stdlib(void) {
- if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB) &&
-     !(preproc.p_flags&DCC_PREPROCESSOR_FLAG_COMPILEONLY)) {
-  /* Load default libraries. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #define SO(x) x ".dll"
 #else
 #define SO(x) x ".so"
 #endif
 #define STDLIB(name,f) \
-   {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
-  static struct DCCLibDef default_stdlib[] = {
-   STDLIB("crt1.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
-   STDLIB("int64.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
+ {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
+
+static struct DCCLibDef default_stdlib[] = {
 #if DCC_TARGET_OS == DCC_OS_WINDOWS || \
     DCC_TARGET_OS == DCC_OS_CYGWIN
-   STDLIB(SO("msvcrt"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
-   STDLIB(SO("kernel32"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+ STDLIB(SO("msvcrt"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+ STDLIB(SO("kernel32"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
 #else
-   STDLIB(SO("libc"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+ STDLIB(SO("libc"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
 #endif
-   {0,NULL,0,0,0,0,0,NULL},
-  };
-#define LINK_STATIC(x) DCCUnit_Push(); DCCUnit_Import(x); DCCUnit_Pop(OK)
-  static struct DCCLibDef addr2line = STDLIB("addr2line.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC);
-  struct DCCLibDef *chain = default_stdlib;
-  if (linker.l_flags&DCC_LINKER_FLAG_GENDEBUG) LINK_STATIC(&addr2line);
-  for (; chain->ld_name; ++chain) {
-   if (chain->ld_flags&DCC_LIBDEF_FLAG_STATIC) {
-    LINK_STATIC(chain);
-   } else {
-    DCCUnit_Import(chain);
-   }
+ {0,NULL,0,0,0,0,0,NULL},
+};
+
+static struct DCCLibDef default_crt[] = {
+ STDLIB("crt1.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
+ STDLIB("int64.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
+ {0,NULL,0,0,0,0,0,NULL},
+};
+
+static struct DCCLibDef default_crt_dbg[] = {
+ STDLIB("dbg-crt1.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
+ STDLIB("dbg-int64.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
+ STDLIB("dbg-addr2line.o",DCC_LIBDEF_FLAG_INTERN|DCC_LIBDEF_FLAG_STATIC),
+ {0,NULL,0,0,0,0,0,NULL},
+};
+
+static void load_chain(struct DCCLibDef *chain) {
+ for (; chain->ld_name; ++chain) {
+  if (chain->ld_flags&DCC_LIBDEF_FLAG_STATIC) {
+   DCCUnit_Push();
+   DCCUnit_Import(chain);
+   DCCUnit_Pop(OK);
+  } else {
+   DCCUnit_Import(chain);
   }
-#undef STDLIB
+ }
+}
+
+
+static void load_stdlib(void) {
+ if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB) &&
+     !(preproc.p_flags&DCC_PREPROCESSOR_FLAG_COMPILEONLY)) {
+  /* Load default libraries. */
+  load_chain(default_stdlib);
+  if (linker.l_flags&DCC_LINKER_FLAG_GENDEBUG) {
+   load_chain(default_crt_dbg);
+  } else {
+   load_chain(default_crt);
+  }
  }
 }
 
@@ -309,20 +328,21 @@ int main(int argc, char *argv[]) {
  linker.l_flags |= DCC_LINKER_FLAG_PEDYNAMIC;
 #endif
 
- DCCUnit_MkDebugSym();
-
  if (preproc.p_flags&DCC_PREPROCESSOR_FLAG_COMPILEONLY) {
   /* NOTE: Only clear obsolete symbols here, as they'd otherwise be
    *       cleared again by 'DCCLinker_Make' (which is unnecessary) */
   DCCUnit_ClearObsolete();
   save_object(preproc.p_outfile);
- } else if (!strcmp(preproc.p_outfile,"-")) {
-  DCCLinker_Make(DCC_STREAM_STDOUT);
  } else {
-  stream_t s_out;
-  s_out = s_openw(preproc.p_outfile);
-  DCCLinker_Make(s_out); /* Generate the binary. */
-  s_close(s_out);
+  DCCUnit_MkDebugSym();
+  if (!strcmp(preproc.p_outfile,"-")) {
+   DCCLinker_Make(DCC_STREAM_STDOUT);
+  } else {
+   stream_t s_out;
+   s_out = s_openw(preproc.p_outfile);
+   DCCLinker_Make(s_out); /* Generate the binary. */
+   s_close(s_out);
+  }
  }
  tpp_clrfile();
 
