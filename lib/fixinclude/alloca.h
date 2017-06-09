@@ -17,19 +17,18 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 #pragma once
-#ifdef __STRICT_ANSI__
-#warning "<alloca.h> should not be included when -ansi is passed"
-#endif
 #pragma GCC system_header
+
+#include <__stdinc.h>
+
+__STRICT_ANSI_HEADER
 
 #if __has_include_next(<alloca.h>)
 #include_next <alloca.h>
 #endif
 
 /* Fixed/optimized system header <byteorder.h> for DCC */
-#if __has_builtin(__builtin_alloca)
+
 
 /* void *alloca(size_t s); */
-#define alloca __builtin_alloca
-
-#endif
+#define alloca(x) __builtin_alloca((x))

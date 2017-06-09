@@ -378,10 +378,6 @@ _DCCSym_Delete(struct DCCSym *__restrict self) {
  } else {
   assert(!self->sy_sec_next);
  }
- if (self->sy_unit_before) {
-  assert(self->sy_unit_before->sy_name == self->sy_name);
-  DCCSym_Decref(self->sy_unit_before);
- }
  if (DCCSym_ISSECTION(self)) {
   assert(!self->sy_alias);
   DCCSection_Destroy(DCCSym_TOSECTION(self));
@@ -1115,7 +1111,6 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
   assert(reldata >= relbase);
   assert(reldata <  relbase+(self->sc_text.tb_end-
                              self->sc_text.tb_begin));
-  if (rel_value == 0x802000) __debugbreak();
   switch (iter->r_type) {
 #if DCC_TARGET_IA32(386)
   case R_386_8:       *(int8_t  *)reldata += (int8_t )rel_value; break;
@@ -1747,7 +1742,6 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_start.sy_sec_pself   */NULL,
  /* sc_start.sy_sec_next    */NULL,
  /* sc_start.sy_unit_next   */NULL,
- /* sc_start.sy_unit_before */NULL,
  /* sc_start.sy_name        */(struct TPPKeyword *)&TPPKeyword_ABS_data,
  /* sc_start.sy_flags       */DCC_SYMFLAG_STATIC|DCC_SYMFLAG_SEC_FIXED|
                               DCC_SYMFLAG_SEC(1,1,1,0,0,1), /* rwxu */
@@ -2164,7 +2158,7 @@ void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym) {
 seterr: TPPLexer_SetErr();
 }
 LOCAL void DCCUnit_RehashSymbols2(struct DCCUnit *__restrict self, size_t newsize) {
- struct DCCSym **new_map,**biter,**bend,*iter,*next,**dst;
+ struct DCCSym **new_map,**biter,**bend,*iter,*next,**dst,*insnext;
  assert(newsize);
  new_map = (struct DCCSym **)calloc(newsize,sizeof(struct DCCSym *));
  if unlikely(!new_map) return;
@@ -2172,10 +2166,16 @@ LOCAL void DCCUnit_RehashSymbols2(struct DCCUnit *__restrict self, size_t newsiz
  for (; biter != bend; ++biter) {
   iter = *biter;
   while (iter) {
-   next = iter->sy_unit_next;
+   insnext = iter;
+   /* Copy chains of same-name symbols as a whole.
+    * This is required to keep the order of forward/backward symbols intact! */
+   while (insnext->sy_unit_next &&
+          insnext->sy_unit_next->sy_name == iter->sy_name)
+          insnext = insnext->sy_unit_next;
+   next = insnext->sy_unit_next;
    DCCSym_ASSERT(iter);
    dst = &new_map[DCCSym_HASH(iter) % newsize];
-   iter->sy_unit_next = *dst;
+   insnext->sy_unit_next = *dst;
    *dst = iter;
    iter = next;
   }
@@ -2250,7 +2250,29 @@ def_newsym:
  return result;
 }
 PUBLIC struct DCCSym *
-DCCUnit_NewForwardSym(struct TPPKeyword const *__restrict name,
+DCCUnit_GetBackwardSym(struct TPPKeyword const *__restrict name) {
+ struct DCCSym *result,**presult;
+ if unlikely(!unit.u_syma) return NULL;
+ presult = &unit.u_symv[name->k_id % unit.u_syma];
+ while ((result = *presult) != NULL &&
+         result->sy_name != name) {
+  presult = &result->sy_unit_next;
+ }
+ if (result && DCCSym_ISFORWARD(result)) {
+  /* Since backward labels must always be defined,
+   * encountering one that is undefined means something like this:
+   * >> 1: jmp 1f
+   * >> 1: jmp 1b // '1' is defined at this point, but an older, undefined version also exists!
+   */
+  if (result->sy_unit_next->sy_name == result->sy_name)
+       result = result->sy_unit_next;
+  else result = NULL;
+ }
+ DCCSym_XASSERT(result);
+ return result;
+}
+PUBLIC struct DCCSym *
+DCCUnit_GetForwardSym(struct TPPKeyword const *__restrict name,
                       symflag_t flags) {
  struct DCCSym *result,**presult;
  if unlikely(!unit.u_syma) goto def_newsym;
@@ -2267,10 +2289,8 @@ def_newsym:
   /* Replace a non-forward-declared symbol with a new version. */
   struct DCCSym *new_result = DCCSym_New(name,flags);
   if likely(new_result) {
-   new_result->sy_unit_before = result; /* Inherit reference. */
-   new_result->sy_unit_next = result->sy_unit_next; /* Inherit reference. */
-   result->sy_unit_next = NULL;
-   *presult = result; /* Inherit reference. */
+   DCCUnit_InsSym(new_result);
+   result = new_result;
   }
  }
  DCCSym_XASSERT(result);

@@ -29,9 +29,13 @@
 DCC_DECL_BEGIN
 
 A2L_IMPL a2l_op_t *a2l_setarg(a2l_op_t *code, a2l_arg_t arg) {
+ size_t byte,shift;
  while (arg > A2L_A_MAX) {
-  *code++ = (a2l_op_t)(A2L_A_CON|(arg&A2L_A_MAX));
-  arg -= A2L_A_MAX;
+  byte = arg,shift = 0;
+  do byte >>= A2L_A_SFT,shift += A2L_A_SFT;
+  while (byte > A2L_A_MAX);
+  *code++ = (a2l_op_t)(A2L_A_CON|(byte&A2L_A_MAX));
+  arg &= ~(((size_t)-1) << shift);
  }
  *code++ = (a2l_op_t)arg;
  return code;
@@ -113,7 +117,38 @@ DCCA2lWriter_PutEx(struct DCCA2lWriter *__restrict self, target_ptr_t addr,
 #define STATE (self->w_state)
  assert(self);
  assert(info);
- /* Check for changes to PATH and FILE. */
+ if (addr == self->w_state.s_addr) {
+  /* NOTE: LC information changed after the last debug information,
+   *       even though no code was generated to create an actual
+   *       address shift.
+   *       In this situation, the latest LC information must be
+   *       used to properly link debug info in situations like:
+   *    >> void *p = .;
+   *       ^         ^ This location must be printed
+   *       \---------- Not this one
+   * -> Change the last capture opcode to non-capture
+   *    and continue to update debug LC information.
+   * -> Unnecessary operations will be optimized away later! */
+  self->w_state = self->w_ostate;
+  *(uintptr_t *)&self->w_state.s_code += (uintptr_t)self->w_cbegin;
+ } else {
+  self->w_ostate = self->w_state;
+  *(uintptr_t *)&self->w_ostate.s_code -= (uintptr_t)self->w_cbegin;
+ }
+
+ /* Check for changes to PATH, FILE and NAME. */
+ if (info->ai_features&A2L_STATE_HASNAME) {
+  if (info->ai_name != STATE.s_name ||
+    !(STATE.s_features&A2L_STATE_HASNAME)) {
+   PUT1(A2L_O_SN,info->ai_name);
+   STATE.s_name      = info->ai_name;
+   STATE.s_features |= (A2L_STATE_HASNAME);
+  }
+ } else if (STATE.s_features&A2L_STATE_HASNAME) {
+  STATE.s_name      = 0;
+  STATE.s_features &= ~(A2L_STATE_HASNAME);
+  PUT0(A2L_O_DEL_N);
+ }
  if (info->ai_features&A2L_STATE_HASPATH) {
   if (info->ai_path != STATE.s_path ||
     !(STATE.s_features&A2L_STATE_HASPATH)) {
@@ -279,16 +314,15 @@ fix_stringoff:
   flush_start = iter;
   while (iter != end) {
    op = *iter++;
-   if (op == A2L_O_SP || op == A2L_O_SF) {
+   if (op == A2L_O_SP || op == A2L_O_SF || op == A2L_O_SN) {
+    uint8_t buf[A2L_ARG_MAXBYTES];
     a2l_arg_t orig_addr;
     /* Flush any unwritten data. */
-    if (iter != flush_start)
-        a2l_write(self,flush_start,(size_t)(iter-flush_start));
+    a2l_write(self,flush_start,(size_t)(iter-flush_start));
     orig_addr  = A2L_NAME(a2l_getarg)(&iter);
     /* Re-write the opcode with the updated string offset. */
     orig_addr += string_base;
-    PUT1(op,orig_addr);
-
+    a2l_write(self,buf,(size_t)(a2l_setarg(buf,orig_addr)-buf));
     flush_start = iter;
    } else {
     /* Simply skip all other opcodes. */
@@ -296,9 +330,7 @@ fix_stringoff:
     while (opc--) A2L_NAME(a2l_getarg)(&iter);
    }
   }
-  if (iter != flush_start) {
-   a2l_write(self,flush_start,(size_t)(iter-flush_start));
-  }
+  a2l_write(self,flush_start,(size_t)(iter-flush_start));
  }
 }
 

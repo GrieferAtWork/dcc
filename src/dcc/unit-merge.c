@@ -54,7 +54,6 @@ INTDEF void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym);
 PRIVATE void
 validate_sym(struct DCCSym *__restrict sym) {
  DCCSym_ASSERT(sym);
- if (sym->sy_unit_before) validate_sym(sym->sy_unit_before);
  if (sym->sy_alias) {
   validate_sym(sym->sy_alias);
  } else if (sym->sy_sec) {
@@ -234,14 +233,20 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
 
  /* Merge debug informations. */
  if ((linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) {
-  target_ptr_t text_merge = other->u_dbgstr ? other->u_dbgstr->sc_merge : 0;
+  target_ptr_t text_merge;
+  if (unit.u_dbgstr) text_merge = unit.u_dbgstr->sc_merge;
+  else {
+   struct DCCSection *debug_string;
+   debug_string = DCCUnit_GetSecs(A2L_STRING_SECTION);
+   text_merge = debug_string ? debug_string->sc_merge : 0;
+  }
   for (srcsec = other->u_secs; srcsec; srcsec = srcsec->sc_next) {
    struct DCCSection *dstsec;
    dstsec = DCCUnit_GetSec(srcsec->sc_start.sy_name);
    if (dstsec) {
     /* Merge debug informations. */
     DCCA2lWriter_Merge(&dstsec->sc_a2l,&srcsec->sc_a2l,
-                        srcsec->sc_merge,text_merge);
+                        dstsec->sc_merge,text_merge);
    }
   }
  }
@@ -329,8 +334,8 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
    /* Inherit all named symbols (And search for new symbol bindings). */
    assert(src_sym);
    assert(!src_sym->sy_unit_next);
-   do if (src_sym->sy_sec && !DCCSym_ISSECTION(src_sym) &&
-          src_sym->sy_sec != &DCCSection_Abs) {
+   if (src_sym->sy_sec && !DCCSym_ISSECTION(src_sym) &&
+       src_sym->sy_sec != &DCCSection_Abs) {
     struct DCCSection *new_section;
     /* Fix section linkage. */
     new_section = DCCUnit_GetSec(src_sym->sy_sec->sc_start.sy_name);
@@ -354,7 +359,7 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
     src_sym->sy_sec = new_section; /* Inherit reference. */
     /* Insert the symbol into its new section. */
     DCCSection_InsSym(new_section,src_sym);
-   } while ((src_sym = src_sym->sy_unit_before) != NULL);
+   }
   }
 
   /* Step #2: Inherit all symbols into the new unit. */
@@ -429,31 +434,18 @@ drop_srcsym:
   for (sym_iter = symv; sym_iter != sym_end; ++sym_iter) {
    struct DCCSym *src_sym = *sym_iter;
    if (src_sym) {
-    struct DCCSym *dst_sym,*before_iter,*old_alias,*alias_target;
+    struct DCCSym *dst_sym,*old_alias,*alias_target;
     dst_sym = DCCUnit_GetSym(src_sym->sy_name);
-    if ((before_iter = src_sym->sy_unit_before) != NULL) {
-     /* Must update alias before-declaration and prefix all to 'dst_sym' */
-     if (dst_sym) {
-      while (dst_sym->sy_unit_before) dst_sym = dst_sym->sy_unit_before;
-      src_sym->sy_unit_before = NULL;        /* Inherit reference. */
-      dst_sym->sy_unit_before = before_iter; /* Inherit reference. */
-     }
-fix_alias:
-     do if ((old_alias = before_iter->sy_alias) != NULL &&
-           !(old_alias->sy_flags&DCC_SYMFLAG_STATIC)) {
-      assert(old_alias->sy_name != &TPPKeyword_Empty);
-      /* Replace the alias symbol. */
-      alias_target = DCCUnit_GetSym(old_alias->sy_name);
-      assertf(alias_target,"Missing alias symbol '%s'",alias_target->sy_name->k_name);
-      DCCSym_Incref(alias_target);
-      DCCSym_Decref(old_alias);
-      before_iter->sy_alias = alias_target; /* Inherit reference (both ways). */
-     } while ((before_iter = before_iter->sy_unit_before) != NULL);
-    } else {
-     /* Fix an alias declaration for this symbol. */
-     before_iter = src_sym;
-     assert(!before_iter->sy_unit_before);
-     goto fix_alias;
+    /* Fix an alias declaration for this symbol. */
+    if ((old_alias = src_sym->sy_alias) != NULL &&
+       !(old_alias->sy_flags&DCC_SYMFLAG_STATIC)) {
+     assert(old_alias->sy_name != &TPPKeyword_Empty);
+     /* Replace the alias symbol. */
+     alias_target = DCCUnit_GetSym(old_alias->sy_name);
+     assertf(alias_target,"Missing alias symbol '%s'",alias_target->sy_name->k_name);
+     DCCSym_Incref(alias_target);
+     DCCSym_Decref(old_alias);
+     src_sym->sy_alias = alias_target; /* Inherit reference (both ways). */
     }
     if (dst_sym && dst_sym != src_sym &&
       !(src_sym->sy_flags&DCC_SYMFLAG_STATIC) &&

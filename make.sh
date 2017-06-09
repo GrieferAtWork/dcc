@@ -59,6 +59,7 @@ mkdir -p $(build "") || exit $?
 # Compile DCC source files
 src src/*.c
 src src/dcc/*.c
+src lib/src/addr2line-common.c
 
 $CC -o "$out_bin" ${object_list[@]}
 

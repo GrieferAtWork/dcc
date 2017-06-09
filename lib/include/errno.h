@@ -19,11 +19,16 @@
 #pragma once
 #pragma GCC system_header
 
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
+
 #if __has_include_next(<errno.h>)
 #include_next <errno.h>
 #else
-#include "__stdinc.h"
-#if #__CRT(msvc)
+#include <__stdinc.h>
+
+#if defined(__CRT_MSVC)
 
 __IMP int *(__msvc_errno)(void) __asm__("_errno");
 #define errno   (*__msvc_errno())

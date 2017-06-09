@@ -19,6 +19,8 @@
 #pragma once
 #pragma GCC system_header
 
+#include <__stdinc.h>
+
 #if __has_include_next(<iso646.h>)
 #include_next <iso646.h>
 #endif

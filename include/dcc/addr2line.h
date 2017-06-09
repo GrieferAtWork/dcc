@@ -27,9 +27,16 @@ DCC_DECL_BEGIN
 
 struct DCCA2lWriter {
  struct A2LState     w_state;  /*< The current a2l state, as it will be during execution. */
- A2L_TYPE(a2l_op_t) *w_cbegin; /*< [0..1] Base address of allocated A2L code.
-                                *   NOTE: When  */
+ struct A2LState     w_ostate; /*< Old A2L state before current changed were applied.
+                                *  NOTE: The 's_code' field in this is an offset
+                                *        from 'w_cbegin', not an actual pointer! */
+#ifdef DCC_PRIVATE_API
+ a2l_op_t           *w_cbegin; /*< [0..1] Base address of allocated A2L code. */
+ a2l_op_t           *w_cend;   /*< [0..1] End address of allocated A2L code. */
+#else
+ A2L_TYPE(a2l_op_t) *w_cbegin; /*< [0..1] Base address of allocated A2L code. */
  A2L_TYPE(a2l_op_t) *w_cend;   /*< [0..1] End address of allocated A2L code. */
+#endif
 };
 
 #define DCCA2lWriter_Init(self) memset(self,0,sizeof(struct DCCA2lWriter))
@@ -71,7 +78,8 @@ DCCFUN void DCCA2lWriter_PutL(struct DCCA2lWriter *__restrict self, target_ptr_t
 
 struct DCCA2lInfo {
  A2L_TYPE(a2l_path_t) ai_path;     /*< Offset in 'unit.u_dbgstr' to the path of the current file. */
- A2L_TYPE(a2l_file_t) ai_file;     /*< Offset in 'unit.u_dbgstr' to the path of the current file. */
+ A2L_TYPE(a2l_file_t) ai_file;     /*< Offset in 'unit.u_dbgstr' to the file of the current file. */
+ A2L_TYPE(a2l_name_t) ai_name;     /*< Offset in 'unit.u_dbgstr' to the name of the current function. */
  struct TPPLCInfo     ai_linecol;  /*< Line & column information compatible with TPP. */
  uint32_t             ai_features; /*< Available a2l features (Set of 'A2L_STATE_HAS*'). */
 };
@@ -88,6 +96,7 @@ DCCA2lWriter_PutEx(struct DCCA2lWriter *__restrict self, target_ptr_t addr,
 struct DCCA2lAnswer {
  char const *aa_path; /*< [1..1] Path of the associated file, or "." for CWD, or "???" when 'aa_file' is unknown. */
  char const *aa_file; /*< [1..1] Name of the associated file, or "???" when unknown. */
+ char const *aa_func; /*< [1..1] Name of the associated function, or "???" when unknown. */
  DCC(line_t) aa_line; /*< 1-based lined index within the file, or ZERO(0) when unknown. */
  DCC(col_t)  aa_col;  /*< 1-based lined column within the file, or ZERO(0) when unknown. */
 };

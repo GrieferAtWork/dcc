@@ -23,39 +23,39 @@
 /* Declare everything with hidden visibility. */
 #pragma GCC visibility push("hidden")
 
+#include <__stdinc.h>
+
 
 #define __UNKNOWN_APP    0
 #define __CONSOLE_APP    1
 #define __GUI_APP        2
-void __set_app_type(int);
-void _controlfp(unsigned a, unsigned b);
-
 
 typedef struct {
-	int newmode;
+ int newmode;
 } _startupinfo;
-
-void __getmainargs(int *pargc, char ***pargv, char ***penv, int globb, _startupinfo*);
-void exit(int exitcode) __attribute__((noreturn));
 
 int main(int argc, char **argv, char **env);
 
-void __start(void) __attribute__((noreturn,alias("_start")));
+__IMP void __set_app_type(int);
+__IMP void _controlfp(unsigned a, unsigned b);
+__IMP void __getmainargs(int *pargc, char ***pargv, char ***penv, int globb, _startupinfo*);
+__IMP [[noreturn]] void exit(int exitcode);
 
-__attribute__((noreturn))
-void _start(void) {
-	int argc; char **argv; char **env; int ret;
-	_startupinfo start_info = {0};
+[[noreturn,alias("_start")]] void __start(void);
+[[noreturn]] void _start(void) {
+ int argc; char **argv; char **env; int ret;
+ _startupinfo start_info = {0};
+
 #ifdef _WIN32
-	/* TODO: Register initial SEH handler. */
+ /* TODO: Register initial SEH handler. */
 #endif
 
-	_controlfp(0x10000, 0x30000);
-	__set_app_type(__CONSOLE_APP);
-	__getmainargs(&argc,&argv,&env,0,&start_info);
+ _controlfp(0x10000,0x30000);
+ __set_app_type(__CONSOLE_APP);
+ __getmainargs(&argc,&argv,&env,0,&start_info);
 
-	ret = main(argc,argv,env);
-	exit(ret);
+ ret = main(argc,argv,env);
+ exit(ret);
 }
 
 #pragma GCC visibility pop

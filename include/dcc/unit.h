@@ -132,8 +132,6 @@ struct DCCSym {
                                             *  Self-pointer within the 'sy_sec_next...' linked list used by section symbol tables. */
  struct DCCSym            *sy_sec_next;    /*< [0..1] Next section symbol with the same modulated 'sy_name' address. */
  struct DCCSym            *sy_unit_next;   /*< [0..1] Next declaration symbol with the same modulated 'sy_name' address, within the same unit. */
- /*ref*/struct DCCSym     *sy_unit_before; /*< [0..1][->sy_name == sy_name] Used for redefining symbols: previous version of this symbol
-                                            *                               within the same unit (e.g.: when defining local assembly labels). */
  struct TPPKeyword const  *sy_name;        /*< [1..1][const] Symbol name (When set to '&TPPKeyword_Empty', the 'DCC_SYMFLAG_STATIC' flag must be set).
                                             *   NOTE: This name is also known as the assembly name (because it is what can be set with '__asm__'
                                             *         after a static-duration definition, as well as from assembly and during linkage)
@@ -1011,7 +1009,7 @@ struct DCCUnit {
  struct DCCSection     *u_bss;   /*< [0..1] Default section: '.text' (Used for read/write data) */
  struct DCCSection     *u_str;   /*< [0..1] Default section: '.str'  (Used for read-only, mergeable data) */
 #ifdef __INTELLISENSE__
- struct DCCSection     *u_dbgstr;/*< [0..1] Section used for debug strings for __dcc_dbg_addr2line. */
+ struct DCCSection     *u_dbgstr;/*< [0..1] Section used for debug strings. */
 #else
 #define u_dbgstr        u_str
 #endif
@@ -1212,8 +1210,10 @@ DCCFUN void DCCUnit_MkDebugSym(void);
 
 /* Add a addr2line entry for the current text address and the current lexer position.
  * NOTE: This function is a no-op when 'DCC_LINKER_FLAG_GENDEBUG' isn't set. */
-DCCFUN void DCCUnit_MkDebugL(void);
-DCCFUN void DCCUnit_MkDebugLC(void);
+DCCFUN void DCC_ATTRIBUTE_FASTCALL DCCUnit_MkDebugL(int level);
+DCCFUN void DCC_ATTRIBUTE_FASTCALL DCCUnit_MkDebugLC(int level);
+#define DCCUNIT_DEBUGLC_STMT 0
+#define DCCUNIT_DEBUGLC_EXPR 1
 
 /* Lookup/Create a new symbol/section 'name'.
  * Note, that every section is implicitly a symbol!
@@ -1409,7 +1409,8 @@ DCCFUN struct DCCSym *DCCUnit_NewSymf(DCC(symflag_t) flags, char const *__restri
  * Same as '*DCCUnit_NewSym', but if an existing symbol evaluates true for 'DCCSym_ISFORWARD(sym)',
  * a new symbol is allocated and the existing one replaced and moved into the 'sy_unit_before' chain.
  * >> This function is used for re-usable local label declarations in assembly. */
-DCCFUN struct DCCSym *DCCUnit_NewForwardSym(struct TPPKeyword const *__restrict name, DCC(symflag_t) flags);
+DCCFUN struct DCCSym *DCCUnit_GetBackwardSym(struct TPPKeyword const *__restrict name);
+DCCFUN struct DCCSym *DCCUnit_GetForwardSym(struct TPPKeyword const *__restrict name, DCC(symflag_t) flags);
 
 /* Allocate a new, unnamed & private (aka. protected) symbol.
  * >> This function is very useful for allocating local labels. */

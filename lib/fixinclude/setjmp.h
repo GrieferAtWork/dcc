@@ -19,21 +19,21 @@
 #pragma once
 #pragma GCC system_header
 
+#include <__stdinc.h>
+
 #if __has_include_next(<setjmp.h>)
 #include_next <setjmp.h>
 #endif
 
 /* Fixed/optimized system header <setjmp.h> for DCC */
-#ifdef __SIZEOF_JMP_BUF__
 
 /* Use builtin functions to allow for compiler-optimizations. */
-
 #undef jmp_buf
 typedef __INT8_TYPE__ jmp_buf[__SIZEOF_JMP_BUF__];
 
 /* int setjmp(jmp_buf buf); */
-#define setjmp(buf)   __builtin_setjmp((buf))
+#define setjmp(buf)       __builtin_setjmp((buf))
 
 /* void longjmp(jmp_buf buf, int sig) __attribute__((noreturn)); */
 #define longjmp(buf,sig)  __builtin_longjmp((buf),(sig))
-#endif
+

@@ -19,17 +19,21 @@
 #pragma once
 #pragma GCC system_header
 
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
+
 #if __has_include_next(<stdio.h>)
 #include_next <stdio.h>
 #else
-#include "__stdinc.h"
+#include <__stdinc.h>
 
 #undef size_t
 typedef __SIZE_TYPE__ size_t;
 #define NULL   __NULL__
 
 #undef fpos_t
-#if defined(_WIN32) || defined(__CYGWIN32__)
+#if defined(__CRT_MSVC)
 typedef __int64 fpos_t;
 typedef struct {
 	char   *__msvcrt_ptr;
@@ -55,9 +59,16 @@ typedef struct {
 #define _IONBF          0x0004
 
 __IMP FILE *__iob_func(void);
+
+#ifdef __INTELLISENSE__
+FILE *stdin;
+FILE *stdout;
+FILE *stderr;
+#else
 #define stdin    (&__iob_func()[0])
 #define stdout   (&__iob_func()[1])
 #define stderr   (&__iob_func()[2])
+#endif
 
 #else
 #error FIXME
@@ -91,7 +102,7 @@ __IMP int (vprintf)(char const *,__builtin_va_list);
 __IMP int (vsprintf)(char *,char const *,__builtin_va_list);
 
 #if __STDLIB_VERSION__ >= 201112L
-#if #__CRT(msvc)
+#if defined(__CRT_MSVC)
 __inline__ int (vsnprintf)(char *__buf, size_t __bufsiz, char const *__format, __builtin_va_list __args) {
 	__IMP int (__msvc_vsnprintf)(char *,size_t,char const *,__builtin_va_list) __asm__("_vsnprintf");
 	__IMP int (__msvc_vscprintf)(char const *,__builtin_va_list) __asm__("_vscprintf");
@@ -105,7 +116,7 @@ __inline__ int (snprintf)(char *__buf, size_t __bufsiz, const char *__format, ..
 	__builtin_va_list __va_list;
 	__builtin_va_start(__va_list,__format);
 	__result = (vsnprintf)(__buf,__bufsiz,__format,__va_list);
-	__builtin_va_end(__va_list,__format);
+	__builtin_va_end(__va_list);
 	return __result;
 }
 #else

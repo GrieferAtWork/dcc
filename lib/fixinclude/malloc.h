@@ -17,10 +17,11 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 #pragma once
-#ifdef __STRICT_ANSI__
-#warning "<malloc.h> should not be included when -ansi is passed"
-#endif
 #pragma GCC system_header
+
+#include <__stdinc.h>
+
+__STRICT_ANSI_HEADER
 
 #if __has_include_next(<malloc.h>)
 #pragma push_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\

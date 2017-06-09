@@ -19,6 +19,8 @@
 #pragma once
 #pragma GCC system_header
 
+#include <__stdinc.h>
+
 #if __has_include_next(<string.h>)
 #pragma push_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
                          "realloc","cfree","memalign","aligned_alloc","pvalloc",\
@@ -85,22 +87,34 @@ typedef __SIZE_TYPE__ size_t;
 #define __rawmemrchr(p,c)     __builtin_rawmemrchr((p),(c))
 #define __rawmemrlen(p,c)     __builtin_rawmemrlen((p),(c))
 
-#ifdef _GNU_SOURCE
-#   define memrchr   __memrchr
-#   define rawmemchr __rawmemchr
+#if defined(_GNU_SOURCE) || defined(_DCC_SOURCE)
+#   define memrchr(p,c,s)     __builtin_memrchr((p),(c),(s))
+#   define rawmemchr(p,c)     __builtin_rawmemchr((p),(c))
+#endif
+
+#ifdef _DCC_SOURCE /* Enable DCC extension functions. */
+#   define strend(str)        __builtin_rawmemlen((str),'\0')
+#   define strnend(str,maxlen) __builtin_memlen((str),'\0',(maxlen))
+#   define memlen(p,c,s)      __builtin_memlen((p),(c),(s))
+#   define memend(p,c,s)      __builtin_memend((p),(c),(s))
+#   define memrlen(p,c,s)     __builtin_memrlen((p),(c),(s))
+#   define memrend(p,c,s)     __builtin_memrend((p),(c),(s))
+#   define rawmemlen(p,c)     __builtin_rawmemlen((p),(c))
+#   define rawmemrchr(p,c)    __builtin_rawmemrchr((p),(c))
+#   define rawmemrlen(p,c)    __builtin_rawmemrlen((p),(c))
 #endif
 
 #ifdef __KOS__
 /* KOS actually has some of these. */
-#   define _strend    __strend
-#   define _strnend   __strnend
-#   define _memend    __memend
-#   define _umemend   rawmemchr
+#   define _strend(str)       __builtin_rawmemlen((str),'\0')
+#   define _strnend(str,maxlen) __builtin_memlen((str),'\0',(maxlen))
+#   define _memend(p,c,s)     __builtin_memend((p),(c),(s))
+#   define _umemend(p,c)      __builtin_rawmemchr((p),(c))
 #ifndef __STDC_PURE__
-#   define strend     __strend
-#   define strnend    __strnend
-#   define memend     __memend
-#   define umemend    rawmemchr
+#   define strend(str)        __builtin_rawmemlen((str),'\0')
+#   define strnend(str,maxlen) __builtin_memlen((str),'\0',(maxlen))
+#   define memend(p,c,s)      __builtin_memend((p),(c),(s))
+#   define umemend(p,c)       __builtin_rawmemchr((p),(c))
 #endif /* !__STDC_PURE__ */
 #endif /* __KOS__ */
 
@@ -108,13 +122,3 @@ typedef __SIZE_TYPE__ size_t;
 #   define ffsl(x)  __builtin_ffsl((x))
 #   define ffsll(x) __builtin_ffsll((x))
 #endif
-
-
-
-
-
-
-
-
-
-

@@ -298,12 +298,11 @@ asm_parse_expr_unary(struct DCCSymAddr *v) {
    if unlikely(!label_kwd) break;
    if (backwards) {
     /* Search in reverse for the last instance of this symbol. */
-    sym = DCCUnit_GetSym(label_kwd);
+    sym = DCCUnit_GetBackwardSym(label_kwd);
     if unlikely(!sym) WARN(W_ASM_UNKNOWN_LOCAL_LABEL,label_kwd);
-    if (DCCSym_ISFORWARD(sym) && sym->sy_unit_before) sym = sym->sy_unit_before;
    } else {
     /* Create a new forward-label. */
-    sym = DCCUnit_NewForwardSym(label_kwd,DCC_SYMFLAG_STATIC);
+    sym = DCCUnit_GetForwardSym(label_kwd,DCC_SYMFLAG_STATIC);
     if unlikely(!sym) break;
    }
    v->sa_sym = sym;
@@ -937,7 +936,7 @@ again:
   if (TOK == ':' || TOK == '=') {
    /* Assembly label. */
    sym = (instr_name == TOK_INT)
-    ? DCCUnit_NewForwardSym(instr_kwd,DCC_SYMFLAG_STATIC)
+    ? DCCUnit_GetForwardSym(instr_kwd,DCC_SYMFLAG_STATIC)
     : DCCUnit_NewSym(instr_kwd,compiler.c_visibility.vs_viscur);
    if unlikely(!sym) return;
    if (TOK == '=') {
@@ -1003,7 +1002,7 @@ unknown_instr:
   ops = NULL;
  }
  if (ops) {
-  DCCUnit_MkDebugL();
+  DCCUnit_MkDebugL(DCCUNIT_DEBUGLC_STMT);
   asm_parse_op(ops,size_override);
  }
 done_instr:

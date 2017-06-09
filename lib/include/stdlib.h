@@ -19,11 +19,15 @@
 #pragma once
 #pragma GCC system_header
 
-#include "__stdinc.h"
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
 
 #if __has_include_next(<stdlib.h>)
 #include_next <stdlib.h>
 #else
+#include <__stdinc.h>
+
 #undef size_t
 typedef __SIZE_TYPE__ size_t;
 #define NULL  __NULL__

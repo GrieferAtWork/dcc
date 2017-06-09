@@ -19,10 +19,14 @@
 #pragma once
 #pragma GCC system_header
 
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
+
 #if __has_include_next(<time.h>)
 #include_next <time.h>
 #else
-#include "__stdinc.h"
+#include <__stdinc.h>
 
 #undef size_t
 typedef __SIZE_TYPE__ size_t;
@@ -31,7 +35,7 @@ typedef __SIZE_TYPE__ size_t;
 
 struct tm;
 
-#if #__CRT(msvc)
+#ifdef __CRT_MSVC
 typedef __int32 clock_t;
 #define CLOCKS_PER_SEC  1000
 

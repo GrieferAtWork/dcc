@@ -19,6 +19,8 @@
 #pragma once
 #pragma GCC system_header
 
+#include <__stdinc.h>
+
 #if __has_include_next(<stdio.h>)
 #include_next <stdio.h>
 #endif
@@ -29,5 +31,3 @@
 typedef __SIZE_TYPE__ size_t;
 
 #define NULL   __NULL__
-
-

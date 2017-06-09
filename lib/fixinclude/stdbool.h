@@ -19,6 +19,12 @@
 #pragma once
 #pragma GCC system_header
 
+#include <__stdinc.h>
+
+#if __has_include_next(<stdbool.h>)
+#include_next <stdbool.h>
+#endif
+
 /* Fixed/optimized system header <stdbool.h> for DCC */
 #define __bool_true_false_are_defined 1
 #define bool   _Bool

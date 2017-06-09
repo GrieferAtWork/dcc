@@ -19,15 +19,19 @@
 #pragma once
 #pragma GCC system_header
 
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
+
 #if __has_include_next(<assert.h>)
 #include_next <assert.h>
 #else
-#include "__stdinc.h"
+#include <__stdinc.h>
 
 #ifndef __DCC_ASSERT_LIB_DEFINED
 #define __DCC_ASSERT_LIB_DEFINED 1
-#if #__CRT(msvc)
-__IMP _Noreturn void (__assertion_failed)(char const *, char const *,unsigned) __asm__("_assert");
+#ifdef __CRT_MSVC
+__IMP _Noreturn void (__assertion_failed)(char const *,char const *,unsigned int) __asm__("_assert");
 #else
 #error FIXME
 #endif
@@ -38,8 +42,8 @@ __IMP _Noreturn void (__assertion_failed)(char const *, char const *,unsigned) _
  *       >> assert(0); // Mark control flow as unreachable, but check the fact at runtime!
  */
 #ifdef NDEBUG
-#define assert                __builtin_assume
+#define assert         __builtin_assume
 #else
-#define assert(expr)  (void)((expr) || (__assertion_failed(#expr,__FILE__,__LINE__),0))
+#define assert(expr)  (void)((expr) || (__assertion_failed(#expr,__FILE__,__LINE__),__builtin_breakpoint(),0))
 #endif
 #endif

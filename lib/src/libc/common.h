@@ -16,24 +16,14 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#pragma once
-#pragma GCC system_header
+#ifndef GUARD_LIB_SRC_LIBC_COMMON_H
+#define GUARD_LIB_SRC_LIBC_COMMON_H 1
 
-#include <__stdinc.h>
-
-__STRICT_ANSI_HEADER
-
-#if __has_include_next(<byteorder.h>)
-#include_next <byteorder.h>
+#ifndef __INTELLISENSE__
+#define ASM{...} __asm__(#__VA_ARGS__);
 #endif
 
-/* Fixed/optimized system header <byteorder.h> for DCC */
+#define DECL_BEGIN
+#define DECL_END
 
-/* uint16_t bswap_16(uint16_t x); */
-#define bswap_16(x) __builtin_bswap16((x))
-
-/* uint32_t bswap_32(uint32_t x); */
-#define bswap_32(x) __builtin_bswap32((x))
-
-/* uint64_t bswap_64(uint64_t x); */
-#define bswap_64(x) __builtin_bswap64((x))
+#endif /* !GUARD_LIB_SRC_LIBC_COMMON_H */

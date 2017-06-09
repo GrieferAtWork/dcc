@@ -1,0 +1,138 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{8a8518e0-91dd-4715-82a9-29e58a43bebd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{f7b840f2-302a-4bcc-ae1d-67fa21853590}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="fixinclude">
+      <UniqueIdentifier>{dd9588fb-8ed4-40e9-91e3-2b2cc5fd048b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\libc">
+      <UniqueIdentifier>{7c0cb975-e360-4d5e-9e56-d7b645be2560}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\test">
+      <UniqueIdentifier>{09f26d10-d18c-44db-b8b2-dbb6615c2a88}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\lib\fixinclude\ctype.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\dcc.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\iso646.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\limits.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\malloc.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\setjmp.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\stdarg.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\stdbool.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\stddef.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\stdint.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\stdio.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\stdlib.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\string.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\strings.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\time.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\varargs.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\wchar.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\alloca.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\byteorder.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\ctype.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\errno.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\features.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\stdio.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\stdlib.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\string.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\time.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\assert.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\__stdinc-syntax.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\__stdinc.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\src\addr2line.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\src\libc\common.h">
+      <Filter>src\libc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\lib\src\addr2line-common.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\crt1.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\int64.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\addr2line.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\test\sizeof.c">
+      <Filter>src\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\test\intprom.c">
+      <Filter>src\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\libc\string.c">
+      <Filter>src\libc</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

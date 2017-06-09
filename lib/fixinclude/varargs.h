@@ -17,6 +17,9 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 #pragma once
+
+#include <__stdinc.h>
+
 #if __has_warning("-Wold-function-decl")
 #warning "<varargs.h> is obsolete; new code should use <stdarg.h> instead"
 #endif
@@ -28,8 +31,7 @@
  * >> But DCC _does_ implement it! - So in order to shut up
  *    #error, or #warning directives, we simply disable '-Wuser'
  *    warning (aka. warnings explicitly emit by user-code). */
-#pragma warning(push)
-#pragma warning("-Wno-user")
+#pragma warning(push,"-Wno-user")
 #include_next <varargs.h>
 #pragma warning(pop)
 #endif

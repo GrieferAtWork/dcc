@@ -524,7 +524,6 @@ TPPFUN struct TPPFile TPPFile_Empty;
 #define TPPFile_Decref(self)          (void)(--(self)->f_refcnt || (TPPFile_Destroy(self),0))
 TPPFUN void TPPFile_Destroy(struct TPPFile *__restrict self);
 
-
 /* Create a new explicit text file by inherited the given 'inherited_text'. */
 TPPFUN /*ref*/struct TPPFile *
 TPPFile_NewExplicitInherited(/*ref*/struct TPPString *__restrict inherited_text);

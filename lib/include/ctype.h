@@ -19,10 +19,14 @@
 #pragma once
 #pragma GCC system_header
 
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
+
 #if __has_include_next(<ctype.h>)
 #include_next <ctype.h>
 #else
-#include "__stdinc.h"
+#include <__stdinc.h>
 
 __IMP __WUNUSED int (isalpha)(int);
 __IMP __WUNUSED int (isupper)(int);

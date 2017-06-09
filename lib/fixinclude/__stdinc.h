@@ -19,9 +19,33 @@
 #pragma once
 #pragma GCC system_header
 
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+#ifndef __has_attribute
+#define __has_attribute(x) 0
+#endif
+#ifndef __has_include
+#define __has_include(x) 0
+#endif
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
+#ifndef __has_warning
+#define __has_warning(x) 0
+#endif
+
 #if __has_include_next(<__stdinc.h>)
 #include_next <__stdinc.h>
 #else
+
+#ifndef __DCC_VERSION__
+#ifdef __INTELLISENSE__
+#include "__stdinc-syntax.h"
+#else
+#warning "These headers are only meant for DCC"
+#endif
+#endif /* !__DCC_VERSION__ */
 
 #ifdef __PE__
 #   define __IMP __attribute__((__dllimport__))
@@ -30,14 +54,22 @@
 #endif
 #define __WUNUSED __attribute__((__warn_unused_result__))
 
-#if defined(_WIN32) || defined(__CYGWIN32__)
-#   assert __CRT(msvc)
+#if 0
+#   define __CRT_DCC 1
+#elif defined(_WIN32) || defined(__CYGWIN32__)
+#   define __CRT_MSVC 1
 #else
-#   assert __CRT(glibc)
+#   define __CRT_GLIBC 1
 #endif
 
-#define __STDLIB_VERSION__ 201112L /* C11 */
-
+#define __STDLIB_VERSION__      201112L /* C11 */
 #define __STDLIB_UNSUPPORTED(x)
+
+#ifdef __STRICT_ANSI__
+#define __STRICT_ANSI_HEADER \
+  __pragma(tpp_exec("#warning \"<malloc.h> should not be included when -ansi is passed\"\n"))
+#else
+#define __STRICT_ANSI_HEADER /* nothing */
 #endif
 
+#endif

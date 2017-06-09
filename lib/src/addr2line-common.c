@@ -92,10 +92,11 @@ A2L_IMPL int A2L_NAME(a2l_exec)(struct A2LState *s, a2l_addr_t capture) {
   case A2L_O_IC: s->s_col  += ARG(); A2LState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
   case A2L_O_DC: s->s_col  -= ARG(); A2LState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
 
-  case A2L_O_SL: s->s_line  = ARG(); A2LState_DEL_C(s); LOG(("LINE = %d\n",s->s_line)); break;
-  case A2L_O_SC: s->s_col   = ARG(); A2LState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
-  case A2L_O_SP: s->s_path  = ARG(); A2LState_SETF(s,A2L_STATE_HASPATH); LOG(("PATH = %d\n",s->s_path)); break;
-  case A2L_O_SF: s->s_file  = ARG(); A2LState_SETF(s,A2L_STATE_HASFILE); LOG(("FILE = %d\n",s->s_file)); break;
+  case A2L_O_SL: s->s_line = ARG(); A2LState_DEL_C(s); LOG(("LINE = %d\n",s->s_line)); break;
+  case A2L_O_SC: s->s_col  = ARG(); A2LState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
+  case A2L_O_SP: s->s_path = ARG(); A2LState_SETF(s,A2L_STATE_HASPATH); LOG(("PATH = %d\n",s->s_path)); break;
+  case A2L_O_SF: s->s_file = ARG(); A2LState_SETF(s,A2L_STATE_HASFILE); LOG(("FILE = %d\n",s->s_file)); break;
+  case A2L_O_SN: s->s_name = ARG(); A2LState_SETF(s,A2L_STATE_HASNAME); LOG(("NAME = %d\n",s->s_file)); break;
 
   {
    if (DCC_MACRO_FALSE) { case A2L_O_IL_IA: s->s_line += ARG(); }
@@ -136,6 +137,7 @@ A2L_IMPL int A2L_NAME(a2l_exec)(struct A2LState *s, a2l_addr_t capture) {
     if (op&A2L_O_DEL_C) A2LState_DEL_C(s),LOG(("DELETE(COL)\n"));
     if (op&A2L_O_DEL_F) A2LState_DEL_F(s),LOG(("DELETE(FILE)\n"));
     if (op&A2L_O_DEL_P) A2LState_DEL_P(s),LOG(("DELETE(PATH)\n"));
+    if (op&A2L_O_DEL_N) A2LState_DEL_N(s),LOG(("DELETE(NAME)\n"));
    } else {
     /* Unknown opcode (Ignore). */
     unsigned int opc = A2L_GETOPC(op);

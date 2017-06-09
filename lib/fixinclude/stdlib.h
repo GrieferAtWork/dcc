@@ -19,6 +19,8 @@
 #pragma once
 #pragma GCC system_header
 
+#include <__stdinc.h>
+
 #pragma push_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
                          "realloc","cfree","memalign","aligned_alloc","pvalloc",\
                          "valloc","memdup","strdup","strndup","strdupf","vstrdupf")

@@ -4612,8 +4612,16 @@ next_syspath:
    if (result) { /* Got one! */
     /* When running in include_next-mode, make sure
      * that the file isn't already being included. */
+    assert(result->f_kind == TPPFILE_KIND_TEXT);
     if (!(mode&TPPLEXER_OPENFILE_FLAG_NEXT) ||
-        !(result->f_prev)) {
+        /* Make sure that the file isn't already included in include_next-mode.
+         *  - When the file is already on the #include-stack, its 'f_prev' field will be set.
+         *  - When the file doesn't reference another cached file, it is a cached file itself.
+         *    In this case, also make sure that no other file referencing 'result' as cache
+         *    is currently being included by making sure that 'f_cacheinc' is ZERO(0).
+         */
+        (!result->f_prev && (result->f_textfile.f_cacheentry ||
+                            !result->f_textfile.f_cacheinc))) {
 #ifdef HAVE_INSENSITIVE_PATHS
      /* TODO: No need to check the syspath portion:
       *  tpp -I/usr/include foo.c
@@ -6453,8 +6461,8 @@ create_int_file:
     incfile = TPPLexer_OpenFile(mode,include_begin,
                                (size_t)(include_end-include_begin),
                                 NULL);
-    assert(!(incfile) || !(incfile->f_prev) ||
-           !(mode&TPPLEXER_OPENFILE_FLAG_NEXT));
+    assert(!incfile || !(mode&TPPLEXER_OPENFILE_FLAG_NEXT) ||
+                       !(incfile->f_prev));
     if (function == KWD___TPP_LOAD_FILE && !incfile) {
      WARN(W_FILE_NOT_FOUND,include_begin,
                   (size_t)(include_end-include_begin));

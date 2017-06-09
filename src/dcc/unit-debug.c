@@ -37,15 +37,13 @@ DCC_DECL_BEGIN
 #define SECINFO_OFFSETOF_SIZE  (DCC_TARGET_SIZEOF_POINTER*2)
 #define SECINFO_OFFSETOF_A2L   (DCC_TARGET_SIZEOF_POINTER*2+DCC_TARGET_SIZEOF_SIZE_T)
 
-#define SECTIONFOR_SECINFO (unit.u_data)
-#define SECTIONFOR_A2LCMD  (unit.u_data)
-
 #if A2L_O_EOF != 0
 #error "A2L_O_EOF must be defined as ZERO(0)"
 #endif
 
 PRIVATE struct DCCSym * /* Allocate and define a symbol for the A2l data of the given writer. */
-DCCA2lWrite_AllocData(struct DCCA2lWriter *__restrict writer) {
+DCCA2lWrite_AllocData(struct DCCA2lWriter *__restrict writer,
+                      struct DCCSection *__restrict data_section) {
  struct DCCSym *result = DCCUnit_AllocSym();
  if likely(result) {
   void        *a2l_data;
@@ -55,13 +53,13 @@ DCCA2lWrite_AllocData(struct DCCA2lWriter *__restrict writer) {
   DCCA2lWriter_Optimize(writer);
   a2l_size = (size_t)((writer->w_state.s_code-writer->w_cbegin)*sizeof(a2l_op_t));
   /* NOTE: Allocate 1 additional opcode that is implicitly initialized as 'A2L_O_EOF' */
-  a2l_addr = DCCSection_DAlloc(SECTIONFOR_A2LCMD,a2l_size+sizeof(a2l_op_t),
+  a2l_addr = DCCSection_DAlloc(data_section,a2l_size+sizeof(a2l_op_t),
                                DCC_COMPILER_ALIGNOF(a2l_op_t),0);
-  DCCSym_Define(result,SECTIONFOR_A2LCMD,a2l_addr,
+  DCCSym_Define(result,data_section,a2l_addr,
                 a2l_size+sizeof(a2l_op_t),
                 DCC_COMPILER_ALIGNOF(a2l_op_t));
   /* Copy the A2L data into the allocated section memory. */
-  a2l_data = DCCSection_GetText(SECTIONFOR_A2LCMD,a2l_addr,a2l_size);
+  a2l_data = DCCSection_GetText(data_section,a2l_addr,a2l_size);
   if (a2l_data) memcpy(a2l_data,writer->w_cbegin,a2l_size);
  }
  return result;
@@ -70,29 +68,33 @@ DCCA2lWrite_AllocData(struct DCCA2lWriter *__restrict writer) {
 
 PUBLIC void DCCUnit_MkDebugSym(void) {
  struct DCCSym *secinfo_sym;
- struct DCCSection *sec;
+ struct DCCSection *sec,*debug_sec;
  /* Don't do anything when no debug informations should be generated. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
  secinfo_sym = DCCUnit_NewSyms("__dcc_dbg_secinfo",DCC_SYMFLAG_PRIVATE);
  if unlikely(!secinfo_sym || !DCCSym_ISFORWARD(secinfo_sym)) return;
+ debug_sec = DCCUnit_NewSecs(".debug",DCC_SYMFLAG_SEC(1,0,0,0,1,0));
+ if unlikely(!debug_sec) return;
+
  DCCUnit_ENUMSEC(sec) {
   struct DCCSym *a2l_sym; void *data;
   target_ptr_t secinfo_addr;
-  if (sec->sc_a2l.w_state.s_code == sec->sc_a2l.w_cbegin) continue;
-  a2l_sym = DCCA2lWrite_AllocData(&sec->sc_a2l);
+  if (sec->sc_a2l.w_state.s_code == sec->sc_a2l.w_cbegin ||
+      sec == debug_sec) continue;
+  a2l_sym = DCCA2lWrite_AllocData(&sec->sc_a2l,debug_sec);
   if unlikely(!a2l_sym) break;
   /* Found a section containing debug informations! */
-  secinfo_addr = DCCSection_DAlloc(SECTIONFOR_SECINFO,SECINFO_SIZEOF,SECINFO_ALIGNOF,0);
-  data = DCCSection_GetText(SECTIONFOR_SECINFO,secinfo_addr,SECINFO_SIZEOF);
+  secinfo_addr = DCCSection_DAlloc(debug_sec,SECINFO_SIZEOF,SECINFO_ALIGNOF,0);
+  data = DCCSection_GetText(debug_sec,secinfo_addr,SECINFO_SIZEOF);
   if unlikely(!data) break;
   memset(data,0,SECINFO_SIZEOF);
-  DCCSym_Define(secinfo_sym,SECTIONFOR_SECINFO,secinfo_addr,SECINFO_SIZEOF,SECINFO_ALIGNOF);
+  DCCSym_Define(secinfo_sym,debug_sec,secinfo_addr,SECINFO_SIZEOF,SECINFO_ALIGNOF);
   if unlikely((secinfo_sym = DCCUnit_AllocSym()) == NULL) return;
   /* Generate relocations to initialize the fields of the section information entry. */
-  DCCSection_Putrel(SECTIONFOR_SECINFO,secinfo_addr+SECINFO_OFFSETOF_NEXT,DCC_R_DATA_PTR,secinfo_sym);
-  DCCSection_Putrel(SECTIONFOR_SECINFO,secinfo_addr+SECINFO_OFFSETOF_ADDR,DCC_R_DATA_PTR,&sec->sc_start);
-  DCCSection_Putrel(SECTIONFOR_SECINFO,secinfo_addr+SECINFO_OFFSETOF_SIZE,DCC_R_SIZE,&sec->sc_start);
-  DCCSection_Putrel(SECTIONFOR_SECINFO,secinfo_addr+SECINFO_OFFSETOF_A2L,DCC_R_DATA_PTR,a2l_sym);
+  DCCSection_Putrel(debug_sec,secinfo_addr+SECINFO_OFFSETOF_NEXT,DCC_R_DATA_PTR,secinfo_sym);
+  DCCSection_Putrel(debug_sec,secinfo_addr+SECINFO_OFFSETOF_ADDR,DCC_R_DATA_PTR,&sec->sc_start);
+  DCCSection_Putrel(debug_sec,secinfo_addr+SECINFO_OFFSETOF_SIZE,DCC_R_SIZE,&sec->sc_start);
+  DCCSection_Putrel(debug_sec,secinfo_addr+SECINFO_OFFSETOF_A2L,DCC_R_DATA_PTR,a2l_sym);
  }
 
  /* Define as a symbol pointing to NULL, thereby
@@ -100,13 +102,17 @@ PUBLIC void DCCUnit_MkDebugSym(void) {
  DCCSym_Define(secinfo_sym,&DCCSection_Abs,0,0,1);
 }
 
-PUBLIC void DCCUnit_MkDebugL(void) {
+PUBLIC void DCC_ATTRIBUTE_FASTCALL
+DCCUnit_MkDebugL(int level) {
+ (void)level; /* TODO: Use me. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
  assert(unit.u_text);
  /* Put a debug addr2line entry. */
  DCCA2lWriter_PutL(&unit.u_text->sc_a2l,t_addr);
 }
-PUBLIC void DCCUnit_MkDebugLC(void) {
+PUBLIC void DCC_ATTRIBUTE_FASTCALL
+DCCUnit_MkDebugLC(int level) {
+ (void)level; /* TODO: Use me. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
  assert(unit.u_text);
  /* Put a debug addr2line entry. */

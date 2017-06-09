@@ -62,6 +62,7 @@ typedef target_ptr_t         A2L_TYPE(a2l_addr_t);
 #endif
 typedef A2L_TYPE(a2l_addr_t) A2L_TYPE(a2l_path_t);
 typedef A2L_TYPE(a2l_addr_t) A2L_TYPE(a2l_file_t);
+typedef A2L_TYPE(a2l_addr_t) A2L_TYPE(a2l_name_t);
 
 #if A2L_SIZEOF_ADDR <= 4
 #define A2L_ARG_MAXBYTES     5 /* ceildiv((4*8),7) */
@@ -79,10 +80,12 @@ struct A2LState {
  A2L_TYPE(a2l_col_t)  s_col;
  A2L_TYPE(a2l_path_t) s_path;
  A2L_TYPE(a2l_file_t) s_file;
+ A2L_TYPE(a2l_name_t) s_name;
 #define A2L_STATE_HASLINE 0x01
 #define A2L_STATE_HASCOL  0x02
-#define A2L_STATE_HASPATH 0x04 /*< 's_file' is filled with a meaningful value. */
+#define A2L_STATE_HASPATH 0x04 /*< 's_path' is filled with a meaningful value. */
 #define A2L_STATE_HASFILE 0x08 /*< 's_file' is filled with a meaningful value. */
+#define A2L_STATE_HASNAME 0x10 /*< 's_name' is filled with a meaningful value. */
  uint32_t   s_features; /*< Currently available features (set of 'A2L_STATE_*') */
 };
 
@@ -91,14 +94,17 @@ struct A2LState {
 #define A2LState_SETF(self,f)   ((self)->s_features |=  (f))
 #define A2LState_UNSETF(self,f) ((self)->s_features &= ~(f))
 
-#define A2LState_DEL_L(self)    ((self)->s_line = 0,A2LState_UNSETF(self,A2L_STATE_HASLINE))
-#define A2LState_DEL_C(self)    ((self)->s_col  = 0,A2LState_UNSETF(self,A2L_STATE_HASCOL))
-#define A2LState_DEL_P(self)    ((self)->s_path = 0,A2LState_UNSETF(self,A2L_STATE_HASPATH))
-#define A2LState_DEL_F(self)    ((self)->s_file = 0,A2LState_UNSETF(self,A2L_STATE_HASFILE))
-#define A2LState_DEL_LCPF(self) ((self)->s_line = 0,(self)->s_col = 0,\
-                                 (self)->s_path = 0,(self)->s_file = 0,\
-                                  A2LState_UNSETF(self,A2L_STATE_HASLINE|A2L_STATE_HASCOL|\
-                                                       A2L_STATE_HASPATH|A2L_STATE_HASFILE))
+#define A2LState_DEL_L(self)     ((self)->s_line = 0,A2LState_UNSETF(self,A2L_STATE_HASLINE))
+#define A2LState_DEL_C(self)     ((self)->s_col  = 0,A2LState_UNSETF(self,A2L_STATE_HASCOL))
+#define A2LState_DEL_P(self)     ((self)->s_path = 0,A2LState_UNSETF(self,A2L_STATE_HASPATH))
+#define A2LState_DEL_F(self)     ((self)->s_file = 0,A2LState_UNSETF(self,A2L_STATE_HASFILE))
+#define A2LState_DEL_N(self)     ((self)->s_name = 0,A2LState_UNSETF(self,A2L_STATE_HASNAME))
+#define A2LState_DEL_LCPFN(self) ((self)->s_line = 0,(self)->s_col = 0,\
+                                  (self)->s_path = 0,(self)->s_file = 0,\
+                                  (self)->s_name = 0,\
+                                   A2LState_UNSETF(self,A2L_STATE_HASLINE|A2L_STATE_HASCOL|\
+                                                        A2L_STATE_HASPATH|A2L_STATE_HASFILE|\
+                                                        A2L_STATE_HASNAME))
 
 /* Operand count flags. */
 #define A2L_OPC_0     0x00
@@ -113,14 +119,17 @@ struct A2LState {
 
 /* A2L predefined opcodes. */
 #define A2L_O_EOF      0x00 /* Terminate the A2L command chain. NOTE: _MUST_ Always be ZERO(0)! */
-#define A2L_O_RESET    0x10 /* addr = 0,line = 0,col = 0,path = 0,file = 0,has_line = 0,has_col = 0; */
-#define A2L_O_NOP      0x11 /* no-op */
+#define A2L_O_RESET    0x20 /* addr = 0,line = 0,col = 0,path = 0,file = 0,has_line = 0,has_col = 0; */
+#define A2L_O_NOP      0x21 /* no-op */
 
 /* Delete opcodes (May be or'd together, or used as stand-alone) */
 #define A2L_O_DEL_L    0x01 /* A2LState_DEL_L(s); */
 #define A2L_O_DEL_C    0x02 /* A2LState_DEL_C(s); */
 #define A2L_O_DEL_F    0x04 /* A2LState_DEL_P(s); */
 #define A2L_O_DEL_P    0x08 /* A2LState_DEL_F(s); */
+#define A2L_O_DEL_N    0x10 /* A2LState_DEL_N(s); */
+
+/* TODO: Redo this and get rid of any way of decrementing the address. (Other than a reset?) */
 
 #define A2L_O_IA       0x40 /* [CAPTURE] s->s_addr += ARG(0); */
 #define A2L_O_DA       0x41 /* [CAPTURE] s->s_addr -= ARG(0); */
@@ -133,6 +142,7 @@ struct A2LState {
 #define A2L_O_SC       0x48 /*           s->s_col   = ARG(0); A2LState_SETF(s,A2L_STATE_HASCOL); */
 #define A2L_O_SP       0x49 /*           s->s_path  = ARG(0); A2LState_SETF(s,A2L_STATE_HASPATH); */
 #define A2L_O_SF       0x4a /*           s->s_file  = ARG(0); A2LState_SETF(s,A2L_STATE_HASFILE); */
+#define A2L_O_SN       0x4b /*           s->s_name  = ARG(0); A2LState_SETF(s,A2L_STATE_HASNAME); */
 
 #define A2L_O_IL_IA    0x80 /* [CAPTURE] s->s_line += ARG(0); A2LState_SETF(s,A2L_STATE_HASLINE); A2LState_DEL_C(s); s->s_addr += ARG(1); */
 #define A2L_O_DL_IA    0x81 /* [CAPTURE] s->s_line -= ARG(0); A2LState_SETF(s,A2L_STATE_HASLINE); A2LState_DEL_C(s); s->s_addr += ARG(1); */

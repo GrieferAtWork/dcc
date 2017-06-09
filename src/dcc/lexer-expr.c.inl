@@ -496,6 +496,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprIf(void) {
 }
 
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
+ DCCUnit_MkDebugLC(DCCUNIT_DEBUGLC_EXPR);
  switch (TOK) {
 
  { /* Push an immediate, constant integral. */

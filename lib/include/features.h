@@ -19,10 +19,14 @@
 #pragma once
 #pragma GCC system_header
 
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
+
 #if __has_include_next(<features.h>)
 #include_next <features.h>
 #else
-#include "__stdinc.h"
+#include <__stdinc.h>
 
 /* NOTE: Most of the below is taken glibc <features.h>.
  * The below copy copyright notice can be found in the original. */
@@ -67,6 +71,13 @@
 #undef __USE_REENTRANT
 #undef __USE_FORTIFY_LEVEL
 #undef __KERNEL_STRICT_NAMES
+
+#undef __USE_DCC
+#ifdef _DCC_SOURCE /* Enable DCC extension functions. */
+# define __USE_DCC 1
+#endif
+
+
 
 #ifndef _LOOSE_KERNEL_NAMES
 # define __KERNEL_STRICT_NAMES
