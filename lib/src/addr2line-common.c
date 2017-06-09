@@ -52,7 +52,7 @@ A2L_NAME(a2l_getarg)(a2l_op_t const **__restrict pcode) {
  return result;
 }
 
-#if defined(__DCC_VERSION__) && 1
+#if defined(__DCC_VERSION__) && 0
 extern int printf(char const *,...);
 #define LOG(x) printf x
 #else
@@ -64,7 +64,7 @@ extern int printf(char const *,...);
  * @return: 0: The given address 'capture' has no debug information associated.
  * @return: 1: The given state 's' now contains the description for 'capture' */
 A2L_IMPL int
-A2L_NAME(a2l_exec)(struct A2LState *__restrict s,
+A2L_NAME(a2l_exec)(struct A2lState *__restrict s,
                    A2L_TYPE(a2l_op_t) const **__restrict pcode,
                    A2L_TYPE(a2l_addr_t) capture) {
 #define ARG() A2L_NAME(a2l_getarg)(&code)
@@ -74,7 +74,7 @@ A2L_NAME(a2l_exec)(struct A2LState *__restrict s,
   a2l_op_t op = *code++;
   switch (op) {
   case A2L_O_EOF: LOG(("EOF\n")); goto done;
-  case A2L_O_RESET: LOG(("RESET\n")); A2LState_RESET(s); break;
+  case A2L_O_RESET: LOG(("RESET\n")); A2lState_RESET(s); break;
 
   {
    a2l_addr_t old_addr,new_addr;
@@ -91,20 +91,20 @@ A2L_NAME(a2l_exec)(struct A2LState *__restrict s,
    }
   } break;
 
-  case A2L_O_IL: s->s_line += ARG(); A2LState_DEL_C(s); LOG(("LINE = %d\n",s->s_line)); break;
-  case A2L_O_DL: s->s_line -= ARG(); A2LState_DEL_C(s); LOG(("LINE = %d\n",s->s_line)); break;
-  case A2L_O_IC: s->s_col  += ARG(); A2LState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
-  case A2L_O_DC: s->s_col  -= ARG(); A2LState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
+  case A2L_O_IL: s->s_line += ARG(); A2lState_DEL_C(s); LOG(("LINE = %d\n",s->s_line)); break;
+  case A2L_O_DL: s->s_line -= ARG(); A2lState_DEL_C(s); LOG(("LINE = %d\n",s->s_line)); break;
+  case A2L_O_IC: s->s_col  += ARG(); A2lState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
+  case A2L_O_DC: s->s_col  -= ARG(); A2lState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
 
-  case A2L_O_SP: s->s_path = ARG(); A2LState_SETF(s,A2L_STATE_HASPATH); LOG(("PATH = %d\n",s->s_path)); break;
-  case A2L_O_SF: s->s_file = ARG(); A2LState_SETF(s,A2L_STATE_HASFILE); LOG(("FILE = %d\n",s->s_file)); break;
-  case A2L_O_SN: s->s_name = ARG(); A2LState_SETF(s,A2L_STATE_HASNAME); LOG(("NAME = %d\n",s->s_file)); break;
+  case A2L_O_SP: s->s_path = ARG(); A2lState_SETF(s,A2L_STATE_HASPATH); LOG(("PATH = %d\n",s->s_path)); break;
+  case A2L_O_SF: s->s_file = ARG(); A2lState_SETF(s,A2L_STATE_HASFILE); LOG(("FILE = %d\n",s->s_file)); break;
+  case A2L_O_SN: s->s_name = ARG(); A2lState_SETF(s,A2L_STATE_HASNAME); LOG(("NAME = %d\n",s->s_file)); break;
 
   {
    if (DCC_MACRO_FALSE) { case A2L_O_IL_IA: s->s_line += ARG(); }
    if (DCC_MACRO_FALSE) { case A2L_O_DL_IA: s->s_line -= ARG(); }
-   A2LState_SETF(s,A2L_STATE_HASLINE);
-   A2LState_DEL_C(s);
+   A2lState_SETF(s,A2L_STATE_HASLINE);
+   A2lState_DEL_C(s);
    LOG(("LINE = %d\n",s->s_line));
    goto cap_inc;
   } break;
@@ -112,8 +112,8 @@ A2L_NAME(a2l_exec)(struct A2LState *__restrict s,
   {
    if (DCC_MACRO_FALSE) { case A2L_O_IL_DA: s->s_line += ARG(); }
    if (DCC_MACRO_FALSE) { case A2L_O_DL_DA: s->s_line -= ARG(); }
-   A2LState_SETF(s,A2L_STATE_HASLINE);
-   A2LState_DEL_C(s);
+   A2lState_SETF(s,A2L_STATE_HASLINE);
+   A2lState_DEL_C(s);
    LOG(("LINE = %d\n",s->s_line));
    goto cap_dec;
   } break;
@@ -123,7 +123,7 @@ A2L_NAME(a2l_exec)(struct A2LState *__restrict s,
    if (DCC_MACRO_FALSE) { case A2L_O_DL_SC_IA: case A2L_O_DL_SC_DA: s->s_line -= ARG(); }
    LOG(("LINE = %d\n",s->s_line));
    s->s_col = ARG();
-   A2LState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL);
+   A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL);
    LOG(("COL = %d\n",s->s_col));
    if (op <= 0xc2) goto cap_inc;
    goto cap_dec;
@@ -132,11 +132,11 @@ A2L_NAME(a2l_exec)(struct A2LState *__restrict s,
   {
   default:
    if (op >= A2L_O_DEL_L && op <= A2L_O_DEL_P) {
-    if (op&A2L_O_DEL_L) A2LState_DEL_L(s),LOG(("DELETE(LINE)\n"));
-    if (op&A2L_O_DEL_C) A2LState_DEL_C(s),LOG(("DELETE(COL)\n"));
-    if (op&A2L_O_DEL_F) A2LState_DEL_F(s),LOG(("DELETE(FILE)\n"));
-    if (op&A2L_O_DEL_P) A2LState_DEL_P(s),LOG(("DELETE(PATH)\n"));
-    if (op&A2L_O_DEL_N) A2LState_DEL_N(s),LOG(("DELETE(NAME)\n"));
+    if (op&A2L_O_DEL_L) A2lState_DEL_L(s),LOG(("DELETE(LINE)\n"));
+    if (op&A2L_O_DEL_C) A2lState_DEL_C(s),LOG(("DELETE(COL)\n"));
+    if (op&A2L_O_DEL_F) A2lState_DEL_F(s),LOG(("DELETE(FILE)\n"));
+    if (op&A2L_O_DEL_P) A2lState_DEL_P(s),LOG(("DELETE(PATH)\n"));
+    if (op&A2L_O_DEL_N) A2lState_DEL_N(s),LOG(("DELETE(NAME)\n"));
    } else {
     /* Unknown opcode (Ignore). */
     unsigned int opc = A2L_GETOPC(op);

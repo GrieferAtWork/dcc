@@ -242,6 +242,7 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
   }
   for (srcsec = other->u_secs; srcsec; srcsec = srcsec->sc_next) {
    struct DCCSection *dstsec;
+   if (!srcsec->sc_a2l.d_chunkc) continue;
    dstsec = DCCUnit_GetSec(srcsec->sc_start.sy_name);
    if (dstsec) {
     /* Merge debug informations. */

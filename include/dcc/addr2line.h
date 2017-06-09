@@ -35,10 +35,10 @@ struct DCCA2lChunk {
   *       generated to ensure proper transitions from the previous chunk's
   *      'c_smax' to the next chunk's 'c_smin' A2L state.
   */
- struct A2LState     c_smin;       /*< [.s_addr <= c_smin.s_addr] The state required for the start of this chunk. */
- struct A2LState     c_smax;       /*< [.s_addr >= c_smin.s_addr] The state required for the end of this chunk.
+ struct A2lState     c_smin;       /*< [.s_addr <= c_smin.s_addr] The state required for the start of this chunk. */
+ struct A2lState     c_smax;       /*< [.s_addr >= c_smin.s_addr] The state required for the end of this chunk.
                                     *  NOTE: This state represents the A2L state at 'c_code.c_pos'. */
- struct A2LState     c_slast;      /*< [valid_if(c_code_last != c_code.c_pos)] The state before 'c_code_last'. */
+ struct A2lState     c_slast;      /*< [valid_if(c_code_last != c_code.c_pos)] The state before 'c_code_last'. */
  A2L_TYPE(a2l_op_t) *c_code_begin; /*< [!][0..1][owned] Begin address of allocated A2L code.
                                     *   WARNING: This code vector does is _NOT_ necessarily terminated with an 'A2L_O_EOF' op.
                                     *   NOTE: This code vector must _NEVER_ contain instructions that decrement the A2L address! */
@@ -93,7 +93,7 @@ DCCA2l_Delete(struct DCCA2l *__restrict self,
 /* Insert debug data at a given address 'data->s_addr'.
  * NOTE: Data inserted will affect all addresses '>= data->s_addr' and '< next_greater_descriptor()'.  */
 DCCFUN void DCCA2l_Insert(struct DCCA2l *__restrict self,
-                          struct A2LState const *__restrict data);
+                          struct A2lState const *__restrict data);
 
 /* Link all A2L code and return it.
  * @return: NULL: Failed to allocate enough memory (a warning has been emit).
@@ -117,7 +117,7 @@ DCCA2l_Import(struct DCCA2l *__restrict self,
  *             or the state of the last address that was still recognized.
  * @return: 1: Managed to find the descriptor associated with 'result->s_addr'. */
 DCCFUN int DCCA2l_Lookup(struct DCCA2l const *__restrict self,
-                         struct A2LState *__restrict result);
+                         struct A2lState *__restrict result);
 
 
 /* Capture the current lexer state as an A2L state.
@@ -126,7 +126,7 @@ DCCFUN int DCCA2l_Lookup(struct DCCA2l const *__restrict self,
  *       features may be deducted based on the current context.
  * NOTE: 'result->s_addr' is set to 't_addr'. */
 DCCFUN void
-DCCA2l_CaptureState(struct A2LState *__restrict result,
+DCCA2l_CaptureState(struct A2lState *__restrict result,
                     uint32_t features);
 
 

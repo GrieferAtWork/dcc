@@ -106,7 +106,7 @@ PUBLIC void DCCUnit_MkDebugSym(void) {
 
 PUBLIC void DCC_ATTRIBUTE_FASTCALL
 DCCUnit_MkDebugL(int level) {
- struct A2LState state;
+ struct A2lState state;
  (void)level; /* TODO: Use me. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
  /* Put a debug addr2line entry. */
@@ -116,7 +116,7 @@ DCCUnit_MkDebugL(int level) {
 }
 PUBLIC void DCC_ATTRIBUTE_FASTCALL
 DCCUnit_MkDebugLC(int level) {
- struct A2LState state;
+ struct A2lState state;
  (void)level; /* TODO: Use me. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
  /* Put a debug addr2line entry. */

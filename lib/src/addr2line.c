@@ -51,10 +51,10 @@ _Bool __dcc_dbg_addr2line(void *ip, lc_t *info) {
    if ((uintptr_t)ip >= (uintptr_t)iter->si_addr &&
        (uintptr_t)ip <= (uintptr_t)iter->si_addr+iter->si_size) {
     /* Found the section associated with this EIP */
-    struct A2LState state; a2l_addr_t addr;
+    struct A2lState state; a2l_addr_t addr;
     a2l_op_t const *code = iter->si_a2l;
     if (!code) break;
-    A2LState_RESET(&state);
+    A2lState_RESET(&state);
     addr = (a2l_addr_t)((uintptr_t)ip-(uintptr_t)iter->si_addr);
     /* printf("Found %p in %p ... %p\n",
      *        ip,iter->si_addr,
@@ -63,10 +63,11 @@ _Bool __dcc_dbg_addr2line(void *ip, lc_t *info) {
     if (!A2L_NAME(a2l_exec)(&state,&code,addr)) break;
     /* Managed to capture the given address!
      * Fill in all available information. */
-    info->line = (state.s_features&A2L_STATE_HASLINE) ? state.s_line+1 : 0;
-    info->col  = (state.s_features&A2L_STATE_HASCOL)  ? state.s_col+1  : 0;
     info->path = (state.s_features&A2L_STATE_HASPATH) ? __dcc_dbg_strtab+state.s_path : NULL;
     info->file = (state.s_features&A2L_STATE_HASFILE) ? __dcc_dbg_strtab+state.s_file : NULL;
+    info->name = (state.s_features&A2L_STATE_HASNAME) ? __dcc_dbg_strtab+state.s_name : NULL;
+    info->line = (state.s_features&A2L_STATE_HASLINE) ? state.s_line+1 : 0;
+    info->col  = (state.s_features&A2L_STATE_HASCOL)  ? state.s_col+1  : 0;
     return 1;
    }
    iter = iter->si_next;

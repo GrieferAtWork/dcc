@@ -64,7 +64,7 @@ DCCA2lChunk_IncCode(struct DCCA2lChunk *__restrict self) {
 
 
 PRIVATE a2l_op_t *
-a2l_exec1(struct A2LState *__restrict state,
+a2l_exec1(struct A2lState *__restrict state,
           a2l_op_t const *__restrict code) {
  DCC_a2l_exec(state,&code,state->s_addr+1);
  return (a2l_op_t *)code;
@@ -79,8 +79,8 @@ a2l_exec1(struct A2LState *__restrict state,
 
 PRIVATE a2l_op_t *
 a2l_build_transition(a2l_op_t *__restrict buf,
-                     struct A2LState const *__restrict old_state,
-                     struct A2LState const *__restrict new_state) {
+                     struct A2lState const *__restrict old_state,
+                     struct A2lState const *__restrict new_state) {
 #define O(x) (void)(*buf++ = (x))
 #define A(a) (void)(buf = a2l_setarg(buf,a))
  assert(buf);
@@ -215,7 +215,7 @@ DCCA2lChunk_GetInsPtr(struct DCCA2lChunk *__restrict self,
                       a2l_addr_t addr,
                       a2l_op_t **__restrict ins_begin,
                       a2l_op_t **__restrict ins_end,
-                      struct A2LState *__restrict ins_state) {
+                      struct A2lState *__restrict ins_state) {
  a2l_op_t *code,*newcode;
  assert(self);
  assert(ins_begin);
@@ -241,6 +241,16 @@ DCCA2lChunk_GetInsPtr(struct DCCA2lChunk *__restrict self,
  }
 }
 
+PRIVATE void
+A2lState_RelocString(struct A2lState *__restrict self,
+                     target_off_t offset) {
+ assert(self);
+ if (self->s_features&A2L_STATE_HASPATH) self->s_path += offset;
+ if (self->s_features&A2L_STATE_HASFILE) self->s_file += offset;
+ if (self->s_features&A2L_STATE_HASNAME) self->s_name += offset;
+}
+
+
 DCCFUN void
 DCCA2lChunk_RelocString(struct DCCA2lChunk *__restrict self,
                         target_off_t offset) {
@@ -249,6 +259,11 @@ DCCA2lChunk_RelocString(struct DCCA2lChunk *__restrict self,
  a2l_arg_t arg;
  assert(self);
  assert(self->c_code_pos <= self->c_code_end);
+ /* Relocate the min/max/last states. */
+ A2lState_RelocString(&self->c_smin,offset);
+ A2lState_RelocString(&self->c_smax,offset);
+ A2lState_RelocString(&self->c_slast,offset);
+
  /* NOTE: We (ab-)use 'c_code_last' as iterator, as it will
   *       automatically be updated when the chunk is resized. */
  old_last = self->c_code_last-self->c_code_begin;
@@ -306,10 +321,10 @@ DCCA2lChunk_RelocString(struct DCCA2lChunk *__restrict self,
 
 PRIVATE void
 DCCA2lChunk_Insert(struct DCCA2lChunk *__restrict self,
-                   struct A2LState const *__restrict data) {
+                   struct A2lState const *__restrict data) {
  a2l_op_t buf[A2L_TRANSITION_MAXSIZE];
  size_t size,ins_size; a2l_op_t *ins_begin,*ins_end;
- struct A2LState ins_state;
+ struct A2lState ins_state;
  assert(self);
  assert(data);
  if (self->c_code_pos == self->c_code_begin &&
@@ -462,7 +477,7 @@ PUBLIC /*inherited*/a2l_op_t *
 DCCA2l_Link(struct DCCA2l const *__restrict self,
             size_t *__restrict code_size) {
  struct DCCA2lChunk *iter,*end;
- struct A2LState curr_state;
+ struct A2lState curr_state;
  a2l_op_t *result,*p;
  size_t result_size;
  assert(self);
@@ -480,7 +495,7 @@ DCCA2l_Link(struct DCCA2l const *__restrict self,
  if unlikely(!result) { DCC_AllocFailed(result_size); return NULL; }
  iter = self->d_chunkv;
  /* Start out with a RESET()-state, as required for linked A2L code. */
- A2LState_RESET(&curr_state);
+ A2lState_RESET(&curr_state);
  for (; iter != end; ++iter) {
   size_t codesize = (size_t)(iter->c_code_pos-iter->c_code_begin);
   /* Generate a state transition. */
@@ -503,7 +518,7 @@ PUBLIC void
 DCCA2l_Import(struct DCCA2l *__restrict self,
               a2l_op_t *__restrict code,
               size_t code_size) {
- struct A2LState s;
+ struct A2lState s;
  a2l_op_t *begin,*iter,*end;
  assert(self);
  assert(!code_size || code);
@@ -520,7 +535,7 @@ DCCA2l_Import(struct DCCA2l *__restrict self,
   memcpy(iter,code,code_size);
   memset(iter+code_size,A2L_O_EOF,(1+A2L_ARG_MAXBYTES));
  }
- A2LState_RESET(&s);
+ A2lState_RESET(&s);
  end = (begin = iter)+code_size;
  while (iter < end) {
   iter = a2l_exec1(&s,iter);
@@ -548,7 +563,7 @@ DCCA2l_Merge(struct DCCA2l *__restrict self,
  /* xxx: This could be done better... */
  end = (iter = other->d_chunkv)+other->d_chunkc;
  for (; iter != end; ++iter) {
-  struct A2LState state;
+  struct A2lState state;
   a2l_op_t const *code,*code_end;
   code     = iter->c_code_begin;
   code_end = iter->c_code_pos;
@@ -602,7 +617,7 @@ DCCA2l_Delete(struct DCCA2l *__restrict self,
 
 PUBLIC void
 DCCA2l_Insert(struct DCCA2l *__restrict self,
-              struct A2LState const *__restrict data) {
+              struct A2lState const *__restrict data) {
  struct DCCA2lChunk *chunk;
  assert(self),assert(data);
  chunk = DCCA2l_GetChunkFor(self,data->s_addr);
@@ -611,7 +626,7 @@ DCCA2l_Insert(struct DCCA2l *__restrict self,
 
 PUBLIC int
 DCCA2l_Lookup(struct DCCA2l const *__restrict self,
-              struct A2LState *__restrict result) {
+              struct A2lState *__restrict result) {
  struct DCCA2lChunk *chunk;
  a2l_addr_t addr; size_t index;
  a2l_op_t const *code;
@@ -619,7 +634,7 @@ DCCA2l_Lookup(struct DCCA2l const *__restrict self,
  assert(result);
  addr = result->s_addr;
  index = addr/DCC_A2L_CHUNK_SIZE;
- A2LState_RESET(result);
+ A2lState_RESET(result);
  if (index >= self->d_chunkc) return 0;
  chunk = self->d_chunkv+index;
  if (addr > chunk->c_smax.s_addr) return 0;
@@ -696,7 +711,7 @@ LOCAL a2l_file_t TPPFile_GetA2LFile(struct TPPFile *__restrict self) {
 
 
 PUBLIC void
-DCCA2l_CaptureState(struct A2LState *__restrict result,
+DCCA2l_CaptureState(struct A2lState *__restrict result,
                     uint32_t features) {
  struct TPPFile *textfile;
  textfile = TPPLexer_Textfile();
@@ -705,7 +720,7 @@ DCCA2l_CaptureState(struct A2LState *__restrict result,
  assert(unit.u_text);
  /* Special case: Don't generate A2L information for the empty file. */
  if unlikely(textfile == &TPPFile_Empty) return;
- memset(result,0,sizeof(struct A2LState));
+ memset(result,0,sizeof(struct A2lState));
  result->s_addr     = (a2l_addr_t)t_addr;
  result->s_features = features;
  if (features&A2L_STATE_HASPATH) {
