@@ -779,7 +779,7 @@ done_symvec:
     SEC_SYMVEC(iter) = (struct DCCSym **)symvec;
     SEC_SYMCNT(iter) = symcnt;
    }
-#ifdef SHT_DCC_SYMFLG
+#if defined(SHT_DCC_SYMFLG) || defined(SHT_DCC_ADDR2LINE)
    /* What about alias symbols? - This is what's about that!
     * ELF doesn't appear to be able to represent these, meaning
     * that when the times comes for DCC to generate object files,
@@ -802,80 +802,113 @@ done_symvec:
     * $dcc -c source_b.c # GCC fails to compile this, but DCC's supposed to be able to
     * $dcc -o app source_a.o source_b.o
     */
-   /* Load all 'SHT_DCC_SYMFLG' extension sections. */
+   /* Load all 'SHT_DCC_SYMFLG' and 'SHT_DCC_ADDR2LINE' extension sections. */
    for (iter = secv; iter != end; ++iter) {
-    Elf(DCCSymFlg) *flgv,*flg_iter,*flg_end; size_t flgc;
-    struct DCCSym **symv,**sym_iter; size_t symc;
-    if (iter->sh_type != SHT_DCC_SYMFLG) continue;
-    /* Parse extended symbol flags. */
-    if (!iter->sh_entsize) iter->sh_entsize = sizeof(Elf(DCCSymFlg));
-    if unlikely((flgc = iter->sh_size/iter->sh_entsize) == 0) continue;
-    if unlikely((symc = SEC_SYMCNTI(iter->sh_link)) == 0) continue;
-    if unlikely((symv = SEC_SYMVECI(iter->sh_link)) == NULL) continue;
-    if (symc < flgc) flgc = symc;
-    flgv = (Elf(DCCSymFlg) *)DCC_Malloc(flgc*sizeof(Elf(DCCSymFlg)),0);
-    if unlikely(!flgv) continue;
-    if (iter->sh_entsize == sizeof(Elf(DCCSymFlg))) {
-     flgc *= sizeof(Elf(DCCSymFlg));
-     s_seek(fd,start+iter->sh_offset,SEEK_SET);
-     read_error = s_read(fd,flgv,flgc);
-     if (read_error < 0) read_error = 0;
-     if (flgc > (size_t)read_error)
-         flgc = (size_t)read_error;
-     flgc /= sizeof(Elf(DCCSymFlg));
-    } else {
-     size_t i,common_size = sizeof(Elf(DCCSymFlg));
-     /* Difficult case: Must read each entry individually. */
-     if (iter->sh_entsize < sizeof(Elf(DCCSymFlg))) {
-      memset(flgv,0,flgc*sizeof(Elf(DCCSymFlg)));
-      common_size = iter->sh_entsize;
-     }
-     for (i = 0; i < flgc; ++i) {
-      s_seek(fd,start+iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
-      if (!s_reada(fd,&flgv[i],common_size)) { flgc = i; break; }
-     }
-    }
-    flg_end = (flg_iter = flgv)+flgc;
-    sym_iter = symv;
-    for (; flg_iter != flg_end; ++flg_iter,++sym_iter) {
-     struct DCCSym *sym = *sym_iter;
-     uint8_t flags = ELF(DCC_SYMFLAG_FLAGS)(flg_iter->sf_info);
-     if (flags&ELF_DCC_SYMFLAG_F_ALIAS) {
-      uint32_t targetid = ELF(DCC_SYMFLAG_SYM)(flg_iter->sf_info);
-      struct DCCSym *alias_target;
-      if unlikely(!sym) {
-       /* Must allocate the alias symbol. */
-       sym = DCCUnit_AllocSym();
-       if unlikely(!sym) continue;
-       *sym_iter = sym;
+#ifdef SHT_DCC_SYMFLG
+    if (iter->sh_type == SHT_DCC_SYMFLG) {
+     Elf(DCCSymFlg) *flgv,*flg_iter,*flg_end; size_t flgc;
+     struct DCCSym **symv,**sym_iter; size_t symc;
+     /* Parse extended symbol flags. */
+     if (!iter->sh_entsize) iter->sh_entsize = sizeof(Elf(DCCSymFlg));
+     if unlikely((flgc = iter->sh_size/iter->sh_entsize) == 0) continue;
+     if unlikely((symc = SEC_SYMCNTI(iter->sh_link)) == 0) continue;
+     if unlikely((symv = SEC_SYMVECI(iter->sh_link)) == NULL) continue;
+     if (symc < flgc) flgc = symc;
+     flgv = (Elf(DCCSymFlg) *)DCC_Malloc(flgc*sizeof(Elf(DCCSymFlg)),0);
+     if unlikely(!flgv) continue;
+     if (iter->sh_entsize == sizeof(Elf(DCCSymFlg))) {
+      flgc *= sizeof(Elf(DCCSymFlg));
+      s_seek(fd,start+iter->sh_offset,SEEK_SET);
+      read_error = s_read(fd,flgv,flgc);
+      if (read_error < 0) read_error = 0;
+      if (flgc > (size_t)read_error)
+          flgc = (size_t)read_error;
+      flgc /= sizeof(Elf(DCCSymFlg));
+     } else {
+      size_t i,common_size = sizeof(Elf(DCCSymFlg));
+      /* Difficult case: Must read each entry individually. */
+      if (iter->sh_entsize < sizeof(Elf(DCCSymFlg))) {
+       memset(flgv,0,flgc*sizeof(Elf(DCCSymFlg)));
+       common_size = iter->sh_entsize;
       }
-      if unlikely(targetid >= symc) continue;
-      alias_target = symv[targetid];
-      if unlikely(!alias_target) {
-       /* Create a new unnamed, alias symbol. */
-       alias_target = DCCUnit_AllocSym();
-       if unlikely(!alias_target) continue;
-       symv[targetid] = alias_target;
+      for (i = 0; i < flgc; ++i) {
+       s_seek(fd,start+iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
+       if (!s_reada(fd,&flgv[i],common_size)) { flgc = i; break; }
       }
-      /* Define 'sym' as an alias for 'symv[symid]' */
-      DCCSym_Alias(sym,alias_target,sym->sy_size);
-      sym->sy_size = 0;
      }
-     if unlikely(!sym) continue;
-     if (sym->sy_align < flg_iter->sf_align)
-         sym->sy_align = flg_iter->sf_align;
+     flg_end = (flg_iter = flgv)+flgc;
+     sym_iter = symv;
+     for (; flg_iter != flg_end; ++flg_iter,++sym_iter) {
+      struct DCCSym *sym = *sym_iter;
+      uint8_t flags = ELF(DCC_SYMFLAG_FLAGS)(flg_iter->sf_info);
+      if (flags&ELF_DCC_SYMFLAG_F_ALIAS) {
+       uint32_t targetid = ELF(DCC_SYMFLAG_SYM)(flg_iter->sf_info);
+       struct DCCSym *alias_target;
+       if unlikely(!sym) {
+        /* Must allocate the alias symbol. */
+        sym = DCCUnit_AllocSym();
+        if unlikely(!sym) continue;
+        *sym_iter = sym;
+       }
+       if unlikely(targetid >= symc) continue;
+       alias_target = symv[targetid];
+       if unlikely(!alias_target) {
+        /* Create a new unnamed, alias symbol. */
+        alias_target = DCCUnit_AllocSym();
+        if unlikely(!alias_target) continue;
+        symv[targetid] = alias_target;
+       }
+       /* Define 'sym' as an alias for 'symv[symid]' */
+       DCCSym_Alias(sym,alias_target,sym->sy_size);
+       sym->sy_size = 0;
+      }
+      if unlikely(!sym) continue;
+      if (sym->sy_align < flg_iter->sf_align)
+          sym->sy_align = flg_iter->sf_align;
 #if ELF_DCC_SYMFLAG_F_USED   == DCC_SYMFLAG_USED && \
     ELF_DCC_SYMFLAG_F_UNUSED == DCC_SYMFLAG_UNUSED
-     sym->sy_flags |= flags&(ELF_DCC_SYMFLAG_F_USED|
-                             ELF_DCC_SYMFLAG_F_UNUSED);
+      sym->sy_flags |= flags&(ELF_DCC_SYMFLAG_F_USED|
+                              ELF_DCC_SYMFLAG_F_UNUSED);
 #else
-     if (flags&ELF_DCC_SYMFLAG_F_USED)   sym->sy_flags |= DCC_SYMFLAG_USED;
-     if (flags&ELF_DCC_SYMFLAG_F_UNUSED) sym->sy_flags |= DCC_SYMFLAG_UNUSED;
+      if (flags&ELF_DCC_SYMFLAG_F_USED)   sym->sy_flags |= DCC_SYMFLAG_USED;
+      if (flags&ELF_DCC_SYMFLAG_F_UNUSED) sym->sy_flags |= DCC_SYMFLAG_UNUSED;
 #endif
-    }
-    DCC_Free(flgv);
-   }
+     }
+     DCC_Free(flgv);
+    } else
 #endif /* SHT_DCC_SYMFLG */
+#ifdef SHT_DCC_ADDR2LINE
+    if (iter->sh_type == SHT_DCC_ADDR2LINE) {
+     struct DCCSection *debug_sec;
+     struct DCCTextBuf a2l_text;
+     debug_sec = SEC_DCCSECI(iter->sh_link);
+     if unlikely(!debug_sec) continue; /* TODO: Warning: Invalid A2L section index. */
+     if unlikely(DCCSection_ISIMPORT(debug_sec)) continue; /* TODO: Warning: A2L information for import section. */
+     elf_loadsection(iter,&a2l_text,fd,start);
+     if (a2l_text.tb_max != a2l_text.tb_begin) {
+      if likely(!debug_sec->sc_a2l.d_chunkc) {
+       DCCA2l_Import(&debug_sec->sc_a2l,
+                    (a2l_op_t *)a2l_text.tb_begin,
+                    (size_t)(a2l_text.tb_max-a2l_text.tb_begin));
+      } else {
+       /* TODO: Warning: Double A2L section definition. */
+       /* Hacky work-around to automatically merge multiple-debug
+        * informations (which shouldn't happen in the first place) */
+       struct DCCA2l temp;
+       DCCA2l_Init(&temp);
+       DCCA2l_Import(&temp,
+                    (a2l_op_t *)a2l_text.tb_begin,
+                    (size_t)(a2l_text.tb_max-a2l_text.tb_begin));
+       DCCA2l_Merge(&debug_sec->sc_a2l,&temp,0);
+       DCCA2l_Quit(&temp);
+      }
+     }
+     free(a2l_text.tb_begin);
+    } else
+#endif
+    ;
+   }
+#endif /* SHT_DCC_SYMFLG || SHT_DCC_ADDR2LINE */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
    /* Bind all ITA symbols. */
    for (iter = secv; iter != end; ++iter) {

@@ -80,8 +80,8 @@ _Bool __dcc_dbg_addr2line(void *ip, lc_t *info) {
 }
 
 
-#ifndef NO_CRASH_TRACEBACKS
-#ifdef _WIN32
+#ifndef NDEBUG
+#if defined(_WIN32) || defined(__CYGWIN32__)
 #ifdef __i386__
 
 typedef unsigned char BYTE;
@@ -158,7 +158,8 @@ typedef struct _EXCEPTION_POINTERS {
 typedef LONG (__stdcall *PTOP_LEVEL_EXCEPTION_FILTER)(PEXCEPTION_POINTERS ExceptionInfo);
 typedef PTOP_LEVEL_EXCEPTION_FILTER LPTOP_LEVEL_EXCEPTION_FILTER;
 
-[[lib("Kernel32.dll")]] LPTOP_LEVEL_EXCEPTION_FILTER __stdcall SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER);
+[[lib("Kernel32.dll")]] LPTOP_LEVEL_EXCEPTION_FILTER __stdcall
+SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER);
 
 #include <stdio.h>
 #include <dcc.h>
@@ -180,7 +181,7 @@ struct frame {
  void         *addr;
 };
 
-static LONG __stdcall my_handler(PEXCEPTION_POINTERS ExceptionInfo) {
+static LONG __stdcall tb_handler(PEXCEPTION_POINTERS ExceptionInfo) {
  fprintf(stderr,"Unhandled exception\n");
  if (ExceptionInfo) {
   PCONTEXT ctx = ExceptionInfo->ContextRecord;
@@ -220,13 +221,13 @@ done_tb:
 }
 
 
-[[constructor,visibility("hidden")]]
-void init_exc_tracebacks(void) {
- SetUnhandledExceptionFilter(&my_handler);
+[[visibility("hidden")]]
+void __dcc_dbg_init_exc_tracebacks(void) {
+ SetUnhandledExceptionFilter(&tb_handler);
 }
 
 #endif /* __i386__ */
 #endif /* _WIN32 */
-#endif /* !NO_CRASH_TRACEBACKS */
+#endif /* !NDEBUG */
 
 #endif /* !GUARD_LIB_SRC_ADDR2LINE_C */

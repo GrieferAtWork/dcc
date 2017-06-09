@@ -74,6 +74,22 @@ DCC_DECL_BEGIN
  */
 #define SHT_DCC_SYMFLG (SHT_LOUSER+0x0306)
 
+/* Used for storing A2L debug information in DCC ELF object files:
+ *  - BASE_SECTION:   The section that this section holds debug information for (Usually '.text').
+ *  - The 'Elf(Shdr)' fields are defined as follows:
+ *      'sh_name':      Offset in '.shstrtab' - ".DCC.a2l.<BASE_SECTION>"
+ *      'sh_type':      <SHT_DCC_ADDR2LINE>
+ *      'sh_flags':     <0>
+ *      'sh_addr':      <0>
+ *      'sh_offset':    Absolute file-offset of the A2L pseudo code.
+ *      'sh_size':      Size of the section's data (in bytes).
+ *      'sh_link':      <BASE_SECTION>
+ *      'sh_info':      Undefined
+ *      'sh_addralign': DCC_COMPILER_ALIGNOF(a2l_op_t)
+ *      'sh_entsize':   sizeof(a2l_op_t)
+ */
+#define SHT_DCC_ADDR2LINE (SHT_LOUSER+0x0307)
+
 typedef struct {
   Elf32_Word sf_info;  /*< Extended symbol information. */
   Elf32_Word sf_align; /*< Minimum alignment required by this symbol. */

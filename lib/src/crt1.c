@@ -54,6 +54,12 @@ __IMP [[noreturn]] void exit(int exitcode);
  __set_app_type(__CONSOLE_APP);
  __getmainargs(&argc,&argv,&env,0,&start_info);
 
+#if !defined(NDEBUG) && (defined(_WIN32) || defined(__CYGWIN32__)) && defined(__i386__)
+ { extern void __dcc_dbg_init_exc_tracebacks(void);
+   __dcc_dbg_init_exc_tracebacks();
+ }
+#endif
+
  ret = main(argc,argv,env);
  exit(ret);
 }

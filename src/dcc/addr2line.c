@@ -464,6 +464,7 @@ DCCA2l_Link(struct DCCA2l const *__restrict self,
  assert(code_size);
  /* Allocate for worst-case transition expense. */
  result_size = self->d_chunkc*A2L_TRANSITION_MAXSIZE;
+ if unlikely(!result_size) { *code_size = 0; return NULL; }
  end = (iter = self->d_chunkv)+self->d_chunkc;
  for (; iter != end; ++iter) {
   result_size += (size_t)(iter->c_code_end-
@@ -484,14 +485,25 @@ DCCA2l_Link(struct DCCA2l const *__restrict self,
   p         += codesize;
   curr_state = iter->c_smax;
  }
+ *p++ = A2L_O_EOF;
  assert(p <= result+result_size);
  /* Try to conserve some memory. */
  *code_size = (size_t)(p-result);
  p = (a2l_op_t *)realloc(result,(size_t)(p-result));
  if (p) result = p;
-
  return result;
 }
+
+PUBLIC void
+DCCA2l_Import(struct DCCA2l *__restrict self,
+              A2L_TYPE(a2l_op_t) *__restrict code,
+              size_t code_size) {
+ assert(self);
+ assert(!code_size || code);
+ /* TODO */
+
+}
+
 
 
 

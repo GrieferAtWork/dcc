@@ -59,7 +59,7 @@ struct DCCA2l {
                                 *   Strictly ordered & sorted vector of chunks. */
 };
 
-#define DCCA2l_Init(self) memset(self,0,sizeof(struct DCCA2lWriter))
+#define DCCA2l_Init(self) memset(self,0,sizeof(struct DCCA2l))
 DCCFUN void DCCA2l_Quit(struct DCCA2l *__restrict self);
 
 
@@ -102,6 +102,13 @@ DCCFUN void DCCA2l_Insert(struct DCCA2l *__restrict self,
 DCCFUN /*inherited*/A2L_TYPE(a2l_op_t) *
 DCCA2l_Link(struct DCCA2l const *__restrict self,
             size_t *__restrict code_size);
+
+/* The reverse of 'DCCA2l_Link': Import linked A2L pseudo code.
+ * WARNING: The caller is responsible to ensure that 'self' is empty beforehand! */
+DCCFUN void
+DCCA2l_Import(struct DCCA2l *__restrict self,
+              A2L_TYPE(a2l_op_t) *__restrict code,
+              size_t code_size);
 
 /* Lookup address information.
  * NOTE: Only 'result->s_addr' must be initialized upon entry.

@@ -73,14 +73,28 @@ DCCTextBuf_AllocString(struct DCCTextBuf *__restrict self,
  return (Elf(Word))((uint8_t *)buf-self->tb_begin);
 }
 
+#define REL_PREFIX  ".rel"
+#define A2L_PREFIX  ".DCC.a2l"
+
 LOCAL Elf(Word)
 DCCTextBuf_AllocRelString(struct DCCTextBuf *__restrict self,
                           char const *__restrict str, size_t len) {
- char *buf = (char *)DCCTextBuf_TAlloc_intern(self,(len+5)*sizeof(char));
+ char *buf = (char *)DCCTextBuf_TAlloc_intern(self,(len*sizeof(char))+sizeof(REL_PREFIX));
  if unlikely(!buf) return 0;
- memcpy(buf,".rel",4*sizeof(char));
- memcpy(buf+4,str,len*sizeof(char));
- buf[len+4] = '\0';
+ memcpy(buf,REL_PREFIX,sizeof(REL_PREFIX)-sizeof(char));
+ memcpy(buf+DCC_COMPILER_STRLEN(REL_PREFIX),str,len*sizeof(char));
+ buf[len+DCC_COMPILER_STRLEN(REL_PREFIX)] = '\0';
+ return (Elf(Word))((uint8_t *)buf-self->tb_begin);
+}
+
+LOCAL Elf(Word)
+DCCTextBuf_AllocA2lString(struct DCCTextBuf *__restrict self,
+                          char const *__restrict str, size_t len) {
+ char *buf = (char *)DCCTextBuf_TAlloc_intern(self,(len*sizeof(char))+sizeof(A2L_PREFIX));
+ if unlikely(!buf) return 0;
+ memcpy(buf,A2L_PREFIX,sizeof(A2L_PREFIX)-sizeof(char));
+ memcpy(buf+DCC_COMPILER_STRLEN(A2L_PREFIX),str,len*sizeof(char));
+ buf[len+DCC_COMPILER_STRLEN(A2L_PREFIX)] = '\0';
  return (Elf(Word))((uint8_t *)buf-self->tb_begin);
 }
 
@@ -101,6 +115,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
  size_t shdr_regc; /* Amount of regular section headers. */
  size_t shdr_impc; /* Amount of import section headers. */
  size_t shdr_relc; /* Amount of relocation section headers. */
+ size_t shdr_a2lc; /* Amount of Addr2Line section headers. */
  size_t shdr_intc; /* Amount of internal section headers. */
  size_t shdrc;     /* Sum of 'shdr_regc+shdr_relc'. */
  /* Vector for section headers. Layout:
@@ -108,13 +123,15 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
   * 1..shdr_regc:                                         Regular sections.
   * 1+shdr_regc..shdr_regc+shdr_impc:                     Import sections.
   * 1+shdr_regc+shdr_impc..shdr_regc+shdr_impc+shdr_relc: Relocation sections.
-  * 1+shdr_regc+shdr_impc+shdr_relc..shdrc:               Internal sections. */
+  * 1+shdr_regc+shdr_impc+shdr_relc..shdrc:               Internal sections.
+  */
  struct elf_shdr *shdrv;
  struct elf_shdr *shdr_regv; /* == shdrv+1 */
  struct elf_shdr *shdr_impv; /* == shdrv+1+shdr_regc */
  struct elf_shdr *shdr_relv; /* == shdrv+1+shdr_regc+shdr_impc */
- struct elf_shdr *shdr_intv; /* == shdrv+1+shdr_regc+shdr_impc+shdr_relc */
- struct elf_shdr *shdr_iter,*shdr_end;
+ struct elf_shdr *shdr_a2lv; /* == shdrv+1+shdr_regc+shdr_impc+shdr_relc */
+ struct elf_shdr *shdr_intv; /* == shdrv+1+shdr_regc+shdr_impc+shdr_relc+shdr_a2lc */
+ struct elf_shdr *shdr_a2l_iter,*shdr_iter,*shdr_end;
 #define SHDR_SHSTRTAB   (&shdr_intv[0])
 #define SHDR_SYMTAB     (&shdr_intv[1])
 #define SHDR_STRTAB     (&shdr_intv[2])
@@ -126,17 +143,22 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
  shdr_regc = unit.u_secc,shdr_relc = 0;
  DCCUnit_ENUMSEC(sec) if (sec->sc_relc) ++shdr_relc;
  assert(shdr_relc <= shdr_regc);
+ shdr_a2lc = 0;
  shdr_intc = 3; /* '.shstrtab', '.symtab', '.strtab' */
- if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT)) ++shdr_intc; /* '.DCC.symflg' */
+ if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT)) {
+  ++shdr_intc; /* '.DCC.symflg' */
+  DCCUnit_ENUMSEC(sec) if (sec->sc_a2l.d_chunkc) ++shdr_a2lc; /* '.DCC.a2l.<BASE_SECTION>' */
+ }
 
  shdr_impc = (def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ? 0 : unit.u_impc; /* Import section headers. */
- shdrc = 1+shdr_regc+shdr_impc+shdr_relc+shdr_intc;
+ shdrc = 1+shdr_regc+shdr_impc+shdr_relc+shdr_a2lc+shdr_intc;
  shdrv = (struct elf_shdr *)DCC_Calloc(shdrc*sizeof(struct elf_shdr),0);
  if unlikely(!shdrv) return;
  shdr_regv = shdrv+1;
  shdr_impv = shdr_regv+shdr_regc;
  shdr_relv = shdr_impv+shdr_impc;
- shdr_intv = shdr_relv+shdr_relc;
+ shdr_a2lv = shdr_relv+shdr_relc;
+ shdr_intv = shdr_a2lv+shdr_a2lc;
 
  /* Allocate 1 ZERO-byte at the star of '.shstrtab' and '.strtab' */
  DCCTextBuf_AllocData(&SHDR_SHSTRTAB->s_buf,"",1);
@@ -182,6 +204,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
 
  /* Load regular sections. */
  shdr_iter = shdr_regv;
+ shdr_a2l_iter = shdr_a2lv;
  DCCUnit_ENUMSEC(sec) {
   symflag_t secflags = sec->sc_start.sy_flags;
   assert(shdr_iter < shdr_regv+shdr_regc);
@@ -199,8 +222,31 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
   if (secflags&DCC_SYMFLAG_SEC_M) shdr_iter->s_hdr.sh_flags |= SHF_MERGE;
   shdr_iter->s_hdr.sh_addralign = sec->sc_start.sy_align;
   sec->sc_start.sy_addr = ELF_SHDR_IDX(shdr_iter);
+  if (sec->sc_a2l.d_chunkc &&
+    !(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT)) {
+   a2l_op_t *a2l_code; size_t a2l_size;
+   /* Must generate an A2L section. */
+   a2l_code = DCCA2l_Link(&sec->sc_a2l,&a2l_size);
+   if unlikely(!a2l_code) a2l_size = 0;
+   /* Directly inherit linked A2L code. */
+   shdr_a2l_iter->s_buf.tb_begin     = (uint8_t *)a2l_code;
+   shdr_a2l_iter->s_buf.tb_pos       =
+   shdr_a2l_iter->s_buf.tb_max       =
+   shdr_a2l_iter->s_buf.tb_end       = (uint8_t *)a2l_code+a2l_size;
+   /* Fill in ELF header information. */
+   shdr_a2l_iter->s_hdr.sh_name      = DCCTextBuf_AllocA2lString(&SHDR_SHSTRTAB->s_buf,
+                                                                 sec->sc_start.sy_name->k_name,
+                                                                 sec->sc_start.sy_name->k_size);
+   shdr_a2l_iter->s_hdr.sh_type      = SHT_DCC_ADDR2LINE;
+   shdr_a2l_iter->s_hdr.sh_size      = a2l_size;
+   shdr_a2l_iter->s_hdr.sh_link      = ELF_SHDR_IDX(shdr_iter);
+   shdr_a2l_iter->s_hdr.sh_addralign = DCC_COMPILER_ALIGNOF(a2l_op_t);
+   shdr_a2l_iter->s_hdr.sh_entsize   = sizeof(a2l_op_t);
+   ++shdr_a2l_iter;
+  }
   ++shdr_iter;
  }
+ assert(shdr_a2l_iter == shdr_a2lv+shdr_a2lc);
  assert(shdr_iter == shdr_regv+shdr_regc);
 
  {
