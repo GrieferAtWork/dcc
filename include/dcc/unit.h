@@ -516,7 +516,7 @@ struct DCCSection {
   * ALSO: This will be required for object-file hard aliases. */
  struct DCCAllocRange *sc_alloc; /*< [0..1][chain(->ar_next->...)] Reference-counted tracking of section text. */
  DCC(target_ptr_t)     sc_merge; /*< Used during merging: Base address of merge destination. */
- struct DCCA2lWriter   sc_a2l;   /*< Addr2Line debug information. */
+ struct DCCA2l         sc_a2l;   /*< Addr2Line debug information. */
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
  struct DCCSection    *sc_elflnk; /*< [0..1] Used by ELF: Link section. */
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */

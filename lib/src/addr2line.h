@@ -74,7 +74,6 @@ typedef uint64_t             A2L_TYPE(a2l_arg_t);
 
 
 struct A2LState {
- A2L_TYPE(a2l_op_t)  *s_code;
  A2L_TYPE(a2l_addr_t) s_addr;
  A2L_TYPE(a2l_line_t) s_line;
  A2L_TYPE(a2l_col_t)  s_col;
@@ -89,7 +88,6 @@ struct A2LState {
  uint32_t   s_features; /*< Currently available features (set of 'A2L_STATE_*') */
 };
 
-#define A2LState_INIT(self,c)    (A2LState_RESET(self),(self)->s_code = (c))
 #define A2LState_RESET(self)      memset(&(self)->s_addr,0,sizeof(struct A2LState)-offsetof(struct A2LState,s_addr))
 #define A2LState_SETF(self,f)   ((self)->s_features |=  (f))
 #define A2LState_UNSETF(self,f) ((self)->s_features &= ~(f))
@@ -162,13 +160,17 @@ struct A2LState {
 #define A2L_A_MAX 0x7f /*< The max value of a single-byte operand. */
 #define A2L_A_SFT    7 /*< Bit-shift between operand bytes. */
 
-A2L_DECL A2L_TYPE(a2l_arg_t) A2L_NAME(a2l_getarg)(A2L_TYPE(a2l_op_t) **pcode);
+A2L_DECL A2L_TYPE(a2l_arg_t)
+A2L_NAME(a2l_getarg)(A2L_TYPE(a2l_op_t) const **__restrict pcode);
 
 /* Execute code from a given addr2line state,
  * trying to capture the given address 'capture'.
  * @return: 0: The given address 'capture' has no debug information associated.
  * @return: 1: The given state 's' now contains the description for 'capture' */
-A2L_DECL int A2L_NAME(a2l_exec)(struct A2LState *s, A2L_TYPE(a2l_addr_t) capture);
+A2L_DECL int
+A2L_NAME(a2l_exec)(struct A2LState *__restrict s,
+                   A2L_TYPE(a2l_op_t) const **__restrict pcode,
+                   A2L_TYPE(a2l_addr_t) capture);
 
 #ifdef __cplusplus
 }

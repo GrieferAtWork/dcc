@@ -38,9 +38,11 @@
 extern "C" {
 #endif
 
-A2L_IMPL a2l_arg_t A2L_NAME(a2l_getarg)(a2l_op_t **pcode) {
+A2L_IMPL a2l_arg_t
+A2L_NAME(a2l_getarg)(a2l_op_t const **__restrict pcode) {
  a2l_arg_t result = 0;
- a2l_op_t byte,*iter = *pcode;
+ a2l_op_t byte;
+ a2l_op_t const *iter = *pcode;
  for (;;) {
   byte = *iter++;
   result = (result << A2L_A_SFT)|(byte&A2L_A_MAX);
@@ -61,9 +63,12 @@ extern int printf(char const *,...);
  * trying to capture the given address 'capture'.
  * @return: 0: The given address 'capture' has no debug information associated.
  * @return: 1: The given state 's' now contains the description for 'capture' */
-A2L_IMPL int A2L_NAME(a2l_exec)(struct A2LState *s, a2l_addr_t capture) {
+A2L_IMPL int
+A2L_NAME(a2l_exec)(struct A2LState *__restrict s,
+                   A2L_TYPE(a2l_op_t) const **__restrict pcode,
+                   A2L_TYPE(a2l_addr_t) capture) {
 #define ARG() A2L_NAME(a2l_getarg)(&code)
- a2l_op_t *code = s->s_code;
+ a2l_op_t const *code = *pcode;
  int result = 0;
  if likely(code) for (;;) {
   a2l_op_t op = *code++;
@@ -147,7 +152,7 @@ A2L_IMPL int A2L_NAME(a2l_exec)(struct A2LState *s, a2l_addr_t capture) {
   } break;
   }
  }
-done: s->s_code = code;
+done: *pcode = code;
  return result;
 found: result = 1; goto done;
 #undef ARG

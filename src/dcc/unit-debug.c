@@ -30,6 +30,8 @@ DCC_DECL_BEGIN
 /* The user-space structure layout for section information.
  * NOTE: This must always remain compatible with the
  *       structure found in '/lib/src/addr2line.c'! */
+#define SECINFO_ENTRYSYM       "__dcc_dbg_secinfo"
+#define SECINFO_SECNAME        ".debug"
 #define SECINFO_ALIGNOF        (DCC_TARGET_SIZEOF_POINTER)
 #define SECINFO_SIZEOF         (DCC_TARGET_SIZEOF_POINTER*3+DCC_TARGET_SIZEOF_SIZE_T)
 #define SECINFO_OFFSETOF_NEXT  (0)
@@ -41,17 +43,17 @@ DCC_DECL_BEGIN
 #error "A2L_O_EOF must be defined as ZERO(0)"
 #endif
 
-PRIVATE struct DCCSym * /* Allocate and define a symbol for the A2l data of the given writer. */
-DCCA2lWrite_AllocData(struct DCCA2lWriter *__restrict writer,
+PRIVATE struct DCCSym * /* Allocate and define a symbol for the code of the given 'a2l'. */
+DCCA2lWrite_AllocData(struct DCCA2l *__restrict a2l,
                       struct DCCSection *__restrict data_section) {
  struct DCCSym *result = DCCUnit_AllocSym();
  if likely(result) {
   void        *a2l_data;
   target_ptr_t a2l_addr;
+  a2l_op_t    *a2l_code;
   size_t       a2l_size;
-  /* Try to optimize the A2L code to impact on binary size. */
-  DCCA2lWriter_Optimize(writer);
-  a2l_size = (size_t)((writer->w_state.s_code-writer->w_cbegin)*sizeof(a2l_op_t));
+  a2l_code = DCCA2l_Link(a2l,&a2l_size);
+  if unlikely(!a2l_code) a2l_size = 0;
   /* NOTE: Allocate 1 additional opcode that is implicitly initialized as 'A2L_O_EOF' */
   a2l_addr = DCCSection_DAlloc(data_section,a2l_size+sizeof(a2l_op_t),
                                DCC_COMPILER_ALIGNOF(a2l_op_t),0);
@@ -60,7 +62,8 @@ DCCA2lWrite_AllocData(struct DCCA2lWriter *__restrict writer,
                 DCC_COMPILER_ALIGNOF(a2l_op_t));
   /* Copy the A2L data into the allocated section memory. */
   a2l_data = DCCSection_GetText(data_section,a2l_addr,a2l_size);
-  if (a2l_data) memcpy(a2l_data,writer->w_cbegin,a2l_size);
+  if (a2l_data) memcpy(a2l_data,a2l_code,a2l_size);
+  free(a2l_code);
  }
  return result;
 }
@@ -71,16 +74,15 @@ PUBLIC void DCCUnit_MkDebugSym(void) {
  struct DCCSection *sec,*debug_sec;
  /* Don't do anything when no debug informations should be generated. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
- secinfo_sym = DCCUnit_NewSyms("__dcc_dbg_secinfo",DCC_SYMFLAG_PRIVATE);
+ secinfo_sym = DCCUnit_NewSyms(SECINFO_ENTRYSYM,DCC_SYMFLAG_PRIVATE);
  if unlikely(!secinfo_sym || !DCCSym_ISFORWARD(secinfo_sym)) return;
- debug_sec = DCCUnit_NewSecs(".debug",DCC_SYMFLAG_SEC(1,0,0,0,1,0));
+ debug_sec = DCCUnit_NewSecs(SECINFO_SECNAME,DCC_SYMFLAG_SEC(1,0,0,0,1,0));
  if unlikely(!debug_sec) return;
 
  DCCUnit_ENUMSEC(sec) {
   struct DCCSym *a2l_sym; void *data;
   target_ptr_t secinfo_addr;
-  if (sec->sc_a2l.w_state.s_code == sec->sc_a2l.w_cbegin ||
-      sec == debug_sec) continue;
+  if (!sec->sc_a2l.d_chunkc) continue;
   a2l_sym = DCCA2lWrite_AllocData(&sec->sc_a2l,debug_sec);
   if unlikely(!a2l_sym) break;
   /* Found a section containing debug informations! */
@@ -104,19 +106,24 @@ PUBLIC void DCCUnit_MkDebugSym(void) {
 
 PUBLIC void DCC_ATTRIBUTE_FASTCALL
 DCCUnit_MkDebugL(int level) {
+ struct A2LState state;
  (void)level; /* TODO: Use me. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
- assert(unit.u_text);
  /* Put a debug addr2line entry. */
- DCCA2lWriter_PutL(&unit.u_text->sc_a2l,t_addr);
+ DCCA2l_CaptureState(&state,A2L_STATE_HASLINE|A2L_STATE_HASPATH|
+                            A2L_STATE_HASFILE|A2L_STATE_HASNAME);
+ DCCA2l_Insert(&unit.u_text->sc_a2l,&state);
 }
 PUBLIC void DCC_ATTRIBUTE_FASTCALL
 DCCUnit_MkDebugLC(int level) {
+ struct A2LState state;
  (void)level; /* TODO: Use me. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
- assert(unit.u_text);
  /* Put a debug addr2line entry. */
- DCCA2lWriter_PutLC(&unit.u_text->sc_a2l,t_addr);
+ DCCA2l_CaptureState(&state,A2L_STATE_HASLINE|A2L_STATE_HASCOL|
+                            A2L_STATE_HASPATH|A2L_STATE_HASFILE|
+                            A2L_STATE_HASNAME);
+ DCCA2l_Insert(&unit.u_text->sc_a2l,&state);
 }
 
 

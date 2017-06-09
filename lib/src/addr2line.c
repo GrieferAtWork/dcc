@@ -36,7 +36,7 @@ struct sec_info {
  struct sec_info const *si_next; /*< [0..1] Information about the next section. */
  void                  *si_addr; /*< [1..1] Section start address. */
  size_t                 si_size; /*< Section size. */
- a2l_op_t              *si_a2l;  /*< [0..1] Addr2line code. */
+ a2l_op_t const        *si_a2l;  /*< [0..1] Addr2line code. */
 };
 
 
@@ -52,12 +52,15 @@ _Bool __dcc_dbg_addr2line(void *ip, lc_t *info) {
        (uintptr_t)ip <= (uintptr_t)iter->si_addr+iter->si_size) {
     /* Found the section associated with this EIP */
     struct A2LState state; a2l_addr_t addr;
-    A2LState_INIT(&state,iter->si_a2l);
-    if (!state.s_code) break;
+    a2l_op_t const *code = iter->si_a2l;
+    if (!code) break;
+    A2LState_RESET(&state);
     addr = (a2l_addr_t)((uintptr_t)ip-(uintptr_t)iter->si_addr);
-    //printf("Found %p in %p ... %p\n",
-    //       ip,iter->si_addr,iter->si_addr+iter->si_size);
-    if (!A2L_NAME(a2l_exec)(&state,addr)) break;
+    /* printf("Found %p in %p ... %p\n",
+     *        ip,iter->si_addr,
+     *       (uintptr_t)iter->si_addr+iter->si_size);
+     */
+    if (!A2L_NAME(a2l_exec)(&state,&code,addr)) break;
     /* Managed to capture the given address!
      * Fill in all available information. */
     info->line = (state.s_features&A2L_STATE_HASLINE) ? state.s_line+1 : 0;

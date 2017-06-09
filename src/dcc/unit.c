@@ -336,7 +336,7 @@ DCCSection_Destroy(struct DCCSection *__restrict self) {
   }
 
   /* Delete debug information. */
-  DCCA2lWriter_Quit(&self->sc_a2l);
+  DCCA2l_Quit(&self->sc_a2l);
 
   /* Delete base memory. */
 #ifdef DCC_SYMFLAG_SEC_OWNSBASE
@@ -1382,7 +1382,7 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
     if unlikely(!newvec) goto end;
     /* Move relocations & debug informatino. */
     DCCSection_Movrel(self,aligned_result,old_addr,new_size);
-    DCCA2lWriter_Mov(&self->sc_a2l,aligned_result,old_addr,new_size);
+    DCCA2l_Mov(&self->sc_a2l,aligned_result,old_addr,new_size);
     /* Move memory. */
     memmove(newvec,oldvec,new_size);
     DCCSection_DFree(self,old_addr,alignment_offset);
@@ -1415,7 +1415,7 @@ alloc_newblock:
    if unlikely(!newvec) goto end;
    /* Move relocations & debug information. */
    DCCSection_Movrel(self,result,old_addr,old_size);
-   DCCA2lWriter_Mov(&self->sc_a2l,result,old_addr,old_size);
+   DCCA2l_Mov(&self->sc_a2l,result,old_addr,old_size);
    /* Move the common memory to the new location. */
    memmove(newvec,oldvec,old_size);
    /* Free overlap/the old vector. */
@@ -1636,7 +1636,7 @@ DCCSection_DFree(struct DCCSection *__restrict self,
  /* Delete all relocations. */
  DCCSection_Delrel(self,addr,size);
  /* Delete all debug information. */
- DCCA2lWriter_Delete(&self->sc_a2l,addr,size);
+ DCCA2l_Delete(&self->sc_a2l,addr,size);
 }
 
 
@@ -1770,16 +1770,9 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_alloc                */NULL,
  /* sc_merge                */0,
  /* sc_a2l                  */{
- /* sc_a2l.w_state          */{
- /* sc_a2l.w_state.s_code   */NULL,
- /* sc_a2l.w_state.s_addr   */0,
- /* sc_a2l.w_state.s_line   */0,
- /* sc_a2l.w_state.s_col    */0,
- /* sc_a2l.w_state.s_path   */0,
- /* sc_a2l.w_state.s_file   */0,
- /* sc_a2l.w_state.s_features*/0},
- /* sc_a2l.w_cbegin         */NULL,
- /* sc_a2l.w_cend           */NULL},
+ /* sc_a2l.d_chunka         */0,
+ /* sc_a2l.d_chunkc         */0,
+ /* sc_a2l.d_chunkv         */NULL},
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
  /* sc_elflnk               */NULL,
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */

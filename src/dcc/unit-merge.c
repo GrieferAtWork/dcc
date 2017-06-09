@@ -245,8 +245,8 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
    dstsec = DCCUnit_GetSec(srcsec->sc_start.sy_name);
    if (dstsec) {
     /* Merge debug informations. */
-    DCCA2lWriter_Merge(&dstsec->sc_a2l,&srcsec->sc_a2l,
-                        dstsec->sc_merge,text_merge);
+    DCCA2l_RelocString(&srcsec->sc_a2l,text_merge);
+    DCCA2l_Merge(&dstsec->sc_a2l,&srcsec->sc_a2l,dstsec->sc_merge);
    }
   }
  }
