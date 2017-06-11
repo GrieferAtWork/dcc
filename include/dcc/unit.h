@@ -401,7 +401,10 @@ typedef uint32_t DCC(rel_t); /* One of 'DCC_R_*', or CPU-specific ELF relocation
 #   error FIXME
 #endif
 
-#   define DCC_R_SIZE     (R_386_NUM+0) /* NOTE: Compile-time only: Add the symbol size as 'target_siz_t'. */
+/* WARNING: The following relocations must be fixed at compile-time. */
+#define DCC_R_EXT_SIZE     (DCC_R_NUM+0) /* size:__SIZEOF_SIZE_T__ */
+/*                         (DCC_R_NUM+1) */
+#define DCC_R_EXT_NUM      (DCC_R_NUM+1)
 
 
 struct DCCRel {
@@ -1209,7 +1212,8 @@ DCCFUN size_t DCCUnit_ClearObsolete(void);
 DCCFUN void DCCUnit_MkDebugSym(void);
 
 /* Add a addr2line entry for the current text address and the current lexer position.
- * NOTE: This function is a no-op when 'DCC_LINKER_FLAG_GENDEBUG' isn't set. */
+ * NOTE: This function is a no-op when the linker flag 'DCC_LINKER_FLAG_GENDEBUG'
+ *       isn't set, or the the compiler flag 'DCC_COMPILER_FLAG_NOCGEN' is set. */
 DCCFUN void DCC_ATTRIBUTE_FASTCALL DCCUnit_MkDebugL(int level);
 DCCFUN void DCC_ATTRIBUTE_FASTCALL DCCUnit_MkDebugLC(int level);
 #define DCCUNIT_DEBUGLC_STMT 0

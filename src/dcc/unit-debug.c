@@ -24,6 +24,7 @@
 #include <dcc/common.h>
 #include <dcc/unit.h>
 #include <dcc/linker.h>
+#include <dcc/compiler.h>
 
 DCC_DECL_BEGIN
 
@@ -95,7 +96,7 @@ PUBLIC void DCCUnit_MkDebugSym(void) {
   /* Generate relocations to initialize the fields of the section information entry. */
   DCCSection_Putrel(debug_sec,secinfo_addr+SECINFO_OFFSETOF_NEXT,DCC_R_DATA_PTR,secinfo_sym);
   DCCSection_Putrel(debug_sec,secinfo_addr+SECINFO_OFFSETOF_ADDR,DCC_R_DATA_PTR,&sec->sc_start);
-  DCCSection_Putrel(debug_sec,secinfo_addr+SECINFO_OFFSETOF_SIZE,DCC_R_SIZE,&sec->sc_start);
+  DCCSection_Putrel(debug_sec,secinfo_addr+SECINFO_OFFSETOF_SIZE,DCC_R_EXT_SIZE,&sec->sc_start);
   DCCSection_Putrel(debug_sec,secinfo_addr+SECINFO_OFFSETOF_A2L,DCC_R_DATA_PTR,a2l_sym);
  }
 
@@ -109,6 +110,7 @@ DCCUnit_MkDebugL(int level) {
  struct A2lState state;
  (void)level; /* TODO: Use me. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
+ if (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  /* Put a debug addr2line entry. */
  DCCA2l_CaptureState(&state,A2L_STATE_HASLINE|A2L_STATE_HASPATH|
                             A2L_STATE_HASFILE|A2L_STATE_HASNAME);
@@ -119,6 +121,7 @@ DCCUnit_MkDebugLC(int level) {
  struct A2lState state;
  (void)level; /* TODO: Use me. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
+ if (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  /* Put a debug addr2line entry. */
  DCCA2l_CaptureState(&state,A2L_STATE_HASLINE|A2L_STATE_HASCOL|
                             A2L_STATE_HASPATH|A2L_STATE_HASFILE|

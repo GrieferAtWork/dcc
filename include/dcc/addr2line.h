@@ -131,6 +131,12 @@ DCCA2l_CaptureState(struct A2lState *__restrict result,
 
 
 
+A2L_IMPL A2L_TYPE(a2l_op_t) *A2L_NAME(a2l_setarg)(A2L_TYPE(a2l_op_t) *code, A2L_TYPE(a2l_arg_t) arg);
+#ifdef DCC_PRIVATE_API
+#define a2l_getarg    A2L_NAME(a2l_getarg)
+#define a2l_setarg    A2L_NAME(a2l_setarg)
+#define a2l_exec      A2L_NAME(a2l_exec)
+#endif
 
 DCC_DECL_END
 

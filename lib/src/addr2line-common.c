@@ -43,16 +43,23 @@ A2L_NAME(a2l_getarg)(a2l_op_t const **__restrict pcode) {
  a2l_arg_t result = 0;
  a2l_op_t byte;
  a2l_op_t const *iter = *pcode;
+ int neg_result = 0;
  for (;;) {
-  byte = *iter++;
+  byte   = *iter++;
   result = (result << A2L_A_SFT)|(byte&A2L_A_MAX);
   if (!(byte&A2L_A_CON)) break;
+  /* when 'result' is ZERO at this point, 'byte' must be equal
+   * to 'A2L_A_CON', which in turn is equal to 'A2L_A_NEG'.
+   * With that in mind, we must trigger a result inversion. */
+  if (!result) neg_result ^= 1;
  }
  *pcode = iter;
+ if (neg_result) result = A2L_ARG_NEGATE(result);
  return result;
 }
 
 #if defined(__DCC_VERSION__) && 0
+#define HAVE_LOG 1
 extern int printf(char const *,...);
 #define LOG(x) printf x
 #else
@@ -78,10 +85,11 @@ A2L_NAME(a2l_exec)(struct A2lState *__restrict s,
 
   {
    a2l_addr_t old_addr,new_addr;
-   if (DCC_MACRO_FALSE) { case A2L_O_IA:cap_inc: new_addr = (old_addr = s->s_addr)+ARG(); }
-   if (DCC_MACRO_FALSE) { case A2L_O_DA:cap_dec: new_addr = (old_addr = s->s_addr)-ARG(); }
+  case A2L_O_IA:
+read_addr:
+   old_addr  = s->s_addr;
+   s->s_addr = new_addr = old_addr+ARG();
    LOG(("ADDR = %p\n",new_addr));
-   s->s_addr = new_addr;
    if (new_addr >= old_addr) {
     LOG(("CHECK_ADDR(%p in %p...%p)\n",capture,old_addr,new_addr));
     if (capture > old_addr && capture <= new_addr) goto found;
@@ -92,59 +100,80 @@ A2L_NAME(a2l_exec)(struct A2lState *__restrict s,
   } break;
 
   case A2L_O_IL: s->s_line += ARG(); A2lState_DEL_C(s); LOG(("LINE = %d\n",s->s_line)); break;
-  case A2L_O_DL: s->s_line -= ARG(); A2lState_DEL_C(s); LOG(("LINE = %d\n",s->s_line)); break;
   case A2L_O_IC: s->s_col  += ARG(); A2lState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
-  case A2L_O_DC: s->s_col  -= ARG(); A2lState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
-
-  case A2L_O_SL: s->s_line = ARG(); A2lState_SETF(s,A2L_STATE_HASLINE); LOG(("LINE = %d\n",s->s_line)); break;
-  case A2L_O_SC: s->s_col  = ARG(); A2lState_SETF(s,A2L_STATE_HASCOL);  LOG(("COL  = %d\n",s->s_col)); break;
-  case A2L_O_SP: s->s_path = ARG(); A2lState_SETF(s,A2L_STATE_HASPATH); LOG(("PATH = %d\n",s->s_path)); break;
-  case A2L_O_SF: s->s_file = ARG(); A2lState_SETF(s,A2L_STATE_HASFILE); LOG(("FILE = %d\n",s->s_file)); break;
-  case A2L_O_SN: s->s_name = ARG(); A2lState_SETF(s,A2L_STATE_HASNAME); LOG(("NAME = %d\n",s->s_name)); break;
 
   {
-   if (DCC_MACRO_FALSE) { case A2L_O_IL_IA: s->s_line += ARG(); }
-   if (DCC_MACRO_FALSE) { case A2L_O_DL_IA: s->s_line -= ARG(); }
-   if (DCC_MACRO_FALSE) { case A2L_O_SL_IA: s->s_line  = ARG(); }
-   A2lState_SETF(s,A2L_STATE_HASLINE);
-   A2lState_DEL_C(s);
-   LOG(("LINE = %d\n",s->s_line));
-   goto cap_inc;
+  case A2L_O_SL: case A2L_O_SC: case A2L_O_SP:
+  case A2L_O_SF: case A2L_O_SN:
+   *(a2l_arg_t *)((uintptr_t)s+(op-A2L_O_SL)*sizeof(a2l_arg_t)) = ARG();
+#if HAVE_LOG
+   if (op == A2L_O_SL) LOG(("LINE = %d\n",s->s_line));
+   if (op == A2L_O_SC) LOG(("COL  = %d\n",s->s_col));
+   if (op == A2L_O_SP) LOG(("PATH = %d\n",s->s_path));
+   if (op == A2L_O_SF) LOG(("FILE = %d\n",s->s_file));
+   if (op == A2L_O_SN) LOG(("NAME = %d\n",s->s_name));
+#endif
   } break;
 
   {
-   if (DCC_MACRO_FALSE) { case A2L_O_IL_DA: s->s_line += ARG(); }
-   if (DCC_MACRO_FALSE) { case A2L_O_DL_DA: s->s_line -= ARG(); }
-   if (DCC_MACRO_FALSE) { case A2L_O_SL_DA: s->s_line  = ARG(); }
+  case A2L_O_IL_IA:
+   s->s_line += ARG();
+after_il_ia:
    A2lState_SETF(s,A2L_STATE_HASLINE);
    A2lState_DEL_C(s);
    LOG(("LINE = %d\n",s->s_line));
-   goto cap_dec;
+   goto read_addr;
   } break;
 
   {
-   if (DCC_MACRO_FALSE) { case A2L_O_IL_SC_IA: case A2L_O_IL_SC_DA: s->s_line += ARG(); }
-   if (DCC_MACRO_FALSE) { case A2L_O_DL_SC_IA: case A2L_O_DL_SC_DA: s->s_line -= ARG(); }
-   if (DCC_MACRO_FALSE) { case A2L_O_SL_SC_IA: case A2L_O_SL_SC_DA: s->s_line  = ARG(); }
+  case A2L_O_IC_IA:
+   s->s_col += ARG();
+after_ic_ia:
+   A2lState_SETF(s,A2L_STATE_HASCOL);
+   LOG(("COL = %d\n",s->s_col));
+   goto read_addr;
+  } break;
+
+  {
+  case A2L_O_IL_SC_IA:
+   s->s_line += ARG();
+after_il_sc_ia:
    LOG(("LINE = %d\n",s->s_line));
    s->s_col = ARG();
    A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL);
    LOG(("COL = %d\n",s->s_col));
-   if (op < A2L_O_IL_SC_DA) goto cap_inc;
-   goto cap_dec;
+   goto read_addr;
   } break;
 
   {
   default:
-   if (op >= A2L_O_DEL_L && op <= A2L_O_DEL_P) {
+   if (op >= A2L_O_DEL_L && op <= A2L_O_DEL_N) {
+#if (A2L_STATE_HASLINE == A2L_O_DEL_L) && \
+    (A2L_STATE_HASCOL  == A2L_O_DEL_C) && \
+    (A2L_STATE_HASPATH == A2L_O_DEL_P) && \
+    (A2L_STATE_HASFILE == A2L_O_DEL_F) && \
+    (A2L_STATE_HASNAME == A2L_O_DEL_N)
+    s->s_features &= ~(uint32_t)(op);
+    if (op&A2L_O_DEL_L) s->s_line = 0,LOG(("DELETE(LINE)\n"));
+    if (op&A2L_O_DEL_C) s->s_col  = 0,LOG(("DELETE(COL)\n"));
+    if (op&A2L_O_DEL_F) s->s_file = 0,LOG(("DELETE(FILE)\n"));
+    if (op&A2L_O_DEL_P) s->s_path = 0,LOG(("DELETE(PATH)\n"));
+    if (op&A2L_O_DEL_N) s->s_name = 0,LOG(("DELETE(NAME)\n"));
+#else
     if (op&A2L_O_DEL_L) A2lState_DEL_L(s),LOG(("DELETE(LINE)\n"));
     if (op&A2L_O_DEL_C) A2lState_DEL_C(s),LOG(("DELETE(COL)\n"));
     if (op&A2L_O_DEL_F) A2lState_DEL_F(s),LOG(("DELETE(FILE)\n"));
     if (op&A2L_O_DEL_P) A2lState_DEL_P(s),LOG(("DELETE(PATH)\n"));
     if (op&A2L_O_DEL_N) A2lState_DEL_N(s),LOG(("DELETE(NAME)\n"));
+#endif
    } else {
+    unsigned int opc;
+    /* Check for special opcode ranges used for short line/col jumps. */
+    if (op >= A2L_O_NLLO_IA && op <= A2L_O_NLHI_IA) { s->s_line += op-(A2L_O_NLLO_IA-1); goto after_il_ia; }
+    if (op >= A2L_O_NCLO_IA && op <= A2L_O_NCHI_IA) { s->s_col += op-(A2L_O_NLLO_IA-1); goto after_ic_ia; }
+    if (op >= A2L_O_NLLO_SC_IA && op <= A2L_O_NLHI_SC_IA) { s->s_line += op-(A2L_O_NLLO_SC_IA-1); goto after_il_sc_ia; }
     /* Unknown opcode (Ignore). */
-    unsigned int opc = A2L_GETOPC(op);
+    opc = A2L_GETOPC(op);
     LOG((op == A2L_O_NOP ? "" : "<unknown: %d>\n",(int)op));
     while (opc--) ARG();
    }

@@ -313,7 +313,8 @@ struct DCCCompiler {
  struct DCCHWStack         c_hwstack;    /*< Stack allocator. */
  struct DCCVStack          c_vstack;     /*< Virtual operand stack. */
  struct DCCSym            *c_return;     /*< [0..1] Symbol to jump to for frame cleanup before returning. */
- struct DCCSym            *c_funname;    /*< [0..1] Name for the current function in 'unit.u_dbgstr'. - Used for __func__ and addr2line. */
+ struct DCCSym            *c_funname;    /*< [0..1] Name for the current function in 'unit.u_dbgstr'. - Used for __func__ and addr2line.
+                                          *   NOTE: This symbol is lazily initialized upon its first use. */
  struct DCCDecl           *c_fun;        /*< [0..1] When non-NULL: the declaration of the current function. */
  struct DCCSym            *c_bsym;       /*< [0..1] Symbol used as target during 'break' statements. */
  struct DCCSym            *c_csym;       /*< [0..1] Symbol used as target during 'continue' statements. */
@@ -370,6 +371,7 @@ DCCFUN void DCCCompiler_Flush(struct DCCCompiler *__restrict self, uint32_t flag
 /* Return a consistent symbol describing the name of the current function.
  * @return: NULL: Failed to allocate a symbol for the function name. */
 DCCFUN struct DCCSym *DCCCompiler_GetFunName(void);
+
 
 #define DCCCompiler_Pushf() \
 do{ uint32_t const _old_flags = DCCCompiler_Current.c_flags

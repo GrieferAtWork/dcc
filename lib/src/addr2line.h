@@ -49,8 +49,6 @@ extern "C" {
 #define A2L_STRING_SECTION   ".string"
 
 typedef uint8_t              A2L_TYPE(a2l_op_t);
-typedef int32_t              A2L_TYPE(a2l_line_t);
-typedef int32_t              A2L_TYPE(a2l_col_t);
 #ifdef DCC_BUILDING_A2L_RUNTIME
 /* Configure for host-mode. */
 typedef uintptr_t            A2L_TYPE(a2l_addr_t);
@@ -58,28 +56,43 @@ typedef uintptr_t            A2L_TYPE(a2l_addr_t);
 #else
 /* Configure for target-mode. */
 typedef target_ptr_t         A2L_TYPE(a2l_addr_t);
-#define A2L_SIZEOF_ADDR DCC_TARGET_SIZEOF_POINTER
+#define A2L_SIZEOF_ADDR      DCC_TARGET_SIZEOF_POINTER
 #endif
-typedef A2L_TYPE(a2l_addr_t) A2L_TYPE(a2l_path_t);
-typedef A2L_TYPE(a2l_addr_t) A2L_TYPE(a2l_file_t);
-typedef A2L_TYPE(a2l_addr_t) A2L_TYPE(a2l_name_t);
 
+/* NOTE: The 'a2l_arg_t' type is both signed & unsigned at the same time! */
 #if A2L_SIZEOF_ADDR <= 4
 #define A2L_ARG_MAXBYTES     5 /* ceildiv((4*8),7) */
 typedef uint32_t             A2L_TYPE(a2l_arg_t);
+typedef int32_t              A2L_TYPE(a2l_sarg_t);
 #else
 #define A2L_ARG_MAXBYTES    10 /* ceildiv((8*8),7) */
 typedef uint64_t             A2L_TYPE(a2l_arg_t);
+typedef int64_t              A2L_TYPE(a2l_sarg_t);
 #endif
+
+typedef A2L_TYPE(a2l_sarg_t) A2L_TYPE(a2l_line_t);
+typedef A2L_TYPE(a2l_sarg_t) A2L_TYPE(a2l_col_t);
+typedef A2L_TYPE(a2l_arg_t)  A2L_TYPE(a2l_path_t);
+typedef A2L_TYPE(a2l_arg_t)  A2L_TYPE(a2l_file_t);
+typedef A2L_TYPE(a2l_arg_t)  A2L_TYPE(a2l_name_t);
+
+
+/* A sign-byte 'A2L_A_NEG' must be prefixed and 'A2L_ARG_NEGATE(a)' must be written. */
+#define A2L_ARG_NEEDSIGN(a) \
+   ((A2L_TYPE(a2l_sarg_t))(a) < 0 && \
+  (-(A2L_TYPE(a2l_sarg_t))(a) <= ((A2L_TYPE(a2l_arg_t))1 << (A2L_ARG_MAXBYTES-1)*7)))
+#define A2L_ARG_NEGATE(a) (A2L_TYPE(a2l_arg_t))(-(A2L_TYPE(a2l_sarg_t))(a))
 
 
 struct A2lState {
- A2L_TYPE(a2l_addr_t) s_addr;
+ /* WARNING: The order of the following memory is important! */
  A2L_TYPE(a2l_line_t) s_line;
  A2L_TYPE(a2l_col_t)  s_col;
  A2L_TYPE(a2l_path_t) s_path;
  A2L_TYPE(a2l_file_t) s_file;
  A2L_TYPE(a2l_name_t) s_name;
+ /* ---end of order-dependency--- */
+ A2L_TYPE(a2l_addr_t) s_addr;
 #define A2L_STATE_HASLINE 0x01
 #define A2L_STATE_HASCOL  0x02
 #define A2L_STATE_HASPATH 0x04 /*< 's_path' is filled with a meaningful value. */
@@ -116,45 +129,58 @@ struct A2lState {
 #define A2L_SETOPC(op,c) ((A2L_TYPE(a2l_op_t))(op) | (A2L_TYPE(a2l_op_t))((c)&3) << 6)
 
 /* A2L predefined opcodes. */
-#define A2L_O_EOF      0x00 /* Terminate the A2L command chain. NOTE: _MUST_ Always be ZERO(0)! */
-#define A2L_O_RESET    0x20 /* addr = 0,line = 0,col = 0,path = 0,file = 0,has_line = 0,has_col = 0; */
-#define A2L_O_NOP      0x21 /* no-op */
-
+#define A2L_O_EOF        0x00 /* Terminate the A2L command chain. NOTE: _MUST_ Always be ZERO(0)! */
 /* Delete opcodes (May be or'd together, or used as stand-alone) */
-#define A2L_O_DEL_L    0x01 /* A2lState_DEL_L(s); */
-#define A2L_O_DEL_C    0x02 /* A2lState_DEL_C(s); */
-#define A2L_O_DEL_F    0x04 /* A2lState_DEL_P(s); */
-#define A2L_O_DEL_P    0x08 /* A2lState_DEL_F(s); */
-#define A2L_O_DEL_N    0x10 /* A2lState_DEL_N(s); */
+#define A2L_O_DEL_L      0x01 /* A2lState_DEL_L(s); */
+#define A2L_O_DEL_C      0x02 /* A2lState_DEL_C(s); */
+#define A2L_O_DEL_P      0x04 /* A2lState_DEL_P(s); */
+#define A2L_O_DEL_F      0x08 /* A2lState_DEL_F(s); */
+#define A2L_O_DEL_N      0x10 /* A2lState_DEL_N(s); */
+/*                       0x20 */
+/*                       .... */
+/*                       0x3d */
+#define A2L_O_SET_L      0x30 /* A2lState_SETF(s); */
+#define A2L_O_RESET      0x3e /* A2lState_RESET(s); */
+#define A2L_O_NOP        0x3f /* no-op */
 
-#define A2L_O_IA       0x40 /* [CAPTURE] s->s_addr += ARG(0); */
-#define A2L_O_DA       0x41 /* [CAPTURE] s->s_addr -= ARG(0); */
-#define A2L_O_IL       0x42 /*           s->s_line += ARG(0); A2lState_DEL_C(s); */
-#define A2L_O_DL       0x43 /*           s->s_line -= ARG(0); A2lState_DEL_C(s); */
-#define A2L_O_IC       0x44 /*           s->s_col  += ARG(0); A2lState_SETF(s,A2L_STATE_HASCOL); */
-#define A2L_O_DC       0x45 /*           s->s_col  -= ARG(0); A2lState_SETF(s,A2L_STATE_HASCOL); */
+#define A2L_O_IA         0x40 /* [CAPTURE] s->s_addr += ARG(0); */
+#define A2L_O_IL         0x41 /*           s->s_line += ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); */
+#define A2L_O_IC         0x42 /*           s->s_col  += ARG(0); A2lState_SETF(s,A2L_STATE_HASCOL); */
+/*                       0x43 */
+/*                       .... */
+/*                       0x4a */
+/* WARNING: These opcodes encode the member order in 'struct A2lState' */
+#define A2L_O_SL         0x4b /*           s->s_line  = ARG(0); A2lState_DEL_C(s); */
+#define A2L_O_SC         0x4c /*           s->s_col   = ARG(0); A2lState_SETF(s,A2L_STATE_HASCOL); */
+#define A2L_O_SP         0x4d /*           s->s_path  = ARG(0); A2lState_SETF(s,A2L_STATE_HASPATH); */
+#define A2L_O_SF         0x4e /*           s->s_file  = ARG(0); A2lState_SETF(s,A2L_STATE_HASFILE); */
+#define A2L_O_SN         0x4f /*           s->s_name  = ARG(0); A2lState_SETF(s,A2L_STATE_HASNAME); */
 
-#define A2L_O_SL       0x46 /*           s->s_line  = ARG(0); A2lState_DEL_C(s); */
-#define A2L_O_SC       0x47 /*           s->s_col   = ARG(0); A2lState_SETF(s,A2L_STATE_HASCOL); */
-#define A2L_O_SP       0x48 /*           s->s_path  = ARG(0); A2lState_SETF(s,A2L_STATE_HASPATH); */
-#define A2L_O_SF       0x49 /*           s->s_file  = ARG(0); A2lState_SETF(s,A2L_STATE_HASFILE); */
-#define A2L_O_SN       0x4a /*           s->s_name  = ARG(0); A2lState_SETF(s,A2L_STATE_HASNAME); */
+#define A2L_O_NCLO_IA    0x50 /* [CAPTURE] s->s_col += 1+(op-A2L_O_NCLO_IA); A2lState_SETF(s,A2L_STATE_HASCOL); s->s_addr += ARG(0); */
+#define A2L_O_NCHI_IA    0x5f /* ... */
+#define A2L_MAX_NCIA    (1+(A2L_O_NCHI_IA-A2L_O_NCLO_IA))
 
-#define A2L_O_IL_IA    0x80 /* [CAPTURE] s->s_line += ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr += ARG(1); */
-#define A2L_O_DL_IA    0x81 /* [CAPTURE] s->s_line -= ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr += ARG(1); */
-#define A2L_O_SL_IA    0x82 /* [CAPTURE] s->s_line  = ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr += ARG(1); */
-#define A2L_O_IL_DA    0x83 /* [CAPTURE] s->s_line += ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr -= ARG(1); */
-#define A2L_O_DL_DA    0x84 /* [CAPTURE] s->s_line -= ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr -= ARG(1); */
-#define A2L_O_SL_DA    0x85 /* [CAPTURE] s->s_line  = ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr -= ARG(1); */
+#define A2L_O_NLLO_IA    0x60 /* [CAPTURE] s->s_line += 1+(op-A2L_O_NLLO_IA); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr += ARG(0); */
+#define A2L_O_NLHI_IA    0x7f /* ... */
+#define A2L_MAX_NLIA    (1+(A2L_O_NLHI_IA-A2L_O_NLLO_IA))
 
-#define A2L_O_IL_SC_IA 0xc0 /* [CAPTURE] s->s_line += ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr += ARG(2); */
-#define A2L_O_DL_SC_IA 0xc1 /* [CAPTURE] s->s_line -= ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr += ARG(2); */
-#define A2L_O_SL_SC_IA 0xc2 /* [CAPTURE] s->s_line  = ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr += ARG(2); */
-#define A2L_O_IL_SC_DA 0xc3 /* [CAPTURE] s->s_line += ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr -= ARG(2); */
-#define A2L_O_DL_SC_DA 0xc4 /* [CAPTURE] s->s_line -= ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr -= ARG(2); */
-#define A2L_O_SL_SC_DA 0xc5 /* [CAPTURE] s->s_line  = ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr -= ARG(2); */
+#define A2L_O_IL_IA      0x80 /* [CAPTURE] s->s_line += ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr += ARG(1); */
+#define A2L_O_IC_IA      0x81 /* [CAPTURE] s->s_col  += ARG(0); A2lState_SETF(s,A2L_STATE_HASCOL); s->s_addr += ARG(1); */
+/*                       0x82 */
+/*                       .... */
+/*                       0x8f */
+#define A2L_O_NLLO_SC_IA 0x90 /* [CAPTURE] s->s_line += 1+(op-A2L_O_NLLO_SC_IA); s->s_col = ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr += ARG(1); */
+#define A2L_O_NLHI_SC_IA 0xbf /* ... */
+#define A2L_MAX_NLSCIA  (1+(A2L_O_NLHI_SC_IA-A2L_O_NLLO_SC_IA))
+
+#define A2L_O_IL_SC_IA   0xc0 /* [CAPTURE] s->s_line += ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr += ARG(2); */
+/*                       0xc1 */
+/*                       .... */
+/*                       0xff */
+
 
 #define A2L_A_CON 0x80 /*< [flag] When set, the next byte is still part of this operand. */
+#define A2L_A_NEG 0x80 /*< Each leading byte equal to this causes the result to be negated. */
 #define A2L_A_MAX 0x7f /*< The max value of a single-byte operand. */
 #define A2L_A_SFT    7 /*< Bit-shift between operand bytes. */
 

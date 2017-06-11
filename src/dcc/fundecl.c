@@ -38,6 +38,7 @@ DCCFunctionFrame_Enter(struct DCCFunctionFrame *__restrict self,
  assert(fun_sym);
  assert(fun_attr);
  self->ff_old_fun     = compiler.c_fun;
+ self->ff_old_funname = compiler.c_funname;
  self->ff_old_bsym    = compiler.c_bsym;
  self->ff_old_csym    = compiler.c_csym;
  self->ff_old_return  = compiler.c_return;
@@ -67,11 +68,12 @@ DCCFunctionFrame_Enter(struct DCCFunctionFrame *__restrict self,
   self->ff_jmpsym = DCCUnit_AllocSym();
   if (self->ff_jmpsym) vpushs(self->ff_jmpsym),vgen1('&'),vjmp();
  }
- compiler.c_fun    = fun_decl;
- compiler.c_bsym   = NULL;
- compiler.c_csym   = NULL;
- compiler.c_return = NULL;
- compiler.c_flags &= ~(DCC_COMPILER_FLAG_SINIT|DCC_COMPILER_FLAG_INLOOP);
+ compiler.c_fun     = fun_decl;
+ compiler.c_funname = NULL;
+ compiler.c_bsym    = NULL;
+ compiler.c_csym    = NULL;
+ compiler.c_return  = NULL;
+ compiler.c_flags  &= ~(DCC_COMPILER_FLAG_SINIT|DCC_COMPILER_FLAG_INLOOP);
  /* Respect the dead-flag to optimize away function declarations in dead branches. */
  if (!(compiler.c_flags&DCC_COMPILER_FLAG_DEAD))
        compiler.c_flags &= ~(DCC_COMPILER_FLAG_NOCGEN);
@@ -190,11 +192,12 @@ DCCFunctionFrame_Leave(struct DCCFunctionFrame *__restrict self) {
         (unsigned long)(compiler.c_vstack.v_end-
                         compiler.c_vstack.v_bottom));
  free(compiler.c_vstack.v_begin); /* Cleanup the old v-stack. */
- compiler.c_vstack = self->ff_old_vstack;
- compiler.c_return = self->ff_old_return;
- compiler.c_csym   = self->ff_old_csym;
- compiler.c_bsym   = self->ff_old_bsym;
- compiler.c_fun    = self->ff_old_fun;
+ compiler.c_vstack  = self->ff_old_vstack;
+ compiler.c_return  = self->ff_old_return;
+ compiler.c_csym    = self->ff_old_csym;
+ compiler.c_bsym    = self->ff_old_bsym;
+ compiler.c_funname = self->ff_old_funname;
+ compiler.c_fun     = self->ff_old_fun;
  if (self->ff_jmpsym) t_defsym(self->ff_jmpsym);
 }
 

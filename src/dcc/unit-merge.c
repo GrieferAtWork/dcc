@@ -232,13 +232,13 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
  }
 
  /* Merge debug informations. */
- if ((linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) {
-  target_ptr_t text_merge;
-  if (unit.u_dbgstr) text_merge = unit.u_dbgstr->sc_merge;
+ if (linker.l_flags&DCC_LINKER_FLAG_GENDEBUG) {
+  target_ptr_t string_merge;
+  if (unit.u_dbgstr) string_merge = unit.u_dbgstr->sc_merge;
   else {
    struct DCCSection *debug_string;
    debug_string = DCCUnit_GetSecs(A2L_STRING_SECTION);
-   text_merge = debug_string ? debug_string->sc_merge : 0;
+   string_merge = debug_string ? debug_string->sc_merge : 0;
   }
   for (srcsec = other->u_secs; srcsec; srcsec = srcsec->sc_next) {
    struct DCCSection *dstsec;
@@ -246,7 +246,7 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
    dstsec = DCCUnit_GetSec(srcsec->sc_start.sy_name);
    if (dstsec) {
     /* Merge debug informations. */
-    DCCA2l_RelocString(&srcsec->sc_a2l,text_merge);
+    DCCA2l_RelocString(&srcsec->sc_a2l,string_merge);
     DCCA2l_Merge(&dstsec->sc_a2l,&srcsec->sc_a2l,dstsec->sc_merge);
    }
   }

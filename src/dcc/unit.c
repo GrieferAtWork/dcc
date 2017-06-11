@@ -1130,7 +1130,7 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
 #else
 #   error FIXME
 #endif
-  case DCC_R_SIZE:
+  case DCC_R_EXT_SIZE:
    if (DCCSym_ISSECTION(symaddr.sa_sym))
         *(target_siz_t *)reldata += (target_siz_t)(DCCSym_TOSECTION(symaddr.sa_sym)->sc_text.tb_max-
                                                    DCCSym_TOSECTION(symaddr.sa_sym)->sc_text.tb_begin);
