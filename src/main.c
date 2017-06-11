@@ -108,13 +108,27 @@ static void tpp_clrfile(void) {
 #define STDLIB(name,f) \
  {f,name,DCC_COMPILER_STRLEN(name),(symflag_t)-1,0,(symflag_t)-1,0,NULL}
 
+static struct DCCLibDef common_stdlib[] = {
+#if DCC_TARGET_OS == DCC_OS_WINDOWS || \
+    DCC_TARGET_OS == DCC_OS_CYGWIN
+ STDLIB(SO("kernel32"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+#else
+ STDLIB(SO("libc"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+#endif
+ {0,NULL,0,0,0,0,0,NULL},
+};
+
 static struct DCCLibDef default_stdlib[] = {
 #if DCC_TARGET_OS == DCC_OS_WINDOWS || \
     DCC_TARGET_OS == DCC_OS_CYGWIN
  STDLIB(SO("msvcrt"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
- STDLIB(SO("kernel32"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
-#else
- STDLIB(SO("libc"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+#endif
+ {0,NULL,0,0,0,0,0,NULL},
+};
+static struct DCCLibDef default_stdlib_dbg[] = {
+#if DCC_TARGET_OS == DCC_OS_WINDOWS || \
+    DCC_TARGET_OS == DCC_OS_CYGWIN
+ STDLIB(SO("msvcr120d"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
 #endif
  {0,NULL,0,0,0,0,0,NULL},
 };
@@ -146,10 +160,12 @@ static void load_stdlib(void) {
  if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDLIB) &&
      !(preproc.p_flags&DCC_PREPROCESSOR_FLAG_COMPILEONLY)) {
   /* Load default libraries. */
-  load_chain(default_stdlib);
+  load_chain(common_stdlib);
   if (linker.l_flags&DCC_LINKER_FLAG_GENDEBUG) {
+   load_chain(default_stdlib_dbg);
    load_chain(default_crt_dbg);
   } else {
+   load_chain(default_stdlib);
    load_chain(default_crt);
   }
  }
@@ -157,6 +173,7 @@ static void load_stdlib(void) {
 
 int main(int argc, char *argv[]) {
  int result = 0;
+ //004318ff;
 
  /*_CrtSetBreakAlloc(33398);*/
  if (!TPP_INITIALIZE()) return 1;

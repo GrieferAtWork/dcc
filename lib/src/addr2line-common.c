@@ -96,13 +96,16 @@ A2L_NAME(a2l_exec)(struct A2lState *__restrict s,
   case A2L_O_IC: s->s_col  += ARG(); A2lState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
   case A2L_O_DC: s->s_col  -= ARG(); A2lState_SETF(s,A2L_STATE_HASCOL); LOG(("COL = %d\n",s->s_col)); break;
 
+  case A2L_O_SL: s->s_line = ARG(); A2lState_SETF(s,A2L_STATE_HASLINE); LOG(("LINE = %d\n",s->s_line)); break;
+  case A2L_O_SC: s->s_col  = ARG(); A2lState_SETF(s,A2L_STATE_HASCOL);  LOG(("COL  = %d\n",s->s_col)); break;
   case A2L_O_SP: s->s_path = ARG(); A2lState_SETF(s,A2L_STATE_HASPATH); LOG(("PATH = %d\n",s->s_path)); break;
   case A2L_O_SF: s->s_file = ARG(); A2lState_SETF(s,A2L_STATE_HASFILE); LOG(("FILE = %d\n",s->s_file)); break;
-  case A2L_O_SN: s->s_name = ARG(); A2lState_SETF(s,A2L_STATE_HASNAME); LOG(("NAME = %d\n",s->s_file)); break;
+  case A2L_O_SN: s->s_name = ARG(); A2lState_SETF(s,A2L_STATE_HASNAME); LOG(("NAME = %d\n",s->s_name)); break;
 
   {
    if (DCC_MACRO_FALSE) { case A2L_O_IL_IA: s->s_line += ARG(); }
    if (DCC_MACRO_FALSE) { case A2L_O_DL_IA: s->s_line -= ARG(); }
+   if (DCC_MACRO_FALSE) { case A2L_O_SL_IA: s->s_line  = ARG(); }
    A2lState_SETF(s,A2L_STATE_HASLINE);
    A2lState_DEL_C(s);
    LOG(("LINE = %d\n",s->s_line));
@@ -112,6 +115,7 @@ A2L_NAME(a2l_exec)(struct A2lState *__restrict s,
   {
    if (DCC_MACRO_FALSE) { case A2L_O_IL_DA: s->s_line += ARG(); }
    if (DCC_MACRO_FALSE) { case A2L_O_DL_DA: s->s_line -= ARG(); }
+   if (DCC_MACRO_FALSE) { case A2L_O_SL_DA: s->s_line  = ARG(); }
    A2lState_SETF(s,A2L_STATE_HASLINE);
    A2lState_DEL_C(s);
    LOG(("LINE = %d\n",s->s_line));
@@ -121,11 +125,12 @@ A2L_NAME(a2l_exec)(struct A2lState *__restrict s,
   {
    if (DCC_MACRO_FALSE) { case A2L_O_IL_SC_IA: case A2L_O_IL_SC_DA: s->s_line += ARG(); }
    if (DCC_MACRO_FALSE) { case A2L_O_DL_SC_IA: case A2L_O_DL_SC_DA: s->s_line -= ARG(); }
+   if (DCC_MACRO_FALSE) { case A2L_O_SL_SC_IA: case A2L_O_SL_SC_DA: s->s_line  = ARG(); }
    LOG(("LINE = %d\n",s->s_line));
    s->s_col = ARG();
    A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL);
    LOG(("COL = %d\n",s->s_col));
-   if (op <= 0xc2) goto cap_inc;
+   if (op < A2L_O_IL_SC_DA) goto cap_inc;
    goto cap_dec;
   } break;
 

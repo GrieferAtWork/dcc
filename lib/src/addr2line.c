@@ -74,8 +74,9 @@ _Bool __dcc_dbg_addr2line(void *ip, lc_t *info) {
   }
   info->path = NULL;
   info->file = NULL;
+  info->name = NULL;
   info->line = 0;
-  info->col = 0;
+  info->col  = 0;
  }
  return 0;
 }
@@ -87,9 +88,16 @@ _Bool __dcc_dbg_addr2line(void *ip, lc_t *info) {
 
 typedef unsigned char BYTE;
 typedef long          LONG;
-typedef unsigned long DWORD;
+typedef unsigned long DWORD,*LPDWORD;
 typedef unsigned long ULONG_PTR;
 typedef void         *PVOID;
+typedef void const   *LPCVOID;
+typedef void         *HANDLE;
+typedef int           BOOL;
+typedef char const   *LPCSTR;
+typedef /* ... */void *LPOVERLAPPED;
+
+#define WINAPI __stdcall
 
 #define SIZE_OF_80387_REGISTERS      80
 #define MAXIMUM_SUPPORTED_EXTENSION  512
@@ -156,26 +164,76 @@ typedef struct _EXCEPTION_POINTERS {
     PCONTEXT ContextRecord;
 } EXCEPTION_POINTERS, *PEXCEPTION_POINTERS;
 
-typedef LONG (__stdcall *PTOP_LEVEL_EXCEPTION_FILTER)(PEXCEPTION_POINTERS ExceptionInfo);
+typedef LONG (WINAPI *PTOP_LEVEL_EXCEPTION_FILTER)(PEXCEPTION_POINTERS ExceptionInfo);
 typedef PTOP_LEVEL_EXCEPTION_FILTER LPTOP_LEVEL_EXCEPTION_FILTER;
 
-[[lib("Kernel32.dll")]] LPTOP_LEVEL_EXCEPTION_FILTER __stdcall
-SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER);
 
-#include <stdio.h>
+#define STD_INPUT_HANDLE    ((DWORD)-10)
+#define STD_OUTPUT_HANDLE   ((DWORD)-11)
+#define STD_ERROR_HANDLE    ((DWORD)-12)
+
+#define K32   [[lib("Kernel32.dll")]]
+
+K32 LPTOP_LEVEL_EXCEPTION_FILTER WINAPI SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER);
+K32 BOOL WINAPI WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped);
+K32 HANDLE WINAPI GetStdHandle(DWORD nStdHandle);
+K32 void WINAPI OutputDebugStringA(LPCSTR lpOutputString);
+
+
+#include <stddef.h>
 #include <dcc.h>
+
+
+/* Use direct I/O in case libc is compromised */
+#define TB_PRINT(x) tb_print(x,sizeof(x)-sizeof(char))
+static void tb_print(char const *s, size_t len) {
+ WriteFile(GetStdHandle(STD_ERROR_HANDLE),s,len,0,0);
+ OutputDebugStringA(s);
+}
+static void tb_prints(char const *s) {
+ char const *end = s;
+ while (*end) ++end;
+ tb_print(s,(size_t)(end-s)*sizeof(char));
+}
+static void tb_printi(uintptr_t i) {
+ char buf[33],*iter = buf+32;
+ *iter = '\0';
+ if (!i) *--iter = '0';
+ else do {
+  *--iter = (char)('0'+(i % 10));
+ } while ((i /= 10) != 0);
+ tb_print(iter,(size_t)((buf+32)-iter)*sizeof(char));
+}
+static void tb_printx(uintptr_t i) {
+ char buf[9],*iter = buf+8;
+ *iter = '\0';
+ while (iter != buf) {
+  uint8_t x = (uint8_t)(i&0xf);
+  --iter;
+  if (x >= 10) *iter = (char)('A'+(x-10));
+  else         *iter = (char)('0'+x);
+  i >>= 4;
+ }
+ tb_print(buf,8*sizeof(char));
+}
+
 
 static void print_addr(void *p, size_t i) {
  lc_t info;
  _addr2line(p,&info);
- fprintf(stderr,"%s%s%s(%d,%d) : %s : %p (Frame %lu)\n",
-         info.path ? info.path : "",
-         info.path ? "/" : "",
-         info.file ? info.file : "??" "?",
-         info.line,info.col,
-         info.name ? info.name : "??" "?",
-         p,(unsigned long)i);
- fflush(stderr);
+ if (info.path) { tb_prints(info.path); TB_PRINT("/"); }
+ if (info.file) tb_prints(info.file); else TB_PRINT("??" "?");
+ TB_PRINT("(");
+ tb_printi(info.line);
+ TB_PRINT(",");
+ tb_printi(info.col);
+ TB_PRINT(") : ");
+ if (info.name) tb_prints(info.name); else TB_PRINT("??" "?");
+ TB_PRINT(" : ");
+ tb_printx((uintptr_t)p);
+ TB_PRINT(" (Frame ");
+ tb_printi((uintptr_t)i);
+ TB_PRINT(")\n");
 }
 
 struct frame {
@@ -184,7 +242,7 @@ struct frame {
 };
 
 static LONG __stdcall tb_handler(PEXCEPTION_POINTERS ExceptionInfo) {
- fprintf(stderr,"Unhandled exception\n");
+ TB_PRINT("Unhandled exception\n");
  if (ExceptionInfo) {
   PCONTEXT ctx = ExceptionInfo->ContextRecord;
   PEXCEPTION_RECORD record = ExceptionInfo->ExceptionRecord;
@@ -198,10 +256,15 @@ static LONG __stdcall tb_handler(PEXCEPTION_POINTERS ExceptionInfo) {
     check = start,num = 0;
     while (num < index) {
      if (check == iter) {
-      fprintf(stderr,"Recursion: Frame %lu (%p) == Frame %lu (%p)\n",
-             (unsigned long)(index+1),check,
-             (unsigned long)(num+1),iter);
-      fflush(stderr);
+      TB_PRINT("Recursion: Frame ");
+      tb_printi(index+1);
+      TB_PRINT(" (");
+      tb_printx((uintptr_t)check);
+      TB_PRINT(") == Frame ");
+      tb_printi(num+1);
+      TB_PRINT(" (");
+      tb_printx((uintptr_t)iter);
+      TB_PRINT(")\n");
       goto done_tb;
      }
      check = check->caller;
@@ -214,9 +277,9 @@ static LONG __stdcall tb_handler(PEXCEPTION_POINTERS ExceptionInfo) {
 done_tb:
   /* Display additional informations. */
   if (record) {
-   fprintf(stderr,"CODE = %lx\n",record->ExceptionCode),fflush(stderr);
-   fprintf(stderr,"FLAG = %lx\n",record->ExceptionFlags),fflush(stderr);
-   fprintf(stderr,"ADDR = %lx\n",record->ExceptionAddress),fflush(stderr);
+   TB_PRINT("CODE = "),tb_printx((uintptr_t)record->ExceptionCode),TB_PRINT("\n");
+   TB_PRINT("FLAG = "),tb_printx((uintptr_t)record->ExceptionFlags),TB_PRINT("\n");
+   TB_PRINT("ADDR = "),tb_printx((uintptr_t)record->ExceptionAddress),TB_PRINT("\n");
   }
  }
  return 0;

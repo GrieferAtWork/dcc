@@ -6,4 +6,5 @@ src/tpp/frontend.c
 .vs/*.opensdf
 *.exe
 *.dat
+lib/.objs/*
 lib/.deps/*

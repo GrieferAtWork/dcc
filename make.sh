@@ -1,7 +1,7 @@
 #!/bin/bash
 
 CC="gcc"
-F=("-Iinclude" "-DDCC_PRIVATE_API")
+F=("-g" "-Iinclude" "-DDCC_PRIVATE_API")
 out_bin="bin/dcc"
 
 CC_DCC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
@@ -61,7 +61,7 @@ src src/*.c
 src src/dcc/*.c
 src lib/src/addr2line-common.c
 
-$CC -o "$out_bin" "${object_list[@]}"
+$CC -g -o "$out_bin" "${object_list[@]}"
 
 
 

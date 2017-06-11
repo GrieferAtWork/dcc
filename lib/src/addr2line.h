@@ -134,19 +134,25 @@ struct A2lState {
 #define A2L_O_IC       0x44 /*           s->s_col  += ARG(0); A2lState_SETF(s,A2L_STATE_HASCOL); */
 #define A2L_O_DC       0x45 /*           s->s_col  -= ARG(0); A2lState_SETF(s,A2L_STATE_HASCOL); */
 
-#define A2L_O_SP       0x46 /*           s->s_path  = ARG(0); A2lState_SETF(s,A2L_STATE_HASPATH); */
-#define A2L_O_SF       0x47 /*           s->s_file  = ARG(0); A2lState_SETF(s,A2L_STATE_HASFILE); */
-#define A2L_O_SN       0x48 /*           s->s_name  = ARG(0); A2lState_SETF(s,A2L_STATE_HASNAME); */
+#define A2L_O_SL       0x46 /*           s->s_line  = ARG(0); A2lState_DEL_C(s); */
+#define A2L_O_SC       0x47 /*           s->s_col   = ARG(0); A2lState_SETF(s,A2L_STATE_HASCOL); */
+#define A2L_O_SP       0x48 /*           s->s_path  = ARG(0); A2lState_SETF(s,A2L_STATE_HASPATH); */
+#define A2L_O_SF       0x49 /*           s->s_file  = ARG(0); A2lState_SETF(s,A2L_STATE_HASFILE); */
+#define A2L_O_SN       0x4a /*           s->s_name  = ARG(0); A2lState_SETF(s,A2L_STATE_HASNAME); */
 
 #define A2L_O_IL_IA    0x80 /* [CAPTURE] s->s_line += ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr += ARG(1); */
 #define A2L_O_DL_IA    0x81 /* [CAPTURE] s->s_line -= ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr += ARG(1); */
-#define A2L_O_IL_DA    0x82 /* [CAPTURE] s->s_line += ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr -= ARG(1); */
-#define A2L_O_DL_DA    0x83 /* [CAPTURE] s->s_line -= ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr -= ARG(1); */
+#define A2L_O_SL_IA    0x82 /* [CAPTURE] s->s_line  = ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr += ARG(1); */
+#define A2L_O_IL_DA    0x83 /* [CAPTURE] s->s_line += ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr -= ARG(1); */
+#define A2L_O_DL_DA    0x84 /* [CAPTURE] s->s_line -= ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr -= ARG(1); */
+#define A2L_O_SL_DA    0x85 /* [CAPTURE] s->s_line  = ARG(0); A2lState_SETF(s,A2L_STATE_HASLINE); A2lState_DEL_C(s); s->s_addr -= ARG(1); */
 
 #define A2L_O_IL_SC_IA 0xc0 /* [CAPTURE] s->s_line += ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr += ARG(2); */
 #define A2L_O_DL_SC_IA 0xc1 /* [CAPTURE] s->s_line -= ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr += ARG(2); */
-#define A2L_O_IL_SC_DA 0xc2 /* [CAPTURE] s->s_line += ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr -= ARG(2); */
-#define A2L_O_DL_SC_DA 0xc3 /* [CAPTURE] s->s_line -= ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr -= ARG(2); */
+#define A2L_O_SL_SC_IA 0xc2 /* [CAPTURE] s->s_line  = ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr += ARG(2); */
+#define A2L_O_IL_SC_DA 0xc3 /* [CAPTURE] s->s_line += ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr -= ARG(2); */
+#define A2L_O_DL_SC_DA 0xc4 /* [CAPTURE] s->s_line -= ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr -= ARG(2); */
+#define A2L_O_SL_SC_DA 0xc5 /* [CAPTURE] s->s_line  = ARG(0); s->s_col = ARG(1); A2lState_SETF(s,A2L_STATE_HASLINE|A2L_STATE_HASCOL); s->s_addr -= ARG(2); */
 
 #define A2L_A_CON 0x80 /*< [flag] When set, the next byte is still part of this operand. */
 #define A2L_A_MAX 0x7f /*< The max value of a single-byte operand. */

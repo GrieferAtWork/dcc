@@ -52,8 +52,18 @@
 #define DCC_CONFIG_LIBPREFIX  "lib"
 
 
+#ifndef __has_attribute
+#define __has_attribute(x) 0
+#endif
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+#ifndef __has_include
+#define __has_include(x) 0
+#endif
 
-#ifdef _MSC_VER
+
+#if defined(_MSC_VER) || __has_include(<crtdbg.h>)
 #ifndef __INTELLISENSE__
 #if defined(DCC_PRIVATE_API) && DCC_DEBUG
 /* Make use of MSVC's builtin memory leak detector. */
@@ -62,13 +72,6 @@
 #include <crtdbg.h>
 #endif
 #endif
-#endif
-
-#ifndef __has_attribute
-#define __has_attribute(x) 0
-#endif
-#ifndef __has_builtin
-#define __has_builtin(x) 0
 #endif
 
 #ifdef __cplusplus

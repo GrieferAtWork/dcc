@@ -58,6 +58,7 @@
 #   define __CRT_DCC 1
 #elif defined(_WIN32) || defined(__CYGWIN32__)
 #   define __CRT_MSVC 1
+#   define __MS_LONG  __int32
 #else
 #   define __CRT_GLIBC 1
 #endif

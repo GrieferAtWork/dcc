@@ -111,6 +111,9 @@
     <ClInclude Include="..\lib\src\libc\common.h">
       <Filter>src\libc</Filter>
     </ClInclude>
+    <ClInclude Include="..\lib\include\crtdbg.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\lib\src\addr2line-common.c">
