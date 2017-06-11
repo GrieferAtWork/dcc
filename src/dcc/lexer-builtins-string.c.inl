@@ -130,7 +130,7 @@ DCCParse_BuiltinScas(void) {
  uint32_t mode; /* ... (Various string scanning builtins); */
  assert(TOK >= KWD___builtin_memchr &&
         TOK <= KWD___builtin_rawmemrlen);
- mode = SCAS_MODE(TOK);
+ mode = scas_mode[SCAS_MODE(TOK)];
  YIELD();
  DCCParse_ParPairBegin();
  DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID|DCCTYPE_CONST,0),vused();
