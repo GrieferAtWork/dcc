@@ -55,7 +55,7 @@ DCCA2lChunk_IncCode(struct DCCA2lChunk *__restrict self) {
  newbuf = (a2l_op_t *)realloc(self->c_code_begin,newsize*sizeof(a2l_op_t));
  if unlikely(!newbuf) { DCC_AllocFailed(newsize*sizeof(a2l_op_t)); return 0; }
  self->c_code_pos   = newbuf+(self->c_code_pos-self->c_code_begin);
- self->c_code_last    = newbuf+(self->c_code_last-self->c_code_begin);
+ self->c_code_last  = newbuf+(self->c_code_last-self->c_code_begin);
  self->c_code_end   = newbuf+newsize;
  self->c_code_begin = newbuf;
  return 1;
@@ -240,8 +240,7 @@ update_col:
  if (new_state->s_addr != old_state->s_addr) {
   if (new_state->s_addr > old_state->s_addr)
        O(A2L_O_IA),A(new_state->s_addr-old_state->s_addr);
-  else
-       O(A2L_O_DA),A(old_state->s_addr-new_state->s_addr);
+  else O(A2L_O_DA),A(old_state->s_addr-new_state->s_addr);
  }
 #endif
  return buf;
@@ -252,36 +251,43 @@ update_col:
 
 
 /* Lookup the boundry pointers of code specifying
- * debug information about 'new_state->s_addr', or when '*ins_begin'
- * and '*ins_end' are both set to the same pointer,
- * the insert address of where new code describing
- * a transition from 'ins_state' to whichever state
- * the caller desires must be inserted at! */
+ * debug information about 'new_state->s_addr'. */
 PRIVATE void
 DCCA2lChunk_GetInsPtr(struct DCCA2lChunk *__restrict self,
                       a2l_addr_t addr,
                       a2l_op_t **__restrict ins_begin,
                       a2l_op_t **__restrict ins_end,
-                      struct A2lState *__restrict ins_state) {
+                      struct A2lState *__restrict ins_begin_state,
+                      struct A2lState *__restrict ins_end_state) {
  a2l_op_t *code,*newcode;
+ struct A2lState state;
  assert(self);
  assert(ins_begin);
  assert(ins_end);
+ assert(ins_begin_state);
+ assert(ins_end_state);
  assert(addr >= self->c_smin.s_addr);
  assert(addr <= self->c_smax.s_addr);
- *ins_state = self->c_smin;
+ state = self->c_smin;
  code = self->c_code_begin;
  for (;;) {
-  assert(ins_state->s_addr <= addr);
-  newcode = a2l_exec1(ins_state,code);
-  if (ins_state->s_addr >= addr) {
+  assert(state.s_addr <= addr);
+  *ins_begin_state = state;
+  newcode = a2l_exec1(&state,code);
+  if (state.s_addr >= addr) {
    *ins_begin = code;
    /* When the last capture opcode describes 'addr' directly,
     * use the opcode's end for '*ins_end' in order to override
     * its meaning with new debug information inside the caller.
     * Otherwise, insert new debug info by setting '*ins_end'
     * equal '*ins_begin'. */
-   *ins_end = (ins_state->s_addr == addr) ? newcode : code;
+   if (state.s_addr == addr) {
+    *ins_end       = newcode;
+    *ins_end_state = state;
+   } else {
+    *ins_end       = code;
+    *ins_end_state = *ins_begin_state;
+   }
    break;
   }
   code = newcode;
@@ -370,8 +376,10 @@ PRIVATE void
 DCCA2lChunk_Insert(struct DCCA2lChunk *__restrict self,
                    struct A2lState const *__restrict data) {
  a2l_op_t buf[A2L_TRANSITION_MAXSIZE*2];
- size_t size,ins_size; a2l_op_t *ins_begin,*ins_end;
- struct A2lState ins_state;
+ size_t size,ins_size;
+ a2l_op_t *ins_begin,*ins_end;
+ struct A2lState ins_begin_state;
+ struct A2lState ins_end_state;
  assert(self);
  assert(data);
  if (self->c_code_pos == self->c_code_begin &&
@@ -429,10 +437,36 @@ DCCA2lChunk_Insert(struct DCCA2lChunk *__restrict self,
   self->c_smin = *data;
   return;
  }
- DCCA2lChunk_GetInsPtr(self,data->s_addr,&ins_begin,&ins_end,&ins_state);
+ DCCA2lChunk_GetInsPtr(self,data->s_addr,
+                      &ins_begin,&ins_end,
+                      &ins_begin_state,
+                      &ins_end_state);
  assert(ins_end >= ins_begin);
  assert(ins_begin >= self->c_code_begin);
  assert(ins_end   <= self->c_code_pos);
+ /* Check for updating special state locations. */
+ if (ins_begin == self->c_code_begin) {
+  /* Insert at the front. */
+  assert(!memcmp(&ins_begin_state,&self->c_smin,sizeof(struct A2lState)));
+  size = (size_t)(a2l_build_transition(buf,data,&ins_begin_state)-buf);
+  self->c_smin = *data;
+  goto ins_commit;
+ }
+ if (ins_end == self->c_code_pos) {
+  /* Insert at the back. */
+  assert(!memcmp(&ins_end_state,&self->c_smax,sizeof(struct A2lState)));
+  size = (size_t)(a2l_build_transition(buf,&ins_begin_state,data)-buf);
+  self->c_smax = *data;
+  goto ins_commit;
+ }
+ if (ins_begin == self->c_code_last) {
+  /* Update the last-code state. */
+  assert(!memcmp(&ins_end_state,&self->c_slast,sizeof(struct A2lState)));
+  self->c_slast = *data;
+ }
+ assert(ins_begin > self->c_code_begin);
+ assert(ins_end   < self->c_code_pos);
+
  /* Generate a transition from 'ins_state' to 'data',
   * overwriting old/inserting new code from 'ins_begin' to 'ins_end'
   * NOTE: A second transition must also be generated for the following debug block!
@@ -440,12 +474,11 @@ DCCA2lChunk_Insert(struct DCCA2lChunk *__restrict self,
   */
  {
   a2l_op_t *iter;
-  iter    = a2l_build_transition(buf,&ins_state,data);
-  ins_end = a2l_exec1(&ins_state,ins_end);
-  iter    = a2l_build_transition(iter,data,&ins_state);
-  size    = (size_t)(iter-buf);
+  iter = a2l_build_transition(buf,&ins_begin_state,data);
+  iter = a2l_build_transition(iter,data,&ins_end_state);
+  size = (size_t)(iter-buf);
  }
-
+ins_commit:
  ins_size = (size_t)(ins_end-ins_begin);
  if (size == ins_size) {
   /* Simplified case: Old code has the same size as new. - Just overwrite it directly. */
