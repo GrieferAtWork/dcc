@@ -1110,17 +1110,8 @@ TPPFile_OpenStream(stream_t stream, char const *name) {
  result->f_refcnt                 = 1;
  result->f_kind                   = TPPFILE_KIND_TEXT;
  result->f_prev                   = NULL;
-#ifdef __DCC_VERSION__
- printf("TPPFile_OpenStream(%p,'%p')\n",stream,name);
- fflush(stdout);
- _CrtCheckMemory();
- printf("TPPFile_OpenStream(%p,'%s')\n",stream,name);
- fflush(stdout);
- _CrtCheckMemory();
-#endif
  result->f_namesize               = strlen(name);
  result->f_name                   = (char *)malloc((result->f_namesize+1)*sizeof(char));
- _CrtCheckMemory();
  if unlikely(!result->f_name) goto err_r;
  memcpy(result->f_name,name,(result->f_namesize+1)*sizeof(char));
  result->f_namehash = hashof(result->f_name,result->f_namesize);

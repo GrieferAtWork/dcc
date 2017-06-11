@@ -443,6 +443,12 @@ DCCDisp_FunProlog(struct DCCDispFunction *__restrict info) {
 #else
  t_alloc(PROLOG_SIZE);
 #endif
+#if 0 /* Hardcore debugging! */
+ { struct DCCMemLoc loc;
+   loc.ml_sym = DCCUnit_NewSyms("_CrtCheckMemory",DCC_SYMFLAG_DLLIMPORT);
+   if (loc.ml_sym) loc.ml_off = 0,loc.ml_reg = DCC_RC_CONST,DCCDisp_LocCll(&loc);
+ }
+#endif
 }
 PUBLIC void
 DCCDisp_GenProlog(struct DCCDispFunction *__restrict info) {

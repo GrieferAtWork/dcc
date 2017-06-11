@@ -333,9 +333,11 @@ struct DCCStackValue {
  (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
    ((self)->sv_reg == DCC_RC_CONST))
 
-
+/* A constant value, as far as '__builtin_constant_p' is concerned. */
 #define DCCStackValue_ISCONST(self) \
- ((self)->sv_reg == DCC_RC_CONST && !((self)->sv_flags&DCC_SFLAG_LVALUE))
+ (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
+   ((self)->sv_reg == DCC_RC_CONST))
+
 #define DCCStackValue_MUSTCOPY(self) \
   (((self)->sv_flags&DCC_SFLAG_COPY) || /* Must copy protected registers ESP/EBP. */\
  (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_XREGISTER)) \

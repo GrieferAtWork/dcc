@@ -297,9 +297,7 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Memset(void) {
  assert(vsize >= 3);
  /* Compile-time optimizations for known memset sizes. */
- if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
-       vbottom->sv_reg == DCC_RC_CONST &&
-      !vbottom->sv_sym) {
+ if (DCCSTACKVALUE_ISCONST_INT(vbottom)) {
   struct DCCMemLoc dst_loc;
   target_siz_t fill_size = (target_siz_t)vbottom->sv_const.offset;
   if (!fill_size) {
@@ -318,6 +316,7 @@ DCCVStack_Memset(void) {
   dst_loc.ml_reg = vbottom[2].sv_reg;
   dst_loc.ml_off = vbottom[2].sv_const.offset;
   dst_loc.ml_sym = vbottom[2].sv_sym;
+            /* dst, byt, size */
   vpop(1);  /* dst, byt */
   vswap();  /* byt, dst */
   vrcopy(); /* byt, ddst */

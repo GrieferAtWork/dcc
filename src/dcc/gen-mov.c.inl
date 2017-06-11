@@ -284,8 +284,12 @@ DCCDisp_DoRepBytMovMem(int                                src, target_siz_t src_
       if (common_size >= 4) ax = DCC_RC_I32|DCC_ASMREG_EAX,used_src *= 0x01010101;
  else if (common_size >= 2) ax = DCC_RC_I16|DCC_ASMREG_AX,used_src *= 0x0101;
  else                       ax = DCC_RC_I8|DCC_ASMREG_AL;
- ax = DCCVStack_GetRegExact(ax);
  DCCDisp_LeaReg(dst,DCC_RR_XDI); /* Load the destination into 'EDI' */
+ /* NOTE: '(E)AX' Must be reserved _AFTER_ 'dst' has been loaded,
+  *       as 'dst' itself may depend on that register, as well as
+  *       feature an offset, meaning that killing (E)AX could flush
+  *       that offset, thereby invalidating the caller-given disposition. */
+ ax = DCCVStack_GetRegExact(ax);
  DCCDisp_IntMovReg(used_src,ax); /* Load the filler byte into '(E)AX' */
  DCCDisp_AXMovDI(4,common_size); /* Fill the destination with '(E)AX' */
  dst_bytes -= common_size;
@@ -338,6 +342,7 @@ DCCDisp_DoRepByrMovMem(rc_t                               src, target_siz_t src_
       if (max_width >= 4) ax = DCC_RC_I32|DCC_ASMREG_EAX;
  else if (max_width >= 2) ax = DCC_RC_I16|DCC_ASMREG_AX;
  else                     ax = DCC_RC_I8|DCC_ASMREG_AL;
+ DCCDisp_LeaReg(dst,DCC_RR_XDI); /* Load the destination into 'EDI' */
  if ((src&DCC_RI_MASK) != DCC_ASMREG_EAX) {
   ax = DCCVStack_GetRegExact(ax);
   DCCDisp_RegMovReg(src,ax,1);
@@ -347,7 +352,6 @@ DCCDisp_DoRepByrMovMem(rc_t                               src, target_siz_t src_
   DCCDisp_RegMovReg(DCC_RC_I8|DCC_ASMREG_AL,
                     DCC_RC_I8|DCC_ASMREG_AH,1);
  }
- DCCDisp_LeaReg(dst,DCC_RR_XDI);         /* Load the destination into 'EDI' */
  if (max_width >= 4) {
   struct DCCSymAddr val;
   rc_t temp16 = DCCVStack_GetRegOf(DCC_RC_I16,(uint8_t)~((1 << DCC_ASMREG_EAX)|
