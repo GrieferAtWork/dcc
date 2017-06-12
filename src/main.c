@@ -173,7 +173,6 @@ static void load_stdlib(void) {
 
 int main(int argc, char *argv[]) {
  int result = 0;
- //004318ff;
 
  /*_CrtSetBreakAlloc(33398);*/
  if (!TPP_INITIALIZE()) return 1;

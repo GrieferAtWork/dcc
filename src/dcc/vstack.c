@@ -1171,18 +1171,36 @@ DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
 
 PRIVATE int DCC_VSTACK_CALL
 DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
-                          struct DCCSymExpr const *__restrict exprval) {
- int_t iv; int ty;
+                          struct DCCSymExpr const *__restrict exprval,
+                          struct DCCStackValue *__restrict other) {
+ typedef uint_least64_t uint_t;
+ int_t iv; int src_unsigned = 0;
  assert(self);
+ assert(other);
  assert(self->sv_reg == DCC_RC_CONST);
  assert(self->sv_reg2 == DCC_RC_CONST);
  assert(!(self->sv_flags&DCC_SFLAG_LVALUE));
  assert(exprval);
- ty = DCCTYPE_BASIC(self->sv_ctype.t_type) & ~(DCCTYPE_UNSIGNED);
-      if (ty == DCCTYPE_INT64) iv = (int_t)self->sv_const.s64;
- else if (ty == DCCTYPE_WORD)  iv = (int_t)self->sv_const.s16;
- else if (ty == DCCTYPE_BYTE)  iv = (int_t)self->sv_const.s8;
- else                          iv = (int_t)self->sv_const.s32;
+ assert(DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_LVALUE);
+ if (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_POINTER) {
+  iv = (int_t)self->sv_const.ptr;
+  src_unsigned = 1;
+ } else {
+  int ty = DCCTYPE_BASIC(self->sv_ctype.t_type) & ~(DCCTYPE_UNSIGNED);
+  src_unsigned = !!(self->sv_ctype.t_type&DCCTYPE_UNSIGNED);
+  /* Make sure input constants are zero-extended when unsigned. */
+  if (src_unsigned) {
+        if (ty == DCCTYPE_INT64) iv = (int_t)self->sv_const.u64;
+   else if (ty == DCCTYPE_WORD)  iv = (int_t)self->sv_const.u16;
+   else if (ty == DCCTYPE_BYTE)  iv = (int_t)self->sv_const.u8;
+   else                          iv = (int_t)self->sv_const.u32;
+  } else {
+        if (ty == DCCTYPE_INT64) iv = (int_t)self->sv_const.s64;
+   else if (ty == DCCTYPE_WORD)  iv = (int_t)self->sv_const.s16;
+   else if (ty == DCCTYPE_BYTE)  iv = (int_t)self->sv_const.s8;
+   else                          iv = (int_t)self->sv_const.s32;
+  }
+ }
  switch (op) {
 
  case '=':
@@ -1271,13 +1289,25 @@ DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
    /* Only one side has a symbol. */
    return 0;
   }
-  switch (op) {
-   case TOK_LOWER:       iv = iv <  rhsv; break;
-   case TOK_LOWER_EQUAL: iv = iv <= rhsv; break;
-   case TOK_EQUAL:       iv = iv == rhsv; break;
-   case TOK_NOT_EQUAL:   iv = iv != rhsv; break;
-   case TOK_GREATER:     iv = iv >  rhsv; break;
-   default:              iv = iv >= rhsv; break;
+
+  if (src_unsigned || DCCStackValue_IsUnsignedOrPtr(other)) {
+   switch (op) {
+    case TOK_LOWER:         iv = (uint_t)iv <  (uint_t)rhsv; break;
+    case TOK_LOWER_EQUAL:   iv = (uint_t)iv <= (uint_t)rhsv; break;
+    case TOK_GREATER:       iv = (uint_t)iv >  (uint_t)rhsv; break;
+    case TOK_GREATER_EQUAL: iv = (uint_t)iv >= (uint_t)rhsv; break;
+    default: goto signed_compare;
+   }
+  } else {
+signed_compare:
+   switch (op) {
+    case TOK_LOWER:       iv = iv <  rhsv; break;
+    case TOK_LOWER_EQUAL: iv = iv <= rhsv; break;
+    case TOK_EQUAL:       iv = iv == rhsv; break;
+    case TOK_NOT_EQUAL:   iv = iv != rhsv; break;
+    case TOK_GREATER:     iv = iv >  rhsv; break;
+    default:              iv = iv >= rhsv; break;
+   }
   }
  } break;
 
@@ -1422,7 +1452,7 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
      assert(!(rhs->sv_flags&DCC_SFLAG_LVALUE));
      temp.e_int = rhs->sv_const.it;
      temp.e_sym = rhs->sv_sym;
-     if (DCCStackValue_ConstBinary(lhs,op,&temp)) goto end_cmp;
+     if (DCCStackValue_ConstBinary(lhs,op,&temp,rhs)) goto end_cmp;
     }
    } else if (lhs->sv_reg == rhs->sv_reg) {
     struct DCCSymExpr temp;
@@ -1446,10 +1476,10 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
     lhs->sv_reg2 = DCC_RC_CONST;
     /* The following must always succeed... */
 #if DCC_DEBUG
-    cresult = DCCStackValue_ConstBinary(lhs,op,&temp);
+    cresult = DCCStackValue_ConstBinary(lhs,op,&temp,rhs);
     assert(cresult);
 #else
-    DCCStackValue_ConstBinary(lhs,op,&temp);
+    DCCStackValue_ConstBinary(lhs,op,&temp,rhs);
 #endif
     goto end_cmp;
    }
@@ -1466,18 +1496,21 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
   {
    int test;
    static struct cmpid {
-    uint16_t tok,cmp;
+    uint16_t tok,cmp,ucmp;
    } const compare_ids[] = {
-    {TOK_LOWER,        DCC_TEST_L},
-    {TOK_LOWER_EQUAL,  DCC_TEST_LE},
-    {TOK_EQUAL,        DCC_TEST_E},
-    {TOK_NOT_EQUAL,    DCC_TEST_NE},
-    {TOK_GREATER,      DCC_TEST_G},
-    {TOK_GREATER_EQUAL,DCC_TEST_GE},
+    {TOK_LOWER,        DCC_TEST_L, DCC_TEST_B},
+    {TOK_LOWER_EQUAL,  DCC_TEST_LE,DCC_TEST_BE},
+    {TOK_EQUAL,        DCC_TEST_E, DCC_TEST_E},
+    {TOK_NOT_EQUAL,    DCC_TEST_NE,DCC_TEST_NE},
+    {TOK_GREATER,      DCC_TEST_G, DCC_TEST_A},
+    {TOK_GREATER_EQUAL,DCC_TEST_GE,DCC_TEST_AE},
    };
    test = 0;
    while (compare_ids[test].tok != op) ++test;
-   test = compare_ids[test].cmp;
+   if (DCCStackValue_IsUnsignedOrPtr(self) ||
+       DCCStackValue_IsUnsignedOrPtr(target))
+        test = compare_ids[test].ucmp;
+   else test = compare_ids[test].cmp;
    /* Setup the flags according to the test that should take place. */
    target->sv_flags   = DCC_SFLAG_MKTEST(test);
   }
@@ -1758,7 +1791,7 @@ default_binary:
     /* Binary operation on constant expression. */
     temp.e_int = self->sv_const.it;
     temp.e_sym = self->sv_sym;
-    if (DCCStackValue_ConstBinary(target,op,&temp)) return;
+    if (DCCStackValue_ConstBinary(target,op,&temp,self)) return;
    }
    if (target->sv_reg == DCC_RC_CONST)
         DCCStackValue_Load(target);

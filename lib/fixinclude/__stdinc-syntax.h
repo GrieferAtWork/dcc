@@ -36,15 +36,8 @@ template<class T> typename ____INTELLISENE_remlval<T>::__type ____INTELLISENE_ty
 template<class T> typename ____INTELLISENE_remlval<T>::__type const ____INTELLISENE_typeof_helper(T const &&);
 template<class T, class ...Args> T (____INTELLISENE_typeof_helper(T (&)(Args...)))(Args...);
 template<class T, class ...Args> T (____INTELLISENE_typeof_helper(T (&)(Args...,...)))(Args...,...);
-template<class T> struct ____INTELLISENE_remcv {typedef T __type; };
-template<class T> struct ____INTELLISENE_remcv<T const> {typedef T __type; };
-template<class T> struct ____INTELLISENE_remcv<T volatile> {typedef T __type; };
-template<class T> struct ____INTELLISENE_remcv<T const volatile> {typedef T __type; };
-template<class T1, class T2> struct ____INTELLISENE_sametype_impl {enum{__val=false};};
-template<class T1> struct ____INTELLISENE_sametype_impl<T1,T1> {enum{__val=true};};
-template<class T1, class T2> struct ____INTELLISENE_sametype:
- ____INTELLISENE_sametype_impl<typename ____INTELLISENE_remcv<T1>::__type,
-                               typename ____INTELLISENE_remcv<T2>::__type>{};
+template<class T1, class T2> struct ____INTELLISENE_sametype {enum{__val=false};};
+template<class T1> struct ____INTELLISENE_sametype<T1,T1> {enum{__val=true};};
 template<bool> struct ____INTELLISENE_static_if_helper {};
 template<> struct ____INTELLISENE_static_if_helper<true> { bool __is_true__(); };
 template<bool C, class T> struct ____INTELLISENE_enableif { typedef T __type; };

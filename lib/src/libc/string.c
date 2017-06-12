@@ -50,8 +50,7 @@ memcpy:
 .size memcpy, . - memcpy
 }
 #else/**/
-[[visibility("default")]]
-void *memcpy(void *dst, void const *src, size_t n) {
+PUBLIC void *memcpy(void *dst, void const *src, size_t n) {
  void *result = dst;
  while (n >= sizeof(int)) {
   *(int *)dst = *(int *)src;
@@ -90,8 +89,7 @@ memcmp:
 .size memcmp, . - memcmp
 }
 #else/**/
-[[visibility("default")]]
-int memcmp(void const *a, void const *b, size_t n) {
+PUBLIC int memcmp(void const *a, void const *b, size_t n) {
  int8_t result = 0;
  while (n) {
   result = *(int8_t *)a-*(int8_t *)b;
@@ -121,8 +119,7 @@ memset:
 .size memset, . - memset
 }
 #else/**/
-[[visibility("default")]]
-void *memset(void *dst, int byte, size_t n) {
+PUBLIC void *memset(void *dst, int byte, size_t n) {
  void *result = dst;
  while (n) {
   *(uint8_t *)dst = (uint8_t)byte;
@@ -188,8 +185,7 @@ memlen:
 .size memlen, . - memlen
 }
 #else/**/
-[[visibility("default")]]
-void *memchr(void const *p, int byte, size_t n) {
+PUBLIC void *memchr(void const *p, int byte, size_t n) {
  while (n) {
   if (*(uint8_t *)p == (uint8_t)byte) return (void *)p;
   ++(uintptr_t &)p;
@@ -197,8 +193,7 @@ void *memchr(void const *p, int byte, size_t n) {
  }
  return NULL;
 }
-[[visibility("default")]]
-void *memend(void const *p, int byte, size_t n) {
+PUBLIC void *memend(void const *p, int byte, size_t n) {
  while (n) {
   if (*(uint8_t *)p == (uint8_t)byte) break;
   ++(uintptr_t &)p;
@@ -206,8 +201,7 @@ void *memend(void const *p, int byte, size_t n) {
  }
  return (void *)p;
 }
-[[visibility("default")]]
-size_t memlen(void const *p, int byte, size_t n) {
+PUBLIC size_t memlen(void const *p, int byte, size_t n) {
  return (size_t)((uintptr_t)memend(p,byte,n)-(uintptr_t)p);
 }
 #endif
@@ -274,8 +268,7 @@ memrlen:
 }
 
 #else/**/
-[[visibility("default")]]
-void *memrchr(void const *p, int byte, size_t n) {
+PUBLIC void *memrchr(void const *p, int byte, size_t n) {
  (uintptr_t &)p += n;
  while (n) {
   --(uintptr_t &)p;
@@ -284,8 +277,7 @@ void *memrchr(void const *p, int byte, size_t n) {
  }
  return NULL;
 }
-[[visibility("default")]]
-void *memrend(void const *p, int byte, size_t n) {
+PUBLIC void *memrend(void const *p, int byte, size_t n) {
  (uintptr_t &)p += n;
  while (n) {
   --(uintptr_t &)p;
@@ -294,8 +286,7 @@ void *memrend(void const *p, int byte, size_t n) {
  }
  return (void *)p;
 }
-[[visibility("default")]]
-size_t memrlen(void const *p, int byte, size_t n) {
+PUBLIC size_t memrlen(void const *p, int byte, size_t n) {
  return (size_t)((uintptr_t)memrend(p,byte,n)-(uintptr_t)p);
 }
 #endif
@@ -336,16 +327,14 @@ rawmemlen:
 .size rawmemlen, . - rawmemlen
 }
 #else/**/
-[[visibility("default")]]
-void *rawmemchr(void const *p, int byte) {
+PUBLIC void *rawmemchr(void const *p, int byte) {
  for (;;) {
   if (*(uint8_t *)p == (uint8_t)byte) break;
   ++(uintptr_t &)p;
  }
  return (void *)p;
 }
-[[visibility("default")]]
-size_t rawmemlen(void const *p, int byte) {
+PUBLIC size_t rawmemlen(void const *p, int byte) {
  return (size_t)((uintptr_t)rawmemchr(p,byte)-(uintptr_t)p);
 }
 #endif
@@ -385,17 +374,14 @@ rawmemrlen:
 }
 
 #else/**/
-
-[[visibility("default")]]
-void *rawmemrchr(void const *p, int byte) {
+PUBLIC void *rawmemrchr(void const *p, int byte) {
  for (;;) {
   --(uintptr_t &)p;
   if (*(uint8_t *)p == (uint8_t)byte) break;
  }
  return (void *)p;
 }
-[[visibility("default")]]
-size_t rawmemrlen(void const *p, int byte) {
+PUBLIC size_t rawmemrlen(void const *p, int byte) {
  return (size_t)((uintptr_t)rawmemrchr(p,byte)-(uintptr_t)p);
 }
 #endif
@@ -434,13 +420,11 @@ strlen:
 .size strlen, . - strlen
 }
 #else/**/
-[[visibility("default")]]
-char *strend(char const *p) {
+PUBLIC char *strend(char const *p) {
  while (*p) ++p;
  return (char *)p;
 }
-[[visibility("default")]]
-size_t strlen(char const *p) {
+PUBLIC size_t strlen(char const *p) {
  char const *start = p;
  while (*p) ++p;
  return (size_t)(p-start);
@@ -485,8 +469,7 @@ strnlen:
 .size strnlen, . - strnlen
 }
 #else/**/
-[[visibility("default")]]
-char *strnend(char const *p, size_t n) {
+PUBLIC char *strnend(char const *p, size_t n) {
  while (n) {
   if (!*p) break;
   ++(uintptr_t &)p;
@@ -494,8 +477,7 @@ char *strnend(char const *p, size_t n) {
  }
  return (char *)p;
 }
-[[visibility("default")]]
-size_t strnlen(char const *p, size_t n) {
+PUBLIC size_t strnlen(char const *p, size_t n) {
  char const *start = p;
  while (n) {
   if (!*p) break;

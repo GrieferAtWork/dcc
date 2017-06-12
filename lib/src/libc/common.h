@@ -23,7 +23,11 @@
 #define ASM{...} __asm__(#__VA_ARGS__);
 #endif
 
-#define DECL_BEGIN
-#define DECL_END
+/* Use a default symbol visibility of 'HIDDEN'. */
+#pragma comment(compiler,"-fvisibility=hidden")
+
+#define DECL_BEGIN /* ... */
+#define DECL_END   /* ... */
+#define PUBLIC     [[visiblity("default")]]
 
 #endif /* !GUARD_LIB_SRC_LIBC_COMMON_H */

@@ -107,6 +107,8 @@ int main(int argc, char *argv[]) {
  assert(__SIZEOF_INT_FAST64_T__ == sizeof(__UINT_FAST64_TYPE__));
  assert(__SIZEOF_INTMAX_T__ == sizeof(__INTMAX_TYPE__));
  assert(__SIZEOF_INTMAX_T__ == sizeof(__UINTMAX_TYPE__));
+ assert(__SIZEOF_SIG_ATOMIC_T__ == sizeof(__SIG_ATOMIC_TYPE__));
+ assert(__SIZEOF_SIZE_T__ == sizeof(__SSIZE_TYPE__));
 #endif
  assert(__CHAR_BIT__ == sizeof(char)*BPB);
 
