@@ -261,7 +261,11 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   if (DCC_MACRO_FALSE) { case KWD_constructor: flag = DCC_ATTRSPEC_CONSTRUCTOR; }
   if (DCC_MACRO_FALSE) { case KWD_destructor:  flag = DCC_ATTRSPEC_DESTRUCTOR; }
   YIELD();
-  if (self->a_specs&flag) WARN(W_ATTRIBUTE_ALREADY_DEFINED,function);
+  if (self->a_specs&flag) {
+   WARN(flag == DCC_ATTRSPEC_CONSTRUCTOR
+        ? W_ATTRIBUTE_CONSTRUCTOR_ALREADY_DEFINED
+        : W_ATTRIBUTE_DESTRUCTOR_ALREADY_DEFINED);
+  }
   self->a_specs |= flag;
   if (TOK == '(' || TOK == KWD___pack) {
    DCCParse_ParPairBegin();

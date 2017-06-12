@@ -56,6 +56,11 @@ DCC_DECL_BEGIN
  *   - The %esp and %ebp registers are never NULL
  */
 
+ /* Assume no non-weak symbol can be defined as a NULL-pointer. (WARNING: Not fully implemented)
+  * This assumption allows for optimizations like '&my_sym != NULL' --> 'true'
+  */
+#define DCC_VSTACK_ASSUME_SYMADDR_NONNULL DCC_MACRO_COND(1)
+
 
 struct DCCSym;
 struct TPPString;
@@ -319,9 +324,13 @@ struct DCCStackValue {
 
 #define DCCSTACKVALUE_ISCONST_BOOL(self) \
  (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
-   ((self)->sv_reg == DCC_RC_CONST))
+   ((self)->sv_reg == DCC_RC_CONST) && \
+   (DCC_VSTACK_ASSUME_SYMADDR_NONNULL || !(self)->sv_sym))
+
 #define DCCSTACKVALUE_GTCONST_BOOL(self) \
- ((self)->sv_sym || (self)->sv_const.it)
+ (DCC_VSTACK_ASSUME_SYMADDR_NONNULL \
+  ? ((self)->sv_const.it ||  (self)->sv_sym)\
+  : ((self)->sv_const.it && !(self)->sv_sym))
 
 #define DCCSTACKVALUE_ISCONST_INT(self) \
  (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
@@ -334,9 +343,7 @@ struct DCCStackValue {
    ((self)->sv_reg == DCC_RC_CONST))
 
 /* A constant value, as far as '__builtin_constant_p' is concerned. */
-#define DCCStackValue_ISCONST(self) \
- (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
-   ((self)->sv_reg == DCC_RC_CONST))
+#define DCCStackValue_ISCONST  DCCSTACKVALUE_ISCONST_XVAL
 
 #define DCCStackValue_MUSTCOPY(self) \
   (((self)->sv_flags&DCC_SFLAG_COPY) || /* Must copy protected registers ESP/EBP. */\

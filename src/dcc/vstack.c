@@ -1169,6 +1169,18 @@ DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
  }
 }
 
+PRIVATE struct cmppair {
+ tok_t a,b;
+} const compare_pairs[] = {
+ {TOK_EQUAL,        TOK_EQUAL},
+ {TOK_NOT_EQUAL,    TOK_NOT_EQUAL},
+ {TOK_LOWER,        TOK_GREATER},
+ {TOK_GREATER,      TOK_LOWER},
+ {TOK_LOWER_EQUAL,  TOK_GREATER_EQUAL},
+ {TOK_GREATER_EQUAL,TOK_LOWER_EQUAL},
+};
+
+
 PRIVATE int DCC_VSTACK_CALL
 DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
                           struct DCCSymExpr const *__restrict exprval,
@@ -1206,6 +1218,7 @@ DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
  case '=':
   /* Re-assign a stack-value. */
   iv = exprval->e_int;
+assign_sym:
   DCCSym_XIncref(exprval->e_sym);
   DCCSym_XDecref(self->sv_sym);
   self->sv_sym = exprval->e_sym;
@@ -1222,7 +1235,6 @@ DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
   break;
 
  case '-':
- case '?':
  case TOK_DEC:
   iv -= exprval->e_int;
   /* Special case: Difference between two symbols. */
@@ -1236,12 +1248,13 @@ DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
     iv += self->sv_sym->sy_addr-exprval->e_sym->sy_addr;
     DCCSym_Decref(self->sv_sym);
     self->sv_sym = NULL;
+    break;
    } else {
-    /* Special case: undefined symbols, or symbols from different sections. */
+    /* Undefined symbols, or symbols from different sections. */
     return 0;
    }
   }
-  break;
+  goto assign_sym;
 
  case '&':
  case '|':
@@ -1282,11 +1295,95 @@ DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
     iv   += self->sv_sym->sy_addr;
     rhsv += exprval->e_sym->sy_addr;
    } else {
+    if ((op == TOK_EQUAL || op == TOK_NOT_EQUAL) &&
+         /* Make sure that both symbols are defined in sections */
+         DCCSym_SECTION(self->sv_sym)   && !(self->sv_sym->sy_flags&DCC_SYMFLAG_WEAK) &&
+         DCCSym_SECTION(exprval->e_sym) && !(self->sv_sym->sy_flags&DCC_SYMFLAG_WEAK) &&
+         /* Make sure that the constant symbol offsets indicate non-overlapping
+          * (both offsets are identical, meaning that they cannot extend beyond
+          *  the associated section, or one of the offsets)
+          * TODO: This could be further optimized by checking if one of the offsets
+          *       doesn't point out-of-bounds of the associated section
+          *
+          */
+        (iv == rhsv || !iv || !rhsv)) {
+     /* Special case: Symbols from different sections:
+      * >> int a __attribute__((section(".a")));
+      * >> int b __attribute__((section(".b")));
+      * >> ...
+      * >> 
+      * >> int x = (&a == &b); // Must always be false.
+      * >> int x = (&a != &b); // Must always be true.
+      * >> int y = (&a <  &b); // Cannot be determined at compile-time.
+      */
+     iv = op == TOK_EQUAL ? 0 : 1;
+     break;
+    }
     /* Symbols from different sections (can't generate constant expression) */
     return 0;
    }
   } else if (self->sv_sym || exprval->e_sym) {
-   /* Only one side has a symbol. */
+   /* Only one side has a symbol:
+    * >> extern int x;
+    * >> if (&x == NULL) { ... }
+    */
+   if ((!self->sv_sym || !(self->sv_sym->sy_flags&DCC_SYMFLAG_WEAK)) &&
+       (!exprval->e_sym || !(exprval->e_sym->sy_flags&DCC_SYMFLAG_WEAK))) {
+    int common_unsigned;
+    tok_t cmp_op = op;
+    /* Negate any overflow within the left operand on the right-hand-side:
+     * #1: if (&x+10 >= 10) // Subtrace '10' on both sides
+     * #2: if (&x >= 0) // Always true
+     * #3: if (1)
+     */
+    if (exprval->e_sym) {
+     /* Swap the operation. */
+     struct cmppair const *pair = compare_pairs;
+     int_t temp = iv; iv = rhsv; rhsv = temp;
+     for (;;) { if (pair->a == cmp_op) { cmp_op = pair->b; break; } ++pair; }
+    }
+    rhsv -= iv;
+#if DCC_DEBUG
+    iv = 0;
+#endif
+    /* Optimizations like '&x < 0' --> 'false' and the like. */
+    common_unsigned = src_unsigned || DCCStackValue_IsUnsignedOrPtr(other);
+
+    switch (cmp_op) {
+#if DCC_TARGET_SIZEOF_POINTER == 8
+#define PM ((int_t)0xffffffffffffffffll)
+#else
+#define PM ((int_t)0xffffffffl)
+#endif
+    case TOK_LOWER:       if (rhsv <  0) { if (common_unsigned) break; iv = 0; goto success; } /* &x < -1 */
+                          if (rhsv == 0) { iv = 0; goto success; } /* &x < 0 */
+                          if (rhsv > PM) { iv = 1; goto success; } /* &x < (uintmax_t)((uintptr_t)-1)+1 */
+                          break;
+    case TOK_LOWER_EQUAL: if (rhsv == -1) { iv = common_unsigned ? 1 : 0; goto success; } /* &x <= -1 */
+                          if (rhsv <  0)  { if (common_unsigned) break; iv = 0; goto success; } /* &x <= -2 */
+                          if (rhsv == 0 && DCC_VSTACK_ASSUME_SYMADDR_NONNULL) { iv = 0; goto success; } /* &x <= 0 */
+                          if (rhsv >= PM) { iv = 1; goto success; } /* &x <= (uintptr_t)-1 */
+                          break;
+    case TOK_EQUAL:       if (rhsv <  0)  { iv = 0; goto success; } /* &x == -1 */
+                          if (rhsv == 0 && DCC_VSTACK_ASSUME_SYMADDR_NONNULL) { iv = 0; goto success; } /* &x == 0 */
+                          if (rhsv >  PM) { iv = 0; goto success; } /* &x == (uintmax_t)-1 */
+                          break;
+    case TOK_NOT_EQUAL:   if (rhsv <  0)  { iv = 1; goto success; } /* &x != -1 */
+                          if (rhsv == 0 && DCC_VSTACK_ASSUME_SYMADDR_NONNULL) { iv = 1; goto success; } /* &x != 0 */
+                          if (rhsv >  PM) { iv = 1; goto success; } /* &x != (uintmax_t)-1 */
+                          break;
+    case TOK_GREATER:     if (rhsv == -1) { iv = common_unsigned ? 0 : 1; goto success; } /* &x > -1 */
+                          if (rhsv <   0) { if (common_unsigned) break; iv = 1; goto success; } /* &x > -2 */
+                          if (rhsv ==  0 && DCC_VSTACK_ASSUME_SYMADDR_NONNULL) { iv = 1; goto success; } /* &x > 0 */
+                          if (rhsv >= PM) { iv = 0; goto success; } /* &x > (uintptr_t)-1 */
+                          break;
+    default:              if (rhsv <  0) { if (common_unsigned) break; iv = 1; goto success; } /* &x >= -1 */
+                          if (rhsv == 0) { iv = 1; goto success; } /* &x >= 0 */
+                          if (rhsv > PM) { iv = 0; goto success; } /* &x >= (uintmax_t)((uintptr_t)-1)+1 */
+                          break;
+#undef PM
+    }
+   }
    return 0;
   }
 
@@ -1309,24 +1406,19 @@ signed_compare:
     default:              iv = iv >= rhsv; break;
    }
   }
+  /* Delete a potential symbol within the target-value. */
+  if (self->sv_sym) {
+   DCCSym_Decref(self->sv_sym);
+   self->sv_sym = NULL;
+  }
  } break;
 
- default: break;
+ default: return 0;
  }
+success:
  self->sv_const.it = iv;
  return 1;
 }
-
-PRIVATE struct cmppair {
- tok_t a,b;
-} const compare_pairs[] = {
- {TOK_EQUAL,        TOK_EQUAL},
- {TOK_NOT_EQUAL,    TOK_NOT_EQUAL},
- {TOK_LOWER,        TOK_GREATER},
- {TOK_GREATER,      TOK_LOWER},
- {TOK_LOWER_EQUAL,  TOK_GREATER_EQUAL},
- {TOK_GREATER_EQUAL,TOK_LOWER_EQUAL},
-};
 
 PRIVATE void DCC_VSTACK_CALL
 DCCStackValue_Swap(struct DCCStackValue *__restrict a,
@@ -1778,6 +1870,7 @@ default_binary:
  /* Invoke copy-on-write for the target. */
  if (op != '?') DCCStackValue_Cow(target);
 
+exec_mem_or_reg:
  if ((target->sv_flags&DCC_SFLAG_LVALUE) ||
       target->sv_reg == DCC_RC_CONST) {
   struct DCCMemLoc dest;
@@ -1794,8 +1887,10 @@ default_binary:
     if (DCCStackValue_ConstBinary(target,op,&temp,self)) return;
    }
    if (target->sv_reg == DCC_RC_CONST)
-        DCCStackValue_Load(target);
-   else WARN(W_EXPECTED_LVALUE_FOR_BINARY_OP,&target->sv_ctype);
+       DCCStackValue_Load(target);
+   if (op != '?') WARN(W_EXPECTED_LVALUE_FOR_BINARY_OP,&target->sv_ctype);
+   assert(target->sv_reg != DCC_RC_CONST);
+   goto exec_mem_or_reg;
   }
   /* Memory location. */
   dest.ml_reg = target->sv_reg;
@@ -3722,7 +3817,7 @@ DCCVStack_StoreCC(int invert_test,
  assert(vsize >= 3);
  if (visconst_bool()) {
   /* Compile-time constant condition. */
-  int should_assign = vgtconst_bool() ^ invert_test;
+  int should_assign = (int)vgtconst_bool() ^ invert_test;
   vpop(1);
   if (should_assign) vgen2('=');
   else               vpop(1);
@@ -4202,9 +4297,16 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
  } else if (self->sv_reg == DCC_RC_CONST) {
   int          sign_byte = 0;
   target_siz_t sign_size = 0;
-  target_siz_t curr_size = result;
+  target_siz_t curr_size;
   symaddr.ml_sad.sa_off = self->sv_const.offset;
   symaddr.ml_sad.sa_sym = self->sv_sym;
+  if (result < align) {
+   /* Fix integral constant size to reduce assembly overhead. */
+   result = align < DCC_TARGET_SIZEOF_POINTER
+          ? align : DCC_TARGET_SIZEOF_POINTER;
+   filler = (align-result)&(align-1);
+  }
+  curr_size = result;
 #if DCC_TARGET_STACKDOWN
   DCCDisp_NdfPush(filler);
 #endif
