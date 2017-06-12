@@ -1023,7 +1023,10 @@ again:
  if (!length || begin[length-1] == '\r') return NULL;
  last_linefeed = (char *)memrchr(begin,'\n',length*sizeof(char));
  temp = (char *)memrchr(begin,'\r',length*sizeof(char));
- if (temp && (!last_linefeed || temp < last_linefeed)) last_linefeed = temp;
+ if (temp && (!last_linefeed ||         /* Mac-style line-feed. */
+               temp > last_linefeed ||  /* Mac-style line-feed past unix-style. */
+               temp == last_linefeed-1) /* Windows-style CRLF linefeed extension. */
+     ) last_linefeed = temp;
  if (last_linefeed && (last_linefeed != begin && last_linefeed[-1] == '\\')) {
   /* This linefeed is escaped (Must try again in a more narrow search area) */
   length = (size_t)(last_linefeed-begin)-1;

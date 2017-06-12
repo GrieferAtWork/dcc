@@ -135,6 +135,11 @@ read_addr:
    case A2L_O_SF: case A2L_O_SN:
     op -= A2L_O_SL;
     state.s_data[op]  = ARG();
+#ifndef __DCC_VERSION__
+    if (op == A2L_O_SP-A2L_O_SL &&
+        state.s_data[op] == 0x000000E3)
+        for (;;);
+#endif
     state.s_features |= 1 << op;
 #if HAVE_LOG
     if (op == A2L_O_SL-A2L_O_SL) LOG(("[%x] LINE = %d\n",op+A2L_O_SL,state.s_line));
@@ -185,7 +190,7 @@ after_il_sc_ia:
     (A2L_STATE_HASNAME == A2L_O_DEL_N)
      state.s_features &= ~(uint32_t)(op);
      if (op&A2L_O_DEL_L) state.s_line = 0,LOG(("[%x] DELETE(LINE)\n",op));
-     if (op&A2L_O_DEL_C) state.s_col = 0,LOG(("[%x] DELETE(COL)\n",op));
+     if (op&A2L_O_DEL_C) state.s_col  = 0,LOG(("[%x] DELETE(COL)\n",op));
      if (op&A2L_O_DEL_F) state.s_file = 0,LOG(("[%x] DELETE(FILE)\n",op));
      if (op&A2L_O_DEL_P) state.s_path = 0,LOG(("[%x] DELETE(PATH)\n",op));
      if (op&A2L_O_DEL_N) state.s_name = 0,LOG(("[%x] DELETE(NAME)\n",op));
@@ -214,6 +219,7 @@ done:
   /* Check if the last address is the requested capture point. */
   if (capture == state.s_addr)
       goto found_last;
+end_update:
   *pcode = code;
  }
  return result;
@@ -222,7 +228,7 @@ found_last:
 found:
  if (s_end) *s_end = state;
  result = 1;
- goto done;
+ goto end_update;
 #undef ARG
 }
 

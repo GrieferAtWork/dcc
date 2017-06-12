@@ -253,6 +253,8 @@ extern void __debugbreak(void);
      (defined(__i386__) || defined(__i386) || \
       defined(i386) || defined(__x86_64__))
 #   define DCC_BREAKPOINT() ({ __asm__ __volatile__("int $3\n" : : : "memory"); (void)0; })
+#elif __has_builtin(__builtin_breakpoint)
+#   define DCC_BREAKPOINT    __builtin_breakpoint
 #else
 #   define DCC_NO_BREAKPOINT
 #   define DCC_BREAKPOINT() (void)0

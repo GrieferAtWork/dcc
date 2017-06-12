@@ -61,6 +61,7 @@ src src/*.c
 src src/dcc/*.c
 src lib/src/addr2line-common.c
 
+echo $CC -g -o "$out_bin" "${object_list[@]}"
 $CC -g -o "$out_bin" "${object_list[@]}"
 
 
@@ -68,8 +69,8 @@ $CC -g -o "$out_bin" "${object_list[@]}"
 
 
 
-
-
+# -g -o ../bin/ddc.exe ../build/dcc/main.c.o ../build/dcc/addr2line.c.o ../build/dcc/assembler.c.o ../build/dcc/cmd-help.c.o ../build/dcc/cmd.c.o ../build/dcc/common.c.o ../build/dcc/compiler.c.o ../build/dcc/fundecl.c.o ../build/dcc/gen.c.o ../build/dcc/lexer.c.o ../build/dcc/linker.c.o ../build/dcc/preprocessor.c.o ../build/dcc/tpp-wrapper.c.o ../build/dcc/type.c.o ../build/dcc/unit-debug.c.o ../build/dcc/unit-export.c.o ../build/dcc/unit-import.c.o ../build/dcc/unit-merge.c.o ../build/dcc/unit.c.o ../build/dcc/vstack-ext.c.o ../build/dcc/vstack.c.o ../build/dcc/x86_util-instrlen.c.o ../build/dcc/addr2line-common.c.o
+# -g -I../include -DDCC_PRIVATE_API -DDCC_PRIVATE_API -D_VA_LIST_DEFINED -D__SSE2__ -ID:/cygwin32/usr/include/w32api -MMD -MF ../build/dcc/main.c.d -c -o ../build/dcc/main.c.o ../src/main.c
 
 
 

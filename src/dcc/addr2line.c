@@ -31,21 +31,114 @@ DCC_DECL_BEGIN
 
 A2L_IMPL a2l_op_t *
 A2L_NAME(a2l_setarg)(a2l_op_t *code, a2l_arg_t arg) {
- a2l_arg_t byte,shift;
+ a2l_arg_t temp,shift;
  if (A2L_ARG_NEEDSIGN(arg)) {
   *code++ = A2L_A_NEG;
   arg = A2L_ARG_NEGATE(arg);
  }
- while (arg > A2L_A_MAX) {
-  byte = arg,shift = 0;
-  do byte >>= A2L_A_SFT,shift += A2L_A_SFT;
-  while (byte > A2L_A_MAX);
-  *code++ = (a2l_op_t)(A2L_A_CON|(byte&A2L_A_MAX));
-  arg &= ~(((a2l_arg_t)-1) << shift);
+ if (arg <= A2L_A_MAX) {
+  *code++ = (a2l_op_t)arg;
+  return code;
  }
- *code++ = (a2l_op_t)arg;
+ temp = arg,shift = 0;
+ do temp >>= A2L_A_SFT,
+    shift += A2L_A_SFT;
+ while (temp);
+ do {
+  a2l_op_t byte;
+  shift -= A2L_A_SFT;
+  byte = (a2l_op_t)((arg >> shift)&A2L_A_MAX);
+  if (shift) byte |= A2L_A_CON;
+  *code++ = byte;
+ } while (shift);
  return code;
 }
+
+PRIVATE a2l_op_t *
+a2l_exec1(struct A2lState *__restrict state,
+          a2l_op_t const *__restrict code) {
+ a2l_exec(state,state,&code,A2L_CAPTURE_ONE);
+ return (a2l_op_t *)code;
+}
+
+
+#if DCC_DEBUG
+PRIVATE char *dbgstr(target_ptr_t addr) {
+ char *str,*end,*sec_end,*result;
+ size_t len;
+ struct DCCTextBuf *text;
+ struct DCCSection *sec = unit.u_dbgstr;
+ if (!sec) sec = DCCUnit_GetSecs(A2L_STRING_SECTION);
+ if (!sec) return NULL;
+ text = sec == unit.u_curr ? &unit.u_tbuf : &sec->sc_text;
+ str = (char *)(text->tb_begin+addr);
+ sec_end = (char *)text->tb_max;
+ if (sec_end > (char *)text->tb_end)
+     sec_end = (char *)text->tb_end;
+ if (str >= sec_end) return NULL;
+ end = (char *)memchr(str,'\0',(size_t)(sec_end-str));
+ if (end) return str;
+ len    = (size_t)(sec_end-str);
+ result = (char *)malloc((len+1)*sizeof(char));
+ if likely(result) {
+  memcpy(result,str,len*sizeof(char));
+  result[len] = '\0';
+ }
+ return result;
+}
+
+PRIVATE void
+DCCA2lChunk_AssertIntegrity(struct DCCA2lChunk *__restrict self) {
+ assert(self);
+ assert(self->c_code_end  >= self->c_code_pos);
+ assert(self->c_code_pos  >= self->c_code_last);
+ assert(self->c_code_last >= self->c_code_begin);
+ if (self->c_code_pos != self->c_code_begin) {
+  struct A2lState prev_state,state = self->c_smin;
+  a2l_op_t *prev_code,*code = self->c_code_begin;
+  while (code != self->c_code_pos) {
+   assertf(code < self->c_code_pos,
+           "Code out-of-bounds by %lu bytes",
+          (unsigned long)(code-self->c_code_pos));
+   prev_code = code;
+   prev_state = state;
+   a2l_exec(&state,&state,
+           (a2l_op_t const **)&code,
+            A2L_CAPTURE_ONE);
+   assert(prev_state.s_addr <= state.s_addr);
+  }
+  assertf(!memcmp(&state,&self->c_smax,
+                  sizeof(struct A2lState)),
+          "Miss-matching final states\n"
+          "             state   |  c_smax\n"
+          "s_line     = %p   %p\n"
+          "s_col      = %p   %p\n"
+          "s_path     = %p ('%s') %p ('%s')\n"
+          "s_file     = %p ('%s') %p ('%s')\n"
+          "s_name     = %p ('%s') %p ('%s')\n"
+          "s_features = %p   %p\n"
+          "s_addr     = %p   %p\n"
+         ,state.s_line
+         ,self->c_smax.s_line
+         ,state.s_col
+         ,self->c_smax.s_col
+         ,state.s_path,dbgstr(state.s_path)
+         ,self->c_smax.s_path,dbgstr(self->c_smax.s_path)
+         ,state.s_file,dbgstr(state.s_file)
+         ,self->c_smax.s_file,dbgstr(self->c_smax.s_file)
+         ,state.s_name,dbgstr(state.s_name)
+         ,self->c_smax.s_name,dbgstr(self->c_smax.s_name)
+         ,state.s_features
+         ,self->c_smax.s_features
+         ,state.s_addr
+         ,self->c_smax.s_addr
+          );
+ }
+}
+#else
+#define dbgstr(addr)                      (char *)NULL
+#define DCCA2lChunk_AssertIntegrity(self) (void)0
+#endif
 
 
 PRIVATE int
@@ -64,13 +157,6 @@ DCCA2lChunk_IncCode(struct DCCA2lChunk *__restrict self) {
  self->c_code_end   = newbuf+newsize;
  self->c_code_begin = newbuf;
  return 1;
-}
-
-PRIVATE a2l_op_t *
-a2l_exec1(struct A2lState *__restrict state,
-          a2l_op_t const *__restrict code) {
- a2l_exec(state,state,&code,A2L_CAPTURE_ONE);
- return (a2l_op_t *)code;
 }
 
 
@@ -164,6 +250,7 @@ write_col:
   if (new_state->s_features&A2L_STATE_HASCOL) {
    a2l_arg_t line_off = (a2l_arg_t)(new_state->s_line-
                                     old_state->s_line);
+   assert(line_off);
    if (line_off <= A2L_MAX_NLSCIA) {
     /* Generate a small line disposition. */
     O((A2L_O_NLLO_SC_IA-1)+line_off);
@@ -176,6 +263,7 @@ write_col:
    /* Update new_state->s_addr+line */
    a2l_arg_t line_off = (a2l_arg_t)(new_state->s_line-
                                     old_state->s_line);
+   assert(line_off);
    if (line_off <= A2L_MAX_NLIA) {
     O((A2L_O_NLLO_IA-1)+line_off);
    } else {
@@ -193,7 +281,10 @@ update_col_with_address:
   col_offset = (a2l_arg_t)(new_state->s_col-
                            old_state->s_col);
   FLUSH_DELFLAGS();
-  if (col_offset <= A2L_MAX_NCIA) {
+  if (!col_offset) {
+   /* No column offset. */
+   O(A2L_O_IA);
+  } else if (col_offset <= A2L_MAX_NCIA) {
    O((A2L_O_NCLO_IA-1)+col_offset);
   } else {
    O(A2L_O_IC_IA);
@@ -275,6 +366,13 @@ A2lState_RelocString(struct A2lState *__restrict self,
 }
 
 
+#if 0
+#define HAVE_RELOC_LOG
+#define RELOC_LOG(x) printf x
+#else
+#define RELOC_LOG(x) (void)0
+#endif
+
 DCCFUN void
 DCCA2lChunk_RelocString(struct DCCA2lChunk *__restrict self,
                         target_off_t offset) {
@@ -283,6 +381,9 @@ DCCA2lChunk_RelocString(struct DCCA2lChunk *__restrict self,
  a2l_arg_t arg;
  assert(self);
  assert(self->c_code_pos <= self->c_code_end);
+ RELOC_LOG(("\n\n\n\n"));
+
+ DCCA2lChunk_AssertIntegrity(self);
  /* Relocate the min/max/last states. */
  A2lState_RelocString(&self->c_smin,offset);
  A2lState_RelocString(&self->c_smax,offset);
@@ -296,23 +397,26 @@ DCCA2lChunk_RelocString(struct DCCA2lChunk *__restrict self,
  while (self->c_code_last != self->c_code_pos) {
   assert(self->c_code_last < self->c_code_pos);
   op = *self->c_code_last++;
+  RELOC_LOG(("[%p] OP %x",(self->c_code_last-1)-self->c_code_begin,op));
   if (A2L_ISSTROP(op)) {
    arg_end     = self->c_code_last;
    arg         = a2l_getarg((a2l_op_t const **)&arg_end);
    old_argsize = (size_t)(arg_end-self->c_code_last);
+   RELOC_LOG((" %x --> %x",arg,arg+offset));
    arg        += offset;
    new_argsize = (size_t)(a2l_setarg(new_arg,arg)-new_arg);
    if (old_argsize == new_argsize) {
     /* Simple case: Override the argument directly. */
     memcpy(self->c_code_last,new_arg,new_argsize);
    } else if (old_argsize > new_argsize) {
+    size_t diff;
     /* Shift the code vector downwards. */
     memcpy(self->c_code_last,new_arg,new_argsize);
     memmove(self->c_code_last+new_argsize,arg_end,
            (size_t)(self->c_code_pos-arg_end));
-    old_argsize -= new_argsize;
-    self->c_code_pos -= old_argsize;
-    old_last         -= old_argsize;
+    diff = old_argsize-new_argsize;
+    self->c_code_pos -= diff;
+    old_last         -= diff;
    } else {
     size_t avail,required;
     /* Must resize the code. */
@@ -335,11 +439,17 @@ DCCA2lChunk_RelocString(struct DCCA2lChunk *__restrict self,
    unsigned int opc = A2L_GETOPC(op);
    while (opc--) {
     assert(self->c_code_last < self->c_code_pos);
+#ifdef HAVE_RELOC_LOG
+    RELOC_LOG((" %x",a2l_getarg((a2l_op_t const **)&self->c_code_last)));
+#else
     a2l_getarg((a2l_op_t const **)&self->c_code_last);
+#endif
    }
   }
+  RELOC_LOG(("\n"));
  }
  self->c_code_last = self->c_code_begin+old_last;
+ DCCA2lChunk_AssertIntegrity(self);
 }
 
 
@@ -359,8 +469,10 @@ DCCA2lChunk_Insert(struct DCCA2lChunk *__restrict self,
   /* Special case: The chunk is empty, meaning we are allowed to
    *               specify anything we want for min/max states! */
   self->c_smax = self->c_smin = *data;
+  DCCA2lChunk_AssertIntegrity(self);
   return;
  }
+
  if (data->s_addr == self->c_smax.s_addr) {
   /* Special case: Re-write the last state transition. */
   if (self->c_code_begin == self->c_code_pos) {
@@ -370,11 +482,12 @@ DCCA2lChunk_Insert(struct DCCA2lChunk *__restrict self,
    self->c_code_pos = self->c_code_last;
    size = (size_t)(a2l_build_transition(buf,&self->c_slast,data)-buf);
    while (self->c_code_pos+size > self->c_code_end)
-    if (!DCCA2lChunk_IncCode(self)) return;
+    if (!DCCA2lChunk_IncCode(self)) goto end;
    memcpy(self->c_code_pos,buf,size);
    self->c_code_pos += size;
   }
   self->c_smax = *data;
+  DCCA2lChunk_AssertIntegrity(self);
   return;
  }
 
@@ -384,13 +497,14 @@ DCCA2lChunk_Insert(struct DCCA2lChunk *__restrict self,
   size = (size_t)(a2l_build_transition(buf,&self->c_smax,data)-buf);
   if (size) {
    while (self->c_code_pos+size > self->c_code_end)
-    if (!DCCA2lChunk_IncCode(self)) return;
+    if (!DCCA2lChunk_IncCode(self)) goto end;
    memcpy(self->c_code_pos,buf,size);
    self->c_slast     = self->c_smax;
    self->c_code_last = self->c_code_pos;
    self->c_code_pos += size;
   }
   self->c_smax = *data;
+  DCCA2lChunk_AssertIntegrity(self);
   return;
  }
  if (data->s_addr < self->c_smin.s_addr) {
@@ -398,7 +512,7 @@ DCCA2lChunk_Insert(struct DCCA2lChunk *__restrict self,
   size = (size_t)(a2l_build_transition(buf,data,&self->c_smin)-buf);
   if (size) {
    while (self->c_code_pos+size > self->c_code_end)
-    if (!DCCA2lChunk_IncCode(self)) return;
+    if (!DCCA2lChunk_IncCode(self)) goto end;
    memmove(self->c_code_begin+size,self->c_code_begin,
           (size_t)(self->c_code_pos-self->c_code_begin));
    memcpy(self->c_code_begin,buf,size);
@@ -406,6 +520,7 @@ DCCA2lChunk_Insert(struct DCCA2lChunk *__restrict self,
    self->c_code_pos  += size;
   }
   self->c_smin = *data;
+  DCCA2lChunk_AssertIntegrity(self);
   return;
  }
  DCCA2lChunk_GetInsPtr(self,data->s_addr,
@@ -470,13 +585,15 @@ ins_commit:
    * memory and allocate more if necessary. */
   ins_size = size-ins_size; /* Missing space. */
   while (self->c_code_pos+ins_size > self->c_code_end)
-   if (!DCCA2lChunk_IncCode(self)) return;
+   if (!DCCA2lChunk_IncCode(self)) goto end;
   memmove(ins_begin+size,(ins_begin+size)-ins_size,
          (size_t)(self->c_code_pos-(ins_begin+(size-ins_size))));
   memcpy(ins_begin,buf,size);
   self->c_code_pos  += ins_size;
   self->c_code_last += ins_size;
  }
+end:
+ DCCA2lChunk_AssertIntegrity(self);
 }
 
 PRIVATE void
@@ -508,6 +625,9 @@ DCCA2lChunk_DeleteBefore(struct DCCA2lChunk *__restrict self,
           addr);
  assert(code >= self->c_code_begin);
  assert(code <= self->c_code_pos);
+ assert(code != self->c_code_pos ||
+       !memcmp(&state,&self->c_smax,sizeof(struct A2lState)));
+
  /* Delete all debug information about addresses below 'addr'. */
  self->c_smin = state;
  memmove(self->c_code_begin,code,
@@ -517,7 +637,6 @@ DCCA2lChunk_DeleteBefore(struct DCCA2lChunk *__restrict self,
  self->c_code_last -= shift;
  assert(self->c_code_pos  >= self->c_code_begin);
  assert(self->c_code_last >= self->c_code_begin);
- assert(self->c_code_pos  != self->c_code_begin);
  if (self->c_code_last == self->c_code_begin)
      self->c_slast = self->c_smin;
 }
@@ -582,6 +701,8 @@ DCCA2lChunk_DeleteRange(struct DCCA2lChunk *__restrict self,
   a2l_op_t *delete_begin,*code;
   a2l_op_t trans[A2L_TRANSITION_MAXSIZE];
   size_t   trans_size,delete_size;
+  /* Make sure the chunk isn't already empty. */
+  if unlikely(self->c_code_begin == self->c_code_pos) return;
   /* Must actually search for what to delete... */
   delete_begin_state = self->c_smin;
   code               = self->c_code_begin;
@@ -594,12 +715,45 @@ DCCA2lChunk_DeleteRange(struct DCCA2lChunk *__restrict self,
    if (state.s_addr >= addr) break;
    delete_begin_state = state;
   }
-  assert(delete_begin > self->c_code_begin &&
-         delete_begin < self->c_code_pos);
+  /* NOTE: 'delete_begin' may be equal to 'self->c_code_begin' when
+   *        debug information starting at the second capture point
+   *        is supposed to be deleted.
+   *       (Remember that the first capture point is described by
+   *        'c_smin' and will only be created later during linking) */
+  assertf(delete_begin >= self->c_code_begin &&
+          delete_begin <  self->c_code_pos,
+          "delete_begin        = %p\n"
+          "code                = %p\n"
+          "self->c_code_begin  = %p\n"
+          "self->c_code_pos    = %p\n"
+          "addr                = %p\n"
+          "addr+size           = %p\n"
+          "self->c_smin.s_addr = %p\n"
+          "self->c_smax.s_addr = %p\n"
+         ,delete_begin,code
+         ,self->c_code_begin
+         ,self->c_code_pos
+         ,addr,addr+size
+         ,self->c_smin.s_addr
+         ,self->c_smax.s_addr);
   if (state.s_addr < addr+size)
       a2l_exec(&state,&state,(a2l_op_t const **)&code,addr+size);
-  assert(code > self->c_code_begin &&
-         code < self->c_code_pos);
+  assertf(code >  self->c_code_begin &&
+          code <= self->c_code_pos,
+          "delete_begin        = %p\n"
+          "code                = %p\n"
+          "self->c_code_begin  = %p\n"
+          "self->c_code_pos    = %p\n"
+          "addr                = %p\n"
+          "addr+size           = %p\n"
+          "self->c_smin.s_addr = %p\n"
+          "self->c_smax.s_addr = %p\n"
+         ,delete_begin,code
+         ,self->c_code_begin
+         ,self->c_code_pos
+         ,addr,addr+size
+         ,self->c_smin.s_addr
+         ,self->c_smax.s_addr);
   /* Generate a transition between 'delete_begin_state' and
    * 'state' that will bridge the gap between 'delete_begin'
    * and 'code'. */
@@ -608,11 +762,18 @@ DCCA2lChunk_DeleteRange(struct DCCA2lChunk *__restrict self,
   /* Although this shouldn't happen, make sure the
    * transition isn't larger than the existing code. */
   if likely(trans_size <= delete_size) {
+   /* When only the end capture point isn't deleted, that
+    * also means that the previous point is being removed,
+    * meaning that we must update its state to mirror the
+    * new location it will point to once 'self->c_code_last'
+    * is updated below. */
+   if (code == self->c_code_pos)
+       self->c_slast = delete_begin_state;
    memmove(delete_begin+trans_size,delete_begin+delete_size,
           (size_t)(self->c_code_pos-(delete_begin+delete_size)));
    memcpy(delete_begin,trans,trans_size);
    /* Re-adjust code pointers. */
-   delete_size -= trans_size;
+   delete_size       -= trans_size;
    self->c_code_pos  -= delete_size;
    self->c_code_last -= delete_size;
   }
@@ -687,6 +848,7 @@ DCCA2l_Link(struct DCCA2l const *__restrict self,
  if unlikely(!result_size) { *code_size = 0; return NULL; }
  end = (iter = self->d_chunkv)+self->d_chunkc;
  for (; iter != end; ++iter) {
+  DCCA2lChunk_AssertIntegrity(iter);
   result_size += (size_t)(iter->c_code_end-
                           iter->c_code_begin);
  }
@@ -746,7 +908,6 @@ DCCA2l_Import(struct DCCA2l *__restrict self,
 
 
 
-
 PUBLIC void
 DCCA2l_Merge(struct DCCA2l *__restrict self,
              struct DCCA2l *__restrict other,
@@ -769,9 +930,6 @@ DCCA2l_Merge(struct DCCA2l *__restrict self,
   code     = iter->c_code_begin;
   code_end = iter->c_code_pos;
   assert(code <= code_end);
-  /* Skip empty chunks. */
-  if (code == code_end &&
-     !iter->c_smin.s_features) continue;
   state = iter->c_smin;
   /* Simply re-insert all A2L capture points. */
   for (;;) {
@@ -782,8 +940,31 @@ DCCA2l_Merge(struct DCCA2l *__restrict self,
    if (code == code_end) break;
    code = a2l_exec1(&state,code);
   }
-  assert(!memcmp(&state,&iter->c_smax,
-                 sizeof(struct A2lState)));
+  assertf(!memcmp(&state,&iter->c_smax,
+                  sizeof(struct A2lState)),
+          "             &state  |  &iter->c_smax\n"
+          "s_line     = %p   %p\n"
+          "s_col      = %p   %p\n"
+          "s_path     = %p ('%s') %p ('%s')\n"
+          "s_file     = %p ('%s') %p ('%s')\n"
+          "s_name     = %p ('%s') %p ('%s')\n"
+          "s_features = %p   %p\n"
+          "s_addr     = %p   %p\n"
+         ,state.s_line
+         ,iter->c_smax.s_line
+         ,state.s_col
+         ,iter->c_smax.s_col
+         ,state.s_path,dbgstr(state.s_path)
+         ,iter->c_smax.s_path,dbgstr(iter->c_smax.s_path)
+         ,state.s_file,dbgstr(state.s_file)
+         ,iter->c_smax.s_file,dbgstr(iter->c_smax.s_file)
+         ,state.s_name,dbgstr(state.s_name)
+         ,iter->c_smax.s_name,dbgstr(iter->c_smax.s_name)
+         ,state.s_features
+         ,iter->c_smax.s_features
+         ,state.s_addr
+         ,iter->c_smax.s_addr
+          );
  }
 }
 
@@ -814,6 +995,11 @@ DCCA2l_Mov(struct DCCA2l *__restrict self,
 PUBLIC void
 DCCA2l_Delete(struct DCCA2l *__restrict self,
               target_ptr_t addr, target_siz_t size) {
+#if 1
+ (void)self;
+ (void)addr;
+ (void)size;
+#else
  struct DCCA2lChunk *c_iter,*c_end;
  target_ptr_t end = addr+size;
  assert(self);
@@ -858,6 +1044,7 @@ clear_back:
   c_iter->c_smax.s_addr = (a2l_addr_t)(c_iter-self->d_chunkv)*
                                        DCC_A2L_CHUNK_SIZE;
  }
+#endif
 }
 
 
