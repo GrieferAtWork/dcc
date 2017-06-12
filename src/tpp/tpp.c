@@ -615,14 +615,18 @@ _funop_getarg(funop_t **piter) {
 }
 LOCAL funop_t *
 funop_putarg(funop_t *piter, size_t arg) {
- size_t byte,shift;
- while (arg > 0x7f) {
-  byte = arg,shift = 0;
-  do byte >>= 7,shift += 7; while (byte > 0x7f);
-  *piter++ = (funop_t)(0x80|(byte&0x7f));
-  arg &= ~(((size_t)-1) << shift);
- }
- *piter++ = (funop_t)arg;
+ size_t temp,shift;
+ temp = arg,shift = 0;
+ do temp >>= 7,
+    shift += 7;
+ while (temp);
+ do {
+  uint8_t byte;
+  shift -= 7;
+  byte = (uint8_t)((arg >> shift)&0x7f);
+  if (shift) byte |= 0x80;
+  *piter++ = byte;
+ } while (shift);
  return piter;
 }
 

@@ -36,10 +36,6 @@ A2L_NAME(a2l_setarg)(a2l_op_t *code, a2l_arg_t arg) {
   *code++ = A2L_A_NEG;
   arg = A2L_ARG_NEGATE(arg);
  }
- if (arg <= A2L_A_MAX) {
-  *code++ = (a2l_op_t)arg;
-  return code;
- }
  temp = arg,shift = 0;
  do temp >>= A2L_A_SFT,
     shift += A2L_A_SFT;
