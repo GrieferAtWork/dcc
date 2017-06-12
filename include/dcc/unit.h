@@ -81,12 +81,12 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 
 
 
-
+#define DCC_SYMFLAG_VISCOMMON(a,b) ((a) > (b) ? (a) : (b))
 
 #define DCC_SYMFLAG_NONE       0x00000000 /*< '[[visibility("default")]]': No special flags/default (aka. public) visibility. */
-#define DCC_SYMFLAG_PROTECTED  0x00000001 /*< '[[visibility("protected")]]': Protected symbol (don't export from the compilation unit). */
+#define DCC_SYMFLAG_INTERNAL   0x00000001 /*< '[[visibility("internal")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
 #define DCC_SYMFLAG_PRIVATE    0x00000002 /*< '[[visibility("hidden")]]': Private symbol (don't export from a binary/library). */
-#define DCC_SYMFLAG_INTERNAL   0x00000003 /*< '[[visibility("internal")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
+#define DCC_SYMFLAG_PROTECTED  0x00000003 /*< '[[visibility("protected")]]': Protected symbol (don't export from the compilation unit). */
 #define DCC_SYMFLAG_VISIBILITY 0x00000003 /*< Mask for ELF-style symbol visibility. */
 #define DCC_SYMFLAG_STATIC     0x00000004 /*< 'static': FLAG: Protected symbol (don't export from the compilation unit). */
 #define DCC_SYMFLAG_WEAK       0x00000008 /*< '[[weak]]': FLAG: Weak symbol. A weak symbols can be overwritten at any time by another
@@ -296,13 +296,16 @@ DCCFUN int DCCSym_LoadAddr(struct DCCSym *__restrict self,
  *   - '__attribute__((visibility(...)))'
  * The names are mapped as follows:
  *   - "default"   >> DCC_SYMFLAG_NONE
- *   - "protected" >> DCC_SYMFLAG_PROTECTED
- *   - "hidden"    >> DCC_SYMFLAG_PRIVATE
  *   - "internal"  >> DCC_SYMFLAG_INTERNAL
+ *   - "hidden"    >> DCC_SYMFLAG_PRIVATE
+ *   - "protected" >> DCC_SYMFLAG_PROTECTED
  * @return: (symflag_t)-1: The given 'text' was none of the above.
  *                         In this case, the caller must decide what should happen,
  *                         as no warning will have been emit by this function. */
 DCCFUN DCC(symflag_t) DCCSymflag_FromString(struct TPPString const *__restrict text);
+
+/* The reverse of 'DCCSymflag_FromString' */
+DCCFUN char const *DCCSymflag_ToString(DCC(symflag_t) flag);
 
 
 #define DCCSym_Clear(self) \
@@ -1040,8 +1043,12 @@ DCCFUN void DCCUnit_Quit(struct DCCUnit *__restrict self);
  *   - If the current unit is empty, this function behaves the same as:
  *     'DCCUnit_Quit(&DCCUnit_Current),DCCUnit_Restore(other);'
  *   - Upon return, the given unit 'other' may no longer be used for
- *     anything, but must still be destroyed using 'DCCUnit_Quit(other)' */
-DCCFUN void DCCUnit_Merge(struct DCCUnit *__restrict other);
+ *     anything, but must still be destroyed using 'DCCUnit_Quit(other)'
+ * @param: flags: A set of 'DCCUNIT_MERGEFLAG_*' */
+DCCFUN void DCCUnit_Merge(struct DCCUnit *__restrict other, uint32_t flags);
+#define DCCUNIT_MERGEFLAG_NONE  0x00000000
+#define DCCUNIT_MERGEFLAG_ISREV 0x80000000 /*< [INTERNAL] Merging is being performed in reverse.
+                                            *   This flag inverts the priority ordering during symbol re-declarations. */
 
 /* Extract and re-initialize the current unit,
  * storing the old one in '*other'.
@@ -1063,6 +1070,9 @@ DCCFUN void DCCUnit_Extract(struct DCCUnit *__restrict other);
  *       'DCCUnit_Extract()' or 'DCCUnit_Init()'
  * WARNING: You may not pass '&DCCUnit_Current' for other. */
 DCCFUN void DCCUnit_Restore(struct DCCUnit *__restrict other);
+
+/* Swap the current compilation unit with '*other'. */
+DCCFUN void DCCUnit_Swap(struct DCCUnit *__restrict other);
 
 /* Clear any preallocated memory reachable from 'self'
  * @param: flags: A set of 'DCCUNIT_FLUSHFLAG_*' (Unknown flags are ignored) */
@@ -1099,7 +1109,7 @@ do{ struct DCCUnit _old_unit; \
      DCCUnit_Restore(&_old_unit);\
      break;\
     default:\
-     DCCUnit_Merge(&_old_unit);\
+     DCCUnit_Merge(&_old_unit,DCCUNIT_MERGEFLAG_NONE);\
     case DCCUNIT_POP_DISCARD_OLD:\
      DCCUnit_Quit(&_old_unit);\
      break;\
@@ -1248,7 +1258,7 @@ DCCFUN struct DCCSection *DCCUnit_NewSecs(char const *__restrict name, DCC(symfl
  *  - If the library can only be imported dynamically, it will be
  *    imported as that, unless the 'DCC_LIBDEF_FLAG_NODYN' flag is set.
  * WARNING: The caller is responsible to ensure that the current compilation unit is empty.
- *          If the intend is to load a static binary into an existing one,
+ *          If the intent is to load a static binary into an existing one,
  *          unit merging must be performed using 'DCCUnit_Merge()'.
  */
 #define DCC_LIBDEF_FLAG_STATIC 0x00000001
@@ -1261,7 +1271,7 @@ DCCFUN struct DCCSection *DCCUnit_NewSecs(char const *__restrict name, DCC(symfl
 
 /* Don't emit a warning when no library matching the given description was found.
  * Setting this flag might be useful during internal library load calls
- * where the intend is to try additional approaches should the standard way fail. */
+ * where the intent is to try additional approaches should the standard way fail. */
 #define DCC_LIBDEF_FLAG_NOWARNMISSING 0x00000004
 
 /* Don't check the standard library search path,

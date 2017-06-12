@@ -137,13 +137,37 @@ PRIVATE void DCCSection_InsAlloc(struct DCCSection *__restrict self,
  }
 }
 
+#define MERGE_OPTIMIZE_EMPTY   1
+#define MERGE_OPTIMIZE_REVERSE 1
 
 PUBLIC void
-DCCUnit_Merge(struct DCCUnit *__restrict other) {
+DCCUnit_Merge(struct DCCUnit *__restrict other, uint32_t flags) {
  struct DCCSection *srcsec;
  assert(other);
  assert(other != &unit);
+#if MERGE_OPTIMIZE_REVERSE
+ { size_t my_symcnt = unit.u_symc+unit.u_nsymc;
+   size_t ot_symcnt = other->u_symc+other->u_nsymc;
+#if MERGE_OPTIMIZE_EMPTY
+   if (my_symcnt && ot_symcnt >= my_symcnt*2)
+#else
+   if (ot_symcnt >= my_symcnt*2)
+#endif
+   {
+    /* Optimization: The other unit is clearly _much_ larger.
+     *               With that in mind, it would be faster
+     *               to merge the two in reverse.
+     * NOTE: To ensure predictable merging behavior, invert the
+     *       reverse-merging flag to invert symbol re-declaration
+     *       behavior for things such as weak symbols. */
+    DCCUnit_Swap(other);
+    DCCUnit_Merge(other,flags^DCCUNIT_MERGEFLAG_ISREV);
+    return;
+   }
+ }
+#endif /* MERGE_OPTIMIZE_REVERSE */
  TPPLexer_PushFile(&TPPFile_Merge);
+#if MERGE_OPTIMIZE_EMPTY
  if (!unit.u_nsymc && !unit.u_symc) {
   /* Special case: Without anything defined, we can simply restore 'other'! */
   assert(!unit.u_secc);
@@ -151,8 +175,11 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
   DCCUnit_Restore(other);
   /* Ensure that 'other' is in a valid state. */
   memset(other,0,sizeof(struct DCCUnit));
-  return;
+  goto end;
  }
+#endif
+
+#define IS_REV  (flags&DCCUNIT_MERGEFLAG_ISREV)
 
  /* Merge all sections & section data. */
  for (srcsec = other->u_secs; srcsec; srcsec = srcsec->sc_next) {
@@ -164,11 +191,14 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
   assert(DCCSym_ISSECTION(&srcsec->sc_start));
   dstsec = DCCUnit_NewSec(srcsec->sc_start.sy_name,
                           srcsec->sc_start.sy_flags);
-  if unlikely(!dstsec) return;
+  if unlikely(!dstsec) goto end;
   if (DCCSection_ISIMPORT(dstsec)) {
    /* Can't merge non-import-section with import-section. */
-   WARN(W_LINKER_CANT_MERGE_NONIMPORT_WITH_IMPORT,
-        srcsec->sc_start.sy_name,dstsec->sc_start.sy_name);
+   if (IS_REV)
+        WARN(W_LINKER_CANT_MERGE_IMPORT_WITH_NONIMPORT,
+             dstsec->sc_start.sy_name,srcsec->sc_start.sy_name);
+   else WARN(W_LINKER_CANT_MERGE_NONIMPORT_WITH_IMPORT,
+             srcsec->sc_start.sy_name,dstsec->sc_start.sy_name);
   } else {
    other_sec_size = DCCSection_VSIZE(srcsec);
    /* Allocate space in the destination section. */
@@ -178,7 +208,7 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
    other_sec_size = DCCSection_MSIZE(srcsec);
    if (other_sec_size) {
     dst_buffer = (uint8_t *)DCCSection_GetText(dstsec,other_sec_base,other_sec_size);
-    if unlikely(!dst_buffer) return;
+    if unlikely(!dst_buffer) goto end;
     /* Append raw section memory to the end. */
     memcpy(dst_buffer,srcsec->sc_text.tb_begin,other_sec_size);
    }
@@ -258,11 +288,14 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
   assert(srcsec->sc_start.sy_flags&DCC_SYMFLAG_SEC_ISIMPORT);
   dstsec = DCCUnit_NewSec(srcsec->sc_start.sy_name,
                           srcsec->sc_start.sy_flags);
-  if unlikely(!dstsec) return;
+  if unlikely(!dstsec) goto end;
   if (!DCCSection_ISIMPORT(dstsec)) {
    /* Can't merge import-section with non-import-section. */
-   WARN(W_LINKER_CANT_MERGE_IMPORT_WITH_NONIMPORT,
-        srcsec->sc_start.sy_name,dstsec->sc_start.sy_name);
+   if (IS_REV)
+        WARN(W_LINKER_CANT_MERGE_NONIMPORT_WITH_IMPORT,
+             dstsec->sc_start.sy_name,srcsec->sc_start.sy_name);
+   else WARN(W_LINKER_CANT_MERGE_IMPORT_WITH_NONIMPORT,
+             srcsec->sc_start.sy_name,dstsec->sc_start.sy_name);
   }
  }
 
@@ -275,7 +308,7 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
   /* Flatten the hash-map into a vector. */
   if (other->u_syma < symc) {
    symv = (struct DCCSym **)DCC_Realloc(symv,symc*sizeof(struct DCCSym *),0);
-   if unlikely(!symv) return;
+   if unlikely(!symv) goto end;
    memset(symv+other->u_syma,0,
          (size_t)(symc-other->u_syma)*
           sizeof(struct DCCSym *));
@@ -430,6 +463,7 @@ drop_srcsym:
     }
    }
   }
+
   /* Step #3: All unique symbols have been imported.
    *          With that in mind, we must now go through again and
    *          Re-define/alias all remaining symbol declarations. */
@@ -452,6 +486,57 @@ drop_srcsym:
     if (dst_sym && dst_sym != src_sym &&
       !(src_sym->sy_flags&DCC_SYMFLAG_STATIC) &&
       !(dst_sym->sy_flags&DCC_SYMFLAG_STATIC)) {
+#ifdef DCCUNIT_MERGEFLAG_ISREV
+     if (IS_REV && !DCCSym_ISFORWARD(dst_sym)) {
+      /* Special case: To keep undefined behavior consistent
+       *               in reverse merge operations, warn about
+       *               the symbol re-definition that would have
+       *               re-defined 'src_sym' as 'dst_sym' were
+       *               the current and 'other' unit swapped. */
+#define TRUE_SRC  dst_sym
+#define TRUE_DST  src_sym
+      if (TRUE_DST->sy_flags&DCC_SYMFLAG_WEAK) goto dont_redef;
+      if (TRUE_DST->sy_sec) {
+       if (TRUE_DST->sy_sec == TRUE_SRC->sy_sec  &&
+           TRUE_DST->sy_addr == TRUE_SRC->sy_addr &&
+           TRUE_DST->sy_size == TRUE_SRC->sy_size &&
+           TRUE_DST->sy_align == TRUE_SRC->sy_align) goto dont_redef;
+       if (DCCSection_ISIMPORT(TRUE_SRC->sy_sec)) {
+        /* Don't allow library symbols re-defining local symbols. */
+        WARN(!DCCSection_ISIMPORT(TRUE_DST->sy_sec)
+             ? W_SYMBOL_OVERWRITING_LIBRARY_IMPORT
+             : (linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)
+             ? W_SYMBOL_ALREADY_DEFINED_IMP_IMP
+             : W_SYMBOL_ALREADY_DEFINED_IMP_IMP_NOT,
+             TRUE_DST->sy_name->k_name,
+             TRUE_DST->sy_sec->sc_start.sy_name->k_name,
+             TRUE_SRC->sy_sec->sc_start.sy_name->k_name);
+        if (!DCCSection_ISIMPORT(TRUE_DST->sy_sec) ||
+            !(linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)
+            ) goto dont_redef;
+       }
+       goto check_redef;
+      } else if (TRUE_SRC->sy_alias) {
+check_redef:
+       if (TRUE_DST->sy_alias)
+           WARN(W_SYMBOL_ALREADY_DEFINED_ALIAS,
+                TRUE_DST->sy_name->k_name,
+                TRUE_DST->sy_alias->sy_name->k_name);
+       else {
+        assert(TRUE_DST->sy_sec);
+        WARN(DCCSection_ISIMPORT(TRUE_DST->sy_sec)
+             ? W_SYMBOL_ALREADY_DEFINED_IMP
+             : W_SYMBOL_ALREADY_DEFINED_SEC,
+             TRUE_DST->sy_name->k_name,
+             TRUE_DST->sy_sec->sc_start.sy_name->k_name);
+       }
+      }
+#undef TRUE_DST
+#undef TRUE_SRC
+      goto dont_redef;
+     }
+#endif /* IS_REV */
+
      /* Override an existing symbol, or define it. */
      if (src_sym->sy_sec) {
       /* Section merge adjustments were already made above! */
@@ -472,9 +557,30 @@ drop_srcsym:
       /* 'sy_alias' is known to belong to the merged unit. */
       DCCSym_Alias(dst_sym,src_sym->sy_alias,src_sym->sy_addr);
 merge_symflags:
-      dst_sym->sy_flags |= src_sym->sy_flags;
+      if ((dst_sym->sy_flags&DCC_SYMFLAG_VISIBILITY) !=
+          (src_sym->sy_flags&DCC_SYMFLAG_VISIBILITY)) {
+       symflag_t oldvis = dst_sym->sy_flags&DCC_SYMFLAG_VISIBILITY;
+       symflag_t newvis = src_sym->sy_flags&DCC_SYMFLAG_VISIBILITY;
+       /* Warn about re-declaration with different ELF visibility.
+        * NOTE: As a special exception, don't warn about 'main',
+        *       as 'main' is declared hidden in 'crt1.c', but
+        *       will probably be implemented as default later. */
+       assert(dst_sym->sy_name);
+       if (dst_sym->sy_name->k_size != 4 ||
+           memcmp(dst_sym->sy_name->k_name,"main",
+                  4*sizeof(char)) != 0) {
+        WARN(W_LINKER_REDECLARATION_DIFFERENT_VISIBILITY,
+             dst_sym->sy_name,
+             IS_REV ? newvis : oldvis,
+             IS_REV ? oldvis : newvis);
+       }
+       dst_sym->sy_flags &= ~(DCC_SYMFLAG_VISIBILITY);
+       dst_sym->sy_flags |= DCC_SYMFLAG_VISCOMMON(oldvis,newvis);
+      }
+      dst_sym->sy_flags |= src_sym->sy_flags&~(DCC_SYMFLAG_VISIBILITY);
      }
     }
+dont_redef:
     /* Drop the vector reference to this symbol.
      * NOTE: If this doesn't kill it, it is likely that relocations below will! */
     DCCSym_Decref(src_sym);
@@ -509,7 +615,7 @@ merge_symflags:
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
 
   /* Don't continue if something went wrong! */
-  if unlikely(!OK) return;
+  if unlikely(!OK) goto end;
  }
 
  /* Now copy all the relocations. */
@@ -596,6 +702,7 @@ merge_symflags:
    while (sym) validate_sym(sym),sym = sym->sy_unit_next;
  }
 #endif
+#undef IS_REV
  /* TODO: In sections that allow it, merge all symbols.
   *    >> When two compilation units contain the same string (which happens more often than not),
   *       we can merge those string into one, simply by taking the string symbol
@@ -603,6 +710,7 @@ merge_symflags:
   *       string in lower memory addresses.
   * NOTE: This kind of merge-optimization should be given its own function
   */
+end:
  assert(TOKEN.t_file == &TPPFile_Merge);
  TOKEN.t_file = TPPFile_Merge.f_prev;
  assert(TPPFile_Merge.f_refcnt >= 2);
@@ -615,7 +723,6 @@ DCCUnit_Extract(struct DCCUnit *__restrict other) {
  assert(other);
  assert(other != &unit);
  *other = unit;
- DCCUnit_Init(&unit);
  iter = other->u_secs;
  if (iter) {
   assert(iter->sc_pself == &unit.u_secs);
@@ -654,7 +761,7 @@ DCCUnit_Restore(struct DCCUnit *__restrict other) {
    iter->sc_unit = &unit;
   } while ((iter = iter->sc_next) != NULL);
  }
- iter = other->u_imps;
+ iter = unit.u_imps;
  if (iter) {
   assert(iter->sc_pself == &other->u_imps);
   iter->sc_pself = &unit.u_imps;
@@ -665,6 +772,38 @@ DCCUnit_Restore(struct DCCUnit *__restrict other) {
   } while ((iter = iter->sc_next) != NULL);
  }
 }
+
+PUBLIC void
+DCCUnit_Swap(struct DCCUnit *__restrict other) {
+ struct DCCSection *iter;
+ struct DCCUnit temp;
+ assert(other);
+ assert(other != &unit);
+ temp = *other;
+ DCCUnit_Extract(other);
+ unit = temp;
+ iter = unit.u_secs;
+ if (iter) {
+  assert(iter->sc_pself == &other->u_secs);
+  iter->sc_pself = &unit.u_secs;
+  do {
+   assert(!DCCSection_ISIMPORT(iter));
+   assert(iter->sc_unit == other);
+   iter->sc_unit = &unit;
+  } while ((iter = iter->sc_next) != NULL);
+ }
+ iter = unit.u_imps;
+ if (iter) {
+  assert(iter->sc_pself == &other->u_imps);
+  iter->sc_pself = &unit.u_imps;
+  do {
+   assert(DCCSection_ISIMPORT(iter));
+   assert(iter->sc_unit == other);
+   iter->sc_unit = &unit;
+  } while ((iter = iter->sc_next) != NULL);
+ }
+}
+
 
 DCC_DECL_END
 

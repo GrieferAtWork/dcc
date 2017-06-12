@@ -362,12 +362,20 @@ PRIVATE void elf_mk_interp(void) {
 }
 #endif /* DCC_TARGET_ELFINTERP */
 
+#if (DCC_SYMFLAG_NONE == STV_DEFAULT) && \
+    (DCC_SYMFLAG_INTERNAL == STV_INTERNAL) && \
+    (DCC_SYMFLAG_PRIVATE == STV_HIDDEN) && \
+    (DCC_SYMFLAG_PROTECTED == STV_PROTECTED)
+#define VISMAP(x) x
+#else
+#define VISMAP(x) vismap[x]
 PRIVATE uint8_t const vismap[4] = {
  /* [DCC_SYMFLAG_NONE     ] = */STV_DEFAULT,
- /* [DCC_SYMFLAG_PROTECTED] = */STV_PROTECTED,
- /* [DCC_SYMFLAG_PRIVATE  ] = */STV_HIDDEN,
  /* [DCC_SYMFLAG_INTERNAL ] = */STV_INTERNAL,
+ /* [DCC_SYMFLAG_PRIVATE  ] = */STV_HIDDEN,
+ /* [DCC_SYMFLAG_PROTECTED] = */STV_PROTECTED,
 };
+#endif
 
 PRIVATE uint32_t elf_hashof(char const *name) {
  uint32_t h = 0,g;
@@ -514,7 +522,7 @@ skip_sym: sym->sy_elfid = 0; continue;
          esym.st_size = DCCSection_VSIZE(DCCSym_TOSECTION(sym));
   else*/ esym.st_size = sym->sy_size;
   esym.st_info  = ELF(ST_INFO)(st_bind,st_type);
-  esym.st_other = vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITY];
+  esym.st_other = VISMAP(sym->sy_flags&DCC_SYMFLAG_VISIBILITY);
   sym->sy_elfid = dynid++; /* Save symbol index. */
   entry_addr = DCCSection_TADDR(elf.elf_dynsym);
   DCCSection_TWrite(elf.elf_dynsym,&esym,sizeof(esym));

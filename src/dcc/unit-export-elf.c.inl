@@ -99,12 +99,20 @@ DCCTextBuf_AllocA2lString(struct DCCTextBuf *__restrict self,
 }
 
 
-PRIVATE uint8_t const elf_vismap[4] = {
+#if (DCC_SYMFLAG_NONE == STV_DEFAULT) && \
+    (DCC_SYMFLAG_INTERNAL == STV_INTERNAL) && \
+    (DCC_SYMFLAG_PRIVATE == STV_HIDDEN) && \
+    (DCC_SYMFLAG_PROTECTED == STV_PROTECTED)
+#define VISMAP(x) x
+#else
+#define VISMAP(x) vismap[x]
+PRIVATE uint8_t const vismap[4] = {
  /* [DCC_SYMFLAG_NONE     ] = */STV_DEFAULT,
- /* [DCC_SYMFLAG_PROTECTED] = */STV_PROTECTED,
- /* [DCC_SYMFLAG_PRIVATE  ] = */STV_HIDDEN,
  /* [DCC_SYMFLAG_INTERNAL ] = */STV_INTERNAL,
+ /* [DCC_SYMFLAG_PRIVATE  ] = */STV_HIDDEN,
+ /* [DCC_SYMFLAG_PROTECTED] = */STV_PROTECTED,
 };
+#endif
 
 
 INTERN void DCCUNIT_EXPORTCALL
@@ -271,7 +279,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
                                                 sym->sy_name->k_name,
                                                 sym->sy_name->k_size);
    symhdr.st_info  = ELF(ST_INFO)(bind,type);
-   symhdr.st_other = ELF(ST_VISIBILITY)(elf_vismap[sym->sy_flags&DCC_SYMFLAG_VISIBILITY]);
+   symhdr.st_other = ELF(ST_VISIBILITY)(VISMAP(sym->sy_flags&DCC_SYMFLAG_VISIBILITY));
    sym->sy_elfid   = symid++;
    if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ||
        !DCCSym_LoadAddr(sym,&symaddr,0)) {

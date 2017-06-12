@@ -88,7 +88,8 @@ DCCA2lChunk_AssertIntegrity(struct DCCA2lChunk *__restrict self) {
  assert(self);
  assert(self->c_code_end  >= self->c_code_pos);
  assert(self->c_code_pos  >= self->c_code_last);
- assert(self->c_code_last >= self->c_code_begin);
+ assert(self->c_code_last >= self->c_code_begin ||
+       (!self->c_code_last && self->c_code_pos == self->c_code_begin));
  if (self->c_code_pos != self->c_code_begin) {
   struct A2lState prev_state,state = self->c_smin;
   a2l_op_t *prev_code,*code = self->c_code_begin;
@@ -614,11 +615,17 @@ DCCA2lChunk_DeleteBefore(struct DCCA2lChunk *__restrict self,
   DCCA2lChunk_Clear(self,self->c_smin.s_addr);
   return;
  }
- state = self->c_smin;
- code  = self->c_code_begin;
- a2l_exec(&state,&state,
-         (a2l_op_t const **)&code,
-          addr);
+ if (addr == self->c_smax.s_addr) {
+  /* Special case: Delete everything but the last state. */
+  state = self->c_smax;
+  code  = self->c_code_pos;
+ } else {
+  state = self->c_smin;
+  code  = self->c_code_begin;
+  a2l_exec(&state,&state,
+          (a2l_op_t const **)&code,
+           addr);
+ }
  assert(code >= self->c_code_begin);
  assert(code <= self->c_code_pos);
  assert(code != self->c_code_pos ||
@@ -631,7 +638,14 @@ DCCA2lChunk_DeleteBefore(struct DCCA2lChunk *__restrict self,
  shift = (size_t)(code-self->c_code_begin);
  self->c_code_pos  -= shift;
  self->c_code_last -= shift;
- assert(self->c_code_pos  >= self->c_code_begin);
+ assert(self->c_code_pos >= self->c_code_begin);
+ if (self->c_code_last < self->c_code_begin) {
+  /* This can happen when the deleted portion includes 'c_code_last'.
+   * In this case, assert that really everything is being deleted. */
+  assert(self->c_code_pos == self->c_code_begin);
+  assert(!memcmp(&self->c_smin,&self->c_smax,sizeof(struct A2lState)));
+  self->c_code_last = self->c_code_begin;
+ }
  assert(self->c_code_last >= self->c_code_begin);
  if (self->c_code_last == self->c_code_begin)
      self->c_slast = self->c_smin;
@@ -991,7 +1005,7 @@ DCCA2l_Mov(struct DCCA2l *__restrict self,
 PUBLIC void
 DCCA2l_Delete(struct DCCA2l *__restrict self,
               target_ptr_t addr, target_siz_t size) {
-#if 1
+#if 0
  (void)self;
  (void)addr;
  (void)size;

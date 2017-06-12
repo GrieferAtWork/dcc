@@ -1505,6 +1505,14 @@ DEF_WARNING(W_INVALID_LIBRARY_CHARACTER,(WG_LINKER,WG_QUALITY),WSTATE_WARN,{
 })
 DEF_WARNING(W_LINKER_CANT_MERGE_NONIMPORT_WITH_IMPORT,(WG_LINKER),WSTATE_WARN,{ char *name = KWDNAME(); WARNF("Can't merge non-import-section " Q("%s") " with import-section " Q("%s"),name,KWDNAME()); })
 DEF_WARNING(W_LINKER_CANT_MERGE_IMPORT_WITH_NONIMPORT,(WG_LINKER),WSTATE_WARN,{ char *name = KWDNAME(); WARNF("Can't merge import-section " Q("%s") " with non-import-section " Q("%s"),name,KWDNAME()); })
+DEF_WARNING(W_LINKER_REDECLARATION_DIFFERENT_VISIBILITY,(WG_LINKER),WSTATE_WARN,{
+ char *n = KWDNAME();
+ symflag_t oldvis = ARG(symflag_t);
+ symflag_t newvis = ARG(symflag_t);
+ WARNF("Redeclaration of " Q("%s") " symbol " Q("%s") " with different visibility " Q("%s") " (Using " Q("%s") ")",
+       DCCSymflag_ToString(oldvis),n,DCCSymflag_ToString(newvis),
+       DCCSymflag_ToString(DCC_SYMFLAG_VISCOMMON(oldvis,newvis)));
+})
 DEF_WARNING(W_LINKER_CANT_RELOC_LIB_SECTION,(WG_LINKER),WSTATE_WARN,
             WARNF("Can't add relocations to library section " Q("%s"),KWDNAME()))
 DEF_WARNING(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,(WG_LINKER,WG_QUALITY,WG_SYMBOL),WSTATE_WARN,{
@@ -1512,8 +1520,7 @@ DEF_WARNING(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,(WG_LINKER,WG_QUALITY,WG_SYMBOL),
  target_siz_t s = ARG(target_siz_t);
  char *sc = KWDNAME();
  WARNF("Symbol range " Q("%#lx..%#lx") " is out-of-bounds of section " Q("%s") " range " Q("0x0..%#lx"),
-       (unsigned long)p,(unsigned long)s,sc,
-       (unsigned long)ARG(target_siz_t));
+      (unsigned long)p,(unsigned long)s,sc,(unsigned long)ARG(target_siz_t));
 })
 DEF_WARNING(W_LINKER_DELETE_UNUSED_STATIC_SYMBOL,(WG_LINKER,WG_QUALITY,WG_SYMBOL),WSTATE_WARN,
             WARNF("Removing unused static symbol " Q("%s"),KWDNAME()))

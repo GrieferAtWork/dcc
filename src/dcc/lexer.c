@@ -377,8 +377,8 @@ PUBLIC int DCCParse_GCCPragma(void) {
    YIELD();
    if (TOK != '(') WARN(W_EXPECTED_LPAREN); else YIELD();
    if (TOK != TOK_STRING) {
-         if (TOK == KWD_hidden)    compiler.c_visibility.vs_viscur = DCC_SYMFLAG_PRIVATE;
-    else if (TOK == KWD_default)   compiler.c_visibility.vs_viscur = DCC_SYMFLAG_NONE;
+         if (TOK == KWD_default)   compiler.c_visibility.vs_viscur = DCC_SYMFLAG_NONE;
+    else if (TOK == KWD_hidden)    compiler.c_visibility.vs_viscur = DCC_SYMFLAG_PRIVATE;
     else if (TOK == KWD_protected) compiler.c_visibility.vs_viscur = DCC_SYMFLAG_PROTECTED;
     else if (TOK == KWD_internal)  compiler.c_visibility.vs_viscur = DCC_SYMFLAG_INTERNAL;
     else WARN(W_PRAGMA_GCC_VISIBILITY_EXPECTED_STRING);

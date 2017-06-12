@@ -41,12 +41,7 @@ INTERN void dcc_dump_symbols(void) {
 #endif
   if (sym->sy_flags&DCC_SYMFLAG_STATIC) printf("static ");
   if (sym->sy_flags&DCC_SYMFLAG_WEAK) printf("weak ");
-  switch (sym->sy_flags&DCC_SYMFLAG_VISIBILITY) {
-   default                   : printf("public "); break;
-   case DCC_SYMFLAG_PROTECTED: printf("protected "); break;
-   case DCC_SYMFLAG_PRIVATE  : printf("private "); break;
-   case DCC_SYMFLAG_INTERNAL : printf("internal "); break;
-  }
+  printf("%s ",DCCSymflag_ToString(sym->sy_flags));
   if (DCCSym_ISSECTION(sym)) {
    char flags[7],*iter = flags;
    if (sym->sy_flags&DCC_SYMFLAG_SEC_R) *iter++ = 'R';

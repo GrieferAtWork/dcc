@@ -319,6 +319,8 @@ int main(int argc, char *argv[]) {
  } break;
 
  }
+
+ /* Emit dummy dependency strings. */
  if (preproc.p_depfd != TPP_STREAM_INVALID)
      DCCPreprocessor_DepDummy();
 

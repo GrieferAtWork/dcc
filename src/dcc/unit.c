@@ -168,6 +168,15 @@ LOCAL void DCCSym_Free(struct DCCSym *__restrict self);
 #endif
 
 
+PUBLIC char const *
+DCCSymflag_ToString(symflag_t flag) {
+ switch (flag&DCC_SYMFLAG_VISIBILITY) {
+ default                   : return "default";
+ case DCC_SYMFLAG_INTERNAL:  return "internal";
+ case DCC_SYMFLAG_PRIVATE:   return "hidden";
+ case DCC_SYMFLAG_PROTECTED: return "protected";
+ }
+}
 
 PUBLIC symflag_t
 DCCSymflag_FromString(struct TPPString const *__restrict text) {
@@ -179,9 +188,9 @@ DCCSymflag_FromString(struct TPPString const *__restrict text) {
        return result;\
    break
  CASE("default",  DCC_SYMFLAG_NONE);
- CASE("protected",DCC_SYMFLAG_PROTECTED);
- CASE("hidden",   DCC_SYMFLAG_PRIVATE);
  CASE("internal", DCC_SYMFLAG_INTERNAL);
+ CASE("hidden",   DCC_SYMFLAG_PRIVATE);
+ CASE("protected",DCC_SYMFLAG_PROTECTED);
 #undef CASE
  default: break;
  }
@@ -565,7 +574,7 @@ DCCSym_Define(struct DCCSym *__restrict self,
  assert((size == 0) || (align != 0));
  assertf(!size || !(align&(align-1)),
          "Invalid alignment: %lu",(unsigned long)align);
- /*  Don't warn when re-declared at the same location
+ /* Don't warn when re-declared at the same location
   * (Can happen for multiple lib-import declarations). */
  if (self->sy_sec) {
   if (self->sy_sec   == section &&
