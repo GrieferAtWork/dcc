@@ -812,6 +812,8 @@ inner_end:
   DCCType_SetTypeMode(self,attr->a_flags&DCC_ATTRFLAG_MASK_MODE);
   attr->a_flags &= ~(DCC_ATTRFLAG_MASK_MODE);
  }
+ /* Apply late attributes. */
+ if (self->t_base) DCCDecl_SetAttr(self->t_base,attr);
  return result;
 next_leading: YIELD(); goto parse_leading;
 }
