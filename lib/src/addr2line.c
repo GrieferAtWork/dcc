@@ -60,7 +60,7 @@ _Bool __dcc_dbg_addr2line(void *ip, lc_t *info) {
      *        ip,iter->si_addr,
      *       (uintptr_t)iter->si_addr+iter->si_size);
      */
-    if (!A2L_NAME(a2l_exec)(&state,&code,addr)) break;
+    if (!A2L_NAME(a2l_exec)(&state,NULL,&code,addr)) break;
     /* Managed to capture the given address!
      * Fill in all available information. */
     info->path = (state.s_features&A2L_STATE_HASPATH) ? __dcc_dbg_strtab+state.s_path : NULL;

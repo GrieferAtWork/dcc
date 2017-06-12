@@ -109,6 +109,7 @@ DCCFunctionFrame_Enter(struct DCCFunctionFrame *__restrict self,
  t_defsym(fun_sym);
  assert(fun_sym->sy_sec == self->ff_new_section);
 
+ DCCUnit_MkDebugLC(DCCUNIT_DEBUGLC_STMT);
  if (!(self->ff_flags&DCC_FUNCTIONFRAME_FLAG_NAKED)) {
   DCCDisp_FunProlog(&self->ff_dispinfo);
   /* Allocate a new return symbol. */
@@ -141,6 +142,7 @@ DCCFunctionFrame_Leave(struct DCCFunctionFrame *__restrict self) {
    if (!(compiler.c_flags&DCC_COMPILER_FLAG_DEAD)) WARN(W_ATTRIBUTE_NAKED_RETURNS_NORMALLY,compiler.c_fun);
   }
  }
+ DCCUnit_MkDebugLC(DCCUNIT_DEBUGLC_STMT);
  if (!(self->ff_flags&DCC_FUNCTIONFRAME_FLAG_NAKED)) {
   compiler.c_flags &= ~(DCC_COMPILER_FLAG_SINIT|DCC_COMPILER_FLAG_INLOOP);
   /* Generate the prolog/epilog in respect to the old dead-flag.

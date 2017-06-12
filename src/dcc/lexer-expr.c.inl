@@ -87,6 +87,7 @@ function_call:
   n_args = DCCParse_Exprn();
   if (TOK != ')') WARN(W_EXPECTED_RPAREN); else YIELD();
 gen_call:
+  DCCUnit_MkDebugLC(DCCUNIT_DEBUGLC_EXPR);
   {
    int is_noreturn = 0;
    struct DCCType *function_type;

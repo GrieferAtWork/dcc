@@ -4772,16 +4772,16 @@ parse_multichar:
    /* Don't allow seek if the EOB flag is set or
     * the EOB file matches the current one. */
    if ((CURRENT.l_flags&TPPLEXER_FLAG_NO_SEEK_ON_EOB) || 
-        CURRENT.l_eob_file == file) goto settok;
+        CURRENT.l_eob_file == file) { eof: TOKEN.t_begin = iter; goto settok; }
    /* Check for more data chunks within the current file. */
    file->f_pos = iter;
    if (TPPFile_NextChunk(file,TPPFILE_NEXTCHUNK_FLAG_NONE)) goto again;
    iter = file->f_pos,end = file->f_end;
    if ((CURRENT.l_flags&TPPLEXER_FLAG_NO_POP_ON_EOF) ||
-        CURRENT.l_eof_file == file) goto settok;
+        CURRENT.l_eof_file == file) goto eof;
    /* EOF (Check the include stack for more files) */
    if ((prev_file = file->f_prev) == NULL) {
-    if (file == &TPPFile_Empty) goto settok;
+    if (file == &TPPFile_Empty) goto eof;
     /* Use the empty placeholder file. */
     TPPFile_Incref(&TPPFile_Empty);
     prev_file = &TPPFile_Empty;

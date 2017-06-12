@@ -91,7 +91,8 @@ DCCA2l_Delete(struct DCCA2l *__restrict self,
               DCC(target_siz_t) size);
 
 /* Insert debug data at a given address 'data->s_addr'.
- * NOTE: Data inserted will affect all addresses '>= data->s_addr' and '< next_greater_descriptor()'.  */
+ * NOTE: Data inserted will affect all addresses
+ *      '>= data->s_addr' and '< next_greater_descriptor()'.  */
 DCCFUN void DCCA2l_Insert(struct DCCA2l *__restrict self,
                           struct A2lState const *__restrict data);
 

@@ -390,7 +390,8 @@ DCCUnit_Merge(struct DCCUnit *__restrict other) {
 #endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
     if ((src_sym->sy_flags&DCC_SYMFLAG_STATIC) ||
         (assert(src_sym->sy_name != &TPPKeyword_Empty),
-         dst_sym = DCCUnit_GetSym(src_sym->sy_name)) == NULL) {
+         dst_sym = DCCUnit_GetSym(src_sym->sy_name)) == NULL ||
+        (dst_sym->sy_flags&DCC_SYMFLAG_STATIC)) {
      /* Load static symbols as though they were unnamed. */
      DCCSym_Incref(src_sym);
      DCCUnit_InsSym(src_sym); /* Inherit reference. */

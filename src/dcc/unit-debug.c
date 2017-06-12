@@ -110,7 +110,6 @@ DCCUnit_MkDebugL(int level) {
  struct A2lState state;
  (void)level; /* TODO: Use me. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
- if (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  /* Put a debug addr2line entry. */
  DCCA2l_CaptureState(&state,A2L_STATE_HASLINE|A2L_STATE_HASPATH|
                             A2L_STATE_HASFILE|A2L_STATE_HASNAME);
@@ -121,7 +120,6 @@ DCCUnit_MkDebugLC(int level) {
  struct A2lState state;
  (void)level; /* TODO: Use me. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
- if (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  /* Put a debug addr2line entry. */
  DCCA2l_CaptureState(&state,A2L_STATE_HASLINE|A2L_STATE_HASCOL|
                             A2L_STATE_HASPATH|A2L_STATE_HASFILE|

@@ -451,12 +451,12 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
  while (bin_op->bo_tok && bin_op->bo_tok != op) ++bin_op;
  if (!bin_op->bo_tok) {
   /* Special opcodes: '*', '/', '%', TOK_SHL, TOK_SHR, TOK_RANGLE3 */
-  src = DCCVStack_CastReg(src,src_unsigned,c_dst);
   switch (op) {
   case '=': DCCDisp_RegMovReg(src,dst,src_unsigned); break;
 
   {
   case '*':
+   src = DCCVStack_CastReg(src,src_unsigned,c_dst);
    if (!(c_dst&(DCC_RC_I16|DCC_RC_I3264))) {
     rc_t temp_dst; /* 8-bit dst */
     temp_dst = DCCVStack_GetReg(DCC_RC_I16,1);
@@ -481,6 +481,7 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
    rc_t eax,edx,original_src;
   case '%':
   case '/':
+   src = DCCVStack_CastReg(src,src_unsigned,c_dst);
    /* Reserve AX & DX for the same storage class as 'src'. */
    eax = DCC_ASMREG_EAX|(src&DCC_RC_MASK);
    edx = DCC_ASMREG_EDX|(src&DCC_RC_MASK);
@@ -557,7 +558,7 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
   { /* test */
   case 't':
    /* Cast 'src' to the same length as 'dst'. */
-   src = DCCVStack_CastReg(src,src_unsigned,c_dst&DCC_RC_MASK);
+   src = DCCVStack_CastReg(src,src_unsigned,c_dst);
    if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    t_putb(0x84+!!(dst&DCC_RC_I16));
    asm_modreg(src&DCC_RI_MASK,dst&DCC_RI_MASK);

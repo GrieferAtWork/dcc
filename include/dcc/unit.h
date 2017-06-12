@@ -131,7 +131,11 @@ struct DCCSym {
  struct DCCSym           **sy_sec_pself;   /*< [1..1][0..1][(!= NULL) == (sy_sec != NULL)]
                                             *  Self-pointer within the 'sy_sec_next...' linked list used by section symbol tables. */
  struct DCCSym            *sy_sec_next;    /*< [0..1] Next section symbol with the same modulated 'sy_name' address. */
- struct DCCSym            *sy_unit_next;   /*< [0..1] Next declaration symbol with the same modulated 'sy_name' address, within the same unit. */
+ struct DCCSym            *sy_unit_next;   /*< [0..1] Next declaration symbol with the same modulated 'sy_name' address, within the same unit.
+                                            *   NOTE: Additional sorting takes place in this chain:
+                                            *     #1: Symbols with the same name are kept adjacent to each other, in
+                                            *         order of creation where the latest symbol is placed at the front.
+                                            *     #2: Static symbols can only be found after non-static ones. */
  struct TPPKeyword const  *sy_name;        /*< [1..1][const] Symbol name (When set to '&TPPKeyword_Empty', the 'DCC_SYMFLAG_STATIC' flag must be set).
                                             *   NOTE: This name is also known as the assembly name (because it is what can be set with '__asm__'
                                             *         after a static-duration definition, as well as from assembly and during linkage)
@@ -1212,8 +1216,7 @@ DCCFUN size_t DCCUnit_ClearObsolete(void);
 DCCFUN void DCCUnit_MkDebugSym(void);
 
 /* Add a addr2line entry for the current text address and the current lexer position.
- * NOTE: This function is a no-op when the linker flag 'DCC_LINKER_FLAG_GENDEBUG'
- *       isn't set, or the the compiler flag 'DCC_COMPILER_FLAG_NOCGEN' is set. */
+ * NOTE: This function is a no-op when the linker flag 'DCC_LINKER_FLAG_GENDEBUG' isn't set. */
 DCCFUN void DCC_ATTRIBUTE_FASTCALL DCCUnit_MkDebugL(int level);
 DCCFUN void DCC_ATTRIBUTE_FASTCALL DCCUnit_MkDebugLC(int level);
 #define DCCUNIT_DEBUGLC_STMT 0

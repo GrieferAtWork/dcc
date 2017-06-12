@@ -2142,6 +2142,13 @@ void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym) {
   assert(unit.u_symv);
   pbucket = &unit.u_symv[DCCSym_HASH(sym) % unit.u_syma];
   assert(sym != *pbucket);
+  /* Make sure that static symbols are places after all non-static. */
+  if (sym->sy_flags&DCC_SYMFLAG_STATIC) {
+   struct DCCSym *next_sym;
+   while ((next_sym = *pbucket) != NULL &&
+         !(next_sym->sy_flags&DCC_SYMFLAG_STATIC))
+           pbucket = &next_sym->sy_unit_next;
+  }
   sym->sy_unit_next = *pbucket;
   *pbucket          = sym; /* Inherit reference. */
   ++unit.u_symc;
@@ -2163,11 +2170,19 @@ LOCAL void DCCUnit_RehashSymbols2(struct DCCUnit *__restrict self, size_t newsiz
    /* Copy chains of same-name symbols as a whole.
     * This is required to keep the order of forward/backward symbols intact! */
    while (insnext->sy_unit_next &&
+         (insnext->sy_unit_next->sy_flags&DCC_SYMFLAG_STATIC) == (iter->sy_flags&DCC_SYMFLAG_STATIC) &&
           insnext->sy_unit_next->sy_name == iter->sy_name)
           insnext = insnext->sy_unit_next;
    next = insnext->sy_unit_next;
    DCCSym_ASSERT(iter);
    dst = &new_map[DCCSym_HASH(iter) % newsize];
+   /* Make sure that static symbols are places after all non-static. */
+   if (iter->sy_flags&DCC_SYMFLAG_STATIC) {
+    struct DCCSym *next_sym;
+    while ((next_sym = *dst) != NULL &&
+          !(next_sym->sy_flags&DCC_SYMFLAG_STATIC))
+            dst = &next_sym->sy_unit_next;
+   }
    insnext->sy_unit_next = *dst;
    *dst = iter;
    iter = next;
@@ -2270,10 +2285,8 @@ DCCUnit_GetForwardSym(struct TPPKeyword const *__restrict name,
  struct DCCSym *result,**presult;
  if unlikely(!unit.u_syma) goto def_newsym;
  presult = &unit.u_symv[name->k_id % unit.u_syma];
- while ((result = *presult) != NULL &&
-         result->sy_name != name) {
-  presult = &result->sy_unit_next;
- }
+ while ((result = *presult) != NULL && result->sy_name != name)
+         presult = &result->sy_unit_next;
  if (!result) {
 def_newsym:
   result = DCCSym_New(name,flags);

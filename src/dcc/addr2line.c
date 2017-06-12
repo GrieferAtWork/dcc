@@ -69,7 +69,7 @@ DCCA2lChunk_IncCode(struct DCCA2lChunk *__restrict self) {
 PRIVATE a2l_op_t *
 a2l_exec1(struct A2lState *__restrict state,
           a2l_op_t const *__restrict code) {
- a2l_exec(state,&code,state->s_addr+1);
+ a2l_exec(state,state,&code,A2L_CAPTURE_ONE);
  return (a2l_op_t *)code;
 }
 
@@ -88,6 +88,10 @@ PRIVATE a2l_op_t *
 a2l_build_transition(a2l_op_t *__restrict buf,
                      struct A2lState const *__restrict old_state,
                      struct A2lState const *__restrict new_state) {
+#define FLUSH_DELFLAGS() \
+ do{ if (del_flags) { O(del_flags); del_flags = 0; } \
+ }while(DCC_MACRO_FALSE)
+ a2l_op_t del_flags = 0;
 #define O(x) (void)(*buf++ = (a2l_op_t)(x))
 #define A(a) (void)(buf = a2l_setarg(buf,a))
  assert(buf);
@@ -97,7 +101,7 @@ a2l_build_transition(a2l_op_t *__restrict buf,
  if (old_state->s_features&A2L_STATE_HASPATH) {
   if (new_state->s_features&A2L_STATE_HASPATH) {
    if (old_state->s_path != new_state->s_path) goto set_path;
-  } else O(A2L_O_DEL_P);
+  } else del_flags |= A2L_O_DEL_P;
  } else if (new_state->s_features&A2L_STATE_HASPATH) {
 set_path:
   O(A2L_O_SP);
@@ -108,7 +112,7 @@ set_path:
  if (old_state->s_features&A2L_STATE_HASFILE) {
   if (new_state->s_features&A2L_STATE_HASFILE) {
    if (old_state->s_file != new_state->s_file) goto set_file;
-  } else O(A2L_O_DEL_F);
+  } else del_flags |= A2L_O_DEL_F;
  } else if (new_state->s_features&A2L_STATE_HASFILE) {
 set_file:
   O(A2L_O_SF);
@@ -119,7 +123,8 @@ set_file:
  if (old_state->s_features&A2L_STATE_HASNAME) {
   if (new_state->s_features&A2L_STATE_HASNAME) {
    if (old_state->s_name != new_state->s_name) goto set_name;
-  } else O(A2L_O_DEL_N);
+  } else
+      del_flags |= A2L_O_DEL_N;
  } else if (new_state->s_features&A2L_STATE_HASNAME) {
 set_name:
   O(A2L_O_SN);
@@ -128,7 +133,7 @@ set_name:
 
  if (!(new_state->s_features&A2L_STATE_HASLINE)) {
   /* Special handling for addr2line information without line. */
-  if (old_state->s_features&A2L_STATE_HASLINE) O(A2L_O_DEL_L);
+  if (old_state->s_features&A2L_STATE_HASLINE) del_flags |= A2L_O_DEL_L;
   if (new_state->s_addr == old_state->s_addr) goto update_col;
   goto update_col_with_address;
  }
@@ -145,7 +150,7 @@ write_col:
    O(old_state->s_features&A2L_STATE_HASCOL ? A2L_O_IC : A2L_O_SC);
    A(new_state->s_col-old_state->s_col);
   } else if (old_state->s_features&A2L_STATE_HASCOL) {
-   O(A2L_O_DEL_C);
+   del_flags |= A2L_O_DEL_C;
   }
   goto end;
  }
@@ -155,6 +160,7 @@ write_col:
   *  - The address has changed */
  if (new_state->s_line != old_state->s_line) {
   /* Update addr+line[+col] at once (most common case). */
+  FLUSH_DELFLAGS();
   if (new_state->s_features&A2L_STATE_HASCOL) {
    a2l_arg_t line_off = (a2l_arg_t)(new_state->s_line-
                                     old_state->s_line);
@@ -186,6 +192,7 @@ update_col_with_address:
   /* Update addr+column. */
   col_offset = (a2l_arg_t)(new_state->s_col-
                            old_state->s_col);
+  FLUSH_DELFLAGS();
   if (col_offset <= A2L_MAX_NCIA) {
    O((A2L_O_NCLO_IA-1)+col_offset);
   } else {
@@ -194,22 +201,27 @@ update_col_with_address:
   }
   goto addr_offset;
  } else {
-  if (old_state->s_features&A2L_STATE_HASCOL) O(A2L_O_DEL_C);
+  if (old_state->s_features&A2L_STATE_HASCOL)
+      del_flags |= A2L_O_DEL_C;
   if (new_state->s_addr != old_state->s_addr) {
+   FLUSH_DELFLAGS();
    O(A2L_O_IA);
 addr_offset:
-   A(new_state->s_addr-old_state->s_addr);
+   A(new_state->s_addr-
+     old_state->s_addr);
   }
  }
 end:
+ FLUSH_DELFLAGS();
  return buf;
+#undef FLUSH_DELFLAGS
 #undef A
 #undef O
 }
 
 
 
-/* Lookup the boundry pointers of code specifying
+/* Lookup the boundary pointers of code specifying
  * debug information about 'new_state->s_addr'. */
 PRIVATE void
 DCCA2lChunk_GetInsPtr(struct DCCA2lChunk *__restrict self,
@@ -284,7 +296,7 @@ DCCA2lChunk_RelocString(struct DCCA2lChunk *__restrict self,
  while (self->c_code_last != self->c_code_pos) {
   assert(self->c_code_last < self->c_code_pos);
   op = *self->c_code_last++;
-  if (op == A2L_O_SP || op == A2L_O_SF || op == A2L_O_SN) {
+  if (A2L_ISSTROP(op)) {
    arg_end     = self->c_code_last;
    arg         = a2l_getarg((a2l_op_t const **)&arg_end);
    old_argsize = (size_t)(arg_end-self->c_code_last);
@@ -484,22 +496,30 @@ DCCA2lChunk_DeleteBefore(struct DCCA2lChunk *__restrict self,
  size_t shift;
  assert(self);
  if (addr <= self->c_smin.s_addr) return;
- if (addr >= self->c_smax.s_addr) {
+ if (addr >  self->c_smax.s_addr) {
   /* Clear this chunk. */
   DCCA2lChunk_Clear(self,self->c_smin.s_addr);
   return;
  }
  state = self->c_smin;
  code  = self->c_code_begin;
- a2l_exec(&state,(a2l_op_t const **)&code,addr);
+ a2l_exec(&state,&state,
+         (a2l_op_t const **)&code,
+          addr);
  assert(code >= self->c_code_begin);
  assert(code <= self->c_code_pos);
  /* Delete all debug information about addresses below 'addr'. */
  self->c_smin = state;
- shift = (size_t)(self->c_code_pos-code);
- memmove(self->c_code_begin,code,shift);
+ memmove(self->c_code_begin,code,
+        (size_t)(self->c_code_pos-code));
+ shift = (size_t)(code-self->c_code_begin);
  self->c_code_pos  -= shift;
  self->c_code_last -= shift;
+ assert(self->c_code_pos  >= self->c_code_begin);
+ assert(self->c_code_last >= self->c_code_begin);
+ assert(self->c_code_pos  != self->c_code_begin);
+ if (self->c_code_last == self->c_code_begin)
+     self->c_slast = self->c_smin;
 }
 
 #ifdef _MSC_VER
@@ -509,38 +529,33 @@ DCCA2lChunk_DeleteBefore(struct DCCA2lChunk *__restrict self,
 PRIVATE void
 DCCA2lChunk_DeleteAfter(struct DCCA2lChunk *__restrict self,
                         target_ptr_t addr) {
- struct A2lState prev_state;
- struct A2lState last_state;
- struct A2lState state;
+ struct A2lState prev_state,last_state,state;
  a2l_op_t *prev_code,*last_code,*code;
  assert(self);
- if (addr >= self->c_smax.s_addr) return;
+ if (addr >  self->c_smax.s_addr) return;
  if (addr <= self->c_smin.s_addr) {
   /* Clear this chunk. */
   DCCA2lChunk_Clear(self,self->c_smin.s_addr);
   return;
  }
- state = self->c_smin;
- code  = self->c_code_begin;
-#if DCC_DEBUG
- memset(&prev_state,0,sizeof(prev_state));
- prev_code = NULL;
-#endif
+ last_state = self->c_smin;
+ code       = self->c_code_begin;
+ prev_code  = NULL;
+ A2lState_RESET(&prev_state);
  for (;;) {
+  last_code = code;
+  assert(code >= self->c_code_begin);
+  assert(code <= self->c_code_pos);
+  a2l_exec(&last_state,&state,
+          (a2l_op_t const **)&code,
+           A2L_CAPTURE_ONE);
+  if (state.s_addr >= addr) break;
   prev_state = last_state;
   prev_code  = last_code;
   last_state = state;
-  last_code  = code;
-  assert(code >= self->c_code_begin);
-  assert(code <= self->c_code_pos);
-  code = a2l_exec1(&state,code);
-  if (state.s_addr >= addr) break;
  }
- assert(prev_code >= self->c_code_begin);
- assert(prev_code <= self->c_code_pos);
  assert(last_code >= self->c_code_begin);
  assert(last_code <= self->c_code_pos);
- assert(prev_code <  last_code);
  /* Delete all debug information about addresses after 'addr'. */
  self->c_slast     = prev_state;
  self->c_code_last = prev_code;
@@ -568,19 +583,21 @@ DCCA2lChunk_DeleteRange(struct DCCA2lChunk *__restrict self,
   a2l_op_t trans[A2L_TRANSITION_MAXSIZE];
   size_t   trans_size,delete_size;
   /* Must actually search for what to delete... */
-  state = self->c_smin;
-  code  = self->c_code_begin;
+  delete_begin_state = self->c_smin;
+  code               = self->c_code_begin;
   /* Find where we should start deleting. */
   for (;;) {
-   delete_begin_state = state;
-   delete_begin       = code;
-   code = a2l_exec1(&state,code);
+   delete_begin = code;
+   a2l_exec(&delete_begin_state,&state,
+           (a2l_op_t const **)&code,
+            A2L_CAPTURE_ONE);
    if (state.s_addr >= addr) break;
+   delete_begin_state = state;
   }
   assert(delete_begin > self->c_code_begin &&
          delete_begin < self->c_code_pos);
   if (state.s_addr < addr+size)
-      a2l_exec(&state,(a2l_op_t const **)&code,addr+size);
+      a2l_exec(&state,&state,(a2l_op_t const **)&code,addr+size);
   assert(code > self->c_code_begin &&
          code < self->c_code_pos);
   /* Generate a transition between 'delete_begin_state' and
@@ -701,7 +718,7 @@ PUBLIC void
 DCCA2l_Import(struct DCCA2l *__restrict self,
               a2l_op_t *__restrict code,
               size_t code_size) {
- struct A2lState s;
+ struct A2lState state;
  a2l_op_t *begin,*iter,*end;
  assert(self);
  assert(!code_size || code);
@@ -718,11 +735,11 @@ DCCA2l_Import(struct DCCA2l *__restrict self,
   memcpy(iter,code,code_size);
   memset(iter+code_size,A2L_O_EOF,(1+A2L_ARG_MAXBYTES));
  }
- A2lState_RESET(&s);
+ A2lState_RESET(&state);
  end = (begin = iter)+code_size;
  while (iter < end) {
-  iter = a2l_exec1(&s,iter);
-  DCCA2l_Insert(self,&s);
+  iter = a2l_exec1(&state,iter);
+  DCCA2l_Insert(self,&state);
  }
  if (begin != code) free(begin);
 }
@@ -744,23 +761,29 @@ DCCA2l_Merge(struct DCCA2l *__restrict self,
   return;
  }
  /* xxx: This could be done better... */
- end = (iter = other->d_chunkv)+other->d_chunkc;
+ end = (iter = other->d_chunkv)+
+               other->d_chunkc;
  for (; iter != end; ++iter) {
   struct A2lState state;
   a2l_op_t const *code,*code_end;
   code     = iter->c_code_begin;
   code_end = iter->c_code_pos;
   assert(code <= code_end);
-  if (code == code_end) continue;
+  /* Skip empty chunks. */
+  if (code == code_end &&
+     !iter->c_smin.s_features) continue;
   state = iter->c_smin;
   /* Simply re-insert all A2L capture points. */
-  do {
-   assert(code < code_end);
-   code = a2l_exec1(&state,code);
+  for (;;) {
+   assert(code <= code_end);
    state.s_addr += other_base;
    DCCA2l_Insert(self,&state);
    state.s_addr -= other_base;
-  } while (code != code_end);
+   if (code == code_end) break;
+   code = a2l_exec1(&state,code);
+  }
+  assert(!memcmp(&state,&iter->c_smax,
+                 sizeof(struct A2lState)));
  }
 }
 
@@ -870,7 +893,7 @@ DCCA2l_Lookup(struct DCCA2l const *__restrict self,
  /* NOTE: We don't actually commit this opcode! */
  *chunk->c_code_pos = A2L_O_EOF;
  code = chunk->c_code_begin;
- DCC_a2l_exec(result,&code,addr);
+ a2l_exec(result,NULL,&code,addr);
  return 1;
 }
 
