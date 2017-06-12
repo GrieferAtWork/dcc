@@ -70,16 +70,18 @@ DCCParse_BuiltinTypeStr(void) {
 /*  __builtin_constant_p  */
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_BuiltinConstantP(void) {
- int is_constant;
+ int is_constant = 1;
  assert(TOK == KWD___builtin_constant_p);
  YIELD();
  pushf();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
  DCCParse_ParPairBegin();
- DCCParse_Expr1();
+ while (DCCParse_IsExpr()) {
+  DCCParse_Expr1();
+  is_constant &= DCCStackValue_ISCONST(vbottom);
+  vpop(1);
+ }
  DCCParse_ParPairEnd();
- is_constant = DCCStackValue_ISCONST(vbottom);
- vpop(1);
  popf();
  vpushi(DCCTYPE_BOOL,is_constant);
 }

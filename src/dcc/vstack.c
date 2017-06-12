@@ -878,13 +878,14 @@ DCCStackValue_ConstUnary(struct DCCStackValue *__restrict self, tok_t op) {
   self->sv_sym = NULL;
   break;
  case '~':
+ case TOK_TILDE_TILDE:
   /* While there are other means of accidentally setting the sign-bit, this
    * is the only way accepted that will prevent warnings from being emit. */
   self->sv_flags |= DCC_SFLAG_NO_WSIGN;
  case '-':
   if (self->sv_sym) return 0;
-  if (op == '~') iv = ~iv;
-  else           iv = -iv;
+  if (op == '-') iv = -iv;
+  else           iv = ~iv;
   break;
  case TOK_INC: WARN(W_ASM_CONSTEXPR_INVALID_OPERATION); ++iv; break;
  case TOK_DEC: WARN(W_ASM_CONSTEXPR_INVALID_OPERATION); --iv; break;
@@ -1186,7 +1187,7 @@ DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
                           struct DCCSymExpr const *__restrict exprval,
                           struct DCCStackValue *__restrict other) {
  typedef uint_least64_t uint_t;
- int_t iv; int src_unsigned = 0;
+ int_t iv,rhsv; int src_unsigned = 0;
  assert(self);
  assert(other);
  assert(self->sv_reg == DCC_RC_CONST);
@@ -1213,11 +1214,12 @@ DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
    else                          iv = (int_t)self->sv_const.s32;
   }
  }
+ rhsv = exprval->e_int;
  switch (op) {
 
  case '=':
   /* Re-assign a stack-value. */
-  iv = exprval->e_int;
+  iv = rhsv;
 assign_sym:
   DCCSym_XIncref(exprval->e_sym);
   DCCSym_XDecref(self->sv_sym);
@@ -1226,7 +1228,7 @@ assign_sym:
 
  case '+':
  case TOK_INC:
-  iv += exprval->e_int;
+  iv += rhsv;
   if (exprval->e_sym) {
    if (self->sv_sym) return 0;
    self->sv_sym = exprval->e_sym;
@@ -1236,7 +1238,7 @@ assign_sym:
 
  case '-':
  case TOK_DEC:
-  iv -= exprval->e_int;
+  iv -= rhsv;
   /* Special case: Difference between two symbols. */
   if (self->sv_sym && exprval->e_sym) {
    if (self->sv_sym == exprval->e_sym) {
@@ -1262,22 +1264,26 @@ assign_sym:
  case '*':
  case '/':
  case '%':
+ case TOK_SHL:
+ case TOK_SHR:
+ case TOK_RANGLE3:
   if (self->sv_sym || exprval->e_sym) {
    WARN(W_ASM_INVALID_SYMBOL_OPERATION);
    DCCSym_XDecref(self->sv_sym);
    self->sv_sym = NULL;
   }
-       if (op == '&') iv &= exprval->e_int;
-  else if (op == '|') iv |= exprval->e_int;
-  else if (op == '^') iv ^= exprval->e_int;
-  else if (op == '*') iv *= exprval->e_int;
-  else if (!exprval->e_int) WARN(W_DIVIDE_BY_ZERO);
-  else if (op == '/') iv /= exprval->e_int;
-  else                iv %= exprval->e_int;
+       if (op == '&') iv &= rhsv;
+  else if (op == '|') iv |= rhsv;
+  else if (op == '^') iv ^= rhsv;
+  else if (op == '*') iv *= rhsv;
+  else if (op == TOK_SHL) iv <<= rhsv;
+  else if (op == TOK_SHR) iv >>= rhsv;
+  else if (op == TOK_RANGLE3) *(uint_t *)&iv >>= rhsv;
+  else if (!rhsv) WARN(W_DIVIDE_BY_ZERO);
+  else if (op == '/') iv /= rhsv;
+  else                iv %= rhsv;
   break;
 
- {
-  int_t rhsv;
  case TOK_LOWER:
  case TOK_LOWER_EQUAL:
  case TOK_EQUAL:
@@ -1285,7 +1291,6 @@ assign_sym:
  case TOK_GREATER:
  case TOK_GREATER_EQUAL:
   /* Special handling for compare operations. */
-  rhsv = exprval->e_int;
   if (self->sv_sym && exprval->e_sym) {
    /* Symbols are given on both sides. */
    if (DCCSym_SECTION(self->sv_sym) &&
@@ -1411,7 +1416,7 @@ signed_compare:
    DCCSym_Decref(self->sv_sym);
    self->sv_sym = NULL;
   }
- } break;
+  break;
 
  default: return 0;
  }
@@ -1877,18 +1882,22 @@ exec_mem_or_reg:
   if (!(target->sv_flags&DCC_SFLAG_LVALUE)) {
    /* Propagate the no-sign warnings flag. */
    target->sv_flags |= (self->sv_flags&DCC_SFLAG_NO_WSIGN);
-   if (self->sv_reg == DCC_RC_CONST &&
-       self->sv_reg2 == DCC_RC_CONST &&
-     !(self->sv_flags&DCC_SFLAG_LVALUE)) {
-    struct DCCSymExpr temp;
-    /* Binary operation on constant expression. */
-    temp.e_int = self->sv_const.it;
-    temp.e_sym = self->sv_sym;
-    if (DCCStackValue_ConstBinary(target,op,&temp,self)) return;
+   if (target->sv_reg == DCC_RC_CONST) {
+    if (self->sv_reg == DCC_RC_CONST &&
+        self->sv_reg2 == DCC_RC_CONST &&
+      !(self->sv_flags&DCC_SFLAG_LVALUE)) {
+     struct DCCSymExpr temp;
+     /* Binary operation on constant expression. */
+     temp.e_int = self->sv_const.it;
+     temp.e_sym = self->sv_sym;
+     if (DCCStackValue_ConstBinary(target,op,&temp,self)) return;
+    } else {
+     /* Load a constant expression into register storage. */
+     DCCStackValue_Load(target);
+    }
+   } else if (op != '?') {
+    WARN(W_EXPECTED_LVALUE_FOR_BINARY_OP,&target->sv_ctype);
    }
-   if (target->sv_reg == DCC_RC_CONST)
-       DCCStackValue_Load(target);
-   if (op != '?') WARN(W_EXPECTED_LVALUE_FOR_BINARY_OP,&target->sv_ctype);
    assert(target->sv_reg != DCC_RC_CONST);
    goto exec_mem_or_reg;
   }
