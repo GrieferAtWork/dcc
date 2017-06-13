@@ -192,8 +192,8 @@ DCCFUN void DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
 DCCFUN void DCCAttrDecl_InitCopy(struct DCCAttrDecl *__restrict self,
                                  struct DCCAttrDecl const *__restrict rhs);
 
-//////////////////////////////////////////////////////////////////////////
-// Returns true if the given attribute declaration is empty (aka. zero-initialized).
+/* Returns true if the given attribute
+ * declaration is empty (aka. zero-initialized). */
 DCCFUN int DCCAttrDecl_IsEmpty(struct DCCAttrDecl const *__restrict self);
 
 /* The pragma parser hook for tpp. */
@@ -204,28 +204,32 @@ DCCFUN int DCCParse_InsComment(struct TPPString *__restrict comment);
 /* For the sake of optimization, the parser calls using fastcall. */
 #define DCC_PARSE_CALL  DCC_ATTRIBUTE_FASTCALL
 
-//////////////////////////////////////////////////////////////////////////
-// Parse __attribute__, __declspec and [[...]] attribute blocks.
+/* Parse __attribute__, __declspec and [[...]] attribute blocks. */
 DCCFUN void DCC_PARSE_CALL DCCParse_Attr(struct DCCAttrDecl *__restrict self);
 
 
-//////////////////////////////////////////////////////////////////////////
-// Parse a C type and store its declaration in '*result'
-// In addition, the given 'attr' may be modified (but
-// not initialized) when attributes are encountered.
-// @return: 0:
-// @return: NULL: There is no type declaration at the current
-//                source location ('attr' may have still been modified)
-//                NOTE: This value is also returned when an error
-//                      occurred and a lexer error was set.
-//                NOTE: Even in this state, 'self' is initialized to
-//                      'int', meaning you can always use it as type.
-// @return: !0:   Successfully parsed a new type declaration.
-// @return: *:    *ditto* (Returns the name of a keyword hidden inside, or 'TPPKeyword_Empty' is none was)
-// HINT: 'DCCParse_CTypeSuffix' never returns NULL
+/* Parse a C type and store its declaration in '*result'
+ * In addition, the given 'attr' may be modified (but
+ * not initialized) when attributes are encountered.
+ * @return: 0:
+ * @return: NULL: There is no type declaration at the current
+ *                source location ('attr' may have still been modified)
+ *                NOTE: This value is also returned when an error
+ *                      occurred and a lexer error was set.
+ *                NOTE: Even in this state, 'self' is initialized to
+ *                      'int', meaning you can always use it as type.
+ * @return: !0:   Successfully parsed a new type declaration.
+ * @return: *:    *ditto* (Returns the name of a keyword hidden inside, or 'TPPKeyword_Empty' is none was)
+ * HINT: 'DCCParse_CTypeSuffix' never returns NULL. */
 DCCFUN struct TPPKeyword *DCC_PARSE_CALL DCCParse_CType(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);
 DCCFUN int                DCC_PARSE_CALL DCCParse_CTypePrefix(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);
 DCCFUN struct TPPKeyword *DCC_PARSE_CALL DCCParse_CTypeSuffix(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);
+
+/* Same as 'DCCParse_CType', but unknown keywords
+ * are interpreted as 'int', as well as warned about. */
+DCCFUN struct TPPKeyword *DCC_PARSE_CALL
+DCCParse_CTypeUnknown(struct DCCType *__restrict self,
+                      struct DCCAttrDecl *__restrict attr);
 
 /* Force-parse a full c-type, emitting a warning and instead parsing an
  * single expression who's type will be taken when no type could be found.
@@ -234,26 +238,23 @@ DCCFUN struct TPPKeyword *DCC_PARSE_CALL DCCParse_CTypeSuffix(struct DCCType *__
 DCCFUN struct TPPKeyword *DCC_PARSE_CALL
 DCCParse_CTypeOnly(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);
 
-//////////////////////////////////////////////////////////////////////////
-// Parse struct members, adding all to the 'd_tdecl.td_fieldv'
-// vector of the given structure type symbol 'struct_decl'.
-// NOTE: The calling is responsible to only pass a 'DCC_DECLKIND_STRUCT'
-//       symbol with its field vector initialized to NULL.
-// NOTE: Once done, the caller must still calculate
-//       member offsets and alignment, thus allowing
-//       the user to write additional attributes _after_
-//       the struct, that will still be parsed as part of it.
+/* Parse struct members, adding all to the 'd_tdecl.td_fieldv'
+ * vector of the given structure type symbol 'struct_decl'.
+ * NOTE: The calling is responsible to only pass a 'DCC_DECLKIND_STRUCT'
+ *       symbol with its field vector initialized to NULL.
+ * NOTE: Once done, the caller must still calculate
+ *       member offsets and alignment, thus allowing
+ *       the user to write additional attributes _after_
+ *       the struct, that will still be parsed as part of it. */
 DCCFUN void DCC_PARSE_CALL DCCParse_Struct(struct DCCDecl *__restrict struct_decl);
 
-//////////////////////////////////////////////////////////////////////////
-// Parse enum contents, enumerating incrementing
-// constant expressions that declare global symbols.
-// Parsing stops once no more symbol names are encountered.
+/* Parse enum contents, enumerating incrementing
+ * constant expressions that declare global symbols.
+ * Parsing stops once no more symbol names are encountered. */
 DCCFUN void DCC_PARSE_CALL DCCParse_Enum(void);
 
-//////////////////////////////////////////////////////////////////////////
-// Parse a c expression.
-// NOTE: The expression is then put on the VStack.
+/* Parse a c expression.
+ * NOTE: The expression is then put on the VStack. */
 DCCFUN void DCC_PARSE_CALL DCCParse_Expr(void);        /* Parse comma-separated expressions, only leaving the last in 'vbottom'. */
 DCCFUN void DCC_PARSE_CALL DCCParse_Expr1(void);       /* Parse a single expression. */
 DCCFUN size_t DCC_PARSE_CALL DCCParse_Exprn(void);     /* Parse comma-separated expressions, leaving all on-stack and returning the amount parsed. */

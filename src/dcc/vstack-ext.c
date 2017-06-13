@@ -30,6 +30,13 @@
 DCC_DECL_BEGIN
 
 INTERN void DCC_VSTACK_CALL
+DCCVStack_PushSym_vfun(struct DCCSym *__restrict sym) {
+ struct DCCType type = {DCCTYPE_VOID,NULL};
+ DCCType_MkOldFunc(&type);
+ vpushst(&type,sym);
+ DCCType_Quit(&type);
+}
+INTERN void DCC_VSTACK_CALL
 DCCVStack_PushSym_vpfun(struct DCCSym *__restrict sym) {
  struct DCCType type = {DCCTYPE_VOID,NULL};
  DCCType_MkPointer(&type);

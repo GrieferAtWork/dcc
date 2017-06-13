@@ -122,9 +122,9 @@ DCCParse_BuiltinTypesCompatibleP(void) {
  assert(TOK == KWD___builtin_types_compatible_p);
  YIELD();
  DCCParse_ParPairBegin();
- if (!DCCParse_CType(&ta,&attr)) WARN(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P);
+ if (!DCCParse_CTypeUnknown(&ta,&attr)) WARN(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P);
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- if (!DCCParse_CType(&tb,&attr)) WARN(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P);
+ if (!DCCParse_CTypeUnknown(&tb,&attr)) WARN(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P);
  DCCParse_ParPairEnd();
  DCCAttrDecl_Quit(&attr);
  vpushi(DCCTYPE_BOOL,DCCType_IsCompatible(&ta,&tb,0));
@@ -1003,6 +1003,7 @@ DCC_DECL_END
 #ifndef __INTELLISENSE__
 #include "lexer-builtins-string.c.inl"
 #include "lexer-builtins-util.c.inl"
+#include "lexer-builtins-malloc.c.inl"
 #endif
 
 

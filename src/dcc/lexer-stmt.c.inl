@@ -424,10 +424,10 @@ again:
 
  /* WARNING: Unlike deemon, DCC returns void (aka. none) for if-statements.
   *       >> This change had to be made to prevent a loss in performance. */
- case KWD_if:      DCCParse_IfStmt(); goto pushv;
- case KWD_while:   DCCParse_WhileStmt(); goto pushv;
- case KWD_do:      DCCParse_DoWhileStmt(); goto pushv_semi;
- case KWD_for:     DCCParse_ForStmt(); goto pushv;
+ case KWD_if:    DCCParse_IfStmt(); goto pushv;
+ case KWD_while: DCCParse_WhileStmt(); goto pushv;
+ case KWD_do:    DCCParse_DoWhileStmt(); goto pushv_semi;
+ case KWD_for:   DCCParse_ForStmt(); goto pushv;
 
  { /* break/continue a loop. */
   struct DCCSym *target;

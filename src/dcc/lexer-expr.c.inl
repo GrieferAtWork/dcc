@@ -345,7 +345,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprGeneric(void) {
    struct DCCType     case_type;
    struct DCCAttrDecl case_attr = DCCATTRDECL_INIT;
    struct TPPKeyword *type_name;
-   type_name = DCCParse_CType(&case_type,&case_attr);
+   type_name = DCCParse_CTypeUnknown(&case_type,&case_attr);
    DCCAttrDecl_Quit(&case_attr);
    if (!type_name) { WARN(W_GENERIC_EXPRESSION_EXPECTED_TYPE,&ctrl_type); continue; }
    is_target = DCCType_IsCompatible(&case_type,&ctrl_type,1);
@@ -865,6 +865,11 @@ outside_function:
  case KWD___builtin_memcmp: DCCParse_BuiltinMemcmp(); break;
  case KWD___builtin_strlen:
  case KWD___builtin_strnlen: DCCParse_BuiltinStrlen(); break;
+  /* Builtin dynamic memory. */
+ case KWD___builtin_malloc:
+ case KWD___builtin_calloc: DCCParse_BuiltinMalloc(); break;
+ case KWD___builtin_realloc: DCCParse_BuiltinRealloc(); break;
+ case KWD___builtin_free: DCCParse_BuiltinFree(); break;
   /* Builtin string scanners. */
  case KWD___builtin_memchr: case KWD___builtin_memlen: case KWD___builtin_memend:
  case KWD___builtin_memrchr: case KWD___builtin_memrlen: case KWD___builtin_memrend:

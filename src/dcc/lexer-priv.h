@@ -167,6 +167,11 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinStrcmp(void);            /* int __bu
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinStrlen(void);            /* size_t __builtin_strlen(char const *str),__builtin_strnlen(char const *str, size_t max); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinScas(void);              /* ... (Various string scanning builtins); */
 
+/* DYNAMIC MEMORY */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMalloc(void);            /* void *__builtin_malloc(size_t n_bytes),__builtin_calloc(size_t count, size_t n_bytes); */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinRealloc(void);           /* void *__builtin_realloc(void *ptr, size_t n_bytes); */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinFree(void);              /* void  __builtin_free(void *ptr); */
+
 /* MISC */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinScanner(void);           /* int __builtin_ffs(int x),__builtin_ffsl(long x),__builtin_ffsll(long long x),__builtin_ffscc(auto x, size_t s);
                                                                       * int __builtin_clz(int x),__builtin_clzl(long x),__builtin_clzll(long long x),__builtin_clzcc(auto x, size_t s); */
@@ -175,6 +180,7 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinNoop(void);              /* int __bu
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMinMax(void);            /* auto __builtin_min(...),__builtin_max(...); */
 
 
+INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_vfun(struct DCCSym *__restrict sym);  /* void sym(); */
 INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_vpfun(struct DCCSym *__restrict sym); /* void *sym(); */
 INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_ifun(struct DCCSym *__restrict sym);  /* int sym(); */
 INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_szfun(struct DCCSym *__restrict sym); /* size_t sym(); */

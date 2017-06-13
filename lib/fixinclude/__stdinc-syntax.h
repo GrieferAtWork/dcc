@@ -453,6 +453,11 @@ int __builtin_memcmp(void const *a, void const *b, __SIZE_TYPE__ n_bytes);
 __SIZE_TYPE__ __builtin_strlen(char const *str);
 __SIZE_TYPE__ __builtin_strnlen(char const *str, __SIZE_TYPE__ max_chars);
 
+void *__builtin_malloc(__SIZE_TYPE__ n_bytes);
+void *__builtin_calloc(__SIZE_TYPE__ count, __SIZE_TYPE__ n_bytes);
+void *__builtin_realloc(void *ptr, __SIZE_TYPE__ n_bytes);
+void  __builtin_free(void *ptr);
+
 void *__builtin_memchr(void const *p, int c, __SIZE_TYPE__ s);
 __SIZE_TYPE__ __builtin_memlen(void const *p, int c, __SIZE_TYPE__ s);
 void *__builtin_memend(void const *p, int c, __SIZE_TYPE__ s);

@@ -256,6 +256,14 @@ DEF_BUILTIN(__builtin_isprint)
 DEF_BUILTIN(__builtin_tolower)
 DEF_BUILTIN(__builtin_toupper)
 
+/* Builtin dynamic memory allocation */
+DEF_BUILTIN(__builtin_malloc)
+DEF_BUILTIN(__builtin_realloc)
+DEF_BUILTIN(__builtin_calloc)
+DEF_BUILTIN(__builtin_free)
+DEF_BUILTIN(__builtin_cfree)
+
+
 DEF_BUILTIN(__builtin_return_address)
 DEF_BUILTIN(__builtin_frame_address)
 DEF_BUILTIN(__builtin_extract_return_addr)
@@ -1257,7 +1265,7 @@ DEF_WARNING(W_OLD_STYLE_FUNCTION_VARARGS_ALREADY,(WG_REDEFINE,WG_SYNTAX),WSTATE_
 DEF_WARNING(W_OLD_STYLE_FUNCTION_UNNAMED_ARGUMENT,(WG_SYNTAX),WSTATE_WARN,WARNF("Unnamed argument in old-style function parameter list"))
 DEF_WARNING(W_OLD_STYLE_FUNCTION_EXPECTED_ARGUMENT_KEYWORD,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword in old-style argument list, but got " TOK_S,TOK_A))
 DEF_WARNING(W_OLD_STYLE_INITIALIZER_ASSIGNMENT,(WG_OLD_VARIABLE_INIT),WSTATE_WARN,WARNF("Old-style variable initialization is used. Consider placing " Q("=") " before the initial value."))
-DEF_WARNING(W_UNKNOWN_TYPE_IN_ARGUMENT_LIST,(WG_OLD_VARIABLE_INIT),WSTATE_WARN,WARNF("Assuming " Q("int") " for unknown type keyword " TOK_S " in function argument list",TOK_A))
+DEF_WARNING(W_UNKNOWN_KEYWORD_IN_TYPE,(WG_SYNTAX,WG_TYPE),WSTATE_WARN,WARNF("Assuming " Q("int") " for unknown type keyword " TOK_S,TOK_A))
 DEF_WARNING(W_MIXED_DECLARATIONS,(WG_MIXED_DECLARATIONS,WG_C99,WG_EXTENSIONS),WSTATE_WARN,
             WARNF("Mixing statements with declarations requires a C99-compliant compiler"))
 DEF_WARNING(W_BUILTIN_TYPE_BOOL_C99,(WG_C99,WG_EXTENSIONS),WSTATE_WARN,

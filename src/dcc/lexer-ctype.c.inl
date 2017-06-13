@@ -157,17 +157,7 @@ DCCParse_CTypeNewArgumentList(struct DCCDecl *__restrict funtydecl,
     YIELD();
     goto nextarg;
    }
-   opt_firstname = DCCParse_CType(&arg_type,&arg_attr);
-   if unlikely(!opt_firstname) {
-    assert(!arg_type.t_base);
-    assert(arg_type.t_type == DCCTYPE_INT);
-    if (!TPP_ISKEYWORD(TOK)) break;
-    /* Assume missing typedef. */
-    WARN(W_UNKNOWN_TYPE_IN_ARGUMENT_LIST);
-    YIELD();
-    /* Parse a regular type-suffix. */
-    opt_firstname = DCCParse_CTypeSuffix(&arg_type,&arg_attr);
-   }
+   opt_firstname = DCCParse_CTypeUnknown(&arg_type,&arg_attr);
    opt_firsttype = &arg_type;
    opt_firstattr = &arg_attr;
    is_first      = 0;
@@ -1235,6 +1225,26 @@ DCCParse_CType(struct DCCType *__restrict self,
  }
  return result;
 }
+
+PUBLIC struct TPPKeyword *DCC_PARSE_CALL
+DCCParse_CTypeUnknown(struct DCCType *__restrict self,
+                      struct DCCAttrDecl *__restrict attr) {
+ struct TPPKeyword *result;
+ result = DCCParse_CType(self,attr);
+ if unlikely(!result) {
+  assert(!self->t_base);
+  assert(self->t_type == DCCTYPE_INT);
+  if (TPP_ISKEYWORD(TOK)) {
+   /* Assume missing typedef. */
+   WARN(W_UNKNOWN_KEYWORD_IN_TYPE);
+   YIELD();
+   /* Parse a regular type-suffix. */
+   result = DCCParse_CTypeSuffix(self,attr);
+  }
+ }
+ return result;
+}
+
 
 PUBLIC struct TPPKeyword *DCC_PARSE_CALL
 DCCParse_CTypeOnly(struct DCCType *__restrict self,
