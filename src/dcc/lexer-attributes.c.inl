@@ -112,9 +112,10 @@ DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
   if (!self->a_reach) {
    self->a_reach = rhs->a_reach;
    TPPString_Decref(self->a_reach);
-  } else if (self->a_reach->s_size != rhs->a_reach->s_size ||
-            !memcmp(self->a_reach->s_text,rhs->a_reach->s_text,
-                    self->a_reach->s_size*sizeof(char))) {
+  } else if (self->a_reach != rhs->a_reach &&
+            (self->a_reach->s_size != rhs->a_reach->s_size ||
+             memcmp(self->a_reach->s_text,rhs->a_reach->s_text,
+                    self->a_reach->s_size*sizeof(char)) != 0)) {
    WARN(W_ATTRIBUTE_MERGE_REACHMSG,
         self->a_reach->s_text,
         rhs->a_reach->s_text);
