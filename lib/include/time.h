@@ -28,26 +28,30 @@
 #else
 #include <__stdinc.h>
 #include <features.h>
+#include <bits/types.h>
 
 #undef size_t
 typedef __SIZE_TYPE__ size_t;
+
+#undef time_t
+typedef __time_t  time_t;
+
+#undef clock_t
+typedef __clock_t clock_t;
 
 #define NULL  __NULL__
 
 struct tm;
 
 #ifdef __CRT_MSVC
-typedef __int32 clock_t;
 #define CLOCKS_PER_SEC  1000
 
 #ifdef _USE_32BIT_TIME_T
 #define __TIMENAM(n)  __asm__("_" n "32")
 #define __TIMENAMS(n) __asm__("_" n "32_s")
-typedef __int32 time_t;
 #else
 #define __TIMENAM(n)  __asm__("_" n "64")
 #define __TIMENAMS(n) __asm__("_" n "64_s")
-typedef __int64 time_t;
 #endif
 
 __IMP __WUNUSED double (difftime)(time_t __time1, time_t __time2) __TIMENAM("difftime");
@@ -80,9 +84,6 @@ struct tm *(localtime_r)(const time_t *timep, struct tm *result);
 #undef __TIMENAMS
 #undef __TIMENAM
 #else
-
-typedef __UINT32_TYPE__ time_t;
-typedef __UINT32_TYPE__ clock_t;
 
 __IMP __WUNUSED double (difftime)(time_t __time1, time_t __time2);
 __IMP __WUNUSED char *(ctime)(time_t const *__timep);

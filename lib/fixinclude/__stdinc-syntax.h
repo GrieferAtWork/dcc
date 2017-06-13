@@ -25,6 +25,8 @@
 #error "Using this file in c-mode may cause invalid syntax highlighting"
 #endif
 
+#define _LARGEFILE64_SOURCE 1
+
 /* Helper magic. */
 template<class T> struct ____INTELLISENE_remlval { typedef T __type; };
 template<class T> struct ____INTELLISENE_remlval<T &> { typedef T __type; };
@@ -409,6 +411,7 @@ char const *__builtin_FUNCTION(void);
 
 
 typedef char *__builtin_va_list,*__gnuc_va_list;
+void __builtin_va_start(__builtin_va_list &ap, ...);
 template<class T> void __builtin_va_start(__builtin_va_list &ap, T &before_start, ...);
 void __builtin_va_end(__builtin_va_list &ap, ...);
 void __builtin_va_copy(__builtin_va_list &dst_ap, __builtin_va_list &src_ap, ...);

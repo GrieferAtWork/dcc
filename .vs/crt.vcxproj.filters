@@ -16,6 +16,12 @@
     <Filter Include="src\test">
       <UniqueIdentifier>{09f26d10-d18c-44db-b8b2-dbb6615c2a88}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\sys">
+      <UniqueIdentifier>{07cac6ef-7dea-42b2-a3ec-13b52f3a39b6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\bits">
+      <UniqueIdentifier>{24558bec-ae78-4fff-8027-b6958c8f3e74}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\lib\fixinclude\ctype.h">
@@ -112,6 +118,42 @@
       <Filter>src\libc</Filter>
     </ClInclude>
     <ClInclude Include="..\lib\include\crtdbg.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\unistd.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\sys\stat.h">
+      <Filter>include\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\sys\types.h">
+      <Filter>include\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\bits\types.h">
+      <Filter>include\bits</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\bits\stat.h">
+      <Filter>include\bits</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\direct.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\process.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\fcntl.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\malloc.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\bits\fcntl.h">
+      <Filter>include\bits</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\bits\fcntl-linux.h">
+      <Filter>include\bits</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\xlocale.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

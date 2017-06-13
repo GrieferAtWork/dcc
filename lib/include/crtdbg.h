@@ -19,11 +19,16 @@
 #pragma once
 #pragma GCC system_header
 
-#include <__stdinc.h>
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
 
 #if __has_include_next(<crtdbg.h>)
 #include_next <crtdbg.h>
 #else
+#include <__stdinc.h>
+
+__STRICT_ANSI_HEADER
 
 //_CRTDBG_MAP_ALLOC
 //defined(__CRT_MSVC)

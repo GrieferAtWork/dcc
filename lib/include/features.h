@@ -28,6 +28,8 @@
 #else
 #include <__stdinc.h>
 
+__STRICT_ANSI_HEADER
+
 /* NOTE: Most of the below is taken glibc <features.h>.
  * The below copy copyright notice can be found in the original. */
 /* Copyright (C) 1991-2016 Free Software Foundation, Inc.

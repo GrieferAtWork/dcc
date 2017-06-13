@@ -17,41 +17,35 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 #pragma once
+#pragma GCC system_header
 
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
+
+#if __has_include_next(<direct.h>)
+#include_next <direct.h>
+#else
 #include <__stdinc.h>
 
-#if __has_warning("-Wold-function-decl")
-#warning "<varargs.h> is obsolete; new code should use <stdarg.h> instead"
+#ifdef __CRT_MSVC
+#define __DIRECT_FUN(x) __asm__("_" x)
+#else
+#define __DIRECT_FUN(x)
 #endif
 
-#pragma GCC system_header
-#if __has_include_next(<varargs.h>)
-/* Many standard libraries still implement <varargs.h>, only to
- * emit a #error directive telling you that they actually don't.
- * >> But DCC _does_ implement it! - So in order to shut up
- *    #error, or #warning directives, we simply disable '-Wuser'
- *    warning (aka. warnings explicitly emit by user-code). */
-#pragma warning(push,"-Wno-user")
-#include_next <varargs.h>
-#pragma warning(pop)
+#ifndef getcwd
+#if !defined(__CRT_MSVC) || (__SIZEOF_SIZE_T__ == 4)
+__IMP __WUNUSED char *(getcwd)(char *__buf, __SIZE_TYPE__ __bufsize) __DIRECT_FUN("getcwd");
+#else
+__IMP __WUNUSED char *(__msvc_getcwd)(char *__buf, __UINT32_TYPE__ __bufsize) __DIRECT_FUN("getcwd");
+#define getcwd(buf,bufsize)  __msvc_getcwd(buf,(__UINT32_TYPE__)(bufsize))
+#endif
 #endif
 
-/* Fixed/optimized system header <varargs.h> for DCC */
+__IMP int (chdir)(char const *__path) __DIRECT_FUN("chdir");
+__IMP int (mkdir)(char const *__path) __DIRECT_FUN("mkdir");
+__IMP int (rmdir)(char const *__path) __DIRECT_FUN("rmdir");
 
-#undef va_list
-typedef __builtin_va_list va_list;
-
-/* NOTE: '__builtin_va_alist' could be refactored to anything... */
-#define va_alist     __builtin_va_alist
-#define va_dcl   int __builtin_va_alist; ...
-
-/* void va_start(va_list &ap); */
-/* void va_start(va_list &ap, type &last_argument); */
-#define va_start   __builtin_va_start
-
-/* void va_end(va_list &ap); */
-#define va_end     __builtin_va_end
-
-/* t va_arg(va_list &ap, type t); */
-#define va_arg     __builtin_va_arg
-
+#undef __DIRECT_FUN
+#endif

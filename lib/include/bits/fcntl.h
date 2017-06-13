@@ -17,41 +17,50 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 #pragma once
+#pragma GCC system_header
+
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
+
+#if __has_include_next(<bits/fcntl.h>)
+#include_next <bits/fcntl.h>
+#else /* include_next... */
 
 #include <__stdinc.h>
+#include <features.h>
+#include <bits/types.h>
 
-#if __has_warning("-Wold-function-decl")
-#warning "<varargs.h> is obsolete; new code should use <stdarg.h> instead"
+#ifdef __x86_64__
+#   define __O_LARGEFILE  0
+#   define F_GETLK64  5
+#   define F_SETLK64  6
+#   define F_SETLKW64 7
 #endif
 
-#pragma GCC system_header
-#if __has_include_next(<varargs.h>)
-/* Many standard libraries still implement <varargs.h>, only to
- * emit a #error directive telling you that they actually don't.
- * >> But DCC _does_ implement it! - So in order to shut up
- *    #error, or #warning directives, we simply disable '-Wuser'
- *    warning (aka. warnings explicitly emit by user-code). */
-#pragma warning(push,"-Wno-user")
-#include_next <varargs.h>
-#pragma warning(pop)
+struct __CRT_UNSUPPORTED_MSVC flock {
+ short int l_type;
+ short int l_whence;
+#ifndef __USE_FILE_OFFSET64
+ __off_t   l_start;
+ __off_t   l_len;
+#else
+ __off64_t l_start;
+ __off64_t l_len;
+#endif
+ __pid_t   l_pid;
+};
+
+#ifdef __USE_LARGEFILE64
+struct __CRT_UNSUPPORTED_MSVC flock64 {
+ short int l_type;
+ short int l_whence;
+ __off64_t l_start;
+ __off64_t l_len;
+ __pid_t   l_pid;
+};
 #endif
 
-/* Fixed/optimized system header <varargs.h> for DCC */
+#include <bits/fcntl-linux.h>
 
-#undef va_list
-typedef __builtin_va_list va_list;
-
-/* NOTE: '__builtin_va_alist' could be refactored to anything... */
-#define va_alist     __builtin_va_alist
-#define va_dcl   int __builtin_va_alist; ...
-
-/* void va_start(va_list &ap); */
-/* void va_start(va_list &ap, type &last_argument); */
-#define va_start   __builtin_va_start
-
-/* void va_end(va_list &ap); */
-#define va_end     __builtin_va_end
-
-/* t va_arg(va_list &ap, type t); */
-#define va_arg     __builtin_va_arg
-
+#endif /* !include_next... */

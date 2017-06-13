@@ -21,6 +21,8 @@
 
 #include <__stdinc.h>
 
+__STRICT_ANSI_HEADER
+
 #if __has_include_next(<strings.h>)
 #include_next <strings.h>
 #endif

@@ -35,7 +35,7 @@ typedef __SIZE_TYPE__ size_t;
 
 #define NULL  __NULL__
 
-__IMP void *(memcpy)(void *,void const *,size_t);
+__IMP void *(memcpy)(void *__restrict,void const *__restrict,size_t);
 __IMP void *(memmove)(void *,void const *,size_t);
 __IMP char *(strcpy)(char *,char const *);
 __IMP char *(strncpy)(char *,char const *,size_t);

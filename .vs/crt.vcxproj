@@ -33,14 +33,26 @@
     <ClInclude Include="..\lib\fixinclude\__stdinc-syntax.h" />
     <ClInclude Include="..\lib\fixinclude\__stdinc.h" />
     <ClInclude Include="..\lib\include\assert.h" />
+    <ClInclude Include="..\lib\include\bits\fcntl-linux.h" />
+    <ClInclude Include="..\lib\include\bits\fcntl.h" />
+    <ClInclude Include="..\lib\include\bits\stat.h" />
+    <ClInclude Include="..\lib\include\bits\types.h" />
     <ClInclude Include="..\lib\include\crtdbg.h" />
     <ClInclude Include="..\lib\include\ctype.h" />
+    <ClInclude Include="..\lib\include\direct.h" />
     <ClInclude Include="..\lib\include\errno.h" />
+    <ClInclude Include="..\lib\include\fcntl.h" />
     <ClInclude Include="..\lib\include\features.h" />
+    <ClInclude Include="..\lib\include\malloc.h" />
+    <ClInclude Include="..\lib\include\process.h" />
     <ClInclude Include="..\lib\include\stdio.h" />
     <ClInclude Include="..\lib\include\stdlib.h" />
     <ClInclude Include="..\lib\include\string.h" />
+    <ClInclude Include="..\lib\include\sys\stat.h" />
+    <ClInclude Include="..\lib\include\sys\types.h" />
     <ClInclude Include="..\lib\include\time.h" />
+    <ClInclude Include="..\lib\include\unistd.h" />
+    <ClInclude Include="..\lib\include\xlocale.h" />
     <ClInclude Include="..\lib\src\addr2line.h" />
     <ClInclude Include="..\lib\src\libc\common.h" />
   </ItemGroup>

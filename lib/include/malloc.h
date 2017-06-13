@@ -42,10 +42,9 @@ __IMP void (cfree)(void *__ptr)
 #endif
 ;
 
-#if defined(__CRT_GLIBC) || defined(__CRT_KOS)
-__IMP __WUNUSED void *(memalign)(__SIZE_TYPE__ __alignment, __SIZE_TYPE__ __size);
-__IMP __WUNUSED void *(valloc)(__SIZE_TYPE__ __size);
-__IMP __WUNUSED void *(pvalloc)(__SIZE_TYPE__ __size);
+__IMP __CRT_UNSUPPORTED_MSVC __WUNUSED void *(memalign)(__SIZE_TYPE__ __alignment, __SIZE_TYPE__ __size);
+__IMP __CRT_UNSUPPORTED_MSVC __WUNUSED void *(valloc)(__SIZE_TYPE__ __size);
+__IMP __CRT_UNSUPPORTED_MSVC __WUNUSED void *(pvalloc)(__SIZE_TYPE__ __size);
 
 struct mallinfo {
 	int arena;    /* non-mmapped space allocated from system */
@@ -59,8 +58,7 @@ struct mallinfo {
 	int fordblks; /* total free space */
 	int keepcost; /* top-most, releasable (via malloc_trim) space */
 };
-
-__IMP __WUNUSED struct mallinfo mallinfo (void) __THROW;
+__IMP __CRT_UNSUPPORTED_MSVC __WUNUSED struct mallinfo mallinfo(void);
 
 #ifndef M_MXFAST
 #define M_MXFAST  1    /* maximum request size for "fastbins" */
@@ -84,48 +82,31 @@ __IMP __WUNUSED struct mallinfo mallinfo (void) __THROW;
 #define M_ARENA_TEST     (-7)
 #define M_ARENA_MAX      (-8)
 
-__IMP int (mallopt)(int __param, int __val);
-__IMP int (malloc_trim)(__SIZE_TYPE__ __pad);
-__IMP __SIZE_TYPE__ (malloc_usable_size)(void *__ptr);
-__IMP void (malloc_stats)(void);
-
-#else /* __CRT_GLIBC */
-__STDLIB_UNSUPPORTED("memalign")
-__STDLIB_UNSUPPORTED("valloc")
-__STDLIB_UNSUPPORTED("pvalloc")
-__STDLIB_UNSUPPORTED("mallinfo")
 #ifdef __CRT_MSVC
-__IMP __WUNUSED __SIZE_TYPE__ (malloc_usable_size)(void *__ptr) __asm__("_msize");
-#else
-__STDLIB_UNSUPPORTED("malloc_usable_size")
-#endif
 #define mallopt(param,val) ((void)(param),(void)(val),0)
 #define malloc_trim(pad)   ((void)(pad),0)
 #define malloc_stats(pad)  ((void)0)
+#else
+__IMP int (mallopt)(int __param, int __val);
+__IMP int (malloc_trim)(__SIZE_TYPE__ __pad);
+__IMP void (malloc_stats)(void);
 #endif
 
-#if defined(__CRT_GLIBC)
-__IMP int (malloc_info)(int __options, FILE *__fp);
-__IMP __WUNUSED void *(malloc_get_state)(void);
-__IMP int (malloc_set_state)(void *__ptr);
-__IMP void (*__malloc_initialize_hook)(void);
-__IMP void (*__free_hook)(void *__ptr, const void *);
-__IMP void *(*__malloc_hook)(__SIZE_TYPE__ __size, const void *);
-__IMP void *(*__realloc_hook)(void *__ptr, __SIZE_TYPE__ __size, const void *);
-__IMP void *(*__memalign_hook)(__SIZE_TYPE__ __alignment, __SIZE_TYPE__ __size, const void *);
-__IMP void (*__after_morecore_hook)(void);
-__IMP void (__malloc_check_init)(void);
-#else /* __CRT_GLIBC */
-__STDLIB_UNSUPPORTED("malloc_info")
-__STDLIB_UNSUPPORTED("malloc_get_state")
-__STDLIB_UNSUPPORTED("malloc_set_state")
-__STDLIB_UNSUPPORTED("__malloc_initialize_hook")
-__STDLIB_UNSUPPORTED("__free_hook")
-__STDLIB_UNSUPPORTED("__malloc_hook")
-__STDLIB_UNSUPPORTED("__realloc_hook")
-__STDLIB_UNSUPPORTED("__memalign_hook")
-__STDLIB_UNSUPPORTED("__after_morecore_hook")
-__STDLIB_UNSUPPORTED("__malloc_check_init")
-#endif /* !__CRT_GLIBC */
+__IMP __WUNUSED __SIZE_TYPE__ (malloc_usable_size)(void *__ptr)
+#ifdef __CRT_MSVC
+	__asm__("_msize")
+#endif
+;
+
+__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS int (malloc_info)(int __options, FILE *__fp);
+__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS __WUNUSED void *(malloc_get_state)(void);
+__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS int (malloc_set_state)(void *__ptr);
+__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS void (*__malloc_initialize_hook)(void);
+__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS void (*__free_hook)(void *__ptr, const void *);
+__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS void *(*__malloc_hook)(__SIZE_TYPE__ __size, const void *);
+__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS void *(*__realloc_hook)(void *__ptr, __SIZE_TYPE__ __size, const void *);
+__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS void *(*__memalign_hook)(__SIZE_TYPE__ __alignment, __SIZE_TYPE__ __size, const void *);
+__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS void (*__after_morecore_hook)(void);
+__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS void (__malloc_check_init)(void);
 
 #endif

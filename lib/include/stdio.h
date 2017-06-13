@@ -36,14 +36,14 @@ typedef __SIZE_TYPE__ size_t;
 #if defined(__CRT_MSVC)
 typedef __int64 fpos_t;
 typedef struct {
-	char   *__msvcrt_ptr;
-	__int32 __msvcrt_cnt;
-	char   *__msvcrt_base;
-	__int32 __msvcrt_flag;
-	__int32 __msvcrt_file;
-	__int32 __msvcrt_charbuf;
-	__int32 __msvcrt_bufsiz;
-	char   *__msvcrt_tmpfname;
+ char   *__msvcrt_ptr;
+ __int32 __msvcrt_cnt;
+ char   *__msvcrt_base;
+ __int32 __msvcrt_flag;
+ __int32 __msvcrt_file;
+ __int32 __msvcrt_charbuf;
+ __int32 __msvcrt_bufsiz;
+ char   *__msvcrt_tmpfname;
 } FILE;
 
 #define BUFSIZ  512
@@ -80,6 +80,9 @@ FILE *stderr;
 
 __IMP int (remove)(char const *);
 __IMP int (rename)(char const *,char const *);
+
+/* TODO: unlink() and friends? */
+
 __IMP __WUNUSED FILE *(tmpfile)(void);
 __IMP char *(tmpnam)(char *);
 
@@ -103,21 +106,34 @@ __IMP int (vsprintf)(char *,char const *,__builtin_va_list);
 
 #if __STDLIB_VERSION__ >= 201112L
 #if defined(__CRT_MSVC)
-__inline__ int (vsnprintf)(char *__buf, size_t __bufsiz, char const *__format, __builtin_va_list __args) {
-	__IMP int (__msvc_vsnprintf)(char *,size_t,char const *,__builtin_va_list) __asm__("_vsnprintf");
-	__IMP int (__msvc_vscprintf)(char const *,__builtin_va_list) __asm__("_vscprintf");
-	int __result = -1;
-	if (__bufsiz) __result = __msvc_vsnprintf(__buf,__bufsiz,__format,__args);
-	if (__result < 0) __result = __msvc_vscprintf(__format,__args);
-	return __result;
-}
+__IMP int (__msvc_vsnprintf)(char *,size_t,char const *,__builtin_va_list) __asm__("_vsnprintf");
+__IMP int (__msvc_vscprintf)(char const *,__builtin_va_list) __asm__("_vscprintf");
+#define __vsnprintf(buf,bufsize,format,args) \
+ ({ int __r = -1; \
+    if ((bufsize)) { \
+     __builtin_va_list __acopy; \
+     __builtin_va_copy(__acopy,(args)); \
+     __r = __msvc_vsnprintf((buf),(bufsize),(format),__acopy); \
+     __builtin_va_end(__acopy);\
+    } \
+    if (__r < 0) __r = __msvc_vscprintf((format),(args)); \
+    __r; \
+ })
+#define vsnprintf(buf,bufsize,format,args) \
+ ({ size_t const __bsiz = (bufsize);\
+    char const *const __fmt = (format);\
+    __builtin_va_list __args = (args);\
+    __vsnprintf((buf),__bsiz,__fmt,__args);\
+ })
 __inline__ int (snprintf)(char *__buf, size_t __bufsiz, const char *__format, ...) {
-	int __result;
-	__builtin_va_list __va_list;
-	__builtin_va_start(__va_list,__format);
-	__result = (vsnprintf)(__buf,__bufsiz,__format,__va_list);
-	__builtin_va_end(__va_list);
-	return __result;
+#ifndef __INTELLISENSE__
+    int __result;
+    __builtin_va_list __va_list;
+    __builtin_va_start(__va_list,__format);
+    __result = __vsnprintf(__buf,__bufsiz,__format,__va_list);
+    __builtin_va_end(__va_list);
+    return __result;
+#endif
 }
 #else
 __IMP int (snprintf)(char *,size_t,const char *,...);
