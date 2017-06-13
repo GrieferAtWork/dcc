@@ -53,6 +53,7 @@
     <ClInclude Include="..\lib\include\stdlib.h" />
     <ClInclude Include="..\lib\include\string.h" />
     <ClInclude Include="..\lib\include\sys\dir.h" />
+    <ClInclude Include="..\lib\include\sys\fcntl.h" />
     <ClInclude Include="..\lib\include\sys\stat.h" />
     <ClInclude Include="..\lib\include\sys\types.h" />
     <ClInclude Include="..\lib\include\time.h" />

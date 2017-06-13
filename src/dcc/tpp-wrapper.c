@@ -47,6 +47,41 @@ PRIVATE void dcc_warnf(char const *fmt, ...) {
  va_end(args);
 }
 
+PRIVATE int
+print_symaddr(struct DCCSymAddr const *__restrict symaddr) {
+ char const *path;
+ struct A2lState info;
+ if (!DCCA2l_LookupAdr(&info,symaddr)) return 0;
+ path = DCCA2lState_GetPath(&info);
+ dcc_warnf(TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT
+           ? "%s%s%s(%d,%d) : %s : " : "%s%s%s:%d:%d: %s : ",
+           path ? path : "",path ? "/" : "",
+           DCCA2lState_GetFile(&info),
+           DCCA2lState_GetLine(&info),
+           DCCA2lState_GetCol(&info),
+           DCCA2lState_GetName(&info));
+ return 1;
+}
+
+PRIVATE int print_sym(struct DCCSym *sym, target_off_t offset) {
+ struct DCCSymAddr symaddr;
+ symaddr.sa_sym = sym;
+ symaddr.sa_off = offset;
+ return print_symaddr(&symaddr);
+}
+
+
+#define TPP_USERLINES \
+{\
+ struct DCCSection *sec;\
+case W_UNRESOLVED_REFERENCE: \
+ sec  = ARG(struct DCCSection *);\
+ if (!print_sym(&sec->sc_start,ARG(target_off_t))) goto default_lines;\
+ macro_name = NULL;\
+} break;\
+default_lines:;\
+
+
 DCC_DECL_END
 
 #undef CURRENT
@@ -60,20 +95,6 @@ DCC_DECL_END
 #undef TPP
 #undef pushf
 #undef popf
-
-/*
-#define TPP_USERLINES \
-{\
- struct TPPFile *fp;\
-case W_UNRESOLVED_REFERENCE: \
- fp = ARG(struct TPPFile *);\
- WARNF(TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT\
-       ? "%s(%d) : " : "%s:%d: ",\
-       TPPFile_Filename(fp,NULL),(int)ARG(line_t)+1);\
- macro_name = NULL;\
- break;\
-}
-*/
   
 
 #undef PRIVATE

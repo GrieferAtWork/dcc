@@ -286,7 +286,7 @@ DCCFUN void _DCCSym_Delete(struct DCCSym *__restrict self);
  *             The contents of 'result' are undefined in this case.
  * @return: 1: Successfully loaded the symbol, filling 'result->sa_sym' with one conforming to 'DCCSym_ISDEFINED()'.
  *             In this case, 'result->sa_off' is filled with the sum of alias offsets of all symbols. */
-DCCFUN int DCCSym_LoadAddr(struct DCCSym *__restrict self,
+DCCFUN int DCCSym_LoadAddr(struct DCCSym const *__restrict self,
                            struct DCCSymAddr *__restrict result,
                            int load_weak);
 
@@ -1017,7 +1017,7 @@ struct DCCUnit {
  struct DCCSection     *u_text;  /*< [0..1] Default section: '.text' (Used for read/execute code) */
  struct DCCSection     *u_data;  /*< [0..1] Default section: '.data' (Used for read-only data) */
  struct DCCSection     *u_bss;   /*< [0..1] Default section: '.text' (Used for read/write data) */
- struct DCCSection     *u_str;   /*< [0..1] Default section: '.str'  (Used for read-only, mergeable data) */
+ struct DCCSection     *u_str;   /*< [0..1] Default section: '.string' (Used for read-only, mergeable data) */
 #ifdef __INTELLISENSE__
  struct DCCSection     *u_dbgstr;/*< [0..1] Section used for debug strings. */
 #else
@@ -1083,6 +1083,16 @@ DCCFUN void DCCUnit_Flush(struct DCCUnit *__restrict self, uint32_t flags);
 #define DCCUNIT_FLUSHFLAG_TABMIN 0x00000010 /*< More aggressive behavior for 'DCCUNIT_FLUSHFLAG_SYMTAB': Reduce the hash size to ONE(1) (Only use this as last way out) */
 #define DCCUNIT_FLUSHFLAG_RELOCS 0x00000100 /*< Clear unused relocations. */
 
+/* Lookup a debug string at a given address.
+ * NOTE: This functions will always ensure that 'unit.u_dbgstr' is always overallocated
+ *       by at least one ZERO-byte, meaning that as long as the caller refrains from
+ *       allocating new storage to said section, the strings will remain addressable.
+ * HINT: Because the over-allocation is always performed, multiple successive
+ *       call to this function will not re-reallocate the section again.
+ * @param: addr: An offset into the 'unit.u_dbgstr' section.
+ * @return: *    : A '\0'-terminated debug string.
+ * @return: NULL : No string was found at the given address, or the address is out-of-bounds. */
+DCCFUN char *DCCUnit_DebugString(DCC(target_ptr_t) addr);
 
 
 #define DCCUNIT_POP_DISCARD_NEW 0 /* Discard the new unit and restore the old one. */
@@ -1484,6 +1494,9 @@ DCCFUN void t_write(void *p, size_t s);
 /* Define the given symbol to be located at the current text position. */
 DCCFUN void t_defsym(struct DCCSym *sym);
 
+/* Return a debug string at a given address. */
+DCCFUN char *dbgstr(target_ptr_t addr);
+
 #else
 #define unit                DCCUnit_Current
 #define t_addr              DCCUnit_TADDR()
@@ -1496,6 +1509,7 @@ DCCFUN void t_defsym(struct DCCSym *sym);
 #define t_alloc             DCCUnit_TAlloc
 #define t_write             DCCUnit_TWrite
 #define t_defsym            DCCUnit_DEFSYM
+#define dbgstr              DCCUnit_DebugString
 #endif
 #endif
 

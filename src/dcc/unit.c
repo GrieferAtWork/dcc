@@ -494,7 +494,7 @@ seterr: TPPLexer_SetErr();
 }
 
 PUBLIC int
-DCCSym_LoadAddr(struct DCCSym *__restrict self,
+DCCSym_LoadAddr(struct DCCSym const *__restrict self,
                 struct DCCSymAddr *__restrict result,
                 int load_weak) {
  assert(self);
@@ -510,7 +510,7 @@ DCCSym_LoadAddr(struct DCCSym *__restrict self,
  }
  assert(self);
  assert(self->sy_sec);
- result->sa_sym = self;
+ result->sa_sym = (struct DCCSym *)self;
  return 1;
 }
 
@@ -1102,6 +1102,7 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
    /* Unresolved weak symbols are always located at NULL. */
    if (!(iter->r_sym->sy_flags&DCC_SYMFLAG_WEAK)) {
     WARN(W_UNRESOLVED_REFERENCE,
+         self,iter->r_addr,
          iter->r_sym->sy_name,
          self->sc_start.sy_name,
          iter->r_addr);
@@ -1899,6 +1900,40 @@ DCCUnit_Flush(struct DCCUnit *__restrict self, uint32_t flags) {
   }
  }
 }
+
+PUBLIC char *
+DCCUnit_DebugString(target_ptr_t addr) {
+ struct DCCSection *sec = unit.u_dbgstr;
+ struct DCCTextBuf *text; uint8_t *result;
+ uint8_t *text_end;
+ if (!sec) sec = DCCUnit_GetSecs(A2L_STRING_SECTION);
+ if (!sec) return NULL;
+ text = sec == unit.u_curr ? &unit.u_tbuf : &sec->sc_text;
+ text_end = text->tb_end;
+ if (text_end > text->tb_max)
+     text_end = text->tb_max;
+ if (text->tb_begin == text_end) return NULL;
+ if (text_end[-1] != '\0') {
+  assert(text_end <= text->tb_end);
+  if (text_end == text->tb_end) {
+   size_t newsize = (text_end-text->tb_begin)+1;
+   result = (uint8_t *)realloc(text->tb_begin,newsize);
+   if unlikely(!result) return NULL;
+   text_end       = result+(text_end-text->tb_begin);
+   text->tb_pos   = result+(text->tb_pos-text->tb_begin);
+   text->tb_max   = result+(text->tb_max-text->tb_begin);
+   text->tb_end   = result+newsize;
+   text->tb_begin = result;
+  }
+  assert(text_end < text->tb_end);
+  *text_end = '\0';
+ }
+ result = text->tb_begin+addr;
+ if (result >= text->tb_max) return NULL;
+ if (result >= text->tb_end) result = text->tb_end;
+ return (char *)result;
+}
+
 
 PUBLIC size_t DCCUnit_ClearUnused(void) {
  struct DCCSym **piter,*iter;

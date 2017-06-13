@@ -57,32 +57,11 @@ a2l_exec1(struct A2lState *__restrict state,
  return (a2l_op_t *)code;
 }
 
+DCCFUN char const *DCCA2lState_GetPath(struct A2lState const *__restrict self);
+DCCFUN char const *DCCA2lState_GetFile(struct A2lState const *__restrict self);
+DCCFUN char const *DCCA2lState_GetName(struct A2lState const *__restrict self);
 
 #if DCC_DEBUG
-PRIVATE char *dbgstr(target_ptr_t addr) {
- char *str,*end,*sec_end,*result;
- size_t len;
- struct DCCTextBuf *text;
- struct DCCSection *sec = unit.u_dbgstr;
- if (!sec) sec = DCCUnit_GetSecs(A2L_STRING_SECTION);
- if (!sec) return NULL;
- text = sec == unit.u_curr ? &unit.u_tbuf : &sec->sc_text;
- str = (char *)(text->tb_begin+addr);
- sec_end = (char *)text->tb_max;
- if (sec_end > (char *)text->tb_end)
-     sec_end = (char *)text->tb_end;
- if (str >= sec_end) return NULL;
- end = (char *)memchr(str,'\0',(size_t)(sec_end-str));
- if (end) return str;
- len    = (size_t)(sec_end-str);
- result = (char *)malloc((len+1)*sizeof(char));
- if likely(result) {
-  memcpy(result,str,len*sizeof(char));
-  result[len] = '\0';
- }
- return result;
-}
-
 PRIVATE void
 DCCA2lChunk_AssertIntegrity(struct DCCA2lChunk *__restrict self) {
  assert(self);
@@ -133,7 +112,6 @@ DCCA2lChunk_AssertIntegrity(struct DCCA2lChunk *__restrict self) {
  }
 }
 #else
-#define dbgstr(addr)                      (char *)NULL
 #define DCCA2lChunk_AssertIntegrity(self) (void)0
 #endif
 
@@ -1151,6 +1129,58 @@ LOCAL a2l_file_t TPPFile_GetA2LFile(struct TPPFile *__restrict self) {
  return self->f_textfile.f_dbg_fileaddr-1;
 }
 
+
+PUBLIC int
+DCCA2l_LookupAdr(struct A2lState *__restrict result,
+                 struct DCCSymAddr const *__restrict adr) {
+ struct DCCSymAddr full_addr;
+ assert(result);
+ assert(adr);
+ if unlikely(!adr->sa_sym) goto fail;
+ /* Load the symbol address. (NOTE: Weak aliases are evaluated, too) */
+ if unlikely(!DCCSym_LoadAddr(adr->sa_sym,&full_addr,1)) goto fail;
+ assert(full_addr.sa_sym);
+ assert(!full_addr.sa_sym->sy_alias);
+ if unlikely(DCCSym_ISFORWARD(full_addr.sa_sym)) goto fail;
+ /* Calculate the full symbol address by adding everything together. */
+ full_addr.sa_off += adr->sa_off;
+ if (!DCCSym_ISSECTION(adr->sa_sym))
+      full_addr.sa_off += adr->sa_sym->sy_addr;
+ result->s_addr = (a2l_addr_t)full_addr.sa_off;
+ /* Lookup information about the generated A2L state in the associated section. */
+ if (DCCA2l_Lookup(&adr->sa_sym->sy_sec->sc_a2l,result)) return 1;
+fail:
+ A2lState_RESET(result);
+ return 0;
+}
+PUBLIC int
+DCCA2l_LookupSym(struct A2lState *__restrict result,
+                 struct DCCSym const *sym) {
+ struct DCCSymAddr adr;
+ adr.sa_off = 0;
+ adr.sa_sym = (struct DCCSym *)sym;
+ return DCCA2l_LookupAdr(result,&adr);
+}
+
+
+PUBLIC char const *
+DCCA2lState_GetPath(struct A2lState const *__restrict self) {
+ char const *result = dbgstr(self->s_path);
+ if (!(self->s_features&A2L_STATE_HASPATH)) result = NULL;
+ return result;
+}
+PUBLIC char const *
+DCCA2lState_GetFile(struct A2lState const *__restrict self) {
+ char const *result = dbgstr(self->s_file);
+ if (!result || !(self->s_features&A2L_STATE_HASFILE)) result = "??" "?";
+ return result;
+}
+PUBLIC char const *
+DCCA2lState_GetName(struct A2lState const *__restrict self) {
+ char const *result = dbgstr(self->s_name);
+ if (!result || !(self->s_features&A2L_STATE_HASNAME)) result = "??" "?";
+ return result;
+}
 
 
 PUBLIC void

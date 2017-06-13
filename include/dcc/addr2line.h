@@ -120,6 +120,28 @@ DCCA2l_Import(struct DCCA2l *__restrict self,
 DCCFUN int DCCA2l_Lookup(struct DCCA2l const *__restrict self,
                          struct A2lState *__restrict result);
 
+/* Lookup debug informations about the given memory locations,
+ * but behave identical to 'DCCA2l_Lookup' otherwise.
+ * NOTE: You may pass NULL for 'sym' to 'DCCA2l_LookupSym',
+ *       but the function will always fail.
+ *       The same goes for 'adr->sa_sym'.
+ * HINT: Unlike 'DCCA2l_Lookup', upon failure (return == 0),
+ *       the given A2lState 'result' will always be RESET(). */
+#define    DCCA2l_LookupLoc(result,loc) ((loc)->ml_reg == DCC_RC_CONST && DCCA2l_LookupAdr(result,&(loc)->ml_sad))
+DCCFUN int DCCA2l_LookupAdr(struct A2lState *__restrict result, struct DCCSymAddr const *__restrict adr);
+DCCFUN int DCCA2l_LookupSym(struct A2lState *__restrict result, struct DCCSym const *sym);
+
+/* Return human-readable state strings, or NULL/"???" if the strings are unknown/invalid.
+ * NOTE: Only 'DCCA2lState_GetPath' will return NULL, while the others return "???".
+ * NOTE: These functions will always ensure that 'unit.u_dbgstr' is always overallocated
+ *       by at least one ZERO-byte, meaning that as long as the caller refrains from
+ *       allocating new storage to said section, the strings will remain addressable. */
+DCCFUN char const *DCCA2lState_GetPath(struct A2lState const *__restrict self);
+DCCFUN char const *DCCA2lState_GetFile(struct A2lState const *__restrict self);
+DCCFUN char const *DCCA2lState_GetName(struct A2lState const *__restrict self);
+#define DCCA2lState_GetLine(self) ((self)->s_line+!!((self)->s_features&A2L_STATE_HASLINE))
+#define DCCA2lState_GetCol(self)  ((self)->s_col+!!((self)->s_features&A2L_STATE_HASCOL))
+
 
 /* Capture the current lexer state as an A2L state.
  * NOTE: The generated state will offset at most 'features',
