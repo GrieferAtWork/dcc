@@ -121,7 +121,7 @@ static struct DCCLibDef common_stdlib[] = {
 static struct DCCLibDef default_stdlib[] = {
 #if DCC_TARGET_OS == DCC_OS_WINDOWS || \
     DCC_TARGET_OS == DCC_OS_CYGWIN
- STDLIB(SO("msvcrt"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
+ STDLIB(SO("msvcr120"),DCC_LIBDEF_FLAG_NOSEARCHEXT),
 #endif
  {0,NULL,0,0,0,0,0,NULL},
 };
@@ -307,6 +307,7 @@ int main(int argc, char *argv[]) {
  { /* DEFAULT: Actually compile stuff. */
  default:
   load_stdlib();
+  /*dcc_dump_symbols();*/
   while (argc) {
    /* Parse the input code. */
    if (!memcmp(argv[0],"-l",2*sizeof(char)))
