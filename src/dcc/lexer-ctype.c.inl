@@ -158,7 +158,16 @@ DCCParse_CTypeNewArgumentList(struct DCCDecl *__restrict funtydecl,
     goto nextarg;
    }
    opt_firstname = DCCParse_CType(&arg_type,&arg_attr);
-   if unlikely(!opt_firstname) break;
+   if unlikely(!opt_firstname) {
+    assert(!arg_type.t_base);
+    assert(arg_type.t_type == DCCTYPE_INT);
+    if (!TPP_ISKEYWORD(TOK)) break;
+    /* Assume missing typedef. */
+    WARN(W_UNKNOWN_TYPE_IN_ARGUMENT_LIST);
+    YIELD();
+    /* Parse a regular type-suffix. */
+    opt_firstname = DCCParse_CTypeSuffix(&arg_type,&arg_attr);
+   }
    opt_firsttype = &arg_type;
    opt_firstattr = &arg_attr;
    is_first      = 0;
