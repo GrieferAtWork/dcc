@@ -31,7 +31,7 @@
 
 #undef TPP
 #define TPP   DCC
-#include DCC_TPP_FILE(tpp.h)
+#include "../../src/tpp/tpp.h"
 
 DCC_DECL_BEGIN
 

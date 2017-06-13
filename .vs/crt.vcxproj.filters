@@ -162,6 +162,15 @@
     <ClInclude Include="..\lib\include\bits\dirent.h">
       <Filter>include\bits</Filter>
     </ClInclude>
+    <ClInclude Include="..\lib\include\sys\dir.h">
+      <Filter>include\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\ar.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\elf.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\lib\src\addr2line-common.c">

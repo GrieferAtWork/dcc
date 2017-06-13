@@ -31,9 +31,9 @@
 #include <dcc/linker.h>
 
 #include "unit-import.h"
+#include "../../lib/include/ar.h"
 
 #include <string.h>
-#include <ar.h>
 
 DCC_DECL_BEGIN
 

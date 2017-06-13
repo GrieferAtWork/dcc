@@ -25,7 +25,7 @@
 #include "type.h"
 #include "vstack.h"
 #include "unit.h"
-#include "../elf.h"
+#include "../../lib/include/elf.h"
 
 #include <stddef.h>
 #include <stdint.h>

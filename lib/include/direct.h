@@ -28,6 +28,8 @@
 #else
 #include <__stdinc.h>
 
+__STRICT_ANSI_HEADER
+
 #ifdef __CRT_MSVC
 #define __DIRECT_FUN(x) __asm__("_" x)
 #else

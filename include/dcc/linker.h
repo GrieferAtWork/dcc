@@ -23,6 +23,7 @@
 #include "target.h"
 #include "stream.h"
 #include "unit.h"
+#include "../../lib/include/elf.h"
 
 DCC_DECL_BEGIN
 

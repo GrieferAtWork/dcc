@@ -27,6 +27,9 @@
 #include_next <dirent.h>
 #else
 #include <__stdinc.h>
+
+__STRICT_ANSI_HEADER
+
 #include <bits/types.h>
 
 #ifdef __USE_XOPEN

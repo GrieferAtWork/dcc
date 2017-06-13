@@ -81,8 +81,6 @@ case W_UNRESOLVED_REFERENCE: \
 #undef LOCAL
 #undef likely
 #undef unlikely
-#undef tpp
-#undef c
 
 /* Re-define all private declarations as internal,
  * so that other parts of the compiler can re-use
@@ -94,10 +92,6 @@ case W_UNRESOLVED_REFERENCE: \
 /* Custom warning print callback (used for adding colors). */
 #define TPP_WARNF  dcc_warnf
 
-#if 1
 #include "../tpp/tpp.c"
-#else
-#include DCC_TPP_FILE(tpp.c)
-#endif
 
 #endif /* !GUARD_DCC_TPP_WRAPPER_C */

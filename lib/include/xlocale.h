@@ -27,6 +27,9 @@
 #include_next <xlocale.h>
 #else
 #include <__stdinc.h>
+
+__STRICT_ANSI_HEADER
+
 #include <features.h>
 
 /* TODO */

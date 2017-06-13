@@ -28,7 +28,7 @@
 #else
 #include <__stdinc.h>
 
-#if defined(__CRT_MSVC)
+#ifdef __CRT_MSVC
 
 __IMP int *(__msvc_errno)(void) __asm__("_errno");
 #define errno   (*__msvc_errno())

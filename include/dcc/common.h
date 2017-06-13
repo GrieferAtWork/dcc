@@ -82,11 +82,6 @@
 #define DCC_DECL_END
 #endif
 
-#ifndef DCC_TPP_PATH
-/* Relative to files in this folder. */
-#define DCC_TPP_PATH  ../../src/tpp
-#endif
-
 #define DCC_PRIVATE_PP_STR(x) #x
 #define DCC_PP_STR(x)  DCC_PRIVATE_PP_STR(x)
 

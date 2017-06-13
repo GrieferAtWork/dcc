@@ -41,7 +41,7 @@
 #endif
 
 #if DCC_LIBFORMAT_ELF
-#include <elf.h>
+#include "../../lib/include/elf.h"
 #endif /* DCC_LIBFORMAT_DEF_DYNAMIC */
 
 DCC_DECL_BEGIN

@@ -27,8 +27,10 @@
 #include_next <direct.h>
 #else
 #include <__stdinc.h>
-#include <bits/types.h>
 
+__STRICT_ANSI_HEADER
+
+#include <bits/types.h>
 
 __IMP __CRT_UNSUPPORTED_GLIBC __CRT_UNSUPPORTED_KOS
 __UINTPTR_TYPE__ (_beginthread)(void (__cdecl *__entry_point)(void *),

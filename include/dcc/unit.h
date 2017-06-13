@@ -24,7 +24,7 @@
 #include "lexer.h"
 #include "stream.h"
 #include "addr2line.h"
-#include "../elf.h"
+#include "../../lib/include/elf.h"
 
 #include <stddef.h>
 #include <stdint.h>

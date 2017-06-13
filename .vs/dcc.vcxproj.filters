@@ -128,9 +128,6 @@
     <ClInclude Include="..\include\dcc\byteorder.h">
       <Filter>include\dcc</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\elf.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\dcc\unit.h">
       <Filter>include\dcc</Filter>
     </ClInclude>
@@ -166,9 +163,6 @@
     </ClInclude>
     <ClInclude Include="..\src\dcc\cmd.h">
       <Filter>src\dcc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ar.h">
-      <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\include\dcc\preprocessor.h">
       <Filter>include\dcc</Filter>

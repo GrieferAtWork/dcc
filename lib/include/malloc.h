@@ -28,6 +28,8 @@
 #else
 #include <__stdinc.h>
 
+__STRICT_ANSI_HEADER
+
 #include <features.h>
 #include <stddef.h>
 #include <stdio.h>

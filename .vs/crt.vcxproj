@@ -32,6 +32,7 @@
     <ClInclude Include="..\lib\fixinclude\wchar.h" />
     <ClInclude Include="..\lib\fixinclude\__stdinc-syntax.h" />
     <ClInclude Include="..\lib\fixinclude\__stdinc.h" />
+    <ClInclude Include="..\lib\include\ar.h" />
     <ClInclude Include="..\lib\include\assert.h" />
     <ClInclude Include="..\lib\include\bits\dirent.h" />
     <ClInclude Include="..\lib\include\bits\fcntl-linux.h" />
@@ -42,6 +43,7 @@
     <ClInclude Include="..\lib\include\ctype.h" />
     <ClInclude Include="..\lib\include\direct.h" />
     <ClInclude Include="..\lib\include\dirent.h" />
+    <ClInclude Include="..\lib\include\elf.h" />
     <ClInclude Include="..\lib\include\errno.h" />
     <ClInclude Include="..\lib\include\fcntl.h" />
     <ClInclude Include="..\lib\include\features.h" />
@@ -50,6 +52,7 @@
     <ClInclude Include="..\lib\include\stdio.h" />
     <ClInclude Include="..\lib\include\stdlib.h" />
     <ClInclude Include="..\lib\include\string.h" />
+    <ClInclude Include="..\lib\include\sys\dir.h" />
     <ClInclude Include="..\lib\include\sys\stat.h" />
     <ClInclude Include="..\lib\include\sys\types.h" />
     <ClInclude Include="..\lib\include\time.h" />
