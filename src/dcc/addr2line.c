@@ -1188,7 +1188,11 @@ DCCA2l_CaptureState(struct A2lState *__restrict result,
   struct TPPLCInfo lc_info;
   /* Lookup line/column information. */
   if (TOKEN.t_begin >= TOKEN.t_file->f_begin &&
-      TOKEN.t_begin <= TOKEN.t_file->f_end) {
+      TOKEN.t_begin <= TOKEN.t_file->f_end &&
+      /* Make sure not to use macro-locations!
+       * (Calling 'TPPFile_LCAt' while 'TOKEN' is inside of a
+       *  macro will query A2L information of the macro definition) */
+      TOKEN.t_file->f_kind == TPPFILE_KIND_TEXT) {
    TPPFile_LCAt(TOKEN.t_file,&lc_info,TOKEN.t_begin);
   } else {
    TPPLexer_LC(&lc_info);

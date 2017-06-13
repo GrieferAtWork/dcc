@@ -282,7 +282,8 @@ done_tb:
    TB_PRINT("ADDR = "),tb_printx((uintptr_t)record->ExceptionAddress),TB_PRINT("\n");
   }
  }
- return 0;
+ SetUnhandledExceptionFilter(NULL);
+ return 0xffffffff;
 }
 
 
