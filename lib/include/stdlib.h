@@ -92,13 +92,13 @@ __IMP unsigned long long (strtoull)(char const *__restrict __nptr, char **__rest
 
 #ifdef __USE_GNU
 #include <xlocale.h>
-__IMP long (strtol_l)(const char *__restrict __nptr, char **__restrict __endptr, int __base, __locale_t __loc) __LOCALE_FUNC("strtol");
-__IMP unsigned long (strtoul_l)(const char *__restrict __nptr, char **__restrict __endptr, int __base, __locale_t __loc) __LOCALE_FUNC("strtoul");
-__IMP long long (strtoll_l)(const char *__restrict __nptr, char **__restrict __endptr, int __base, __locale_t __loc) __LOCALE_FUNC("strtoll");
-__IMP unsigned long long (strtoull_l)(const char *__restrict __nptr, char **__restrict __endptr, int __base, __locale_t __loc) __LOCALE_FUNC("strtoull");
-__IMP double (strtod_l)(const char *__restrict __nptr, char **__restrict __endptr, __locale_t __loc) __LOCALE_FUNC("strtod");
-__IMP float (strtof_l)(const char *__restrict __nptr, char **__restrict __endptr, __locale_t __loc) __LOCALE_FUNC("strtof");
-__IMP long double (strtold_l)(const char *__restrict __nptr, char **__restrict __endptr, __locale_t __loc) __LOCALE_FUNC("strtold");
+__IMP long (strtol_l)(char const *__restrict __nptr, char **__restrict __endptr, int __base, __locale_t __loc) __LOCALE_FUNC("strtol");
+__IMP unsigned long (strtoul_l)(char const *__restrict __nptr, char **__restrict __endptr, int __base, __locale_t __loc) __LOCALE_FUNC("strtoul");
+__IMP long long (strtoll_l)(char const *__restrict __nptr, char **__restrict __endptr, int __base, __locale_t __loc) __LOCALE_FUNC("strtoll");
+__IMP unsigned long long (strtoull_l)(char const *__restrict __nptr, char **__restrict __endptr, int __base, __locale_t __loc) __LOCALE_FUNC("strtoull");
+__IMP double (strtod_l)(char const *__restrict __nptr, char **__restrict __endptr, __locale_t __loc) __LOCALE_FUNC("strtod");
+__IMP float (strtof_l)(char const *__restrict __nptr, char **__restrict __endptr, __locale_t __loc) __LOCALE_FUNC("strtof");
+__IMP long double (strtold_l)(char const *__restrict __nptr, char **__restrict __endptr, __locale_t __loc) __LOCALE_FUNC("strtold");
 #endif /* __USE_GNU */
 
 __IMP __WUNUSED float (atof)(char const *__nptr);
@@ -121,7 +121,7 @@ __IMP __WUNUSED long long (atoll)(char const *__restrict __nptr);
 
 #if defined(__USE_MISC) || defined(__USE_XOPEN_EXTENDED)
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS __WUNUSED char *(l64a)(long int __n);
-__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS __WUNUSED long int (a64l)(const char *__s);
+__IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS __WUNUSED long int (a64l)(char const *__s);
 #endif
 
 
@@ -245,7 +245,7 @@ __IMP _Noreturn void (_Exit)(int);
 __IMP __WUNUSED char *(getenv)(char const *);
 #ifdef __USE_GNU
 __IMP __CRT_WORKAROUND_MSVC __CRT_WORKAROUND_KOS
-__WUNUSED char *(secure_getenv)(const char *__name)
+__WUNUSED char *(secure_getenv)(char const *__name)
 #if defined(__CRT_MSVC) || defined(__CRT_KOS)
     __asm__("getenv")
 #endif
@@ -262,7 +262,7 @@ __IMP int (putenv)(char *__string)
 
 #ifdef __USE_XOPEN2K
 #ifdef __CRT_MSVC
-__IMP __CRT_WORKAROUND_MSVC int (__msvc_setenv)(const char *__name, const char *__value) __asm__("_putenv_s");
+__IMP __CRT_WORKAROUND_MSVC int (__msvc_setenv)(char const *__name, char const *__value) __asm__("_putenv_s");
 #define setenv(name,value,replace) \
   ((replace) ? __msvc_setenv((name),(value)) : __extension__({ \
     register char const *__n = (name); \
@@ -271,8 +271,8 @@ __IMP __CRT_WORKAROUND_MSVC int (__msvc_setenv)(const char *__name, const char *
   }))
 #define unsetenv(name) __msvc_setenv((name),"")
 #else
-__IMP int (setenv)(const char *__name, const char *__value, int __replace);
-extern int (unsetenv)(const char *__name);
+__IMP int (setenv)(char const *__name, char const *__value, int __replace);
+extern int (unsetenv)(char const *__name);
 #endif
 #endif
 
@@ -346,12 +346,12 @@ __IMP int (system)(char const *);
 
 #ifdef __USE_GNU
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS
-__WUNUSED char *(canonicalize_file_name)(const char *__name);
+__WUNUSED char *(canonicalize_file_name)(char const *__name);
 #endif
 
 #if defined __USE_MISC || defined __USE_XOPEN_EXTENDED
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS
-__WUNUSED char *(realpath)(const char *__restrict __name,
+__WUNUSED char *(realpath)(char const *__restrict __name,
                            char *__restrict __resolved);
 #endif
 
@@ -470,7 +470,7 @@ __IMP size_t (wcstombs)(char *__restrict __s, __WCHAR_TYPE__ const *__restrict _
 
 #ifdef __USE_MISC
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS
-__WUNUSED int (rpmatch)(const char *__response);
+__WUNUSED int (rpmatch)(char const *__response);
 #endif
 
 #if defined(__USE_XOPEN_EXTENDED) || defined(__USE_XOPEN2K8)
@@ -482,7 +482,7 @@ __WUNUSED int (getsubopt)(char **__restrict __optionp,
 
 #ifdef __USE_XOPEN
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS
-void (setkey)(const char *__key);
+void (setkey)(char const *__key);
 #endif
 
 #ifdef __USE_XOPEN2KXSI

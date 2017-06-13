@@ -98,42 +98,42 @@ __IMP int (__cdecl _CrtSetReportHook2)(int __mode, _CRT_REPORT_HOOK __pfnnewhook
 __IMP int (__cdecl _CrtSetReportHookW2)(int __mode, _CRT_REPORT_HOOKW __pfnnewhook);
 __IMP int (__cdecl _CrtSetReportMode)(int __reporttype, int __reportmode);
 __IMP _HFILE (__cdecl _CrtSetReportFile)(int __reporttype, _HFILE __reportfile);
-__IMP int (__cdecl _CrtDbgReport)(int __reporttype, const char *__filename, int __linenumber, const char *__modulename, const char *__format, ...);
+__IMP int (__cdecl _CrtDbgReport)(int __reporttype, char const *__filename, int __linenumber, char const *__modulename, char const *__format, ...);
 __IMP __SIZE_TYPE__ (__cdecl _CrtSetDebugFillThreshold)(__SIZE_TYPE__ __newdebugfillthreshold);
 __IMP int (__cdecl _CrtDbgReportW)(int __reporttype, const __WCHAR_TYPE__ *__filename, int __linenumber, const __WCHAR_TYPE__ *__modulename, const __WCHAR_TYPE__ *__format, ...);
 
 __IMP extern __MS_LONG _crtBreakAlloc;
 __IMP __MS_LONG (__cdecl _CrtSetBreakAlloc)(__MS_LONG __breakalloc);
 
-__IMP __WUNUSED void *(__cdecl _malloc_dbg)(__SIZE_TYPE__ __size, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED void *(__cdecl _calloc_dbg)(__SIZE_TYPE__ __count, __SIZE_TYPE__ __size, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED void *(__cdecl _realloc_dbg)(void *__memory, __SIZE_TYPE__ __newsize, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED void *(__cdecl _recalloc_dbg)(void *__memory, __SIZE_TYPE__ __numofelements, __SIZE_TYPE__ __sizeofelements, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED void *(__cdecl _expand_dbg)(void *__memory, __SIZE_TYPE__ __newsize, int __blocktype, const char *__filename, int __linenumber);
+__IMP __WUNUSED void *(__cdecl _malloc_dbg)(__SIZE_TYPE__ __size, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED void *(__cdecl _calloc_dbg)(__SIZE_TYPE__ __count, __SIZE_TYPE__ __size, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED void *(__cdecl _realloc_dbg)(void *__memory, __SIZE_TYPE__ __newsize, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED void *(__cdecl _recalloc_dbg)(void *__memory, __SIZE_TYPE__ __numofelements, __SIZE_TYPE__ __sizeofelements, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED void *(__cdecl _expand_dbg)(void *__memory, __SIZE_TYPE__ __newsize, int __blocktype, char const *__filename, int __linenumber);
 __IMP void (__cdecl _free_dbg)(void *__memory, int __blocktype);
 __IMP __SIZE_TYPE__ (__cdecl _msize_dbg)(void *__memory, int __blocktype);
 __IMP __SIZE_TYPE__ (__cdecl _aligned_msize_dbg)(void *__memory, __SIZE_TYPE__ __alignment, __SIZE_TYPE__ __offset);
-__IMP __WUNUSED void *(__cdecl _aligned_malloc_dbg)(__SIZE_TYPE__ __size, __SIZE_TYPE__ __alignment, const char *__filename, int __linenumber);
-__IMP __WUNUSED void *(__cdecl _aligned_realloc_dbg)(void *__memory, __SIZE_TYPE__ __newsize, __SIZE_TYPE__ __alignment, const char *__filename, int __linenumber);
-__IMP __WUNUSED void *(__cdecl _aligned_recalloc_dbg)(void *__memory, __SIZE_TYPE__ __numofelements, __SIZE_TYPE__ __sizeofelements, __SIZE_TYPE__ __alignment, const char *__filename, int __linenumber);
-__IMP __WUNUSED void *(__cdecl _aligned_offset_malloc_dbg)(__SIZE_TYPE__ __size, __SIZE_TYPE__ __alignment, __SIZE_TYPE__ __offset, const char *__filename, int __linenumber);
-__IMP __WUNUSED void *(__cdecl _aligned_offset_realloc_dbg)(void *__memory, __SIZE_TYPE__ __newsize, __SIZE_TYPE__ __alignment, __SIZE_TYPE__ __offset, const char *__filename, int __linenumber);
-__IMP __WUNUSED void *(__cdecl _aligned_offset_recalloc_dbg)(void *__memory, __SIZE_TYPE__ __numofelements, __SIZE_TYPE__ __sizeofelements, __SIZE_TYPE__ __alignment, __SIZE_TYPE__ __offset, const char *__filename, int __linenumber);
+__IMP __WUNUSED void *(__cdecl _aligned_malloc_dbg)(__SIZE_TYPE__ __size, __SIZE_TYPE__ __alignment, char const *__filename, int __linenumber);
+__IMP __WUNUSED void *(__cdecl _aligned_realloc_dbg)(void *__memory, __SIZE_TYPE__ __newsize, __SIZE_TYPE__ __alignment, char const *__filename, int __linenumber);
+__IMP __WUNUSED void *(__cdecl _aligned_recalloc_dbg)(void *__memory, __SIZE_TYPE__ __numofelements, __SIZE_TYPE__ __sizeofelements, __SIZE_TYPE__ __alignment, char const *__filename, int __linenumber);
+__IMP __WUNUSED void *(__cdecl _aligned_offset_malloc_dbg)(__SIZE_TYPE__ __size, __SIZE_TYPE__ __alignment, __SIZE_TYPE__ __offset, char const *__filename, int __linenumber);
+__IMP __WUNUSED void *(__cdecl _aligned_offset_realloc_dbg)(void *__memory, __SIZE_TYPE__ __newsize, __SIZE_TYPE__ __alignment, __SIZE_TYPE__ __offset, char const *__filename, int __linenumber);
+__IMP __WUNUSED void *(__cdecl _aligned_offset_recalloc_dbg)(void *__memory, __SIZE_TYPE__ __numofelements, __SIZE_TYPE__ __sizeofelements, __SIZE_TYPE__ __alignment, __SIZE_TYPE__ __offset, char const *__filename, int __linenumber);
 __IMP void (__cdecl _aligned_free_dbg)(void *__memory);
-__IMP __WUNUSED char *(__cdecl _strdup_dbg)(const char *__str, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wcsdup_dbg)(const __WCHAR_TYPE__ *__str, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED char *(__cdecl _tempnam_dbg)(const char *__dirname, const char *__fileprefix, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wtempnam_dbg)(const __WCHAR_TYPE__ *__dirname, const __WCHAR_TYPE__ *__fileprefix, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED char *(__cdecl _fullpath_dbg)(char * __fullpath, const char *__path, __SIZE_TYPE__ __sizeinbytes, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wfullpath_dbg)(__WCHAR_TYPE__ * __fullpath, const __WCHAR_TYPE__ *__path, __SIZE_TYPE__ _SizeInWords, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED char *(__cdecl _getcwd_dbg)(char *__dstbuf, int __sizeinbytes, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wgetcwd_dbg)(__WCHAR_TYPE__ *__dstbuf, int _SizeInWords, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED char *(__cdecl _getdcwd_dbg)(int __drive, char *__dstbuf, int __sizeinbytes, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wgetdcwd_dbg)(int __drive, __WCHAR_TYPE__ *__dstbuf, int _SizeInWords, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED char *(__cdecl _getdcwd_lk_dbg)(int __drive, char *__dstbuf, int __sizeinbytes, int __blocktype, const char *__filename, int __linenumber);
-__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wgetdcwd_lk_dbg)(int __drive, __WCHAR_TYPE__ *__dstbuf, int _SizeInWords, int __blocktype, const char *__filename, int __linenumber);
-__IMP /*errno_t*/int (__cdecl _dupenv_s_dbg)(char **__pbuffer, __SIZE_TYPE__ *__pbuffersizeinbytes, const char *__varname, int __blocktype, const char *__filename, int __linenumber);
-__IMP /*errno_t*/int (__cdecl _wdupenv_s_dbg)(__WCHAR_TYPE__ **__pbuffer, __SIZE_TYPE__ *__pbuffersizeinwords, const __WCHAR_TYPE__ *__varname, int __blocktype, const char *__filename, int __linenumber);
+__IMP __WUNUSED char *(__cdecl _strdup_dbg)(char const *__str, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wcsdup_dbg)(const __WCHAR_TYPE__ *__str, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED char *(__cdecl _tempnam_dbg)(char const *__dirname, char const *__fileprefix, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wtempnam_dbg)(const __WCHAR_TYPE__ *__dirname, const __WCHAR_TYPE__ *__fileprefix, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED char *(__cdecl _fullpath_dbg)(char * __fullpath, char const *__path, __SIZE_TYPE__ __sizeinbytes, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wfullpath_dbg)(__WCHAR_TYPE__ * __fullpath, const __WCHAR_TYPE__ *__path, __SIZE_TYPE__ _SizeInWords, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED char *(__cdecl _getcwd_dbg)(char *__dstbuf, int __sizeinbytes, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wgetcwd_dbg)(__WCHAR_TYPE__ *__dstbuf, int _SizeInWords, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED char *(__cdecl _getdcwd_dbg)(int __drive, char *__dstbuf, int __sizeinbytes, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wgetdcwd_dbg)(int __drive, __WCHAR_TYPE__ *__dstbuf, int _SizeInWords, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED char *(__cdecl _getdcwd_lk_dbg)(int __drive, char *__dstbuf, int __sizeinbytes, int __blocktype, char const *__filename, int __linenumber);
+__IMP __WUNUSED __WCHAR_TYPE__ *(__cdecl _wgetdcwd_lk_dbg)(int __drive, __WCHAR_TYPE__ *__dstbuf, int _SizeInWords, int __blocktype, char const *__filename, int __linenumber);
+__IMP /*errno_t*/int (__cdecl _dupenv_s_dbg)(char **__pbuffer, __SIZE_TYPE__ *__pbuffersizeinbytes, char const *__varname, int __blocktype, char const *__filename, int __linenumber);
+__IMP /*errno_t*/int (__cdecl _wdupenv_s_dbg)(__WCHAR_TYPE__ **__pbuffer, __SIZE_TYPE__ *__pbuffersizeinwords, const __WCHAR_TYPE__ *__varname, int __blocktype, char const *__filename, int __linenumber);
 #define _malloca_dbg _malloc_dbg
 #define _freea_dbg   _free_dbg
 

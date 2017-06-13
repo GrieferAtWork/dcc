@@ -845,8 +845,8 @@ PRIVATE void elf_mk_reladj(void) {
    /* Adjust the relocation address from section-relative to image-relative.
     * WARNING: This can only be done after virtual addresses have been generated.
     * NOTE: Relocations with a symbol index of '0' are what used to be anonymous symbols:
-    *    >>        const char *public_symbol = "foobar";
-    *    >> static const char *static_symbol = "foobar";
+    *    >>        char const *public_symbol = "foobar";
+    *    >> static char const *static_symbol = "foobar";
     *    >> 
     *    >> int main() {
     *    >>     char *a = public_symbol; // R_386_32: 'a'

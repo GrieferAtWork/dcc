@@ -127,7 +127,7 @@ __IMP int (__msvc_vscprintf)(char const *,__builtin_va_list) __asm__("_vscprintf
   __builtin_va_list __args = (#!args);\
   __vsnprintf((#!buf),__bsiz,__fmt,__args);\
  })
-__inline__ int (snprintf)(char *__buf, size_t __bufsiz, const char *__format, ...) {
+__inline__ int (snprintf)(char *__buf, size_t __bufsiz, char const *__format, ...) {
  int __result;
  __builtin_va_list __va_list;
  __builtin_va_start(__va_list,__format);
@@ -136,7 +136,7 @@ __inline__ int (snprintf)(char *__buf, size_t __bufsiz, const char *__format, ..
  return __result;
 }
 #else
-__IMP int (snprintf)(char *,size_t,const char *,...);
+__IMP int (snprintf)(char *,size_t,char const *,...);
 __IMP int (vsnprintf)(char *,size_t,char const *,__builtin_va_list);
 #endif
 __IMP int (vfscanf)(FILE *,char const *,__builtin_va_list);

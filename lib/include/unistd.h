@@ -441,7 +441,7 @@ __IMP __CRT_UNSUPPORTED_MSVC extern int (optind) __UNISTD_FUN("optind");
 __IMP __CRT_UNSUPPORTED_MSVC extern int (opterr) __UNISTD_FUN("opterr");
 __IMP __CRT_UNSUPPORTED_MSVC extern int (optopt) __UNISTD_FUN("optopt");
 #pragma pop_macro("optarg","optind","opterr","optopt")
-__IMP __CRT_UNSUPPORTED_MSVC int (getopt)(int ___argc, char *const *___argv, const char *__shortopts)
+__IMP __CRT_UNSUPPORTED_MSVC int (getopt)(int ___argc, char *const *___argv, char const *__shortopts)
 #ifdef __CRT_GLIBC
     __asm__("__posix_getopt")
 #endif

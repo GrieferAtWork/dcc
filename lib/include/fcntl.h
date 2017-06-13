@@ -121,7 +121,7 @@ struct timespec {
 
 __IMP __CRT_UNSUPPORTED_MSVC int (fcntl)(int __fd, int __cmd, ...);
 
-__IMP __WUNUSED int (open)(const char *__file, int __oflag, ...)
+__IMP __WUNUSED int (open)(char const *__file, int __oflag, ...)
 #ifdef __CRT_MSVC
     __asm__("_open")
 #elif defined(__USE_FILE_OFFSET64) && !defined(__CRT_KOS)
@@ -132,7 +132,7 @@ __IMP __WUNUSED int (open)(const char *__file, int __oflag, ...)
 ;
 
 #ifdef __USE_LARGEFILE64
-__IMP __WUNUSED int (open64)(const char *__file, int __oflag, ...)
+__IMP __WUNUSED int (open64)(char const *__file, int __oflag, ...)
 #ifdef __CRT_MSVC
     __asm__("_open")
 #elif defined(__CRT_KOS)
@@ -145,7 +145,7 @@ __IMP __WUNUSED int (open64)(const char *__file, int __oflag, ...)
 
 #ifdef __USE_ATFILE
 __IMP __WUNUSED __CRT_UNSUPPORTED_MSVC
-int (openat)(int __fd, const char *__file, int __oflag, ...)
+int (openat)(int __fd, char const *__file, int __oflag, ...)
 #if defined(__USE_FILE_OFFSET64) && !defined(__CRT_KOS)
     __FCNTL_FUN("openat64")
 #else
@@ -154,7 +154,7 @@ int (openat)(int __fd, const char *__file, int __oflag, ...)
 ;
 #ifdef __USE_LARGEFILE64
 __IMP __WUNUSED __CRT_UNSUPPORTED_MSVC
-int (openat64)(int __fd, const char *__file, int __oflag, ...)
+int (openat64)(int __fd, char const *__file, int __oflag, ...)
 #ifdef __CRT_KOS
     __FCNTL_FUN("openat")
 #endif
@@ -163,7 +163,7 @@ int (openat64)(int __fd, const char *__file, int __oflag, ...)
 #endif
 #endif
 
-__IMP __WUNUSED int (creat)(const char *__file, mode_t __mode)
+__IMP __WUNUSED int (creat)(char const *__file, mode_t __mode)
 #ifdef __CRT_MSVC
     __asm__("_creat")
 #elif defined(__USE_FILE_OFFSET64) && !defined(__CRT_KOS)
@@ -172,7 +172,7 @@ __IMP __WUNUSED int (creat)(const char *__file, mode_t __mode)
 ;
 
 #ifdef __USE_LARGEFILE64
-__IMP __WUNUSED int (creat64)(const char *__file, mode_t __mode)
+__IMP __WUNUSED int (creat64)(char const *__file, mode_t __mode)
 #ifdef __CRT_MSVC
     __asm__("_creat")
 #elif defined(__CRT_KOS)

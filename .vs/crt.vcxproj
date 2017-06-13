@@ -33,6 +33,7 @@
     <ClInclude Include="..\lib\fixinclude\__stdinc-syntax.h" />
     <ClInclude Include="..\lib\fixinclude\__stdinc.h" />
     <ClInclude Include="..\lib\include\assert.h" />
+    <ClInclude Include="..\lib\include\bits\dirent.h" />
     <ClInclude Include="..\lib\include\bits\fcntl-linux.h" />
     <ClInclude Include="..\lib\include\bits\fcntl.h" />
     <ClInclude Include="..\lib\include\bits\stat.h" />

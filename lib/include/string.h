@@ -63,7 +63,7 @@ __IMP __WUNUSED char *(strerror)(int);
 __IMP __WUNUSED size_t (strlen)(char const *);
 
 #ifdef __USE_XOPEN2K8
-__IMP __WUNUSED size_t (strnlen)(const char *,size_t);
+__IMP __WUNUSED size_t (strnlen)(char const *,size_t);
 #endif
 
 #if defined(__USE_GNU) || defined(__USE_DCC)
@@ -99,7 +99,7 @@ __IMP __WUNUSED char *(strdup)(char const *)
 
 #ifdef __USE_XOPEN2K8
 #if defined(__CRT_GLIBC)
-__IMP __WUNUSED char *(strndup)(const char *,size_t);
+__IMP __WUNUSED char *(strndup)(char const *,size_t);
 #else
 __STDLIB_UNSUPPORTED("strndup")
 #endif
@@ -160,14 +160,14 @@ __IMP __WUNUSED void *(umemlen)(const void *,int)
 #ifdef __USE_GNU
 #define strdupa(s) \
 (__extension__({\
-	const char *const __old = (s);\
+	char const *const __old = (s);\
 	size_t const __len = __builtin_strlen(__old)+1;\
 	char *const __new = (char *)__builtin_alloca(__len);\
 	(char *)memcpy(__new,__old,__len);\
 }))
 #define strndupa(s,n) \
 (__extension__({\
-	const char *const __old = (s);\
+	char const *const __old = (s);\
 	size_t const __len = __builtin_strnlen(__old,(n));\
 	char *const __new = (char *)__builtin_alloca(__len+1);\
 	__new[__len] = '\0';\
