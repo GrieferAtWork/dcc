@@ -43,7 +43,7 @@ __IMP __WUNUSED int (___mb_cur_max_func)(void);
 #define	MB_CUR_MAX	   (__ctype_get_mb_cur_max())
 __IMP __WUNUSED size_t (__ctype_get_mb_cur_max)(void);
 #else
-#   define MB_CUR_MAX 8 /* ??? */
+#	define MB_CUR_MAX 8 /* ??? */
 #endif
 
 #pragma push_macro(undef,"quot","rem")
@@ -57,7 +57,6 @@ typedef struct { long long quot,rem; } lldiv_t;
 #endif
 #pragma pop_macro("quot","rem")
 
-
 __IMP __WUNUSED double (strtod)(char const *__restrict __nptr, char **__restrict __endptr);
 __IMP __WUNUSED long (strtol)(char const *__restrict __nptr, char **__restrict __endptr, int __base);
 __IMP __WUNUSED unsigned long (strtoul)(char const *__restrict __nptr, char **__restrict __endptr, int __base);
@@ -66,13 +65,13 @@ __IMP __WUNUSED unsigned long (strtoul)(char const *__restrict __nptr, char **__
 __IMP __WUNUSED long long (strtoq)(char const *__restrict __nptr,
                                    char **__restrict __endptr, int __base)
 #if defined(__CRT_MSVC) || defined(__CRT_KOS)
-    __asm__("strtoll")
+	__asm__("strtoll")
 #endif
 ;
 __IMP __WUNUSED unsigned long long (strtouq)(char const *__restrict __nptr,
                                              char **__restrict __endptr, int __base)
 #if defined(__CRT_MSVC) || defined(__CRT_KOS)
-    __asm__("strtoull")
+	__asm__("strtoull")
 #endif
 ;
 #endif /* __USE_MISC */
@@ -85,9 +84,9 @@ __IMP unsigned long long (strtoull)(char const *__restrict __nptr, char **__rest
 #endif /* __USE_ISOC99 */
 
 #ifdef __CRT_MSVC
-#define __LOCALE_FUNC(x) __asm__("_" x "_l")
+#	define __LOCALE_FUNC(x) __asm__("_" x "_l")
 #else
-#define __LOCALE_FUNC(x) __asm__(x "_l")
+#	define __LOCALE_FUNC(x) __asm__(x "_l")
 #endif
 
 #ifdef __USE_GNU
@@ -101,6 +100,8 @@ __IMP float (strtof_l)(char const *__restrict __nptr, char **__restrict __endptr
 __IMP long double (strtold_l)(char const *__restrict __nptr, char **__restrict __endptr, __locale_t __loc) __LOCALE_FUNC("strtold");
 #endif /* __USE_GNU */
 
+#undef __LOCALE_FUNC
+
 __IMP __WUNUSED float (atof)(char const *__nptr);
 __IMP __WUNUSED int (atoi)(char const *__nptr);
 __IMP __WUNUSED long (atol)(char const *__nptr);
@@ -109,13 +110,13 @@ __IMP __WUNUSED long long (atoll)(char const *__restrict __nptr);
 #endif
 
 #ifndef __INTELLISENSE__
-#define atof(nptr)  strtod(nptr,(char **)0)
+#	define atof(nptr)  strtod(nptr,(char **)0)
 #if __SIZEOF_INT__ == __SIZEOF_LONG__
-#define atoi(nptr) (int)strtol(nptr,(char **)0,10)
+#	define atoi(nptr) (int)strtol(nptr,(char **)0,10)
 #endif /* __SIZEOF_INT__ == __SIZEOF_LONG__ */
-#define atol(nptr)  strtol(nptr,(char **)0,10)
+#	define atol(nptr)  strtol(nptr,(char **)0,10)
 #ifdef __USE_ISOC99
-#define atoll(nptr) strtoll(nptr,(char **)0,10)
+#	define atoll(nptr) strtoll(nptr,(char **)0,10)
 #endif /* __USE_ISOC99 */
 #endif
 
@@ -132,14 +133,14 @@ __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS char *(initstate)(unsigned in
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS char *(setstate)(char *__statebuf);
 
 #ifdef __USE_MISC
-struct random_data {
- __INT32_TYPE__ *fptr;
- __INT32_TYPE__ *rptr;
- __INT32_TYPE__ *state;
- int             rand_type;
- int             rand_deg;
- int             rand_sep;
- __INT32_TYPE__ *end_ptr;
+struct __CRT_UNSUPPORTED_MSVC random_data {
+	__INT32_TYPE__ *fptr;
+	__INT32_TYPE__ *rptr;
+	__INT32_TYPE__ *state;
+	int             rand_type;
+	int             rand_deg;
+	int             rand_sep;
+	__INT32_TYPE__ *end_ptr;
 };
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS int (random_r)(struct random_data *__restrict __buf, __INT32_TYPE__ *__restrict __result);
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS int (srandom_r)(unsigned int __seed, struct random_data *__buf);
@@ -152,21 +153,21 @@ __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS int (setstate_r)(char *__rest
 __IMP int (srand)(unsigned int);
 #ifdef __CRT_MSVC
 __IMP __WUNUSED int (rand)(void);
-#   define RAND_MAX  32767
+#	define RAND_MAX  32767
 #elif defined(__CRT_GLIBC)
 __IMP __WUNUSED int (rand)(void);
-#   define RAND_MAX  2147483647
+#	define RAND_MAX  2147483647
 #else
 __IMP __WUNUSED int (__libc_rand)(void) __asm__("rand");
-#   define RAND_MAX  32767
-#   define rand()   (__libc_rand() % RAND_MAX)
+#	define RAND_MAX  32767
+#	define rand()   (__libc_rand() % RAND_MAX)
 #endif
 
 #ifdef __USE_POSIX
 /* Reentrant interface according to POSIX.1.  */
 __IMP __CRT_UNSUPPORTED_KOS __WUNUSED int (rand_r)(unsigned int *__seed)
 #ifdef __CRT_MSVC
-    __asm__("rand_s")
+	__asm__("rand_s")
 #endif
 ;
 #endif
@@ -183,11 +184,11 @@ __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS unsigned short int *(seed48)(
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS void (lcong48)(unsigned short int __param[7]);
 #ifdef __USE_MISC
 struct drand48_data {
- unsigned short     __x[3];
- unsigned short     __old_x[3];
- unsigned short     __c;
- unsigned short     __init;
- unsigned long long __a;
+	unsigned short     __x[3];
+	unsigned short     __old_x[3];
+	unsigned short     __c;
+	unsigned short     __init;
+	unsigned long long __a;
 };
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS int (drand48_r)(struct drand48_data *__restrict __buffer, double *__restrict __result);
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS int (erand48_r)(unsigned short int __xsubi[3], struct drand48_data *__restrict __buffer, double *__restrict __result);
@@ -209,7 +210,7 @@ __IMP void (free)(void *__ptr);
 #ifdef	__USE_MISC
 __IMP void (cfree)(void *__ptr)
 #ifdef __CRT_MSVC
-    __asm__("free")
+	__asm__("free")
 #endif
 ;
 #include <alloca.h>
@@ -247,7 +248,7 @@ __IMP __WUNUSED char *(getenv)(char const *);
 __IMP __CRT_WORKAROUND_MSVC __CRT_WORKAROUND_KOS
 __WUNUSED char *(secure_getenv)(char const *__name)
 #if defined(__CRT_MSVC) || defined(__CRT_KOS)
-    __asm__("getenv")
+	__asm__("getenv")
 #endif
 ;
 #endif
@@ -255,7 +256,7 @@ __WUNUSED char *(secure_getenv)(char const *__name)
 #if defined(__USE_MISC) || defined(__USE_XOPEN)
 __IMP int (putenv)(char *__string)
 #ifdef __CRT_MSVC
-    __asm__("_putenv")
+	__asm__("_putenv")
 #endif
 ;
 #endif
@@ -264,11 +265,11 @@ __IMP int (putenv)(char *__string)
 #ifdef __CRT_MSVC
 __IMP __CRT_WORKAROUND_MSVC int (__msvc_setenv)(char const *__name, char const *__value) __asm__("_putenv_s");
 #define setenv(name,value,replace) \
-  ((replace) ? __msvc_setenv((name),(value)) : __extension__({ \
-    register char const *__n = (name); \
-    register char *__o = getenv(__n); \
-    !__o || !*__o ? __msvc_setenv(__n,(value)) : ((void)(value),0); \
-  }))
+	((replace) ? __msvc_setenv((name),(value)) : __extension__({ \
+		register char const *__n = (name); \
+		register char *__o = getenv(__n); \
+		!__o || !*__o ? __msvc_setenv(__n,(value)) : ((void)(value),0); \
+	}))
 #define unsetenv(name) __msvc_setenv((name),"")
 #else
 __IMP int (setenv)(char const *__name, char const *__value, int __replace);
@@ -284,7 +285,7 @@ __IMP __CRT_UNSUPPORTED_MSVC int (clearenv)(void);
    (defined(__USE_XOPEN_EXTENDED) && !defined(__USE_XOPEN2K8))
 __IMP char *(mktemp)(char *__template)
 #ifdef __CRT_MSVC
-    __asm__("_mktemp")
+	__asm__("_mktemp")
 #endif
 ;
 #endif
@@ -293,7 +294,7 @@ __IMP char *(mktemp)(char *__template)
 __IMP __CRT_WORKAROUND_MSVC __CRT_UNSUPPORTED_KOS
 __WUNUSED int (mkstemp)(char *__template)
 #ifdef __USE_FILE_OFFSET64
-    __asm__("mkstemp64")
+	__asm__("mkstemp64")
 #endif
 ;
 #ifdef __USE_LARGEFILE64
@@ -306,7 +307,7 @@ __WUNUSED int (mkstemp64)(char *__template);
 __IMP __CRT_WORKAROUND_MSVC __CRT_UNSUPPORTED_KOS
 __WUNUSED int (mkstemps)(char *__template, int __suffixlen)
 #ifdef __USE_FILE_OFFSET64
-    __asm__("mkstemps64")
+	__asm__("mkstemps64")
 #endif
 ;
 #ifdef __USE_LARGEFILE64
@@ -323,7 +324,7 @@ __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS char *(mkdtemp)(char *__templ
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS
 __WUNUSED int (mkostemp)(char *__template, int __flags)
 #ifndef __USE_FILE_OFFSET64
-    __asm__("mkostemp64")
+	__asm__("mkostemp64")
 #endif
 ;
 #ifdef __USE_LARGEFILE64
@@ -333,7 +334,7 @@ __WUNUSED int (mkostemp64)(char *__template, int __flags);
 __IMP __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED_KOS
 __WUNUSED int (mkostemps)(char *__template, int __suffixlen, int __flags)
 #ifdef __USE_FILE_OFFSET64
-    __asm__("mkostemps64")
+	__asm__("mkostemps64")
 #endif
 ;
 #ifdef __USE_LARGEFILE64
@@ -360,7 +361,7 @@ __WUNUSED char *(realpath)(char const *__restrict __name,
 #define __COMPAR_FN_T
 typedef int (*__compar_fn_t)(const void *, const void *);
 #endif
-#ifdef	__USE_GNU
+#ifdef __USE_GNU
 typedef __compar_fn_t comparison_fn_t;
 #endif
 #ifdef __USE_GNU
@@ -373,7 +374,7 @@ __IMP __WUNUSED void *(bsearch)(const void *__key, const void *__base,
 
 #if defined(__USE_EXTERN_INLINES) && \
     __has_include(<bits/stdlib-bsearch.h>)
-#include <bits/stdlib-bsearch.h>
+#	include <bits/stdlib-bsearch.h>
 #endif
 
 __IMP void (qsort)(void *__base, size_t __nmemb,
@@ -382,7 +383,7 @@ __IMP void (qsort)(void *__base, size_t __nmemb,
 __IMP void (qsort_r)(void *__base, size_t __nmemb, size_t __size,
                      __compar_d_fn_t __compar, void *__arg)
 #ifdef __CRT_MSVC
-    __asm__("qsort_s")
+	__asm__("qsort_s")
 #endif
 ;
 #endif /* __USE_GNU */
@@ -404,19 +405,19 @@ __IMP __WUNUSED lldiv_t (lldiv)(long long __numer, long long __denom);
 __IMP __WUNUSED __CRT_UNSUPPORTED_KOS
 char *(ecvt)(double __value, int __ndigit, int *__restrict __decpt, int *__restrict __sign)
 #ifdef __CRT_MSVC
-    __asm__("_ecvt")
+	__asm__("_ecvt")
 #endif
 ;
 __IMP __WUNUSED __CRT_UNSUPPORTED_KOS
 char *(fcvt)(double __value, int __ndigit, int *__restrict __decpt, int *__restrict __sign)
 #ifdef __CRT_MSVC
-    __asm__("_fcvt")
+	__asm__("_fcvt")
 #endif
 ;
 __IMP __WUNUSED __CRT_UNSUPPORTED_KOS
 char *(gcvt)(double __value, int __ndigit, char *__buf)
 #ifdef __CRT_MSVC
-    __asm__("_gcvt")
+	__asm__("_gcvt")
 #endif
 ;
 #endif
@@ -510,16 +511,15 @@ int (getloadavg)(double __loadavg[], int __nelem);
 #include <bits/stdlib-float.h>
 #endif
 
-/* Define some macros helping to catch buffer overflows.  */
 #if defined(__USE_FORTIFY_LEVEL) && \
   ((__USE_FORTIFY_LEVEL-0) > 0) && \
     defined(__fortify_function) && \
     __has_include(<bits/stdlib.h>)
-# include <bits/stdlib.h>
+#	include <bits/stdlib.h>
 #endif
 #if defined(__LDBL_COMPAT) && \
     __has_include(<bits/stdlib-ldbl.h>)
-# include <bits/stdlib-ldbl.h>
+#	include <bits/stdlib-ldbl.h>
 #endif
 
 #endif /* !include_next */

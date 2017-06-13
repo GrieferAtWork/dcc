@@ -45,20 +45,20 @@ __IMP void (muntrace)(void);
 /* Try to emulate mcheck-behavior as best as we can... */
 __IMP extern int __msvc_crt_dbg_flag __asm__("_crtDbgFlag");
 __IMP void mcheck_check_all(void) __asm__("_CrtCheckMemory");
-#define mcheck(__abortfunc)          (__msvc_crt_dbg_flag |= (0x01),0)
-#define mcheck_pedantic(__abortfunc) (__msvc_crt_dbg_flag |= (0x01|0x04),0)
-#define mprobe(p)                    (mcheck_check_all(),MCHECK_OK)
-#define mtrace()                     (void)(__msvc_crt_dbg_flag |= (0x01|0x04))
-#define muntrace()                   (void)(__msvc_crt_dbg_flag &= ~(0x04))
+#	define mcheck(__abortfunc)          (__msvc_crt_dbg_flag |= (0x01),0)
+#	define mcheck_pedantic(__abortfunc) (__msvc_crt_dbg_flag |= (0x01|0x04),0)
+#	define mprobe(p)                    (mcheck_check_all(),MCHECK_OK)
+#	define mtrace()                     (void)(__msvc_crt_dbg_flag |= (0x01|0x04))
+#	define muntrace()                   (void)(__msvc_crt_dbg_flag &= ~(0x04))
 #else
 /* Link stub-macros. */
-#define mcheck(__abortfunc)                0
-#define mcheck_pedantic(__abortfunc)       0
-#define mcheck_check_all()           (void)0
-#define mprobe(__ptr)                 MCHECK_OK
-#define mtrace()                     (void)0
-#define muntrace()                   (void)0
+#	define mcheck(__abortfunc)                0
+#	define mcheck_pedantic(__abortfunc)       0
+#	define mcheck_check_all()           (void)0
+#	define mprobe(__ptr)                 MCHECK_OK
+#	define mtrace()                     (void)0
+#	define muntrace()                   (void)0
 #endif
 
 __END_DECLS
-#endif /* mcheck.h */
+#endif /* !include_next... */

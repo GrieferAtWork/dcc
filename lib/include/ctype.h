@@ -27,6 +27,7 @@
 #include_next <ctype.h>
 #else
 #include <__stdinc.h>
+#include <features.h>
 
 __IMP __WUNUSED int (isalpha)(int);
 __IMP __WUNUSED int (isupper)(int);
@@ -42,7 +43,7 @@ __IMP __WUNUSED int (iscntrl)(int);
 __IMP __WUNUSED int (toupper)(int);
 __IMP __WUNUSED int (tolower)(int);
 
-#if __STDLIB_VERSION__ >= 201112L
+#ifdef __USE_ISOC99
 __IMP __WUNUSED int (isblank)(int);
 #endif
 

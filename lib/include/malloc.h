@@ -48,7 +48,7 @@ __IMP __CRT_UNSUPPORTED_MSVC __WUNUSED void *(memalign)(__SIZE_TYPE__ __alignmen
 __IMP __CRT_UNSUPPORTED_MSVC __WUNUSED void *(valloc)(__SIZE_TYPE__ __size);
 __IMP __CRT_UNSUPPORTED_MSVC __WUNUSED void *(pvalloc)(__SIZE_TYPE__ __size);
 
-struct mallinfo {
+struct __CRT_UNSUPPORTED_MSVC mallinfo {
 	int arena;    /* non-mmapped space allocated from system */
 	int ordblks;  /* number of free chunks */
 	int smblks;   /* number of fastbin blocks */
@@ -84,10 +84,10 @@ __IMP __CRT_UNSUPPORTED_MSVC __WUNUSED struct mallinfo mallinfo(void);
 #define M_ARENA_TEST     (-7)
 #define M_ARENA_MAX      (-8)
 
-#ifdef __CRT_MSVC
-#define mallopt(param,val) ((void)(param),(void)(val),0)
-#define malloc_trim(pad)   ((void)(pad),0)
-#define malloc_stats(pad)  ((void)0)
+#if defined(__CRT_MSVC) && !defined(__INTELLISENSE__)
+#	define mallopt(param,val) ((void)(param),(void)(val),0)
+#	define malloc_trim(pad)   ((void)(pad),0)
+#	define malloc_stats(pad)  ((void)0)
 #else
 __IMP int (mallopt)(int __param, int __val);
 __IMP int (malloc_trim)(__SIZE_TYPE__ __pad);

@@ -31,9 +31,9 @@
 __STRICT_ANSI_HEADER
 
 #ifdef __CRT_MSVC
-#define __DIRECT_FUN(x) __asm__("_" x)
+#	define __DIRECT_FUN(x) __asm__("_" x)
 #else
-#define __DIRECT_FUN(x)
+#	define __DIRECT_FUN(x)
 #endif
 
 #ifndef getcwd
@@ -41,7 +41,7 @@ __STRICT_ANSI_HEADER
 __IMP __WUNUSED char *(getcwd)(char *__buf, __SIZE_TYPE__ __bufsize) __DIRECT_FUN("getcwd");
 #else
 __IMP __WUNUSED char *(__msvc_getcwd)(char *__buf, __UINT32_TYPE__ __bufsize) __DIRECT_FUN("getcwd");
-#define getcwd(buf,bufsize)  __msvc_getcwd(buf,(__UINT32_TYPE__)(bufsize))
+#	define getcwd(buf,bufsize)  __msvc_getcwd(buf,(__UINT32_TYPE__)(bufsize))
 #endif
 #endif
 

@@ -32,32 +32,32 @@
 #include <bits/types.h>
 
 #ifdef __x86_64__
-#   define __O_LARGEFILE  0
-#   define F_GETLK64  5
-#   define F_SETLK64  6
-#   define F_SETLKW64 7
+#	define __O_LARGEFILE  0
+#	define F_GETLK64  5
+#	define F_SETLK64  6
+#	define F_SETLKW64 7
 #endif
 
 struct __CRT_UNSUPPORTED_MSVC flock {
- short int l_type;
- short int l_whence;
+	short int l_type;
+	short int l_whence;
 #ifndef __USE_FILE_OFFSET64
- __off_t   l_start;
- __off_t   l_len;
+	__off_t   l_start;
+	__off_t   l_len;
 #else
- __off64_t l_start;
- __off64_t l_len;
+	__off64_t l_start;
+	__off64_t l_len;
 #endif
- __pid_t   l_pid;
+	__pid_t   l_pid;
 };
 
 #ifdef __USE_LARGEFILE64
 struct __CRT_UNSUPPORTED_MSVC flock64 {
- short int l_type;
- short int l_whence;
- __off64_t l_start;
- __off64_t l_len;
- __pid_t   l_pid;
+	short int l_type;
+	short int l_whence;
+	__off64_t l_start;
+	__off64_t l_len;
+	__pid_t   l_pid;
 };
 #endif
 

@@ -79,8 +79,6 @@ __STRICT_ANSI_HEADER
 # define __USE_DCC 1
 #endif
 
-
-
 #ifndef _LOOSE_KERNEL_NAMES
 # define __KERNEL_STRICT_NAMES
 #endif
@@ -167,7 +165,7 @@ __STRICT_ANSI_HEADER
 # define __USE_POSIX 1
 #endif
 
-#if defined _POSIX_C_SOURCE && _POSIX_C_SOURCE >= 2 || defined _XOPEN_SOURCE
+#if (defined _POSIX_C_SOURCE && _POSIX_C_SOURCE >= 2) || defined _XOPEN_SOURCE
 # define __USE_POSIX2 1
 #endif
 

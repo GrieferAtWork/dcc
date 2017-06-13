@@ -27,6 +27,9 @@
 #include_next <sys/fcntl.h>
 #else
 #include <__stdinc.h>
+
 __STRICT_ANSI_HEADER
+
 #include <fcntl.h>
+
 #endif

@@ -34,15 +34,15 @@ __STRICT_ANSI_HEADER
 #include <bits/fcntl.h>
 
 #ifdef __CRT_MSVC
-#   define __FCNTL_FUN(x) __asm__("_" x)
+#	define __FCNTL_FUN(x) __asm__("_" x)
 #else
-#   define __FCNTL_FUN(x)
+#	define __FCNTL_FUN(x)
 #endif
 
 #ifdef __O_TMPFILE
-#   define __OPEN_NEEDS_MODE(oflag) (((oflag) & O_CREAT) != 0 || ((oflag) & __O_TMPFILE) == __O_TMPFILE)
+#	define __OPEN_NEEDS_MODE(oflag) (((oflag) & O_CREAT) != 0 || ((oflag) & __O_TMPFILE) == __O_TMPFILE)
 #else
-#   define __OPEN_NEEDS_MODE(oflag) (((oflag) & O_CREAT) != 0)
+#	define __OPEN_NEEDS_MODE(oflag) (((oflag) & O_CREAT) != 0)
 #endif
 
 typedef __mode_t  mode_t;
@@ -64,11 +64,11 @@ typedef __time_t time_t;
 #ifndef __timespec_defined
 #define __timespec_defined 1
 struct timespec {
- time_t            tv_sec;
+	time_t            tv_sec;
 #ifdef __CRT_MSVC
- __MS_LONG         tv_nsec;
+	__MS_LONG         tv_nsec;
 #else
- __syscall_slong_t tv_nsec;
+	__syscall_slong_t tv_nsec;
 #endif
 };
 #endif /* !__timespec_defined */
@@ -79,20 +79,20 @@ struct timespec {
 #define S_IFBLK     __S_IFBLK
 #define S_IFREG     __S_IFREG
 #ifdef __S_IFIFO
-#   define S_IFIFO  __S_IFIFO
+#	define S_IFIFO  __S_IFIFO
 #endif
 #ifdef __S_IFLNK
-#   define S_IFLNK  __S_IFLNK
+#	define S_IFLNK  __S_IFLNK
 #endif
 #if defined(__S_IFSOCK) && \
    (defined(__USE_UNIX98) || defined(__USE_XOPEN2K8))
-#   define S_IFSOCK __S_IFSOCK
+#	define S_IFSOCK __S_IFSOCK
 #endif
 
 #define S_ISUID    __S_ISUID
 #define S_ISGID    __S_ISGID
 #if defined(__USE_MISC) || defined(__USE_XOPEN)
-#   define S_ISVTX __S_ISVTX
+#	define S_ISVTX __S_ISVTX
 #endif
 #define S_IRUSR    __S_IREAD
 #define S_IWUSR    __S_IWRITE
@@ -108,37 +108,37 @@ struct timespec {
 #define S_IRWXO   (S_IRWXG >> 3)
 #endif
 #ifdef	__USE_MISC
-#   define R_OK 4
-#   define W_OK 2
-#   define X_OK 1
-#   define F_OK 0
+#	define R_OK 4
+#	define W_OK 2
+#	define X_OK 1
+#	define F_OK 0
 #endif
 #if defined(__USE_XOPEN) || defined(__USE_XOPEN2K8)
-#   define SEEK_SET	0
-#   define SEEK_CUR	1
-#   define SEEK_END	2
+#	define SEEK_SET 0
+#	define SEEK_CUR 1
+#	define SEEK_END 2
 #endif
 
 __IMP __CRT_UNSUPPORTED_MSVC int (fcntl)(int __fd, int __cmd, ...);
 
 __IMP __WUNUSED int (open)(char const *__file, int __oflag, ...)
 #ifdef __CRT_MSVC
-    __asm__("_open")
+	__asm__("_open")
 #elif defined(__USE_FILE_OFFSET64) && !defined(__CRT_KOS)
-    __FCNTL_FUN("open64")
+	__FCNTL_FUN("open64")
 #else
-    __FCNTL_FUN("open")
+	__FCNTL_FUN("open")
 #endif
 ;
 
 #ifdef __USE_LARGEFILE64
 __IMP __WUNUSED int (open64)(char const *__file, int __oflag, ...)
 #ifdef __CRT_MSVC
-    __asm__("_open")
+	__asm__("_open")
 #elif defined(__CRT_KOS)
-    __asm__("open")
+	__asm__("open")
 #else
-    __FCNTL_FUN("open64")
+	__FCNTL_FUN("open64")
 #endif
 ;
 #endif
@@ -147,16 +147,16 @@ __IMP __WUNUSED int (open64)(char const *__file, int __oflag, ...)
 __IMP __WUNUSED __CRT_UNSUPPORTED_MSVC
 int (openat)(int __fd, char const *__file, int __oflag, ...)
 #if defined(__USE_FILE_OFFSET64) && !defined(__CRT_KOS)
-    __FCNTL_FUN("openat64")
+	__FCNTL_FUN("openat64")
 #else
-    __FCNTL_FUN("openat")
+	__FCNTL_FUN("openat")
 #endif
 ;
 #ifdef __USE_LARGEFILE64
 __IMP __WUNUSED __CRT_UNSUPPORTED_MSVC
 int (openat64)(int __fd, char const *__file, int __oflag, ...)
 #ifdef __CRT_KOS
-    __FCNTL_FUN("openat")
+	__FCNTL_FUN("openat")
 #endif
 ;
 
@@ -165,35 +165,35 @@ int (openat64)(int __fd, char const *__file, int __oflag, ...)
 
 __IMP __WUNUSED int (creat)(char const *__file, mode_t __mode)
 #ifdef __CRT_MSVC
-    __asm__("_creat")
+	__asm__("_creat")
 #elif defined(__USE_FILE_OFFSET64) && !defined(__CRT_KOS)
-    __asm__("creat64")
+	__asm__("creat64")
 #endif
 ;
 
 #ifdef __USE_LARGEFILE64
 __IMP __WUNUSED int (creat64)(char const *__file, mode_t __mode)
 #ifdef __CRT_MSVC
-    __asm__("_creat")
+	__asm__("_creat")
 #elif defined(__CRT_KOS)
-    __asm__("creat")
+	__asm__("creat")
 #endif
 ;
 #endif
 
 #if !defined(F_ULOCK) && (defined(__USE_MISC) || defined(__USE_XOPEN_EXTENDED))
-#define F_ULOCK 0 /* Unlock a previously locked region.  */
-#define F_LOCK  1 /* Lock a region for exclusive use.  */
+#	define F_ULOCK 0 /* Unlock a previously locked region.  */
+#	define F_LOCK  1 /* Lock a region for exclusive use.  */
 #ifndef __CRT_MSVC
-#define F_TLOCK 2 /* Test and lock a region for exclusive use.  */
-#define F_TEST  3 /* Test a region for other processes locks.  */
+#	define F_TLOCK 2 /* Test and lock a region for exclusive use.  */
+#	define F_TEST  3 /* Test a region for other processes locks.  */
 #endif
 
 #ifdef __CRT_MSVC
 __IMP int __msvc_locking(int __fd, int __cmd, __UINT32_TYPE__ __len) __asm__("_locking");
-#define lockf(fd,cmd,len)    __msvc_locking((fd),(cmd),(__UINT32_TYPE__)(len))
+#	define lockf(fd,cmd,len)   __msvc_locking((fd),(cmd),(__UINT32_TYPE__)(len))
 #ifdef __USE_LARGEFILE64
-#define lockf64(fd,cmd,len) __msvc_locking((fd),(cmd),(__UINT32_TYPE__)(len))
+#	define lockf64(fd,cmd,len) __msvc_locking((fd),(cmd),(__UINT32_TYPE__)(len))
 #endif
 #else /* __CRT_MSVC */
 __IMP int (lockf)(int __fd, int __cmd, off_t __len) __UNISTD_FUN32("lockf");
@@ -204,10 +204,10 @@ __IMP int (lockf64)(int __fd, int __cmd, off64_t __len) __UNISTD_FUN64("lockf");
 #endif
 
 #ifdef __USE_XOPEN2K
-#ifdef __CRT_GLIBC
+#if defined(__CRT_GLIBC) || defined(__INTELLISENSE__)
 __IMP int (posix_fadvise)(int __fd, off_t __offset, off_t __len, int __advise)
 #ifdef __USE_FILE_OFFSET64
-    __asm__("posix_fadvise64")
+	__asm__("posix_fadvise64")
 #endif
 ;
 #ifdef __USE_LARGEFILE64
@@ -215,22 +215,22 @@ __IMP int (posix_fadvise64)(int __fd, off64_t __offset, off64_t __len, int __adv
 #endif
 extern int (posix_fallocate)(int __fd, off_t __offset, off_t __len)
 #ifdef __USE_FILE_OFFSET64
-    __asm__("posix_fallocate64")
+	__asm__("posix_fallocate64")
 #endif
 ;
-# ifdef __USE_LARGEFILE64
-extern int (posix_fallocate64)(int __fd, off64_t __offset, off64_t __len);
-# endif
-#else /* __CRT_GLIBC */
-#   define posix_fadvise(fd,offset,len,advise)   ((fd),(offset),(len),(advise),0)
-#   define posix_fallocate(fd,offset,len)        ((fd),(offset),(len),0)
-#   pragma deprecated(posix_fadvise)
-#   pragma deprecated(posix_fallocate)
 #ifdef __USE_LARGEFILE64
-#   define posix_fadvise64(fd,offset,len,advise) ((fd),(offset),(len),(advise),0)
-#   define posix_fallocate64(fd,offset,len)      ((fd),(offset),(len),0)
-#   pragma deprecated(posix_fadvise64)
-#   pragma deprecated(posix_fallocate64)
+extern int (posix_fallocate64)(int __fd, off64_t __offset, off64_t __len);
+#endif
+#else /* __CRT_GLIBC */
+#	define posix_fadvise(fd,offset,len,advise)   ((fd),(offset),(len),(advise),0)
+#	define posix_fallocate(fd,offset,len)        ((fd),(offset),(len),0)
+#	pragma deprecated(posix_fadvise)
+#	pragma deprecated(posix_fallocate)
+#ifdef __USE_LARGEFILE64
+#	define posix_fadvise64(fd,offset,len,advise) ((fd),(offset),(len),(advise),0)
+#	define posix_fallocate64(fd,offset,len)      ((fd),(offset),(len),0)
+#	pragma deprecated(posix_fadvise64)
+#	pragma deprecated(posix_fallocate64)
 #endif
 #endif /* !__CRT_GLIBC */
 #endif /* __USE_XOPEN2K */
@@ -240,9 +240,8 @@ extern int (posix_fallocate64)(int __fd, off64_t __offset, off64_t __len);
     defined(__fortify_function) && \
     defined(__va_arg_pack_len) && \
     __has_include(<bits/fcntl2.h>)
-#include <bits/fcntl2.h>
+#	include <bits/fcntl2.h>
 #endif
-
 
 #undef __FCNTL_FUN
 #endif /* !include_next... */

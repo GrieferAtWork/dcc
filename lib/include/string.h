@@ -75,22 +75,19 @@ __IMP __WUNUSED void *(rawmemchr)(const void *,int)
 #endif
 ;
 #else
-#   define memrchr    __builtin_memrchr
-#   define rawmemchr  __builtin_rawmemchr
+#	define memrchr    __builtin_memrchr
+#	define rawmemchr  __builtin_rawmemchr
 #endif
 #endif
 
 #if defined(__USE_MISC) || defined (__USE_XOPEN)
-#if defined(__CRT_GLIBC) || defined(__CRT_MSVC)
-__IMP void *(memccpy)(void *__restrict,void const *__restrict,int,size_t);
-#else
-__STDLIB_UNSUPPORTED("memccpy")
-#endif
+__IMP __CRT_UNSUPPORTED_KOS
+void *(memccpy)(void *__restrict,void const *__restrict,int,size_t);
 #endif
 
 
 #if defined __USE_XOPEN_EXTENDED || defined __USE_XOPEN2K8
-__IMP __WUNUSED char *(strdup)(char const *)
+__IMP __WUNUSED char *(strdup)(char const *__str)
 #if defined(__CRT_MSVC)
 	__asm__("_strdup")
 #endif
@@ -98,11 +95,8 @@ __IMP __WUNUSED char *(strdup)(char const *)
 #endif
 
 #ifdef __USE_XOPEN2K8
-#if defined(__CRT_GLIBC)
-__IMP __WUNUSED char *(strndup)(char const *,size_t);
-#else
-__STDLIB_UNSUPPORTED("strndup")
-#endif
+__IMP __CRT_UNSUPPORTED_MSVC __WUNUSED
+char *(strndup)(char const *__str, size_t __max_chars);
 #endif
 
 
@@ -113,10 +107,10 @@ __IMP __WUNUSED size_t (memrlen)(void const *,int,size_t);
 __IMP __WUNUSED size_t (rawmemrlen)(void const *,int,size_t)
 __IMP __WUNUSED size_t (rawmemrchr)(void const *,int,size_t)
 #else
-#define memrend    __builtin_memrend
-#define memrlen    __builtin_memrlen
-#define rawmemrlen __builtin_rawmemrlen
-#define rawmemrchr __builtin_rawmemrchr
+#	define memrend    __builtin_memrend
+#	define memrlen    __builtin_memrlen
+#	define rawmemrlen __builtin_rawmemrlen
+#	define rawmemrchr __builtin_rawmemrchr
 #endif
 #if defined(__CRT_DCC) || defined(__CRT_KOS)
 __IMP __WUNUSED char *(strend)(char const *);
@@ -129,15 +123,13 @@ __IMP __WUNUSED size_t (rawmemlen)(void const *,int,size_t)
 #endif
 ;
 #else
-#   define strend(s)     (char *)__builtin_rawmemchr(s,'\0')
-#   define strnend(s,n)  (char *)__builtin_memend(s,'\0',n)
-#   define memend         __builtin_memend
-#   define memlen         __builtin_memlen
-#   define rawmemlen      __builtin_rawmemlen
+#	define strend(s)     (char *)__builtin_rawmemchr(s,'\0')
+#	define strnend(s,n)  (char *)__builtin_memend(s,'\0',n)
+#	define memend         __builtin_memend
+#	define memlen         __builtin_memlen
+#	define rawmemlen      __builtin_rawmemlen
 #endif
 #endif
-
-
 
 
 #ifdef __KOS__ /* KOS-specific string function aliases. */

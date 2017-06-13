@@ -73,13 +73,13 @@ PRIVATE int print_sym(struct DCCSym *sym, target_off_t offset) {
 
 #define TPP_USERLINES \
 {\
- struct DCCSection *sec;\
+ struct DCCSection *sec; \
 case W_UNRESOLVED_REFERENCE: \
- sec  = ARG(struct DCCSection *);\
- if (!print_sym(&sec->sc_start,ARG(target_off_t))) goto default_lines;\
- macro_name = NULL;\
-} break;\
-default_lines:;\
+ sec  = ARG(struct DCCSection *); \
+ if (!print_sym(&sec->sc_start,ARG(target_off_t))) goto default_lines; \
+ macro_name = NULL; \
+} break; \
+default_lines:; \
 
 
 DCC_DECL_END

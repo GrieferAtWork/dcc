@@ -31,7 +31,7 @@
 #ifdef __CRT_MSVC
 
 __IMP int *(__msvc_errno)(void) __asm__("_errno");
-#define errno   (*__msvc_errno())
+#define errno  (*__msvc_errno())
 
 #define EPERM           1
 #define ENOENT          2

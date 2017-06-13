@@ -20,6 +20,7 @@
 #pragma GCC system_header
 
 #include <__stdinc.h>
+#include <features.h>
 
 #if __has_include_next(<ctype.h>)
 #include_next <ctype.h>
@@ -38,7 +39,7 @@
 #define iscntrl(ch)  __builtin_iscntrl((ch))
 #define toupper(ch)  __builtin_toupper((ch))
 #define tolower(ch)  __builtin_tolower((ch))
-#if __STDLIB_VERSION__ >= 201112L
+#ifdef __USE_ISOC99
 #define isblank(ch)  __builtin_isblank((ch))
 #endif
 

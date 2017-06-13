@@ -36,14 +36,14 @@
 #endif
 
 #if __has_include_next(<__stdinc.h>)
-#include_next <__stdinc.h>
-#else
+#	include_next <__stdinc.h>
+#endif
 
 #ifndef __DCC_VERSION__
 #ifdef __INTELLISENSE__
-#include "__stdinc-syntax.h"
+#	include "__stdinc-syntax.h"
 #else
-#warning "These headers are only meant for DCC"
+#	warning "These headers are only meant for DCC"
 #endif
 #endif /* !__DCC_VERSION__ */
 
@@ -55,53 +55,46 @@
 #define __WUNUSED __attribute__((__warn_unused_result__))
 
 #if 0
-#   define __CRT_DCC 1
+#	define __CRT_DCC 1
 #elif defined(__KOS__)
-#   define __CRT_KOS 1
+#	define __CRT_KOS 1
 #elif defined(_WIN32) || defined(__CYGWIN32__)
-#   define __CRT_MSVC 1
-#   define __MS_LONG  __int32
+#	define __CRT_MSVC 1
+#	define __MS_LONG  __int32
 #else
-#   define __CRT_GLIBC 1
+#	define __CRT_GLIBC 1
 #endif
-
-#define __STDLIB_VERSION__      201112L /* C11 */
-#define __STDLIB_UNSUPPORTED(x)
 
 #define __CRT_UNSUPPORTED(crt) [[__error__("Function is unsupported by <" crt ">")]]
 #define __CRT_WORKAROUND(crt)  [[__warning__("Function only works in <" crt "> thanks to a workaround")]]
 
 #ifdef __CRT_MSVC
-#define __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED("MSVC")
-#define __CRT_WORKAROUND_MSVC  __CRT_WORKAROUND("MSVC")
+#	define __CRT_UNSUPPORTED_MSVC __CRT_UNSUPPORTED("MSVC")
+#	define __CRT_WORKAROUND_MSVC  __CRT_WORKAROUND("MSVC")
 #else
-#define __CRT_UNSUPPORTED_MSVC
-#define __CRT_WORKAROUND_MSVC
+#	define __CRT_UNSUPPORTED_MSVC
+#	define __CRT_WORKAROUND_MSVC
 #endif
 
 #ifdef __CRT_GLIBC
-#define __CRT_UNSUPPORTED_GLIBC __CRT_UNSUPPORTED("GLIBC")
-#define __CRT_WORKAROUND_GLIBC  __CRT_WORKAROUND("GLIBC")
+#	define __CRT_UNSUPPORTED_GLIBC __CRT_UNSUPPORTED("GLIBC")
+#	define __CRT_WORKAROUND_GLIBC  __CRT_WORKAROUND("GLIBC")
 #else
-#define __CRT_UNSUPPORTED_GLIBC
-#define __CRT_WORKAROUND_GLIBC
+#	define __CRT_UNSUPPORTED_GLIBC
+#	define __CRT_WORKAROUND_GLIBC
 #endif
 
 #ifdef __CRT_KOS
-#define __CRT_UNSUPPORTED_KOS __CRT_UNSUPPORTED("KOS")
-#define __CRT_WORKAROUND_KOS  __CRT_WORKAROUND("KOS")
+#	define __CRT_UNSUPPORTED_KOS __CRT_UNSUPPORTED("KOS")
+#	define __CRT_WORKAROUND_KOS  __CRT_WORKAROUND("KOS")
 #else
-#define __CRT_UNSUPPORTED_KOS
-#define __CRT_WORKAROUND_KOS
+#	define __CRT_UNSUPPORTED_KOS
+#	define __CRT_WORKAROUND_KOS
 #endif
-
-
 
 #ifdef __STRICT_ANSI__
-#define __STRICT_ANSI_HEADER \
-  __pragma(tpp_exec("#warning \"<" __FILE__ "> should not be included when -ansi is passed\"\n"))
+#	define __STRICT_ANSI_HEADER \
+	  __pragma(tpp_exec("#warning \"<" __FILE__ "> should not be included when -ansi is passed\"\n"))
 #else
-#define __STRICT_ANSI_HEADER /* nothing */
-#endif
-
+#	define __STRICT_ANSI_HEADER /* nothing */
 #endif

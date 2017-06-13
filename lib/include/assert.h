@@ -31,7 +31,7 @@
 #ifndef __DCC_ASSERT_LIB_DEFINED
 #define __DCC_ASSERT_LIB_DEFINED 1
 #ifdef __CRT_MSVC
-__IMP _Noreturn void (__assertion_failed)(char const *,char const *,unsigned int) __asm__("_assert");
+__IMP void (__assertion_failed)(char const *,char const *,unsigned int) __asm__("_assert");
 #else
 #error FIXME
 #endif
@@ -42,8 +42,8 @@ __IMP _Noreturn void (__assertion_failed)(char const *,char const *,unsigned int
  *       >> assert(0); // Mark control flow as unreachable, but check the fact at runtime!
  */
 #ifdef NDEBUG
-#define assert         __builtin_assume
+#	define assert         __builtin_assume
 #else
-#define assert(expr)  (void)((expr) || (__assertion_failed(#expr,__FILE__,__LINE__),__builtin_breakpoint(),0))
+#	define assert(expr)  (void)((expr) || (__assertion_failed(#expr,__FILE__,__LINE__),__builtin_breakpoint(),0))
 #endif
 #endif

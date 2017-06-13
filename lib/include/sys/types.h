@@ -33,7 +33,7 @@ __STRICT_ANSI_HEADER
 #include <features.h>
 #include <bits/types.h>
 
-#ifdef	__USE_MISC
+#ifdef __USE_MISC
 typedef __u_char   u_char;
 typedef __u_short  u_short;
 typedef __u_int    u_int;
@@ -45,10 +45,6 @@ typedef __fsid_t   fsid_t;
 #endif
 #endif
 typedef __loff_t   loff_t;
-
-#ifndef __USE_FILE_OFFSET64
-#else
-#endif
 
 typedef __dev_t   dev_t;
 typedef __gid_t   gid_t;
@@ -77,7 +73,7 @@ typedef __id_t id_t;
 #endif
 
 
-#ifdef	__USE_MISC
+#ifdef __USE_MISC
 #ifdef __daddr_t
 typedef __daddr_t daddr_t;
 #endif
@@ -118,28 +114,28 @@ typedef unsigned short int ushort;
 typedef unsigned int       uint;
 #endif
 
-typedef	__INT8_TYPE__   int8_t;
-typedef	__INT16_TYPE__  int16_t;
-typedef	__INT32_TYPE__  int32_t;
-typedef	__INT64_TYPE__  int64_t;
-typedef	__UINT8_TYPE__  u_int8_t;
-typedef	__UINT16_TYPE__ u_int16_t;
-typedef	__UINT32_TYPE__ u_int32_t;
+typedef __INT8_TYPE__   int8_t;
+typedef __INT16_TYPE__  int16_t;
+typedef __INT32_TYPE__  int32_t;
+typedef __INT64_TYPE__  int64_t;
+typedef __UINT8_TYPE__  u_int8_t;
+typedef __UINT16_TYPE__ u_int16_t;
+typedef __UINT32_TYPE__ u_int32_t;
 typedef __UINT64_TYPE__ u_int64_t;
 
 typedef int register_t;
 
-#define __BIT_TYPES_DEFINED__	1
+#define __BIT_TYPES_DEFINED__ 1
 
-#ifdef	__USE_MISC
+#ifdef __USE_MISC
 #if __has_include(<endian.h>)
-#include <endian.h>
+#	include <endian.h>
 #endif
 #if __has_include(<sys/select.h>)
-#include <sys/select.h>
+#	include <sys/select.h>
 #endif
 #if __has_include(<sys/sysmacros.h>)
-#include <sys/sysmacros.h>
+#	include <sys/sysmacros.h>
 #endif
 #endif /* Use misc.  */
 
@@ -166,10 +162,9 @@ typedef __fsfilcnt64_t fsfilcnt64_t;
 #endif
 #endif
 
-#if defined(__USE_POSIX199506) || defined(__USE_UNIX98)
-#if __has_include(<bits/pthreadtypes.h>)
-#include <bits/pthreadtypes.h>
-#endif
+#if (defined(__USE_POSIX199506) || defined(__USE_UNIX98)) && \
+     __has_include(<bits/pthreadtypes.h>)
+#	include <bits/pthreadtypes.h>
 #endif
 
 #endif

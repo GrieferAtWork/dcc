@@ -32,39 +32,39 @@
 #ifdef __CRT_MSVC
 struct dirent {
 #ifdef __USE_FILE_OFFSET64
- __ino64_t       d_ino;
+	__ino64_t       d_ino;
 #else
- __ino_t         d_ino;
+	__ino_t         d_ino;
 #endif
 union{
- unsigned char   d_type;
- unsigned        __msvc_attrib;
+	unsigned char   d_type;
+	unsigned        __msvc_attrib;
 };
 #ifdef __USE_FILE_OFFSET64
- __time64_t      __msvc_time_create;
- __time64_t      __msvc_time_access;
- __time64_t      __msvc_time_write;
- __UINT64_TYPE__ __msvc_size;
+	__time64_t      __msvc_time_create;
+	__time64_t      __msvc_time_access;
+	__time64_t      __msvc_time_write;
+	__UINT64_TYPE__ __msvc_size;
 #else
- __time32_t      __msvc_time_create;
- __time32_t      __msvc_time_access;
- __time32_t      __msvc_time_write;
- __UINT32_TYPE__ __msvc_size;
+	__time32_t      __msvc_time_create;
+	__time32_t      __msvc_time_access;
+	__time32_t      __msvc_time_write;
+	__UINT32_TYPE__ __msvc_size;
 #endif
- char            d_name[262];
+	char            d_name[262];
 };
 
 struct dirent64 {
- __ino64_t       d_ino;
+	__ino64_t       d_ino;
 union{
- unsigned char   d_type;
- unsigned        __msvc_attrib;
+	unsigned char   d_type;
+	unsigned        __msvc_attrib;
 };
- __time64_t      __msvc_time_create;
- __time64_t      __msvc_time_access;
- __time64_t      __msvc_time_write;
- __UINT64_TYPE__ __msvc_size;
- char            d_name[262];
+	__time64_t      __msvc_time_create;
+	__time64_t      __msvc_time_access;
+	__time64_t      __msvc_time_write;
+	__UINT64_TYPE__ __msvc_size;
+	char            d_name[262];
 };
 
 #undef  _DIRENT_HAVE_D_NAMLEN
@@ -76,23 +76,23 @@ union{
 
 struct dirent {
 #ifndef __USE_FILE_OFFSET64
- __ino_t            d_ino;
- __off_t            d_off;
+	__ino_t            d_ino;
+	__off_t            d_off;
 #else
- __ino64_t          d_ino;
- __off64_t          d_off;
+	__ino64_t          d_ino;
+	__off64_t          d_off;
 #endif
- unsigned short int d_reclen;
- unsigned char      d_type;
- char               d_name[256];
+	unsigned short int d_reclen;
+	unsigned char      d_type;
+	char               d_name[256];
 };
 #ifdef __USE_LARGEFILE64
 struct dirent64 {
- __ino64_t          d_ino;
- __off64_t          d_off;
- unsigned short int d_reclen;
- unsigned char      d_type;
- char               d_name[256];
+	__ino64_t          d_ino;
+	__off64_t          d_off;
+	unsigned short int d_reclen;
+	unsigned char      d_type;
+	char               d_name[256];
 };
 #endif
 

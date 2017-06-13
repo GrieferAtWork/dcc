@@ -36,7 +36,6 @@ __STRICT_ANSI_HEADER
 #if !defined(NDEBUG) && defined(__CRT_MSVC)
 /* Link debug CRT against functions from 'msvcrt.dll' */
 
-
 #define _CRTDBG_ALLOC_MEM_DF        0x01
 #define _CRTDBG_DELAY_FREE_MEM_DF   0x02
 #define _CRTDBG_CHECK_ALWAYS_DF     0x04
@@ -62,11 +61,11 @@ typedef void (__cdecl *_CRT_DUMP_CLIENT)(void *,__SIZE_TYPE__);
 
 struct _CrtMemBlockHeader;
 typedef struct _CrtMemState {
- struct _CrtMemBlockHeader *pBlockHeader;
- __SIZE_TYPE__ lCounts[_MAX_BLOCKS];
- __SIZE_TYPE__ lSizes[_MAX_BLOCKS];
- __SIZE_TYPE__ lHighWaterCount;
- __SIZE_TYPE__ lTotalCount;
+	struct _CrtMemBlockHeader *pBlockHeader;
+	__SIZE_TYPE__ lCounts[_MAX_BLOCKS];
+	__SIZE_TYPE__ lSizes[_MAX_BLOCKS];
+	__SIZE_TYPE__ lHighWaterCount;
+	__SIZE_TYPE__ lTotalCount;
 } _CrtMemState;
 
 #define _HOOK_ALLOC     1
@@ -137,7 +136,6 @@ __IMP /*errno_t*/int (__cdecl _wdupenv_s_dbg)(__WCHAR_TYPE__ **__pbuffer, __SIZE
 #define _malloca_dbg _malloc_dbg
 #define _freea_dbg   _free_dbg
 
-
 __IMP _CRT_ALLOC_HOOK (__cdecl _CrtGetAllocHook)(void);
 __IMP _CRT_ALLOC_HOOK (__cdecl _CrtSetAllocHook)(_CRT_ALLOC_HOOK __pfnnewhook);
 __IMP extern int _crtDbgFlag;
@@ -158,12 +156,10 @@ __IMP int (__cdecl _CrtDumpMemoryLeaks)(void);
 __IMP int (__cdecl _CrtSetCheckCount)(int __checkcount);
 __IMP int (__cdecl _CrtGetCheckCount)(void);
 
-
-
 #define _ASSERT_EXPR(expr,msg) \
-        (void)((expr) || \
-               (1 != _CrtDbgReport(_CRT_ASSERT,__FILE__,__LINE__,__NULL__,"%s",msg)) || \
-               (_CrtDbgBreak(),0))
+       (void)((expr) || \
+              (1 != _CrtDbgReport(_CRT_ASSERT,__FILE__,__LINE__,__NULL__,"%s",msg)) || \
+              (_CrtDbgBreak(),0))
 
 #ifndef _ASSERT
 #define _ASSERT(expr)   _ASSERT_EXPR((expr),__NULL__)
@@ -176,48 +172,46 @@ __IMP int (__cdecl _CrtGetCheckCount)(void);
 #endif
 
 #if __has_builtin(__builtin_breakpoint)
-#define _CrtDbgBreak __builtin_breakpoint
+#	define _CrtDbgBreak __builtin_breakpoint
 #else /* __builtin_breakpoint */
 __IMP void __cdecl _CrtDbgBreak(void);
 #endif /* !__builtin_breakpoint */
 
-
-
 #if defined(_CRTDBG_MAP_ALLOC) && !defined(__INTELLISENSE__)
-#define malloc(s)                            _malloc_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define calloc(c,s)                          _calloc_dbg(c,s,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define realloc(p,s)                         _realloc_dbg(p,s,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _recalloc(p,c,s)                     _recalloc_dbg(p,c,s,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _expand(p,s)                         _expand_dbg(p,s,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define free(p)                              _free_dbg(p,_NORMAL_BLOCK)
-#define _msize(p)                            _msize_dbg(p,_NORMAL_BLOCK)
-#define _aligned_msize(p,a,o)                _aligned_msize_dbg(p,a,o)
-#define _aligned_malloc(s,a)                 _aligned_malloc_dbg(s,a,__FILE__,__LINE__)
-#define _aligned_realloc(p,s,a)              _aligned_realloc_dbg(p,s,a,__FILE__,__LINE__)
-#define _aligned_recalloc(p,c,s,a)           _aligned_recalloc_dbg(p,c,s,a,__FILE__,__LINE__)
-#define _aligned_offset_malloc(s,a,o)        _aligned_offset_malloc_dbg(s,a,o,__FILE__,__LINE__)
-#define _aligned_offset_realloc(p,s,a,o)     _aligned_offset_realloc_dbg(p,s,a,o,__FILE__,__LINE__)
-#define _aligned_offset_recalloc(p,c,s,a,o)  _aligned_offset_recalloc_dbg(p,c,s,a,o,__FILE__,__LINE__)
-#define _aligned_free(p)                     _aligned_free_dbg(p)
-#define _malloca(s)                          _malloca_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _freea(p)                            _freea_dbg(p,_NORMAL_BLOCK)
-#define _strdup(s)                           _strdup_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _wcsdup(s)                           _wcsdup_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _mbsdup(s)                           _strdup_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _tempnam(s1,s2)                      _tempnam_dbg(s1,s2,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _wtempnam(s1,s2)                     _wtempnam_dbg(s1,s2,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _fullpath(s1,s2,le)                  _fullpath_dbg(s1,s2,le,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _wfullpath(s1,s2,le)                 _wfullpath_dbg(s1,s2,le,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _getcwd(s,le)                        _getcwd_dbg(s,le,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _wgetcwd(s,le)                       _wgetcwd_dbg(s,le,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _getdcwd(d,s,le)                     _getdcwd_dbg(d,s,le,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _wgetdcwd(d,s,le)                    _wgetdcwd_dbg(d,s,le,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _dupenv_s(ps1,size,s2)               _dupenv_s_dbg(ps1,size,s2,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define _wdupenv_s(ps1,size,s2)              _wdupenv_s_dbg(ps1,size,s2,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define strdup(s)                            _strdup_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define wcsdup(s)                            _wcsdup_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define tempnam(s1,s2)                       _tempnam_dbg(s1,s2,_NORMAL_BLOCK,__FILE__,__LINE__)
-#define getcwd(s,le)                         _getcwd_dbg(s,le,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define malloc(s)                            _malloc_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define calloc(c,s)                          _calloc_dbg(c,s,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define realloc(p,s)                         _realloc_dbg(p,s,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _recalloc(p,c,s)                     _recalloc_dbg(p,c,s,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _expand(p,s)                         _expand_dbg(p,s,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define free(p)                              _free_dbg(p,_NORMAL_BLOCK)
+#	define _msize(p)                            _msize_dbg(p,_NORMAL_BLOCK)
+#	define _aligned_msize(p,a,o)                _aligned_msize_dbg(p,a,o)
+#	define _aligned_malloc(s,a)                 _aligned_malloc_dbg(s,a,__FILE__,__LINE__)
+#	define _aligned_realloc(p,s,a)              _aligned_realloc_dbg(p,s,a,__FILE__,__LINE__)
+#	define _aligned_recalloc(p,c,s,a)           _aligned_recalloc_dbg(p,c,s,a,__FILE__,__LINE__)
+#	define _aligned_offset_malloc(s,a,o)        _aligned_offset_malloc_dbg(s,a,o,__FILE__,__LINE__)
+#	define _aligned_offset_realloc(p,s,a,o)     _aligned_offset_realloc_dbg(p,s,a,o,__FILE__,__LINE__)
+#	define _aligned_offset_recalloc(p,c,s,a,o)  _aligned_offset_recalloc_dbg(p,c,s,a,o,__FILE__,__LINE__)
+#	define _aligned_free(p)                     _aligned_free_dbg(p)
+#	define _malloca(s)                          _malloca_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _freea(p)                            _freea_dbg(p,_NORMAL_BLOCK)
+#	define _strdup(s)                           _strdup_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _wcsdup(s)                           _wcsdup_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _mbsdup(s)                           _strdup_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _tempnam(s1,s2)                      _tempnam_dbg(s1,s2,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _wtempnam(s1,s2)                     _wtempnam_dbg(s1,s2,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _fullpath(s1,s2,le)                  _fullpath_dbg(s1,s2,le,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _wfullpath(s1,s2,le)                 _wfullpath_dbg(s1,s2,le,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _getcwd(s,le)                        _getcwd_dbg(s,le,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _wgetcwd(s,le)                       _wgetcwd_dbg(s,le,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _getdcwd(d,s,le)                     _getdcwd_dbg(d,s,le,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _wgetdcwd(d,s,le)                    _wgetdcwd_dbg(d,s,le,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _dupenv_s(ps1,size,s2)               _dupenv_s_dbg(ps1,size,s2,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define _wdupenv_s(ps1,size,s2)              _wdupenv_s_dbg(ps1,size,s2,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define strdup(s)                            _strdup_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define wcsdup(s)                            _wcsdup_dbg(s,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define tempnam(s1,s2)                       _tempnam_dbg(s1,s2,_NORMAL_BLOCK,__FILE__,__LINE__)
+#	define getcwd(s,le)                         _getcwd_dbg(s,le,_NORMAL_BLOCK,__FILE__,__LINE__)
 #endif  /* _CRTDBG_MAP_ALLOC */
 
 #else
@@ -298,6 +292,4 @@ __IMP void __cdecl _CrtDbgBreak(void);
 #endif
 
 #endif
-
-
 

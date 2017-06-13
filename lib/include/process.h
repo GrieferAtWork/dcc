@@ -51,9 +51,9 @@ __IMP _Noreturn void (abort)(void);
 
 
 #ifdef __CRT_MSVC
-#define __PROCESS_FUN(x) __asm__("_" x)
+#	define __PROCESS_FUN(x) __asm__("_" x)
 #else
-#define __PROCESS_FUN(x)
+#	define __PROCESS_FUN(x)
 #endif
 
 /* MODE values for 'spawnxx'. */

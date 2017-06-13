@@ -31,6 +31,6 @@
 __STRICT_ANSI_HEADER
 
 #include <dirent.h>
-#define	direct	dirent
+#define direct dirent
 
 #endif

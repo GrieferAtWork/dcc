@@ -39,7 +39,7 @@
 #   define __has_builtin(x) 0
 #endif
 #ifndef __GNUC__
-#    define __attribute__(x) /* nothing */
+#   define __attribute__(x) /* nothing */
 #endif
 
 #if defined(__GNUC__) || __has_attribute(__builtin_expect)
