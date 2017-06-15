@@ -7094,11 +7094,6 @@ expand_function_macro_impl(struct TPPFile *__restrict macro,
  expanded_text_size  = (size_t)(macro->f_end-macro->f_begin);
  expanded_text_size -= macro->f_macro.m_function.f_deltotal;
  for (; iter != end; ++iter,++arg_iter) {
-#ifdef __DCC_VERSION__
-  printf("ARG(%d).ai_ins_str = %u\n",iter-begin,iter->ai_ins_str);
-  printf("ARG(%d).ai_ins_exp = %u\n",iter-begin,iter->ai_ins_exp);
-  printf("ARG(%d).ai_ins     = %u\n",iter-begin,iter->ai_ins);
-#endif
   if (iter->ai_ins_str) {
    /* Figure out and cache how long the stringy-fied version of this is. */
    expanded_string_size = 2+TPP_SizeofEscape(arg_iter->ac_begin,
@@ -7119,11 +7114,6 @@ expand_function_macro_impl(struct TPPFile *__restrict macro,
                          (arg_iter->ac_end-arg_iter->ac_begin));
   }
  }
-#ifdef __DCC_VERSION__
- printf("(size_t)(macro->f_end-macro->f_begin) = %u\n",(size_t)(macro->f_end-macro->f_begin));
- printf("macro->f_macro.m_function.f_deltotal  = %u\n",macro->f_macro.m_function.f_deltotal);
- printf("expanded_text_size                    = %u\n",expanded_text_size);
-#endif
  /* Adjust for __VA_COMMA__ and __VA_NARGS__. */
  if (va_size != 0) expanded_text_size += macro->f_macro.m_function.f_n_vacomma;
  if (macro->f_macro.m_function.f_n_vanargs) {

@@ -232,7 +232,14 @@ DCCStackValue_Kill(struct DCCStackValue *__restrict self) {
  target_ptr_t s,a; int was_lvalue;
  struct DCCStackValue local_target;
  assert(self);
- was_lvalue = !!(self->sv_flags&DCC_SFLAG_LVALUE);
+ /* NOTE: Since the copy-flag will be lost, we are forced
+  *       perform a copy now, even though that may not be
+  *       required based on what will eventually be done
+  *       with the value.
+  *       But if we don't do this, the value may be modified
+  *       directly even though it was originally marked for COW. */
+ was_lvalue = (self->sv_flags&DCC_SFLAG_LVALUE) &&
+             !(self->sv_flags&DCC_SFLAG_COPY);
  /* Allocate local stack-space. */
  if (was_lvalue) {
   /* To kill an l-value, we must generate a additional
