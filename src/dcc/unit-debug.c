@@ -25,6 +25,7 @@
 #include <dcc/unit.h>
 #include <dcc/linker.h>
 #include <dcc/compiler.h>
+#include <dcc/addr2line.h>
 
 DCC_DECL_BEGIN
 
@@ -32,7 +33,6 @@ DCC_DECL_BEGIN
  * NOTE: This must always remain compatible with the
  *       structure found in '/lib/src/addr2line.c'! */
 #define SECINFO_ENTRYSYM       "__dcc_dbg_secinfo"
-#define SECINFO_SECNAME        ".debug"
 #define SECINFO_ALIGNOF        (DCC_TARGET_SIZEOF_POINTER)
 #define SECINFO_SIZEOF         (DCC_TARGET_SIZEOF_POINTER*3+DCC_TARGET_SIZEOF_SIZE_T)
 #define SECINFO_OFFSETOF_NEXT  (0)
@@ -77,7 +77,7 @@ PUBLIC void DCCUnit_MkDebugSym(void) {
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
  secinfo_sym = DCCUnit_NewSyms(SECINFO_ENTRYSYM,DCC_SYMFLAG_PRIVATE);
  if unlikely(!secinfo_sym || !DCCSym_ISFORWARD(secinfo_sym)) return;
- debug_sec = DCCUnit_NewSecs(SECINFO_SECNAME,DCC_SYMFLAG_SEC(1,0,0,0,1,0));
+ debug_sec = DCCUnit_NewSecs(A2L_DEBUG_SECTION,DCC_SYMFLAG_SEC(1,0,0,0,1,0));
  if unlikely(!debug_sec) return;
 
  DCCUnit_ENUMSEC(sec) {

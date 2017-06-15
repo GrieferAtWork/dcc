@@ -46,7 +46,8 @@
 extern "C" {
 #endif
 
-#define A2L_STRING_SECTION   ".string"
+#define A2L_DEBUG_SECTION    ".debug"
+#define A2L_STRING_SECTION   ".dbgstr"
 
 typedef uint8_t              A2L_TYPE(a2l_op_t);
 #ifdef DCC_BUILDING_A2L_RUNTIME

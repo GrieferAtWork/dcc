@@ -26,16 +26,19 @@
 #include <dcc/compiler.h>
 #include <dcc/lexer.h>
 #include <dcc/assembler.h>
+#include <dcc/addr2line.h>
 
 #include "unit-import.h"
 
 DCC_DECL_BEGIN
 
 PRIVATE void load_std_sections(void) {
- unit.u_text = DCCUnit_NewSecs(".text",DCC_SYMFLAG_SEC_X|DCC_SYMFLAG_SEC_R);
- unit.u_data = DCCUnit_NewSecs(".data",DCC_SYMFLAG_SEC_R);
- unit.u_bss  = DCCUnit_NewSecs(".bss",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W);
- unit.u_str  = DCCUnit_NewSecs(".string",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_M);
+ unit.u_text   = DCCUnit_NewSecs(".text",DCC_SYMFLAG_SEC_X|DCC_SYMFLAG_SEC_R);
+ unit.u_data   = DCCUnit_NewSecs(".data",DCC_SYMFLAG_SEC_R);
+ unit.u_bss    = DCCUnit_NewSecs(".bss",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W);
+ unit.u_string = DCCUnit_NewSecs(".string",DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_M);
+ /* NOTE: Symbols within '.dbgstr' cannot be merged! */
+ unit.u_dbgstr = DCCUnit_NewSecs(A2L_STRING_SECTION,DCC_SYMFLAG_SEC_R);
 }
 
 

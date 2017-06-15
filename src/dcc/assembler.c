@@ -342,11 +342,11 @@ asm_parse_expr_unary(struct DCCSymAddr *v) {
     /* Immediate strings. */
     s = TPPLexer_ParseString();
     if unlikely(!s) break;
-    DCCSection_TBEGIN(unit.u_str);
-    v->sa_sym = DCCSection_DAllocSym(unit.u_str,s->s_text,
+    DCCSection_TBEGIN(unit.u_string);
+    v->sa_sym = DCCSection_DAllocSym(unit.u_string,s->s_text,
                                     (s->s_size)*sizeof(char),
                                     (s->s_size+1)*sizeof(char),1,0);
-    DCCSection_TEND(unit.u_str);
+    DCCSection_TEND(unit.u_string);
     TPPString_Decref(s);
    } else {
     do YIELD();

@@ -88,7 +88,9 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 #define DCC_SYMFLAG_WEAK       0x00000008 /*< '[[weak]]': FLAG: Weak symbol. A weak symbols can be overwritten at any time by another
                                            *   symbol, meaning should assumptions may be made about its address, or its relation.
                                            *   Access to such a symbol should take place exclusively through relocations. */
-#define DCC_SYMFLAG_NOCOLL     0x00000020 /*< '[[nocoll]]': Don't allow this symbol to be collapsed. */
+#define DCC_SYMFLAG_NOCOLL     0x00000020 /*< '[[nocoll]]': Don't allow this symbol/section to be collapsed.
+                                           *                When this flag is set, optimization isn't allowed to move
+                                           *                the symbol to a different location within the same section. */
 #define DCC_SYMFLAG_USED       0x00000040 /*< '[[used]]': FLAG: Don't delete this symbol, even if it appears unused. */
 #define DCC_SYMFLAG_UNUSED     0x00000080 /*< '[[unused]]': FLAG: Don't warn if this symbol is deleted during unused symbol collection. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
@@ -655,6 +657,8 @@ DCCFUN void DCCSection_FreeUnused(struct DCCSection *__restrict self);
  * is used to initialize a static variable inside a header.
  * NOTE: Symbol addresses and relocations will be updated accordingly.
  * NOTE: Per-symbol alignment is respected.
+ * NOTE: Symbols marked with 'DCC_SYMFLAG_NOCOLL' will not be merged.
+ * NOTE: Sections not marked with 'DCC_SYMFLAG_SEC_M' will not be merged
  * @return: * : The amount of symbols merged into the data locations of others. */
 DCCFUN size_t DCCSection_MergeSymbols(struct DCCSection *__restrict self);
 
@@ -664,6 +668,7 @@ DCCFUN size_t DCCSection_MergeSymbols(struct DCCSection *__restrict self);
  * data, as well as erasure of associated references.
  * NOTE: Symbol addresses and relocations will be updated accordingly.
  * NOTE: Per-symbol alignment is respected.
+ * NOTE: Symbols or sections marked with 'DCC_SYMFLAG_NOCOLL' will not be merged.
  * @return: * : The amount of symbols that were moved. */
 DCCFUN size_t DCCSection_CollapseSymbols(struct DCCSection *__restrict self);
 
@@ -910,7 +915,7 @@ DCCSection_DAllocMem(struct DCCSection *__restrict self,
 DCCFUN struct DCCSym *
 DCCSection_DAllocSym(struct DCCSection *__restrict self,
                      void const *__restrict memory,
-                     DCC(target_siz_t) mem_size, DCC(target_siz_t) size,
+                     size_t mem_size, DCC(target_siz_t) size,
                      DCC(target_siz_t) align, DCC(target_siz_t) offset);
 
 /* Free a given section address range & clear all relocations / debug information inside.
@@ -1021,12 +1026,8 @@ struct DCCUnit {
  struct DCCSection     *u_text;  /*< [0..1] Default section: '.text' (Used for read/execute code) */
  struct DCCSection     *u_data;  /*< [0..1] Default section: '.data' (Used for read-only data) */
  struct DCCSection     *u_bss;   /*< [0..1] Default section: '.text' (Used for read/write data) */
- struct DCCSection     *u_str;   /*< [0..1] Default section: '.string' (Used for read-only, mergeable data) */
-#ifdef __INTELLISENSE__
- struct DCCSection     *u_dbgstr;/*< [0..1] Section used for debug strings. */
-#else
-#define u_dbgstr        u_str
-#endif
+ struct DCCSection     *u_string;/*< [0..1] Default section: '.string' (Used for read-only, mergeable data) */
+ struct DCCSection     *u_dbgstr;/*< [0..1] Default section: '.dbgstr' (Section used for debug strings). */
  struct DCCSection     *u_prev;  /*< [0..1] The section selected before the current one (or NULL if none was). */
  struct DCCSection     *u_curr;  /*< [0..1] Currently selected section (target for writing text). */
  struct DCCTextBuf      u_tbuf;  /*< Current text buffer (in-lined local cache for 'u_curr->sc_text') */

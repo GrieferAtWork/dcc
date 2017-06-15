@@ -24,10 +24,15 @@
 
 #include <stddef.h>
 
+DCC_DECL_BEGIN
+struct DCCSym;
+DCC_DECL_END
 
+#define DCC_DEBUG_FILE_NOPATH ((struct DCCSym *)(uintptr_t)-1)
+#define DCC_DEBUG_FILE_NOFILE ((struct DCCSym *)(uintptr_t)-1)
 #define TPP_USERTEXTDATA \
- target_ptr_t f_dbg_pathaddr; /*< When non-ZERO, offset in 'unit.u_dbgstr' to the path of this file. */\
- target_ptr_t f_dbg_fileaddr; /*< When non-ZERO, offset in 'unit.u_dbgstr' to the filename of this file. */\
+ struct DCCSym *f_dbg_path; /*< [DCC_DEBUG_FILE_NOPATH|0..1] Symbol in '.dbgstr' to the path of this file, or 'DCC_DEBUG_FILE_NOPATH'. */\
+ struct DCCSym *f_dbg_file; /*< [DCC_DEBUG_FILE_NOFILE|0..1] Symbol in '.dbgstr' to the filename of this file, or 'DCC_DEBUG_FILE_NOFILE'. */\
 
 #undef TPP
 #define TPP   DCC

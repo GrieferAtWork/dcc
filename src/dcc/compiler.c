@@ -621,6 +621,93 @@ DCCDecltab_RehashSmall(struct DCCDecltab *__restrict self,
      DCCDecltab_RehashSymbols(self,new_size);
 }
 
+PUBLIC struct DCCSym *
+DCCCompiler_GetFuncName(void) {
+ assert(unit.u_dbgstr);
+ if (!compiler.c_dfunname) {
+  struct TPPKeyword const *func_name;
+  if (!compiler.c_fun) return NULL;
+  func_name = compiler.c_fun->d_name;
+  compiler.c_dfunname = DCCSection_DAllocSym(unit.u_dbgstr,
+                                             func_name->k_name,
+                                            (func_name->k_size+0)*sizeof(char),
+                                            (func_name->k_size+1)*sizeof(char),
+                                             1,0);
+  /* Mark the symbol to prevent it from being moved or deleted later. */
+  if (compiler.c_dfunname)
+      compiler.c_dfunname->sy_flags |= (DCC_SYMFLAG_USED|DCC_SYMFLAG_NOCOLL);
+ }
+ assert(!compiler.c_dfunname || !compiler.c_dfunname->sy_alias);
+ assert(!compiler.c_dfunname || compiler.c_dfunname->sy_sec == unit.u_dbgstr);
+ return compiler.c_dfunname;
+}
+
+PUBLIC struct DCCSym *
+DCCCompiler_GetPathName(struct TPPFile *__restrict fp) {
+ struct DCCSym *result;
+ assert(fp);
+ assert(fp->f_kind == TPPFILE_KIND_TEXT);
+ assert(unit.u_dbgstr);
+ result = fp->f_textfile.f_dbg_path;
+ if (result == DCC_DEBUG_FILE_NOPATH) result = NULL;
+ else if (!result) {
+  char const *path_begin,*path_end;
+  /* Allocate a string for the file's path in 'unit.u_dbgstr' */
+  path_end = (path_begin = fp->f_name)+fp->f_namesize;
+  while (path_end != path_begin && (*path_end != '\\' &&
+                                    *path_end != '/')
+         ) --path_end;
+  if (path_end == path_begin)
+   /* This file has no associated path. */
+nopath:
+   fp->f_textfile.f_dbg_path = DCC_DEBUG_FILE_NOPATH;
+  else {
+   size_t size = (size_t)(path_end-path_begin);
+   result = DCCSection_DAllocSym(unit.u_dbgstr,path_begin,
+                                (size+0)*sizeof(char),
+                                (size+1)*sizeof(char),1,0);
+   if unlikely(!result) goto nopath;
+   fp->f_textfile.f_dbg_path = result;
+   /* Mark the symbol to prevent it from being moved or deleted later. */
+   result->sy_flags |= (DCC_SYMFLAG_USED|DCC_SYMFLAG_NOCOLL);
+  }
+ }
+ return result;
+}
+PUBLIC struct DCCSym *
+DCCCompiler_GetFileName(struct TPPFile *__restrict fp) {
+ struct DCCSym *result;
+ assert(fp);
+ assert(fp->f_kind == TPPFILE_KIND_TEXT);
+ assert(unit.u_dbgstr);
+ result = fp->f_textfile.f_dbg_file;
+ if (result == DCC_DEBUG_FILE_NOFILE) result = NULL;
+ else if (!result) {
+  char const *path_begin,*path_end,*file_begin;
+  /* Allocate a string for the file's filename in 'unit.u_dbgstr' */
+  path_end = file_begin = (path_begin = fp->f_name)+fp->f_namesize;
+  while (file_begin != path_begin && (file_begin[-1] != '\\' &&
+                                      file_begin[-1] != '/')
+         ) --file_begin;
+  if (file_begin == path_end)
+   /* This file has no associated name. */
+nofile:
+   fp->f_textfile.f_dbg_file = DCC_DEBUG_FILE_NOFILE;
+  else {
+   size_t size = (size_t)(path_end-path_begin);
+   result = DCCSection_DAllocSym(unit.u_dbgstr,path_begin,
+                                (size+0)*sizeof(char),
+                                (size+1)*sizeof(char),1,0);
+   if unlikely(!result) goto nofile;
+   fp->f_textfile.f_dbg_file = result;
+   /* Mark the symbol to prevent it from being moved or deleted later. */
+   result->sy_flags |= (DCC_SYMFLAG_USED|DCC_SYMFLAG_NOCOLL);
+  }
+ }
+ return result;
+}
+
+
 PUBLIC void
 DCCCompiler_Flush(struct DCCCompiler *__restrict self, uint32_t flags) {
  size_t unused_mem,required_mem;

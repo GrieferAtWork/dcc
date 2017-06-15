@@ -29,7 +29,7 @@ DCC_DECL_BEGIN
 #define DCC_FUNCTIONFRAME_FLAG_NAKED   0x00000001 /*< Naked function declaration (aka. '__attribute__((naked))'). */
 struct DCCFunctionFrame {
  struct DCCDecl        *ff_old_fun;     /*< [0..1] Old value for 'compiler.c_fun'. */
- struct DCCSym         *ff_old_funname; /*< [0..1] Old value for 'compiler.c_funname'. */
+ struct DCCSym         *ff_old_funname; /*< [0..1] Old value for 'compiler.c_dfunname'. */
  struct DCCSym         *ff_old_bsym;    /*< [0..1] Old value for 'compiler.c_bsym'. */
  struct DCCSym         *ff_old_csym;    /*< [0..1] Old value for 'compiler.c_csym'. */
  struct DCCSym         *ff_old_return;  /*< [0..1] Old value for 'compiler.c_return'. */

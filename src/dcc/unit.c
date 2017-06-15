@@ -1596,7 +1596,7 @@ done:
 PUBLIC struct DCCSym *
 DCCSection_DAllocSym(struct DCCSection *__restrict self,
                      void const *__restrict memory,
-                     target_siz_t mem_size, target_siz_t size,
+                     size_t mem_size, target_siz_t size,
                      target_siz_t align, target_siz_t offset) {
  target_ptr_t addr; struct DCCSym *result;
  result = DCCSym_New(&TPPKeyword_Empty,DCC_SYMFLAG_STATIC);

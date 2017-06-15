@@ -313,7 +313,7 @@ struct DCCCompiler {
  struct DCCHWStack         c_hwstack;    /*< Stack allocator. */
  struct DCCVStack          c_vstack;     /*< Virtual operand stack. */
  struct DCCSym            *c_return;     /*< [0..1] Symbol to jump to for frame cleanup before returning. */
- struct DCCSym            *c_funname;    /*< [0..1] Name for the current function in 'unit.u_dbgstr'. - Used for __func__ and addr2line.
+ struct DCCSym            *c_dfunname;   /*< [0..1] Name for the current function in 'unit.u_dbgstr'. - Used for addr2line.
                                           *   NOTE: This symbol is lazily initialized upon its first use. */
  struct DCCDecl           *c_fun;        /*< [0..1] When non-NULL: the declaration of the current function. */
  struct DCCSym            *c_bsym;       /*< [0..1] Symbol used as target during 'break' statements. */
@@ -369,8 +369,16 @@ DCCFUN void DCCCompiler_Flush(struct DCCCompiler *__restrict self, uint32_t flag
 #define DCCCOMPILER_FLUSHFLAG_VISISTACK 0x00000080 /*< Free unused visibility-stack entries. */
 
 /* Return a consistent symbol describing the name of the current function.
- * @return: NULL: Failed to allocate a symbol for the function name. */
-DCCFUN struct DCCSym *DCCCompiler_GetFunName(void);
+ * @return: * : Symbol defined inside of '.dbgstr' (The symbol is marked as [[used,nocoll]]).
+ * @return: NULL : No function name available, or failed to allocate one. */
+DCCFUN struct DCCSym *DCCCompiler_GetFuncName(void);
+
+/* Returns a symbol to the path/file name of a given TPP file.
+ * NOTE: The caller is responsible for passing a non-NULL pointer to a TEXTFILE.
+ * @return: * : Symbol defined inside of '.dbgstr' (The symbol is marked as [[used,nocoll]]).
+ * @return: NULL : No path/file name available, or failed to allocate one. */
+DCCFUN struct DCCSym *DCCCompiler_GetPathName(struct TPPFile *__restrict fp);
+DCCFUN struct DCCSym *DCCCompiler_GetFileName(struct TPPFile *__restrict fp);
 
 
 #define DCCCompiler_Pushf() \

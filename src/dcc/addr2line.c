@@ -23,6 +23,7 @@
 #include <dcc/lexer.h>
 #include <dcc/addr2line.h>
 #include <dcc/unit.h>
+#include <dcc/compiler.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -1072,64 +1073,6 @@ DCCA2l_Lookup(struct DCCA2l const *__restrict self,
  return 1;
 }
 
-
-/* Returns the PATH id or '-2' if the file doesn't have a path. */
-LOCAL a2l_path_t TPPFile_GetA2LPath(struct TPPFile *__restrict self) {
- assert(self);
- assert(self->f_kind == TPPFILE_KIND_TEXT);
- if (!self->f_textfile.f_dbg_pathaddr) {
-  char const *path_begin,*path_end;
-  /* Allocate a string for the file's path in 'unit.u_dbgstr' */
-  path_end = (path_begin = self->f_name)+self->f_namesize;
-  while (path_end != path_begin && (*path_end != '\\' &&
-                                    *path_end != '/')
-         ) --path_end;
-  if (path_end == path_begin)
-   /* This file has no associated path. */
-   self->f_textfile.f_dbg_pathaddr = (target_ptr_t)-1;
-  else {
-   target_ptr_t name_addr;
-   target_siz_t name_size = ((target_siz_t)(path_end-path_begin)+1)*sizeof(char);
-   name_addr = DCCSection_DAllocMem(unit.u_dbgstr,path_begin,
-                                  ((size_t)(path_end-path_begin))*sizeof(char),
-                                    name_size,1,0);
-   self->f_textfile.f_dbg_pathaddr = name_addr+1;
-   /* Create a dangling reference to this string. */
-   DCCSection_DIncref(unit.u_dbgstr,name_addr,name_size);
-  }
- }
- return self->f_textfile.f_dbg_pathaddr-1;
-}
-
-/* Returns the FILE id or '-2' if the file doesn't have a name. */
-LOCAL a2l_file_t TPPFile_GetA2LFile(struct TPPFile *__restrict self) {
- assert(self);
- assert(self->f_kind == TPPFILE_KIND_TEXT);
- if (!self->f_textfile.f_dbg_fileaddr) {
-  char const *path_begin,*path_end,*file_begin;
-  /* Allocate a string for the file's filename in 'unit.u_dbgstr' */
-  path_end = file_begin = (path_begin = self->f_name)+self->f_namesize;
-  while (file_begin != path_begin && (file_begin[-1] != '\\' &&
-                                      file_begin[-1] != '/')
-         ) --file_begin;
-  if (file_begin == path_end)
-   /* This file has no associated name. */
-   self->f_textfile.f_dbg_fileaddr = (target_ptr_t)-1;
-  else {
-   target_ptr_t name_addr;
-   target_siz_t name_size = ((target_siz_t)(path_end-file_begin)+1)*sizeof(char);
-   name_addr = DCCSection_DAllocMem(unit.u_dbgstr,file_begin,
-                                  ((size_t)(path_end-file_begin))*sizeof(char),
-                                    name_size,1,0);
-   self->f_textfile.f_dbg_fileaddr = name_addr+1;
-   /* Create a dangling reference to this string. */
-   DCCSection_DIncref(unit.u_dbgstr,name_addr,name_size);
-  }
- }
- return self->f_textfile.f_dbg_fileaddr-1;
-}
-
-
 PUBLIC int
 DCCA2l_LookupAdr(struct A2lState *__restrict result,
                  struct DCCSymAddr const *__restrict adr) {
@@ -1187,6 +1130,7 @@ PUBLIC void
 DCCA2l_CaptureState(struct A2lState *__restrict result,
                     uint32_t features) {
  struct TPPFile *textfile;
+ struct DCCSym *sym;
  textfile = TPPLexer_Textfile();
  assert(textfile);
  assert(textfile->f_kind == TPPFILE_KIND_TEXT);
@@ -1197,22 +1141,22 @@ DCCA2l_CaptureState(struct A2lState *__restrict result,
  result->s_addr     = (a2l_addr_t)t_addr;
  result->s_features = features;
  if (features&A2L_STATE_HASPATH) {
-  result->s_path = TPPFile_GetA2LPath(textfile);
-  if (result->s_path == (a2l_path_t)-2) {
-   result->s_path      = 0;
-   result->s_features &= ~(A2L_STATE_HASPATH);
-  }
+  sym = DCCCompiler_GetPathName(textfile);
+  if (sym) result->s_path      = sym->sy_addr;
+  else     result->s_path      = 0,
+           result->s_features &= ~(A2L_STATE_HASPATH);
  }
  if (features&A2L_STATE_HASFILE) {
-  result->s_file = TPPFile_GetA2LFile(textfile);
-  if (result->s_file == (a2l_path_t)-2) {
-   result->s_file      = 0;
-   result->s_features &= ~(A2L_STATE_HASFILE);
-  }
+  sym = DCCCompiler_GetFileName(textfile);
+  if (sym) result->s_file      = sym->sy_addr;
+  else     result->s_file      = 0,
+           result->s_features &= ~(A2L_STATE_HASFILE);
  }
  if (features&A2L_STATE_HASNAME) {
-  /* TODO: Function name. */
-  result->s_features &= ~(A2L_STATE_HASNAME);
+  sym = DCCCompiler_GetFuncName();
+  if (sym) result->s_name      = sym->sy_addr;
+  else     result->s_name      = 0,
+           result->s_features &= ~(A2L_STATE_HASNAME);
  }
  if (features&(A2L_STATE_HASLINE|A2L_STATE_HASCOL)) {
   struct TPPLCInfo lc_info;

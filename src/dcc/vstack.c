@@ -3065,7 +3065,7 @@ DCCVStack_PushStr(char const *__restrict p, size_t s) {
  struct DCCStackValue slot;
  struct DCCSym *str_sym;
  /* Place a data symbol for the string. */
- str_sym = DCCSection_DAllocSym(unit.u_str,p,s*sizeof(char),
+ str_sym = DCCSection_DAllocSym(unit.u_string,p,s*sizeof(char),
                                (s+1)*sizeof(char),1,0);
  if unlikely(!str_sym) { vpushi(DCCTYPE_INT,0); return; }
  slot.sv_ctype.t_base = NULL;
@@ -3724,7 +3724,6 @@ DCCVStack_Binary(tok_t op) {
    source_type = DCCType_Effective(&vbottom[0].sv_ctype);
    
    if (op == '-' && (source_type->t_type&DCCTYPE_POINTER)) {
-    sflag_t was_lvalue;
     static struct DCCType const ty_ptrdiff = {DCCTYPE_PTRDIFF,NULL};
     /* Pointer/pointer difference >> (a-b)/sizeof(*a). */
     int compatible = DCCType_IsCompatible(pointer_base,&source_type->t_base->d_type,1);
