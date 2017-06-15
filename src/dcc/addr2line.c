@@ -471,14 +471,13 @@ DCCA2lChunk_Insert(struct DCCA2lChunk *__restrict self,
   /* Simple case: Append at the end.
    * Can easily be handled by transitioning from the current end to the new. */
   size = (size_t)(a2l_build_transition(buf,&self->c_smax,data)-buf);
-  if (size) {
-   while (self->c_code_pos+size > self->c_code_end)
-    if (!DCCA2lChunk_IncCode(self)) goto end;
-   memcpy(self->c_code_pos,buf,size);
-   self->c_slast     = self->c_smax;
-   self->c_code_last = self->c_code_pos;
-   self->c_code_pos += size;
-  }
+  assertf(size,"But the address changed?");
+  while (self->c_code_pos+size > self->c_code_end)
+   if (!DCCA2lChunk_IncCode(self)) goto end;
+  memcpy(self->c_code_pos,buf,size);
+  self->c_slast     = self->c_smax;
+  self->c_code_last = self->c_code_pos;
+  self->c_code_pos += size;
   self->c_smax = *data;
   DCCA2lChunk_AssertIntegrity(self);
   return;
@@ -486,15 +485,14 @@ DCCA2lChunk_Insert(struct DCCA2lChunk *__restrict self,
  if (data->s_addr < self->c_smin.s_addr) {
   /* Special case: Prepend before the chunk's start. */
   size = (size_t)(a2l_build_transition(buf,data,&self->c_smin)-buf);
-  if (size) {
-   while (self->c_code_pos+size > self->c_code_end)
-    if (!DCCA2lChunk_IncCode(self)) goto end;
-   memmove(self->c_code_begin+size,self->c_code_begin,
-          (size_t)(self->c_code_pos-self->c_code_begin));
-   memcpy(self->c_code_begin,buf,size);
-   self->c_code_last += size;
-   self->c_code_pos  += size;
-  }
+  assertf(size,"But the address changed?");
+  while (self->c_code_pos+size > self->c_code_end)
+   if (!DCCA2lChunk_IncCode(self)) goto end;
+  memmove(self->c_code_begin+size,self->c_code_begin,
+         (size_t)(self->c_code_pos-self->c_code_begin));
+  memcpy(self->c_code_begin,buf,size);
+  self->c_code_last += size;
+  self->c_code_pos  += size;
   self->c_smin = *data;
   DCCA2lChunk_AssertIntegrity(self);
   return;
@@ -918,6 +916,13 @@ DCCA2l_Merge(struct DCCA2l *__restrict self,
   a2l_op_t const *code,*code_end;
   code     = iter->c_code_begin;
   code_end = iter->c_code_pos;
+#if 1
+  if (code == code_end) {
+   /* Skip empty chunks. */
+   assert(!memcmp(&iter->c_smin,&iter->c_smax,sizeof(A2lState)));
+   if (!iter->c_smin.s_features) continue;
+  }
+#endif
   assert(code <= code_end);
   state = iter->c_smin;
   /* Simply re-insert all A2L capture points. */
