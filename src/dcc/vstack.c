@@ -1838,7 +1838,10 @@ set_zero:
     /* 'foo ^= 0' --> 'foo' */
     /* 'foo ^= -1' --> 'foo = ~foo' */
     if (!self->sv_const.it) return;
-    if (target->sv_const.it == -1) { DCCStackValue_Unary(target,'~'); return; }
+    if (self->sv_const.it == -1) {
+     DCCStackValue_Unary(target,'~');
+     return;
+    }
     break;
 
    default: break;
@@ -2184,6 +2187,7 @@ DCCStackValue_Jcc(struct DCCStackValue *__restrict cond,
  assert(cond->sv_reg2 == DCC_RC_CONST);
  gen_test = DCC_SFLAG_GTTEST(cond->sv_flags);
  if (invert) gen_test ^= DCC_TEST_NBIT;
+ assertf(gen_test <= 0xf,"gen_test = %x",gen_test);
  if (!(target->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) &&
        DCCTYPE_GROUP(target->sv_ctype.t_type) != DCCTYPE_LVALUE) {
   struct DCCMemLoc target_addr;

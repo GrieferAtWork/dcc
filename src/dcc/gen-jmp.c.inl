@@ -74,7 +74,7 @@ DCCDisp_MemJcc(test_t t, struct DCCMemLoc const *__restrict src,
 PUBLIC void
 DCCDisp_LocJcc(test_t t, struct DCCMemLoc const *__restrict addr) {
  assert(addr);
- assert(t >= 0 && t <= 0xf);
+ assertf(t >= 0 && t <= 0xf,"t = %x",t);
  if (addr->ml_reg != DCC_RC_CONST) {
   rc_t preg = DCCDisp_AddProtReg(&addr->ml_sad,
                                   addr->ml_reg);

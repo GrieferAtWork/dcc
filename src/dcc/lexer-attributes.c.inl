@@ -44,7 +44,7 @@ DCCAttrDecl_Quit(struct DCCAttrDecl *__restrict self) {
 }
 
 
-#define CCNAME_SHIFT 20
+#define CCNAME_SHIFT 24
 PRIVATE char const *const cc_names[5] = {
  /* [DCC_ATTRFLAG_CC_CDECL    >> CCNAME_SHIFT] = */"cdecl",
  /* [DCC_ATTRFLAG_CC_STDCALL  >> CCNAME_SHIFT] = */"stdcall",

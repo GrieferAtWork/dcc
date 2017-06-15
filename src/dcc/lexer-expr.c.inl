@@ -605,7 +605,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
     if (TOK == TOK_CHAR) {
      /* Character constant. */
      intmask = MASK(DCC_TARGET_SIZEOF_CHAR);
-     tyid |= DCCTYPE_CHAR;
+     tyid = DCCTYPE_CHAR;
      if (CURRENT.l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
          tyid |= DCCTYPE_UNSIGNED;
     } else {

@@ -23,7 +23,7 @@
 #else
 #define ASSERT_CONSTANT_P(x) _Static_assert(__builtin_constant_p(x),"__builtin_constant_p(" #x ")")
 #endif
-#define ASSERT_CONSTEXPR(x) ASSERT_CONSTANT_P(#!x); _Static_assert(x,#x)
+#define ASSERT_CONSTEXPR(x)  _Static_assert(x,#x)
 
 int main(int argc, char *argv[]) {
 
@@ -143,6 +143,13 @@ int main(int argc, char *argv[]) {
  /* Test arithmetic of integral overflow. */
 #pragma warning(push,"-Wno-integral-trunc")
  ASSERT_CONSTEXPR((__INT8_TYPE__)(__INT8_MAX__+1) == __INT8_MIN__);
+ ASSERT_CONSTEXPR((__INT8_TYPE__)(__INT8_MIN__-1) == __INT8_MAX__);
+ ASSERT_CONSTEXPR((__INT16_TYPE__)(__INT16_MAX__+1) == __INT16_MIN__);
+ ASSERT_CONSTEXPR((__INT16_TYPE__)(__INT16_MIN__-1) == __INT16_MAX__);
+ ASSERT_CONSTEXPR((__INT32_TYPE__)(__INT32_MAX__+1) == __INT32_MIN__);
+ ASSERT_CONSTEXPR((__INT32_TYPE__)(__INT32_MIN__-1) == __INT32_MAX__);
+ ASSERT_CONSTEXPR((__INT64_TYPE__)(__INT64_MAX__+1) == __INT64_MIN__);
+ ASSERT_CONSTEXPR((__INT64_TYPE__)(__INT64_MIN__-1) == __INT64_MAX__);
  ASSERT_CONSTEXPR(__INT_MAX__+1 == __INT_MIN__);
  ASSERT_CONSTEXPR(__INT_MIN__-1 == __INT_MAX__);
  ASSERT_CONSTEXPR(__LONG_MAX__+1 == __LONG_MIN__);
@@ -150,6 +157,8 @@ int main(int argc, char *argv[]) {
  ASSERT_CONSTEXPR(__LONG_LONG_MAX__+1 == __LONG_LONG_MIN__);
  ASSERT_CONSTEXPR(__LONG_LONG_MIN__-1 == __LONG_LONG_MAX__);
 #pragma warning(pop)
+
+
 
  return 0;
 }
