@@ -42,6 +42,8 @@
 
 DCC_DECL_BEGIN
 
+typedef uint_least64_t uint_t;
+
 #if DCC_DEBUG && 0
 INTDEF void dcc_outf(char const *fmt, ...);
 #define HAVE_VLOG 1
@@ -1189,7 +1191,6 @@ PRIVATE int DCC_VSTACK_CALL
 DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
                           struct DCCSymExpr const *__restrict exprval,
                           struct DCCStackValue *__restrict other) {
- typedef uint_least64_t uint_t;
  int_t iv,rhsv;
  assert(self);
  assert(other);
@@ -1244,17 +1245,18 @@ assign_sym:
   }
   goto assign_sym;
 
+ case TOK_SHL:
+ case TOK_SHR:
+ case TOK_RANGLE3:
+  if (rhsv < 0) WARN(W_NEGATIVE_SHIFT_OPERAND);
  case '&':
  case '|':
  case '^':
  case '*':
  case '/':
  case '%':
- case TOK_SHL:
- case TOK_SHR:
- case TOK_RANGLE3:
   if (self->sv_sym || exprval->e_sym) {
-   WARN(W_ASM_INVALID_SYMBOL_OPERATION);
+   WARN(W_UNSUPPORTED_SYMOBL_ARITHMETIC,(int)op);
    DCCSym_XDecref(self->sv_sym);
    self->sv_sym = NULL;
   }
@@ -1856,15 +1858,25 @@ default_binary:
     (!target->sv_sym || !self->sv_sym) &&
     (!(target->sv_flags&DCC_SFLAG_LVALUE)) &&
     (!self->sv_sym || target->sv_reg == DCC_RC_CONST)) {
+  int_t old_val;
   assert(self->sv_reg2 == DCC_RC_CONST);
   /* Special case: Add/Sub offset. */
   if (self->sv_sym) assert(!target->sv_sym),
                     target->sv_sym = self->sv_sym,
                     DCCSym_Incref(target->sv_sym);
+  old_val = target->sv_const.it;
   if (op == '+') target->sv_const.it += self->sv_const.it;
   else           target->sv_const.it -= self->sv_const.it;
   /* Clamp the resulting constant to its proper typing. */
-  DCCStackValue_ClampConst(target,W_CLAMP_INTEGRAL_CONSTANT);
+  DCCStackValue_ClampConst(target,W_TRUNC_INTEGRAL_ADDITION);
+  if (((op == '+') ^ (self->sv_const.it < 0))
+      ? (old_val > target->sv_const.it)
+      : (old_val < target->sv_const.it)) {
+   /* Under-/Over-flow during constant addition/subtraction. */
+   WARN(op == '+' ? W_INTEGER_OVERFLOW_DURING_ADDITION
+                  : W_INTEGER_UNDERFLOW_DURING_SUBTRACTION,
+       &target->sv_ctype);
+  }
   /* Set the X-offset flag to ensure the offset
    * is added even when the value isn't used. */
   target->sv_flags |= DCC_SFLAG_XOFFSET;
@@ -2012,7 +2024,7 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
   if (group == DCCTYPE_POINTER || group == DCCTYPE_FUNCTION)
        to = DCCTYPE_INTPTR,was_unsigned = 1;
   else to = DCCTYPE_BASIC(self->sv_ctype.t_type),
-       was_unsigned = DCCTYPE_ISUNSIGNED(type->t_type);
+       was_unsigned = (to&DCCTYPE_UNSIGNED) || (to == DCCTYPE_BOOL);
   if (DCCTYPE_GROUP(type->t_type) == DCCTYPE_POINTER ||
       DCCTYPE_GROUP(type->t_type) == DCCTYPE_FUNCTION)
        tn = DCCTYPE_INTPTR;
@@ -2041,9 +2053,12 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
    DCCStackValue_Load(self); /* Load the value if the size increases. */
   }
   if (self->sv_reg == DCC_RC_CONST) {
-   /* Cast a constant operand.
-    * >> Apply a bit-mask to the constant value in order to truncate it. */
-   self->sv_const.it &= (((int_t)1 << cls_size[tn]*DCC_TARGET_BITPERBYTE)-1);
+   int_t mask = (((int_t)1 << cls_size[tn]*DCC_TARGET_BITPERBYTE)-1);
+   /* Cast a constant operand. */
+   /* Check the sign-bit and sign-extend if necessary. */
+   if (!was_unsigned && self->sv_const.it&((mask+1)>>1))
+        self->sv_const.it |= ~(mask);
+   else self->sv_const.it &=  (mask);
    goto done;
   }
   if (to == DCCTYPE_BYTE && (self->sv_reg&4)) {
@@ -2413,7 +2428,7 @@ PUBLIC void DCC_VSTACK_CALL
 DCCStackValue_ClampConst(struct DCCStackValue *__restrict self, int wid) {
  size_t size;
  int_t mask;
- int is_negative;
+ int is_unsigned;
  assert(self);
  /* In l-value stack-values, the constant field is a pointer offset. */
  if (self->sv_flags&DCC_SFLAG_LVALUE) return;
@@ -2423,17 +2438,18 @@ DCCStackValue_ClampConst(struct DCCStackValue *__restrict self, int wid) {
      DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_FUNCTION) {
   /* Clamp builtin types. */
   size = DCC_TARGET_SIZEOF_POINTER;
-  is_negative = 0;
+  is_unsigned = 1;
  } else if (DCCTYPE_GROUP(self->sv_ctype.t_type) == DCCTYPE_BUILTIN) {
   size = DCCTYPE_BASIC(self->sv_ctype.t_type);
        if (size == DCCTYPE_BOOL) size = 1;
   else if (size >  DCCTYPE_BOOL) size = DCC_TARGET_SIZEOF_INT;
   else if (size >= DCCTYPE_FLOAT) return;
-  is_negative = !(size&DCCTYPE_UNSIGNED);
+  is_unsigned = (size&DCCTYPE_UNSIGNED);
   size = cls_size[size&~(DCCTYPE_UNSIGNED)];
  } else return;
  mask = (((int_t)1 << size*DCC_TARGET_BITPERBYTE)-1);
- if (is_negative && self->sv_const.it < 0) self->sv_const.it |= ~(mask);
+ /* Check the sign-bit and sign-extend if necessary. */
+ if (!is_unsigned && self->sv_const.it&((mask+1)>>1)) self->sv_const.it |= ~(mask);
  else if (self->sv_const.it&~mask) {
   /* Don't emit a warning if the stack-value depends on a symbol or register. */
   if (wid && self->sv_reg == DCC_RC_CONST && !self->sv_sym) WARN(wid,&self->sv_ctype);

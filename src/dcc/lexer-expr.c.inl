@@ -569,41 +569,61 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
  switch (TOK) {
 
  { /* Push an immediate, constant integral. */
-  int_t intval;
+  int_t intval,intmask;
   int int_kind;
   tyid_t tyid;
  case TOK_INT:
  case TOK_CHAR:
   int_kind = TPP_Atoi(&intval);
   if unlikely(!int_kind) goto yield_push_int0;
-  tyid = 0;
-  if (int_kind&TPP_ATOI_UNSIGNED) tyid |= DCCTYPE_UNSIGNED;
+#define MASK_1    0xffffffffffffff00ll
+#define MASK_2    0xffffffffffff0000ll
+#define MASK_4    0xffffffff00000000ll
+#define MASK_8    0x0000000000000000ll
+#define MASK2(sz) MASK_##sz
+#define MASK(sz)  MASK2(sz)
   switch (int_kind&TPP_ATOI_TYPE_MASK) {
-   case TPP_ATOI_TYPE_LONG    : tyid |= DCCTYPE_ALTLONG|DCCTYPE_LONG; break;
-   case TPP_ATOI_TYPE_LONGLONG: tyid |= DCCTYPE_LLONG; break;
+   case TPP_ATOI_TYPE_LONG    : tyid = DCCTYPE_ALTLONG|DCCTYPE_LONG;
+                                intmask = MASK(DCC_TARGET_SIZEOF_LONG);
+                                break;
+   case TPP_ATOI_TYPE_LONGLONG: tyid = DCCTYPE_LLONG;
+                                intmask = MASK(DCC_TARGET_SIZEOF_LONG_LONG);
+                                break;
 #ifdef DCCTYPE_INT8
-   case TPP_ATOI_TYPE_INT8    : tyid |= DCCTYPE_INT8; break;
+   case TPP_ATOI_TYPE_INT8    : tyid = DCCTYPE_INT8; intmask = MASK(1); break;
 #endif
 #ifdef DCCTYPE_INT16
-   case TPP_ATOI_TYPE_INT16   : tyid |= DCCTYPE_INT16; break;
+   case TPP_ATOI_TYPE_INT16   : tyid = DCCTYPE_INT16; intmask = MASK(2); break;
 #endif
 #ifdef DCCTYPE_INT32
-   case TPP_ATOI_TYPE_INT32   : tyid |= DCCTYPE_INT32; break;
+   case TPP_ATOI_TYPE_INT32   : tyid = DCCTYPE_INT32; intmask = MASK(4); break;
 #endif
 #ifdef DCCTYPE_INT64
-   case TPP_ATOI_TYPE_INT64   : tyid |= DCCTYPE_INT64; break;
+   case TPP_ATOI_TYPE_INT64   : tyid = DCCTYPE_INT64; intmask = MASK(8); break;
 #endif
    default:
     if (TOK == TOK_CHAR) {
      /* Character constant. */
+     intmask = MASK(DCC_TARGET_SIZEOF_CHAR);
      tyid |= DCCTYPE_CHAR;
      if (CURRENT.l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
          tyid |= DCCTYPE_UNSIGNED;
+    } else {
+     intmask = MASK(DCC_TARGET_SIZEOF_INT);
+     tyid = DCCTYPE_INT;
     }
     break;
   }
+  if (int_kind&TPP_ATOI_UNSIGNED) tyid |= DCCTYPE_UNSIGNED;
+  if (intval&intmask) {
+   struct DCCType ty;
+   ty.t_type = tyid;
+   ty.t_base = NULL;
+   WARN(W_TRUNC_INTEGRAL_CONSTANT,&ty);
+   intval &= ~(intmask);
+  }
   vpushi(tyid,intval);
-  DCCStackValue_ClampConst(vbottom,W_CLAMP_INTEGRAL_CONSTANT);
+  /* Don't emit a warning if the stack-value depends on a symbol or register. */
   YIELD();
  } break;
 

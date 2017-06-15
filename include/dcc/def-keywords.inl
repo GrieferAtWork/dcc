@@ -874,6 +874,7 @@ WGROUP(WG_TYPE_IN_EXPRESSION,"type-in-expression",WSTATE_ERROR)          /*< War
 WGROUP(WG_ASSIGN_INITIALIZER,"assign-initializer",WSTATE_ERROR)          /*< Warn if brace-initializer are used during assignment. */
 WGROUP(WG_ASSIGN_VOID_VOID,"assign-void",WSTATE_DISABLED)                /*< Warn about assigning void-to-void (Also warned when returning a void-expression in a void-function). */
 WGROUP(WG_POINTER_ARITHMETIC,"pointer-arithmetic",WSTATE_ERROR)          /*< Warn about illegal pointer arithmetic. */
+WGROUP(WG_INTEGRAL_TRUNC,"integral-trunc",WSTATE_ERROR)                  /*< Warn about truncation of integral constants. */
 
 WGROUP(WG_ASM,"asm",WSTATE_ERROR)
 WGROUP(WG_PRAGMA,"pragma",WSTATE_ERROR)
@@ -1043,9 +1044,13 @@ DEF_WARNING(W_SHIFT_OPERATOR_ON_POINTER_TYPE,(WG_POINTER_ARITHMETIC,WG_TYPE),WST
 DEF_WARNING(W_BITWISE_OPERATOR_ON_POINTER_TYPE,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Bit-wise operation on pointer type " Q("%s")))
 DEF_WARNING(W_SHIFT_OPERATOR_WITH_POINTER_TYPE,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Shift operation with pointer type " Q("%s") " as operand"))
 DEF_WARNING(W_BITWISE_OPERATOR_WITH_POINTER_TYPE,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Bit-wise operation with pointer type " Q("%s") " as operand"))
-DEF_WARNING(W_TRUNC_INTEGRAL_ADDITION,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_DISABLED,TYPE_WARNING("Result " Q("%s") " of constant integral addition is truncated"))
-DEF_WARNING(W_TRUNC_INTEGRAL_OPERATION,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_DISABLED,TYPE_WARNING("Result " Q("%s") " of constant integral operation is truncated"))
-DEF_WARNING(W_CLAMP_INTEGRAL_CONSTANT,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Integral constant " Q("%s") " is truncated"))
+DEF_WARNING(W_TRUNC_INTEGRAL_CONSTANT,(WG_INTEGRAL_TRUNC,WG_VALUE),WSTATE_WARN,TYPE_WARNING("Integral constant " Q("%s") " is truncated"))
+DEF_WARNING(W_TRUNC_INTEGRAL_ADDITION,(WG_INTEGRAL_TRUNC,WG_VALUE),WSTATE_WARN,TYPE_WARNING("Result " Q("%s") " of constant integral addition is truncated"))
+DEF_WARNING(W_TRUNC_INTEGRAL_OPERATION,(WG_INTEGRAL_TRUNC,WG_VALUE),WSTATE_WARN,TYPE_WARNING("Result " Q("%s") " of constant integral operation is truncated"))
+DEF_WARNING(W_INTEGER_OVERFLOW_DURING_ADDITION,(WG_INTEGRAL_TRUNC,WG_VALUE),WSTATE_WARN,TYPE_WARNING("Result " Q("%s") " of addition is overflowing"))
+DEF_WARNING(W_INTEGER_UNDERFLOW_DURING_SUBTRACTION,(WG_INTEGRAL_TRUNC,WG_VALUE),WSTATE_WARN,TYPE_WARNING("Result " Q("%s") " of subtraction is underflowing"))
+DEF_WARNING(W_NEGATIVE_SHIFT_OPERAND,(WG_VALUE),WSTATE_WARN,WARNF("Right operand of constant compile-time shift operation is negative"))
+DEF_WARNING(W_UNSUPPORTED_SYMOBL_ARITHMETIC,(WG_VALUE),WSTATE_WARN,WARNF("Invalid operator '%c' for symbol arithmetic",(char)ARG(int)))
 DEF_WARNING(W_UNARY_CONSTANT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Unary operation on constant type " Q("%s")))
 DEF_WARNING(W_UNARY_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Unary operation on r-value of type " Q("%s")))
 DEF_WARNING(W_AUTO_TYPE_USED_AS_ARGUMENT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING(Q("__auto_type") " in argument list is interpreted as " Q("int")))

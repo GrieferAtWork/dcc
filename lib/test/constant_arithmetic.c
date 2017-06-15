@@ -138,8 +138,18 @@ int main(int argc, char *argv[]) {
  ASSERT_CONSTEXPR(__builtin_bswap64(__UINT64_C(0x8899aabbccddeeff)) == __INT64_C(0xffeeddccbbaa9988));
 
  /* Assert advanced arithmetic */
- ASSERT_CONSTEXPR(((__INT64_TYPE__)1 <<  64) == 0);
- ASSERT_CONSTEXPR(((__INT64_TYPE__)1 >> -64) == 0);
+ ASSERT_CONSTEXPR(((__INT64_TYPE__)1 << 64) == 0);
+
+ /* Test arithmetic of integral overflow. */
+#pragma warning(push,"-Wno-integral-trunc")
+ ASSERT_CONSTEXPR((__INT8_TYPE__)(__INT8_MAX__+1) == __INT8_MIN__);
+ ASSERT_CONSTEXPR(__INT_MAX__+1 == __INT_MIN__);
+ ASSERT_CONSTEXPR(__INT_MIN__-1 == __INT_MAX__);
+ ASSERT_CONSTEXPR(__LONG_MAX__+1 == __LONG_MIN__);
+ ASSERT_CONSTEXPR(__LONG_MIN__-1 == __LONG_MAX__);
+ ASSERT_CONSTEXPR(__LONG_LONG_MAX__+1 == __LONG_LONG_MIN__);
+ ASSERT_CONSTEXPR(__LONG_LONG_MIN__-1 == __LONG_LONG_MAX__);
+#pragma warning(pop)
 
  return 0;
 }
