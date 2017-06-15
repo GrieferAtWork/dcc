@@ -23,14 +23,16 @@
 /* Declare everything with hidden visibility. */
 #pragma GCC visibility push("hidden")
 
-[[visibility("default")]] int64_t  __ashlti3(int64_t x, int shift);
-[[visibility("default")]] int64_t  __ashrti3(int64_t x, int shift);
-[[visibility("default")]] uint64_t __lshrti3(uint64_t x, int shift);
-[[visibility("default")]] uint64_t __udivti3(uint64_t x, uint64_t y);
-[[visibility("default")]] int64_t __divti3(int64_t x, int64_t y);
-[[visibility("default")]] uint64_t __umodti3(uint64_t x, int64_t y);
-[[visibility("default")]] int64_t __modti3(int64_t x, int64_t y);
-[[visibility("default")]] int64_t __multi3(int64_t x, int64_t y);
+#define CRTDEF  [[visibility("hidden")]]
+
+CRTDEF int64_t  __ashlti3(int64_t  x, int shift);
+CRTDEF int64_t  __ashrti3(int64_t  x, int shift);
+CRTDEF uint64_t __lshrti3(uint64_t x, int shift);
+CRTDEF uint64_t __udivti3(uint64_t x, uint64_t y);
+CRTDEF int64_t  __divti3 (int64_t  x, int64_t  y);
+CRTDEF uint64_t __umodti3(uint64_t x, uint64_t y);
+CRTDEF int64_t  __modti3 (int64_t  x, int64_t  y);
+CRTDEF int64_t  __multi3 (int64_t  x, int64_t  y);
 
 
 
@@ -96,7 +98,7 @@ int64_t __divti3(int64_t x, int64_t y) {
  return (int32_t)x / (int32_t)y;
 }
 
-uint64_t __umodti3(uint64_t x, int64_t y) {
+uint64_t __umodti3(uint64_t x, uint64_t y) {
  /* TODO: return x % y; */
  return (uint32_t)x % (uint32_t)y;
 }

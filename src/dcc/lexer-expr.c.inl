@@ -1354,6 +1354,8 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
      DCCStackValue_Kill(vbottom);
     }
    }
+   /* Make sure any potential register offsets have been flushed. */
+   DCCStackValue_FixRegOffset(vbottom);
    shared_storage = *vbottom; /* Keep track of how the true-branch was stored (so that the false-branch can mirror it). */
    ++vbottom;                 /* Don't destroy this. */
    assert(!(shared_storage.sv_flags&DCC_SFLAG_COPY));

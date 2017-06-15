@@ -364,7 +364,7 @@ PRIVATE void elf_mk_interp(void) {
 
 #if (DCC_SYMFLAG_NONE == STV_DEFAULT) && \
     (DCC_SYMFLAG_INTERNAL == STV_INTERNAL) && \
-    (DCC_SYMFLAG_PRIVATE == STV_HIDDEN) && \
+    (DCC_SYMFLAG_HIDDEN == STV_HIDDEN) && \
     (DCC_SYMFLAG_PROTECTED == STV_PROTECTED)
 #define VISMAP(x) x
 #else
@@ -372,7 +372,7 @@ PRIVATE void elf_mk_interp(void) {
 PRIVATE uint8_t const vismap[4] = {
  /* [DCC_SYMFLAG_NONE     ] = */STV_DEFAULT,
  /* [DCC_SYMFLAG_INTERNAL ] = */STV_INTERNAL,
- /* [DCC_SYMFLAG_PRIVATE  ] = */STV_HIDDEN,
+ /* [DCC_SYMFLAG_HIDDEN   ] = */STV_HIDDEN,
  /* [DCC_SYMFLAG_PROTECTED] = */STV_PROTECTED,
 };
 #endif

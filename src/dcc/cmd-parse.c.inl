@@ -321,7 +321,7 @@ def_secbase:
    symflag_t newvis;
         if (!strcmp(val,"default"))   newvis = DCC_SYMFLAG_NONE;
    else if (!strcmp(val,"internal"))  newvis = DCC_SYMFLAG_INTERNAL;
-   else if (!strcmp(val,"hidden"))    newvis = DCC_SYMFLAG_PRIVATE;
+   else if (!strcmp(val,"hidden"))    newvis = DCC_SYMFLAG_HIDDEN;
    else if (!strcmp(val,"protected")) newvis = DCC_SYMFLAG_PROTECTED;
    else { WARN(W_CMD_FVISIBILITY_UNKNOWN_VISIBILITY,val); break; }
    if (from_cmd) linker.l_visdefault             = newvis;

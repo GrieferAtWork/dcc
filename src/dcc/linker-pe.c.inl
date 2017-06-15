@@ -1089,7 +1089,7 @@ pe_getitasym(struct DCCSym *__restrict basesym) {
   buf[DCC_COMPILER_STRLEN(ITA_PREFIX)+namelen] = '\0';
   memcpy(buf+DCC_COMPILER_STRLEN(ITA_PREFIX),
          basesym->sy_name->k_name,namelen*sizeof(char));
-  result = DCCUnit_NewSyms(buf,DCC_SYMFLAG_PRIVATE);
+  result = DCCUnit_NewSyms(buf,DCC_SYMFLAG_HIDDEN);
   free(mbuf);
   return result;
  }

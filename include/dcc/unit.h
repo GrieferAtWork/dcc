@@ -80,9 +80,9 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 
 
 #define DCC_SYMFLAG_NONE         0x00000000
-#define DCC_SYMFLAG_DEFAULT      0x00000000 /*< '[[visibility("default")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
-#define DCC_SYMFLAG_INTERNAL     0x00000001 /*< '[[visibility("internal")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
-#define DCC_SYMFLAG_PRIVATE      0x00000002 /*< '[[visibility("hidden")]]': Private symbol (don't export from a binary/library). */
+#define DCC_SYMFLAG_DEFAULT      0x00000000 /*< '[[visibility("default")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_HIDDEN', which it also implies). */
+#define DCC_SYMFLAG_INTERNAL     0x00000001 /*< '[[visibility("internal")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_HIDDEN', which it also implies). */
+#define DCC_SYMFLAG_HIDDEN       0x00000002 /*< '[[visibility("hidden")]]': Private symbol (don't export from a binary/library). */
 #define DCC_SYMFLAG_PROTECTED    0x00000003 /*< '[[visibility("protected")]]': Protected symbol (don't export from the compilation unit). */
 #define DCC_SYMFLAG_VISIBILITY   0x00000003 /*< Mask for ELF-style symbol visibility. */
 #define DCC_SYMFLAG_STATIC       0x00000004 /*< 'static': FLAG: Protected symbol (don't export from the compilation unit). */
@@ -321,7 +321,7 @@ DCCFUN int DCCSym_LoadAddr(struct DCCSym const *__restrict self,
  * The names are mapped as follows:
  *   - "default"   >> DCC_SYMFLAG_NONE
  *   - "internal"  >> DCC_SYMFLAG_INTERNAL
- *   - "hidden"    >> DCC_SYMFLAG_PRIVATE
+ *   - "hidden"    >> DCC_SYMFLAG_HIDDEN
  *   - "protected" >> DCC_SYMFLAG_PROTECTED
  * @return: (symflag_t)-1: The given 'text' was none of the above.
  *                         In this case, the caller must decide what should happen,
@@ -1378,7 +1378,7 @@ struct DCCLibDef {
   * >> #else
   * >> ld->ld_expsymfa = ~(DCC_SYMFLAG_VISIBILITY);
   * >> #endif
-  * >> ld->ld_expsymfo =  (DCC_SYMFLAG_PRIVATE);
+  * >> ld->ld_expsymfo =  (DCC_SYMFLAG_HIDDEN);
   * WARNING: Make sure to set 'ld_expsymfa' to '-1' and 'ld_expsymfo' to '0' if 1-to-1 linkage is intended. */
  DCC(symflag_t)     ld_expsymfa; /*< And-operand when determining flags of exported symbols. */
  DCC(symflag_t)     ld_expsymfo; /*< Or-operand when determining flags of exported symbols. */

@@ -81,15 +81,16 @@ DCCDisp_LargeBinLLong(tok_t op, int src_unsigned) {
  /* Call an external symbol. */
  funloc.ml_reg = DCC_RC_CONST;
  funloc.ml_off = 0;
+#define CRT_SYMFLAG (DCC_SYMFLAG_HIDDEN)
  cleanup.sa_off = 2*DCC_TARGET_SIZEOF_LONG_LONG;
  switch (op) { /* Use GCC names for binary compatibility. */
- case TOK_SHL:     funloc.ml_sym = DCCUnit_NewSyms("__ashlti3",DCC_SYMFLAG_NONE); goto cleanup_adj;
- case TOK_SHR:     funloc.ml_sym = DCCUnit_NewSyms("__lshrti3",DCC_SYMFLAG_NONE); goto cleanup_adj;
- case TOK_RANGLE3: funloc.ml_sym = DCCUnit_NewSyms("__ashrti3",DCC_SYMFLAG_NONE);
+ case TOK_SHL:     funloc.ml_sym = DCCUnit_NewSyms("__ashlti3",CRT_SYMFLAG); goto cleanup_adj;
+ case TOK_SHR:     funloc.ml_sym = DCCUnit_NewSyms("__lshrti3",CRT_SYMFLAG); goto cleanup_adj;
+ case TOK_RANGLE3: funloc.ml_sym = DCCUnit_NewSyms("__ashrti3",CRT_SYMFLAG);
 cleanup_adj: cleanup.sa_off -= (DCC_TARGET_SIZEOF_LONG_LONG-DCC_TARGET_SIZEOF_INT); break;
- case '/':         funloc.ml_sym = DCCUnit_NewSyms(src_unsigned ? "__udivti3" : "__divti3",DCC_SYMFLAG_NONE); break;
- case '%':         funloc.ml_sym = DCCUnit_NewSyms(src_unsigned ? "__umodti3" : "__modti3",DCC_SYMFLAG_NONE); break;
- default:          funloc.ml_sym = DCCUnit_NewSyms("__multi3",DCC_SYMFLAG_NONE); break;
+ case '/':         funloc.ml_sym = DCCUnit_NewSyms(src_unsigned ? "__udivti3" : "__divti3",CRT_SYMFLAG); break;
+ case '%':         funloc.ml_sym = DCCUnit_NewSyms(src_unsigned ? "__umodti3" : "__modti3",CRT_SYMFLAG); break;
+ default:          funloc.ml_sym = DCCUnit_NewSyms("__multi3",CRT_SYMFLAG); break;
  }
  DCCDisp_LocCll(&funloc);
  cleanup.sa_sym = NULL;

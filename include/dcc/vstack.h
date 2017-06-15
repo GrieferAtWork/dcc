@@ -381,6 +381,9 @@ DCCFUN void DCC_VSTACK_CALL DCCStackValue_LoadExplicit(struct DCCStackValue *__r
 /* Load the value of a bitfield, either into a register, or onto the stack. */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_FixBitfield(struct DCCStackValue *__restrict self);
 
+/* Flush a potential register offset in the given stack-value.. */
+DCCFUN void DCC_VSTACK_CALL DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self);
+
 /* Load the boolean result of a test, either into a register, or onto the stack. */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_FixTest(struct DCCStackValue *__restrict self);
 

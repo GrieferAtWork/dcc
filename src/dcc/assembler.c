@@ -1135,7 +1135,7 @@ fill_data:
  case KWD_global: case KWD_globl: case KWD_used:
  case KWD_unused: new_vis = DCC_SYMFLAG_NONE;
   if (DCC_MACRO_FALSE) { case KWD_internal:  new_vis = DCC_SYMFLAG_INTERNAL; }
-  if (DCC_MACRO_FALSE) { case KWD_hidden:    new_vis = DCC_SYMFLAG_PRIVATE; }
+  if (DCC_MACRO_FALSE) { case KWD_hidden:    new_vis = DCC_SYMFLAG_HIDDEN; }
   if (DCC_MACRO_FALSE) { case KWD_protected: new_vis = DCC_SYMFLAG_PROTECTED; }
   do {
    struct DCCSym *sym;

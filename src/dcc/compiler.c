@@ -247,7 +247,7 @@ DCCDecl_CalculateSymflags(struct DCCDecl const *__restrict self) {
   default: goto default_visibility;
   case DCC_ATTRFLAG_VIS_DEFAULT  : result |= DCC_SYMFLAG_NONE; break;
   case DCC_ATTRFLAG_VIS_INTERNAL : result |= DCC_SYMFLAG_INTERNAL; break;
-  case DCC_ATTRFLAG_VIS_HIDDEN   : result |= DCC_SYMFLAG_PRIVATE; break;
+  case DCC_ATTRFLAG_VIS_HIDDEN   : result |= DCC_SYMFLAG_HIDDEN; break;
   case DCC_ATTRFLAG_VIS_PROTECTED: result |= DCC_SYMFLAG_PROTECTED; break;
   }
  } else {

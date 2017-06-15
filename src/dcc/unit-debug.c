@@ -75,7 +75,7 @@ PUBLIC void DCCUnit_MkDebugSym(void) {
  struct DCCSection *sec,*debug_sec;
  /* Don't do anything when no debug informations should be generated. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
- secinfo_sym = DCCUnit_NewSyms(SECINFO_ENTRYSYM,DCC_SYMFLAG_PRIVATE);
+ secinfo_sym = DCCUnit_NewSyms(SECINFO_ENTRYSYM,DCC_SYMFLAG_HIDDEN);
  if unlikely(!secinfo_sym || !DCCSym_ISFORWARD(secinfo_sym)) return;
  debug_sec = DCCUnit_NewSecs(A2L_DEBUG_SECTION,DCC_SYMFLAG_SEC(1,0,0,0,1,0));
  if unlikely(!debug_sec) return;

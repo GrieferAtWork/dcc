@@ -172,8 +172,8 @@ PUBLIC char const *
 DCCSymflag_ToString(symflag_t flag) {
  switch (flag&DCC_SYMFLAG_VISIBILITY) {
  default                   : return "default";
- case DCC_SYMFLAG_INTERNAL:  return "internal";
- case DCC_SYMFLAG_PRIVATE:   return "hidden";
+ case DCC_SYMFLAG_INTERNAL : return "internal";
+ case DCC_SYMFLAG_HIDDEN   : return "hidden";
  case DCC_SYMFLAG_PROTECTED: return "protected";
  }
 }
@@ -189,7 +189,7 @@ DCCSymflag_FromString(struct TPPString const *__restrict text) {
    break
  CASE("default",  DCC_SYMFLAG_NONE);
  CASE("internal", DCC_SYMFLAG_INTERNAL);
- CASE("hidden",   DCC_SYMFLAG_PRIVATE);
+ CASE("hidden",   DCC_SYMFLAG_HIDDEN);
  CASE("protected",DCC_SYMFLAG_PROTECTED);
 #undef CASE
  default: break;

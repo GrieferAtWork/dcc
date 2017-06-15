@@ -160,7 +160,7 @@ empty: text->tb_begin = text->tb_end = NULL; goto end;
 PRIVATE symflag_t const elfvismap[] = {
  /* [STV_DEFAULT  ] = */DCC_SYMFLAG_NONE,
  /* [STV_INTERNAL ] = */DCC_SYMFLAG_INTERNAL,
- /* [STV_HIDDEN   ] = */DCC_SYMFLAG_PRIVATE,
+ /* [STV_HIDDEN   ] = */DCC_SYMFLAG_HIDDEN,
  /* [STV_PROTECTED] = */DCC_SYMFLAG_PROTECTED,
 };
 

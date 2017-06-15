@@ -71,7 +71,6 @@ PRIVATE void DCC_VSTACK_CALL DCCStackValue_Jcc(struct DCCStackValue *__restrict 
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Jmp(struct DCCStackValue *__restrict target);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_AddOffset(struct DCCStackValue *__restrict self, int_t off);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Subscript(struct DCCStackValue *__restrict self, struct TPPKeyword const *__restrict member_name);
-PRIVATE void DCC_VSTACK_CALL DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Dup(struct DCCStackValue *__restrict self);
 PRIVATE int  DCC_VSTACK_CALL DCCStackValue_IsDuplicate(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict duplicate);
 PRIVATE int  DCC_VSTACK_CALL DCCStackValue_IsCopyDuplicate(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict duplicate);
@@ -532,7 +531,7 @@ DCCStackValue_FixRegister(struct DCCStackValue *__restrict self) {
  }
 }
 
-PRIVATE void DCC_VSTACK_CALL
+PUBLIC void DCC_VSTACK_CALL
 DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
  assert(!(self->sv_flags&DCC_SFLAG_LVALUE));
  if (self->sv_const.it) {
