@@ -8141,7 +8141,7 @@ wrong_suffix:
   if (begin != end) {
    /* Warning: Unknown suffix. */
    if unlikely(!WARN(W_INVALID_INTEGER_SUFFIX,
-                              begin,(size_t)(end-begin))
+                     begin,(size_t)(end-begin))
                ) goto err;
   }
  }

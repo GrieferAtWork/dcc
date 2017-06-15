@@ -898,7 +898,7 @@ again:
   if (flags&F_WIDTH) {
    /* Extended long modifiers. */
    if ((self->t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_LONG) {
-    self->t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK);
+    self->t_type &= ~((DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))|DCCTYPE_ALTMASK);
     self->t_type |=   DCCTYPE_LLONG;
     goto next;
    }

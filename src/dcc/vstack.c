@@ -657,7 +657,7 @@ load_reg: /* Make sure we're operating on a register. */
    val.sv_const.it     = bits-(off+siz);
    DCCStackValue_Binary(&val,self,TOK_SHL);
    val.sv_const.it     = bits-siz;
-   DCCStackValue_Binary(&val,self,DCCStackValue_IsUnsignedOrPtr(self) ? TOK_RANGLE3 : TOK_SHR);
+   DCCStackValue_Binary(&val,self,DCCStackValue_IsUnsignedOrPtr(self) ? TOK_SHR : TOK_RANGLE3);
   }
  }
 }
@@ -1129,8 +1129,8 @@ integral_common: DCCDisp_CstBinMem(op,&temp,target,n,DCCStackValue_IsUnsignedOrP
   case 8: temp.sa_off = (target_off_t)DCC_H2T64(self->sv_const.u64); goto integral_common;
 #endif
   default:
-   DCCDisp_VecBinMem(op,&self->sv_const,sizeof(self->sv_const),
-                     target,n,DCCStackValue_IsUnsignedOrPtr(self));
+   DCCDisp_VecBinMem(op,&self->sv_const,8,target,n,
+                     DCCStackValue_IsUnsignedOrPtr(self));
    break;
   }
   return;
@@ -1264,9 +1264,9 @@ assign_sym:
   else if (op == '|') iv |= rhsv;
   else if (op == '^') iv ^= rhsv;
   else if (op == '*') iv *= rhsv;
-  else if (op == TOK_SHL) iv <<= rhsv;
-  else if (op == TOK_SHR) iv >>= rhsv;
-  else if (op == TOK_RANGLE3) *(uint_t *)&iv >>= rhsv;
+  else if (op == TOK_SHL) *(uint_t *)&iv <<= rhsv;
+  else if (op == TOK_SHR) *(uint_t *)&iv >>= rhsv;
+  else if (op == TOK_RANGLE3) iv >>= rhsv;
   else if (!rhsv) WARN(W_DIVIDE_BY_ZERO);
   else if (op == '/') iv /= rhsv;
   else                iv %= rhsv;
@@ -1694,7 +1694,8 @@ end_cmp:
     }
     break;
 
-   case TOK_SHR: case TOK_RANGLE3:
+   case TOK_SHR:
+   case TOK_RANGLE3:
     if (target->sv_const.it == 1) {
      /* '1 >> foo()' --> '!foo()' */
      DCCStackValue_Swap(self,target);
@@ -1771,7 +1772,7 @@ set_zero:
       * ...
       */
      self->sv_const.it = (int_t)shift;
-     op = DCCStackValue_IsUnsignedOrPtr(target) ? TOK_RANGLE3 : TOK_SHR;
+     op = DCCStackValue_IsUnsignedOrPtr(target) ? TOK_SHR : TOK_RANGLE3;
     }
    } break;
 
@@ -2456,7 +2457,8 @@ DCCStackValue_ClampConst(struct DCCStackValue *__restrict self, int wid) {
  if (!is_unsigned && self->sv_const.it&((mask+1)>>1)) self->sv_const.it |= ~(mask);
  else if (self->sv_const.it&~mask) {
   /* Don't emit a warning if the stack-value depends on a symbol or register. */
-  if (wid && self->sv_reg == DCC_RC_CONST && !self->sv_sym) WARN(wid,&self->sv_ctype);
+  if (wid && self->sv_reg == DCC_RC_CONST && !self->sv_sym)
+      WARN(wid,self->sv_const.it);
   self->sv_const.it &= mask;
  }
 }
@@ -3753,12 +3755,9 @@ DCCVStack_Binary(tok_t op) {
  case TOK_SHR:
   if (target_type->t_type&DCCTYPE_POINTER) {
    WARN(W_SHIFT_OPERATOR_ON_POINTER_TYPE,&vbottom[0].sv_ctype);
-   goto unsigned_shift;
-  }
-  if (DCCTYPE_ISUNSIGNED(target_type->t_type) ||
-      DCCStackValue_IsUnsignedReg(&vbottom[1])) {
-unsigned_shift:
-   if (op == TOK_SHR) op = TOK_RANGLE3; /* Use the unsigned opcode. */
+  } else if (!DCCTYPE_ISUNSIGNED(target_type->t_type) &&
+             !DCCStackValue_IsUnsignedReg(&vbottom[1])) {
+   if (op == TOK_SHR) op = TOK_RANGLE3; /* Use the signed opcode. */
   }
   if (DCCType_Effective(&vbottom[1].sv_ctype)->t_type&DCCTYPE_POINTER)
       WARN(W_SHIFT_OPERATOR_WITH_POINTER_TYPE,&vbottom[0].sv_ctype);
@@ -3997,7 +3996,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
     unsigned int is_signed = iv < 0;
     unsigned int req_bits = 0;
     if (is_signed) iv = -iv;
-    while (iv) ++req_bits,iv >>= 1;
+    while (iv) ++req_bits,*(uint_t *)&iv >>= 1;
     /*req_bits += is_signed;*/
     /* If more bits are required that available, emit a warning. */
     if (req_bits > tweight) return W_CAST_INTEGRAL_OVERFLOW;
@@ -4137,7 +4136,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
      unsigned int is_signed = iv < 0;
      unsigned int req_bits = 0;
      if (is_signed) iv = -iv;
-     while (iv) ++req_bits,iv >>= 1;
+     while (iv) ++req_bits,*(uint_t *)&iv >>= 1;
      /*req_bits += is_signed;*/
      /* If more bits are required that available, emit a warning. */
      if (req_bits > tweight) return W_CAST_INTEGRAL_OVERFLOW;
@@ -4492,7 +4491,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
     DCCDisp_RegMovReg(r1,temp,1);
     cst.sa_off = (result-1)*DCC_TARGET_BITPERBYTE;
     cst.sa_sym = NULL;
-    DCCDisp_CstBinReg(TOK_RANGLE3,&cst,temp,1);
+    DCCDisp_CstBinReg(TOK_SHR,&cst,temp,1);
          if (result == 7) temp &= ~(DCC_RC_I64),assert(temp&DCC_RC_I32);
     else if (result == 6) temp &= ~(DCC_RC_I64|DCC_RC_I32),assert(temp&DCC_RC_I16);
     else                  temp &= ~(DCC_RC_I64|DCC_RC_I32|DCC_RC_I16),assert(temp&DCC_RC_I8);
@@ -4511,7 +4510,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
     DCCDisp_RegMovReg(r1,temp,1);
     cst.sa_off = DCC_TARGET_BITPERBYTE*2;
     cst.sa_sym = NULL;
-    DCCDisp_CstBinReg(TOK_RANGLE3,&cst,temp,1);
+    DCCDisp_CstBinReg(TOK_SHR,&cst,temp,1);
     DCCDisp_RegPush(temp&~(DCC_RC_I32|DCC_RC_I16));
     DCCDisp_RegPush(r1&~(DCC_RC_I32));
    }

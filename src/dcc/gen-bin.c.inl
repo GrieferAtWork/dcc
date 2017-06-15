@@ -60,7 +60,7 @@ DCCDisp_RegBinMems(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst,
    DCCDisp_RegBinMem(op,src&~(DCC_RC_I32),dst,1);
    cst.sa_off = 16;
    cst.sa_sym = NULL;
-   DCCDisp_CstBinReg(TOK_RANGLE3,&cst,src,1);
+   DCCDisp_CstBinReg(TOK_SHR,&cst,src,1);
    src = DCCVStack_CastReg(src,src_unsigned,DCC_RC_I8);
    assert(!(src&(DCC_RC_I3264|DCC_RC_I16)));
    newdst         = *dst;
@@ -334,8 +334,8 @@ modrm:
 
 PRIVATE uint8_t get_shift_group(tok_t op) {
  switch (op) {
- case TOK_SHR:     return 7; /* sar */
- case TOK_RANGLE3: return 5; /* shr */
+ case TOK_SHR:     return 5; /* shr */
+ case TOK_RANGLE3: return 7; /* sar */
  default:          return 4; /* shl */
  }
 }

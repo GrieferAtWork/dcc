@@ -46,6 +46,15 @@ extern _Bool _addr2line(void *__ip, lc_t *__info)
 	__asm__("__dcc_dbg_addr2line");
 
 
+/* 64-bit arithmetic runtime functions. */
+extern __INT64_TYPE__  __ashlti3(__INT64_TYPE__ __x, int __shift);          /* 'return (uint64_t|int64_t)x << shift' */
+extern __INT64_TYPE__  __ashrti3(__INT64_TYPE__ __x, int __shift);          /* 'return (int64_t)x >> shift' */
+extern __UINT64_TYPE__ __lshrti3(__UINT64_TYPE__ __x, int __shift);         /* 'return (uint64_t)x >> shift' */
+extern __UINT64_TYPE__ __udivti3(__UINT64_TYPE__ __x, __UINT64_TYPE__ __y); /* 'return (uint64_t)x / y' */
+extern __INT64_TYPE__  __divti3(__INT64_TYPE__ __x, __INT64_TYPE__ __y);    /* 'return (int64_t)x / y' */
+extern __UINT64_TYPE__ __umodti3(__UINT64_TYPE__ __x, __INT64_TYPE__ __y);  /* 'return (uint64_t)x % y' */
+extern __INT64_TYPE__  __modti3(__INT64_TYPE__ __x, __INT64_TYPE__ __y);    /* 'return (int64_t)x % y' */
+extern __INT64_TYPE__  __multi3(__INT64_TYPE__ __x, __INT64_TYPE__ __y);    /* 'return (uint64_t|int64_t)x * y' */
 
 
 

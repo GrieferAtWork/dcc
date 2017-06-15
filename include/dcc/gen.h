@@ -155,7 +155,7 @@ DCCFUN void DCCDisp_UnaryMem(DCC(tok_t) op, struct DCCMemLoc const *__restrict d
  *  - '/':         dst = dst / src;
  *  - TOK_SHL:     dst = dst << src;
  *  - TOK_SHR:     dst = dst >> src;
- *  - TOK_RANGLE3: dst = dst >> src; // dst: signed
+ *  - TOK_RANGLE3: dst = dst >> src; // (sar) dst: signed
  *  - 't':         dst & src;        // bitwise test (set eflags accordingly)
  */
 DCCFUN void DCCDisp_MemBinReg(DCC(tok_t) op, struct DCCMemLoc const *__restrict src, DCC(rc_t) dst, int src_unsigned);

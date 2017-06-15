@@ -6,23 +6,24 @@ DEPDIR=".deps"
 OBJDIR=".objs"
 
 src_changed() {
-	inf="$1"
-	dpf="$2"
-	[ -f "$inf" ] || return 1
-	[ -f "$dpf" ] || return 1
-	ddt=`cat "$dpf" | tr -d '\\\\\n'`
-	first=1
-	for dep in $ddt; do
-		if [ "$first" == 1 ]; then first=0; else
-			if [ "$dep" -nt "$inf" ]; then
-				echo    "Dependency has changed:"
-				echo -e "\tinput file: $inf"
-				echo -e "\tdepends on: $dep"
-				return 1
-			fi
-		fi
-	done
-	return 0
+	return 1
+#	inf="$1"
+#	dpf="$2"
+#	[ -f "$inf" ] || return 1
+#	[ -f "$dpf" ] || return 1
+#	ddt=`cat "$dpf" | tr -d '\\\\\n'`
+#	first=1
+#	for dep in $ddt; do
+#		if [ "$first" == 1 ]; then first=0; else
+#			if [ "$dep" -nt "$inf" ]; then
+#				echo    "Dependency has changed:"
+#				echo -e "\tinput file: $inf"
+#				echo -e "\tdepends on: $dep"
+#				return 1
+#			fi
+#		fi
+#	done
+#	return 0
 }
 
 debug_objects=()

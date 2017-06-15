@@ -206,5 +206,8 @@
     <ClCompile Include="..\lib\test\constant_arithmetic.c">
       <Filter>src\test</Filter>
     </ClCompile>
+    <ClCompile Include="..\lib\test\int64.c">
+      <Filter>src\test</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
