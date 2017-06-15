@@ -310,7 +310,7 @@ DCCParse_Init(struct DCCType const *__restrict type,
 #define DCCPARSE_INITFLAG_INITIAL 0x00000001 /*< Set for initial initializations. */
 #define DCCPARSE_INITFLAG_INBRACE 0x00000002 /*< Set during recursive initialization to allow for automatic skipping of braces. */
 
-/* Parse and assign an initialize to 'vbottom' */
+/* Parse and assign an initializer to 'vbottom' */
 DCCFUN void DCC_PARSE_CALL DCCParse_VInit(uint32_t flags);
 
 

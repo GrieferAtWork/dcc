@@ -852,14 +852,16 @@ outside_function:
    if (t == KWD_sizeof) {
     /* Warn about size queries on VLA array types
      * (Which is allowed but not a compile-time constant). */
-    if (DCCType_ISVLA(used_type))
-        WARN(W_SIZEOF_VLA_ARRAY_TYPE,used_type);
-    DCCVStack_PushSizeof(used_type);
+    if (DCCType_ISVLA(used_type)) {
+     WARN(W_SIZEOF_VLA_ARRAY_TYPE,used_type);
+     DCCVStack_PushSizeof(used_type);
+    } else {
+     vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,res_size);
+    }
     if (!query_name) vswap(),vpop(1);
    } else {
     if (!query_name) vpop(1);
-    if (t != KWD_sizeof) res_size = res_align;
-    vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,res_size);
+    vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,res_align);
    }
    DCCType_Quit(&query_type);
   }
