@@ -23,17 +23,27 @@
 
 __STRICT_ANSI_HEADER
 
-#if __has_include_next(<byteorder.h>)
-#include_next <byteorder.h>
+#if __has_include_next(<byteswap.h>)
+#include_next <byteswap.h>
+#endif
+#if __has_include(<bits/byteswap.h>)
+#include_next <bits/byteswap.h>
 #endif
 
 /* Fixed/optimized system header <byteorder.h> for DCC */
 
-/* uint16_t bswap_16(uint16_t x); */
-#define bswap_16(x) __builtin_bswap16((x))
-
-/* uint32_t bswap_32(uint32_t x); */
-#define bswap_32(x) __builtin_bswap32((x))
-
-/* uint64_t bswap_64(uint64_t x); */
-#define bswap_64(x) __builtin_bswap64((x))
+#ifdef __bswap_16
+#	define bswap_16(x) __bswap_16(x)
+#else
+#	define bswap_16(x) __builtin_bswap16(x)
+#endif
+#ifdef __bswap_32
+#	define bswap_32(x) __bswap_32(x)
+#else
+#	define bswap_32(x) __builtin_bswap32(x)
+#endif
+#ifdef __bswap_64
+#	define bswap_64(x) __bswap_64(x)
+#else
+#	define bswap_64(x) __builtin_bswap64(x)
+#endif

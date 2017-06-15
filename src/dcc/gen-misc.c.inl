@@ -118,6 +118,7 @@ DCCDisp_BSwapReg(rc_t dst) {
   /* swap 16-bit register. */
   if (dst&4) {
    rc_t temp = DCCVStack_GetReg(DCC_RC_I16,0);
+   /* TODO: 'rorw $8, %dst' */
    assert(!(temp&4));
    DCCDisp_RegMovReg(dst,temp,1);
    DCCDisp_BSwapReg(temp);

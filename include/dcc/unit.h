@@ -79,10 +79,6 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
                    struct DCCMemLoc const *__restrict pointer);
 
 
-
-
-#define DCC_SYMFLAG_VISCOMMON(a,b) ((a) > (b) ? (a) : (b))
-
 #define DCC_SYMFLAG_NONE       0x00000000 /*< '[[visibility("default")]]': No special flags/default (aka. public) visibility. */
 #define DCC_SYMFLAG_INTERNAL   0x00000001 /*< '[[visibility("internal")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
 #define DCC_SYMFLAG_PRIVATE    0x00000002 /*< '[[visibility("hidden")]]': Private symbol (don't export from a binary/library). */
@@ -124,6 +120,14 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 #endif
 
 typedef uint32_t DCC(symflag_t);
+
+
+/* DEFAULT(0) < PROTECTED(3) < HIDDEN(2) < INTERNAL(1) */
+#define DCC_SYMFLAG_VISCOMMON(a,b) \
+  ((a) == DCC_SYMFLAG_NONE ? (b) : \
+  ((b) == DCC_SYMFLAG_NONE ? (a) : \
+  ((a) < (b) ? (a) : (b))))
+
 
 struct DCCSym {
  /* Descriptor for a link-type symbol address/offset. */

@@ -535,6 +535,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
     break;
   }
   vpushi(tyid,intval);
+  DCCStackValue_ClampConst(vbottom,W_CLAMP_INTEGRAL_CONSTANT);
   YIELD();
  } break;
 
@@ -1418,7 +1419,7 @@ DCCParse_CExpr2(int one, struct DCCSymExpr *__restrict result) {
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
  one ? DCCParse_Expr1() : DCCParse_Expr();
  popf();
- result->e_int = vbottom->sv_const.it;
+ result->e_int = DCCStackValue_SignedConst(vbottom);
  result->e_sym = vbottom->sv_sym;
  /* TODO: Check 'vbottom' C type. */
  if (vbottom->sv_reg != DCC_RC_CONST ||

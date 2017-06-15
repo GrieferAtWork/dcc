@@ -497,12 +497,13 @@ drop_srcsym:
 #define TRUE_DST  src_sym
       if (TRUE_DST->sy_flags&DCC_SYMFLAG_WEAK) goto dont_redef;
       if (TRUE_DST->sy_sec) {
-       if (TRUE_DST->sy_sec == TRUE_SRC->sy_sec  &&
+       if (TRUE_DST->sy_sec == TRUE_SRC->sy_sec &&
            TRUE_DST->sy_addr == TRUE_SRC->sy_addr &&
            TRUE_DST->sy_size == TRUE_SRC->sy_size &&
            TRUE_DST->sy_align == TRUE_SRC->sy_align) goto dont_redef;
        if (DCCSection_ISIMPORT(TRUE_SRC->sy_sec)) {
         /* Don't allow library symbols re-defining local symbols. */
+        /* TODO: Display A2L file&line information. */
         WARN(!DCCSection_ISIMPORT(TRUE_DST->sy_sec)
              ? W_SYMBOL_OVERWRITING_LIBRARY_IMPORT
              : (linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)
@@ -518,6 +519,7 @@ drop_srcsym:
        goto check_redef;
       } else if (TRUE_SRC->sy_alias) {
 check_redef:
+       /* TODO: Display A2L file&line information. */
        if (TRUE_DST->sy_alias)
            WARN(W_SYMBOL_ALREADY_DEFINED_ALIAS,
                 TRUE_DST->sy_name->k_name,
@@ -569,6 +571,7 @@ merge_symflags:
        if (dst_sym->sy_name->k_size != 4 ||
            memcmp(dst_sym->sy_name->k_name,"main",
                   4*sizeof(char)) != 0) {
+        /* TODO: Display A2L file&line information. */
         WARN(W_LINKER_REDECLARATION_DIFFERENT_VISIBILITY,
              dst_sym->sy_name,
              IS_REV ? newvis : oldvis,

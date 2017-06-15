@@ -325,17 +325,18 @@ struct DCCStackValue {
 #define DCCSTACKVALUE_ISCONST_BOOL(self) \
  (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
    ((self)->sv_reg == DCC_RC_CONST) && \
-   (DCC_VSTACK_ASSUME_SYMADDR_NONNULL || !(self)->sv_sym))
+   (!(self)->sv_sym || (DCC_VSTACK_ASSUME_SYMADDR_NONNULL && \
+                      !((self)->sv_sym->sy_flags&DCC_SYMFLAG_WEAK))))
 
 #define DCCSTACKVALUE_GTCONST_BOOL(self) \
  (DCC_VSTACK_ASSUME_SYMADDR_NONNULL \
-  ? ((self)->sv_const.it ||  (self)->sv_sym)\
+  ? ((self)->sv_const.it || ((self)->sv_sym && !((self)->sv_sym->sy_flags&DCC_SYMFLAG_WEAK)))\
   : ((self)->sv_const.it && !(self)->sv_sym))
 
 #define DCCSTACKVALUE_ISCONST_INT(self) \
  (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
    ((self)->sv_reg == DCC_RC_CONST) && !((self)->sv_sym))
-#define DCCSTACKVALUE_GTCONST_INT(self) ((self)->sv_const.it)
+#define DCCSTACKVALUE_GTCONST_INT(self) DCCStackValue_SignedConst(self)
 
 /* Check if 'self' is a constant expression value (symbol+offset) */
 #define DCCSTACKVALUE_ISCONST_XVAL(self) \
@@ -386,6 +387,18 @@ DCCFUN void DCC_VSTACK_CALL DCCStackValue_FixTest(struct DCCStackValue *__restri
 /* Convert an array type to pointer-to-array-base, and function to pointer-to-function */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_Promote(struct DCCStackValue *__restrict self);
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_PromoteFunction(struct DCCStackValue *__restrict self);
+
+/* Clamp the constant portion of the given stack value to its integral
+ * typing, or do nothing if 'self' isn't that kind of stack-value.
+ * @param: wid: The ID of a warning to emit in the event that the
+ *              value was clamped (or ZERO(0) if none should be).
+ *        NOTE: The warning is emit with a single argument containing the value's type. */
+DCCFUN void DCC_VSTACK_CALL DCCStackValue_ClampConst(struct DCCStackValue *__restrict self, int wid);
+
+/* Returns the signed constant value of the given stack-value.
+ * This function automatically performs sign-extensions
+ * for 8, 16 and 32-bit signed integral constants. */
+DCCFUN DCC(int_t) DCC_VSTACK_CALL DCCStackValue_SignedConst(struct DCCStackValue const *__restrict self);
 
 /* Perform integer promotion, as required by the C standard in practically any unary/binary operation.
  * Note, that v-stack API functions normally will _NOT_ do this, leaving the

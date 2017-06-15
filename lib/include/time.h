@@ -47,11 +47,11 @@ struct tm;
 #define CLOCKS_PER_SEC  1000
 
 #ifdef _USE_32BIT_TIME_T
-#define __TIMENAM(n)  __asm__("_" n "32")
-#define __TIMENAMS(n) __asm__("_" n "32_s")
+#	define __TIMENAM(n)  __asm__("_" n "32")
+#	define __TIMENAMS(n) __asm__("_" n "32_s")
 #else
-#define __TIMENAM(n)  __asm__("_" n "64")
-#define __TIMENAMS(n) __asm__("_" n "64_s")
+#	define __TIMENAM(n)  __asm__("_" n "64")
+#	define __TIMENAMS(n) __asm__("_" n "64_s")
 #endif
 
 __IMP __WUNUSED double (difftime)(time_t __time1, time_t __time2) __TIMENAM("difftime");
@@ -74,10 +74,10 @@ char *(ctime_r)(const time_t *timep, char *buf);
 struct tm *(gmtime_r)(const time_t *timep, struct tm *result);
 struct tm *(localtime_r)(const time_t *timep, struct tm *result);
 #else
-#define asctime_r(tm,buf)         __extension__({ char *const __buf = (buf); __msvc_asctime_s(__buf,(size_t)-1,tm) ? (char *)0 : __buf; })
-#define ctime_r(tm,buf)           __extension__({ char *const __buf = (buf); __msvc_ctime_s(__buf,(size_t)-1,tm) ? (char *)0 : __buf; })
-#define gmtime_r(timep,result)    __extension__({ struct tm *const __r = (result); __msvc_gmtime_s(__r,timep) ? (struct tm *)0 : __r; })
-#define localtime_r(timep,result) __extension__({ struct tm *const __r = (result); __msvc_localtime_s(__r,timep) ? (struct tm *)0 : __r; })
+#	define asctime_r(tm,buf)         __extension__({ char *const __buf = (buf); __msvc_asctime_s(__buf,(size_t)-1,tm) ? (char *)0 : __buf; })
+#	define ctime_r(tm,buf)           __extension__({ char *const __buf = (buf); __msvc_ctime_s(__buf,(size_t)-1,tm) ? (char *)0 : __buf; })
+#	define gmtime_r(timep,result)    __extension__({ struct tm *const __r = (result); __msvc_gmtime_s(__r,timep) ? (struct tm *)0 : __r; })
+#	define localtime_r(timep,result) __extension__({ struct tm *const __r = (result); __msvc_localtime_s(__r,timep) ? (struct tm *)0 : __r; })
 #endif
 #endif
 

@@ -16,50 +16,20 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-/* Compile with: $ dcc -nostdlib -c -o crt1.o crt1.c */
+#pragma once
+#pragma GCC system_header
 
-#pragma comment(lib,"msvcrt")
+#ifndef __has_include_next
+#define __has_include_next(x) 0
+#endif
 
-/* Declare everything with hidden visibility. */
-#pragma GCC visibility push("hidden")
-
+#if __has_include_next(<bits/byteswap.h>)
+#include_next <bits/byteswap.h>
+#else
 #include <__stdinc.h>
 
+#define __bswap_16  __builtin_bswap16
+#define __bswap_32  __builtin_bswap32
+#define __bswap_64  __builtin_bswap64
 
-#define __UNKNOWN_APP    0
-#define __CONSOLE_APP    1
-#define __GUI_APP        2
-
-typedef struct {
- int newmode;
-} _startupinfo;
-
-int main(int argc, char **argv, char **env);
-
-__IMP void __set_app_type(int);
-__IMP void _controlfp(unsigned a, unsigned b);
-__IMP void __getmainargs(int *pargc, char ***pargv, char ***penv, int globb, _startupinfo*);
-__IMP [[noreturn]] void exit(int exitcode);
-
-[[noreturn,alias("_start")]] void __start(void);
-[[noreturn]] void _start(void) {
- int argc; char **argv; char **env;
- _startupinfo start_info = {0};
-
-#ifdef _WIN32
- /* TODO: Register initial SEH handler. */
-#endif
-
- _controlfp(0x10000,0x30000);
- __set_app_type(__CONSOLE_APP);
- __getmainargs(&argc,&argv,&env,0,&start_info);
-
-#if !defined(NDEBUG) && (defined(_WIN32) || defined(__CYGWIN32__)) && defined(__i386__)
- { extern void __dcc_dbg_init_exc_tracebacks(void);
-   __dcc_dbg_init_exc_tracebacks();
- }
-#endif
- exit(main(argc,argv,env));
-}
-
-#pragma GCC visibility pop
+#endif /* !include_next... */

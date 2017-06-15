@@ -521,6 +521,7 @@ DCCSym_ClearDef(struct DCCSym *__restrict self, int warn) {
   struct DCCSym *old_alias;
   /* Simply allow overriding a weak symbol. */
   if (warn && !(self->sy_flags&DCC_SYMFLAG_WEAK)) {
+   /* TODO: Display A2L file&line information. */
    if (self->sy_alias) WARN(W_SYMBOL_ALREADY_DEFINED_ALIAS,
                             self->sy_name->k_name,
                             self->sy_alias->sy_name->k_name);
@@ -566,8 +567,7 @@ DCCSym_ClrDef(struct DCCSym *__restrict self) {
 PUBLIC void
 DCCSym_Define(struct DCCSym *__restrict self,
               struct DCCSection *__restrict section,
-              target_ptr_t addr,
-              target_siz_t size,
+              target_ptr_t addr, target_siz_t size,
               target_siz_t align) {
  DCCSym_ASSERT(self);
  assert(section);
@@ -583,6 +583,7 @@ DCCSym_Define(struct DCCSym *__restrict self,
       self->sy_align == align) return;
   if (DCCSection_ISIMPORT(section)) {
    /* Don't allow library symbols re-defining local symbols. */
+   /* TODO: Display A2L file&line information. */
    WARN(!DCCSection_ISIMPORT(self->sy_sec)
         ? W_SYMBOL_OVERWRITING_LIBRARY_IMPORT
         : (linker.l_flags&DCC_LINKER_FLAG_LIBSYMREDEF)

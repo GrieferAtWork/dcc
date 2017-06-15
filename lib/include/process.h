@@ -69,9 +69,9 @@ __IMP _Noreturn void (abort)(void);
 #define WAIT_GRANDCHILD 1
 
 #if !defined(__CRT_MSVC) || __SIZEOF_POINTER__ == __SIZEOF_INT__
-#define __PROC_RETURN __pid_t
+#	define __PROC_RETURN __pid_t
 #else
-#define __PROC_RETURN __INTPTR_TYPE__
+#	define __PROC_RETURN __INTPTR_TYPE__
 #endif
 __IMP __PROC_RETURN (cwait)(int *__term_status, __PROC_RETURN __proc_handle, int __action) __PROCESS_FUN("cwait");
 __IMP __PROC_RETURN (execl)(char const *__path, char const *__arg0, ...) __PROCESS_FUN("execl");

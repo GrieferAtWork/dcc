@@ -651,7 +651,11 @@ funop_putarg(funop_t *piter, size_t arg) {
 #endif
 #define pp_hashof2(result,str) PP_CAT(pp_hashof2_,__TPP_EVAL(!!str))(result,str)
 #pragma extension(pop)
-#define pp_hashof(str)         pp_hashof2(1,str)
+#if __SIZEOF_POINTER__ == 4
+#   define pp_hashof(str)         PP_CAT(pp_hashof2(1,str),ul)
+#elif __SIZEOF_POINTER__ == 8
+#   define pp_hashof(str)         PP_CAT(pp_hashof2(1,str),ull)
+#endif
 #endif
 
 #ifdef pp_hashof

@@ -46,44 +46,44 @@ __STRICT_ANSI_HEADER
 #endif
 
 #ifdef __USE_XOPEN2K8
-# define __POSIX2_THIS_VERSION	200809L
+#	define __POSIX2_THIS_VERSION 200809L
 #elif defined __USE_XOPEN2K
-# define __POSIX2_THIS_VERSION	200112L
+#	define __POSIX2_THIS_VERSION 200112L
 #elif defined __USE_POSIX199506
-# define __POSIX2_THIS_VERSION	199506L
+#	define __POSIX2_THIS_VERSION 199506L
 #else
-# define __POSIX2_THIS_VERSION	199209L
+#	define __POSIX2_THIS_VERSION 199209L
 #endif
 
-#define _POSIX2_VERSION	__POSIX2_THIS_VERSION
-#define	_POSIX2_C_VERSION	__POSIX2_THIS_VERSION
-#define	_POSIX2_C_BIND	__POSIX2_THIS_VERSION
-#define	_POSIX2_C_DEV	__POSIX2_THIS_VERSION
-#define	_POSIX2_SW_DEV	__POSIX2_THIS_VERSION
-#define _POSIX2_LOCALEDEF       __POSIX2_THIS_VERSION
+#define _POSIX2_VERSION     __POSIX2_THIS_VERSION
+#define _POSIX2_C_VERSION   __POSIX2_THIS_VERSION
+#define _POSIX2_C_BIND      __POSIX2_THIS_VERSION
+#define _POSIX2_C_DEV       __POSIX2_THIS_VERSION
+#define _POSIX2_SW_DEV      __POSIX2_THIS_VERSION
+#define _POSIX2_LOCALEDEF   __POSIX2_THIS_VERSION
 
 #ifdef __USE_XOPEN2K8
-# define _XOPEN_VERSION	700
+#	define _XOPEN_VERSION 700
 #elif defined __USE_XOPEN2K
-# define _XOPEN_VERSION	600
+#	define _XOPEN_VERSION 600
 #elif defined __USE_UNIX98
-# define _XOPEN_VERSION	500
+#	define _XOPEN_VERSION 500
 #else
-# define _XOPEN_VERSION	4
+#	define _XOPEN_VERSION 4
 #endif
 
-#define _XOPEN_XCU_VERSION	4
-#define _XOPEN_XPG2	1
-#define _XOPEN_XPG3	1
-#define _XOPEN_XPG4	1
-#define _XOPEN_UNIX	1
-#define	_XOPEN_CRYPT	1
-#define	_XOPEN_ENH_I18N	1
-#define _XOPEN_LEGACY	1
+#define _XOPEN_XCU_VERSION 4
+#define _XOPEN_XPG2        1
+#define _XOPEN_XPG3        1
+#define _XOPEN_XPG4        1
+#define _XOPEN_UNIX        1
+#define _XOPEN_CRYPT       1
+#define _XOPEN_ENH_I18N    1
+#define _XOPEN_LEGACY      1
 
-#define	STDIN_FILENO	0	/* Standard input.  */
-#define	STDOUT_FILENO	1	/* Standard output.  */
-#define	STDERR_FILENO	2	/* Standard error output.  */
+#define STDIN_FILENO   0 /* Standard input. */
+#define STDOUT_FILENO  1 /* Standard output. */
+#define STDERR_FILENO  2 /* Standard error output. */
 
 #include <bits/types.h>
 
@@ -119,18 +119,18 @@ typedef __socklen_t socklen_t;
 #ifdef __CRT_MSVC
 /* MSVC doesn't support 64-bit IO (for some reason?)
  * So we link everything against 32-bit. */
-#   define __UNISTD_FUN(x)   __asm__("_" x)
-#   define __UNISTD_FUN32(x) __asm__("_" x)
-#   define __UNISTD_FUN64(x) __asm__("_" x)
+#	define __UNISTD_FUN(x)   __asm__("_" x)
+#	define __UNISTD_FUN32(x) __asm__("_" x)
+#	define __UNISTD_FUN64(x) __asm__("_" x)
 #elif defined(__USE_FILE_OFFSET64)
-#   define __UNISTD_FUN32(x) __asm__(x "64")
-#   define __UNISTD_FUN64(x) __asm__(x "64")
+#	define __UNISTD_FUN32(x) __asm__(x "64")
+#	define __UNISTD_FUN64(x) __asm__(x "64")
 #else
-#   define __UNISTD_FUN32(x) /* nothing */
-#   define __UNISTD_FUN64(x) __asm__(x "64")
+#	define __UNISTD_FUN32(x) /* nothing */
+#	define __UNISTD_FUN64(x) __asm__(x "64")
 #endif
 #ifndef __UNISTD_FUN
-#   define __UNISTD_FUN(x) 
+#	define __UNISTD_FUN(x) 
 #endif
 
 
@@ -149,42 +149,42 @@ __IMP __WUNUSED int (eaccess)(char const *__name, int __type) __UNISTD_FUN("eacc
 #endif
 __IMP __WUNUSED __CRT_UNSUPPORTED_MSVC int (faccessat)(int __fd, char const *__file, int __type, int __flag);
 
-#   define SEEK_SET  0 /* Seek from beginning of file.  */
-#   define SEEK_CUR  1 /* Seek from current position.  */
-#   define SEEK_END  2 /* Seek from end of file.  */
+#	define SEEK_SET  0 /* Seek from beginning of file.  */
+#	define SEEK_CUR  1 /* Seek from current position.  */
+#	define SEEK_END  2 /* Seek from end of file.  */
 #ifdef __USE_GNU
-#   define SEEK_DATA 3 /* Seek to next data.  */
-#   define SEEK_HOLE 4 /* Seek to next hole.  */
+#	define SEEK_DATA 3 /* Seek to next data.  */
+#	define SEEK_HOLE 4 /* Seek to next hole.  */
 #ifdef __CRT_MSVC
-#   pragma deprecated(SEEK_DATA)
-#   pragma deprecated(SEEK_HOLE)
+#	pragma deprecated(SEEK_DATA)
+#	pragma deprecated(SEEK_HOLE)
 #endif
 #endif
 
 #ifdef __USE_MISC
-#   define L_SET  SEEK_SET
-#   define L_INCR SEEK_CUR
-#   define L_XTND SEEK_END
+#	define L_SET  SEEK_SET
+#	define L_INCR SEEK_CUR
+#	define L_XTND SEEK_END
 #endif
 
 __IMP off_t (lseek)(int __fd, off_t __offset, int __whence)
 #ifdef __CRT_MSVC
 #ifdef __USE_FILE_OFFSET64
-    __asm__("_lseeki64")
+	__asm__("_lseeki64")
 #else
-    __asm__("_lseek")
+	__asm__("_lseek")
 #endif
 #else
-    __UNISTD_FUN32("lseek")
+	__UNISTD_FUN32("lseek")
 #endif
 ;
 
 #ifdef __USE_LARGEFILE64
 __IMP off64_t (lseek64)(int __fd, off64_t __offset, int __whence)
 #ifdef __CRT_MSVC
-    __asm__("_lseeki64")
+	__asm__("_lseeki64")
 #else
-    __UNISTD_FUN64("lseek")
+	__UNISTD_FUN64("lseek")
 #endif
 ;
 #endif
@@ -269,8 +269,8 @@ __IMP char *(get_current_dir_name)(void) __UNISTD_FUN("get_current_dir_name");
 #if defined(__USE_MISC) || \
    (defined(__USE_XOPEN_EXTENDED) && !defined(__USE_XOPEN2K8))
 #ifdef __CRT_MSVC
-#pragma deprecated(getwd)
-#define getwd(buf) getcwd(buf,PATH_MAX)
+#	pragma deprecated(getwd)
+#	define getwd(buf) getcwd(buf,PATH_MAX)
 #else
 __IMP __WUNUSED [[__deprecated__]] char *(getwd)(char *__buf) __UNISTD_FUN("getwd");
 #endif
@@ -284,8 +284,8 @@ __IMP __WUNUSED int (dup)(int __fd) __UNISTD_FUN("dup");
 __IMP int (dup2)(int __filehandlesrc, int __filehandledst) __UNISTD_FUN("dup2");
 
 #ifdef __USE_GNU
-#ifdef __CRT_MSVC
-#define dup3(fd,fd2,flags) (dup2(fd,fd2) ?: __msvc_setmode(fd2,flags))
+#if defined(__CRT_MSVC) && !defined(__INTELLISENSE__)
+#	define dup3(fd,fd2,flags) (dup2(fd,fd2) ?: __msvc_setmode(fd2,flags))
 #else
 __IMP int (dup3)(int __fd, int __fd2, int __flags) __UNISTD_FUN("dup3");
 #endif
@@ -301,14 +301,14 @@ __IMP extern char **__environ __asm__("_environ");
 __IMP extern char **environ   __asm__("_environ");
 #else
 __IMP extern char ***(__cdecl __p__environ)(void);
-#define __environ (*__p__environ())
-#define environ   (*__p__environ())
+#	define __environ (*__p__environ())
+#	define environ   (*__p__environ())
 #endif
 
 #if !defined(__CRT_MSVC) || __SIZEOF_POINTER__ == __SIZEOF_INT__
-#define __PROC_RETURN __pid_t
+#	define __PROC_RETURN __pid_t
 #else
-#define __PROC_RETURN __INTPTR_TYPE__
+#	define __PROC_RETURN __INTPTR_TYPE__
 #endif
 
 __IMP __PROC_RETURN (execve)(char const *__path, char *const __argv[], char *const __envp[]) __UNISTD_FUN("execve");
@@ -333,7 +333,7 @@ __IMP _Noreturn void (_exit)(int __code);
 
 
 #if __has_include(<bits/confname.h>)
-#include <bits/confname.h>
+#	include <bits/confname.h>
 #endif
 
 __IMP __WUNUSED __CRT_UNSUPPORTED_MSVC long int (pathconf)(char const *__path, int __name) __UNISTD_FUN("pathconf");
@@ -446,7 +446,7 @@ __IMP __CRT_UNSUPPORTED_MSVC extern int (optopt) __UNISTD_FUN("optopt");
 #pragma pop_macro("optarg","optind","opterr","optopt")
 __IMP __CRT_UNSUPPORTED_MSVC int (getopt)(int ___argc, char *const *___argv, char const *__shortopts)
 #ifdef __CRT_GLIBC
-    __asm__("__posix_getopt")
+	__asm__("__posix_getopt")
 #endif
 ;
 #endif
@@ -478,18 +478,18 @@ __IMP __CRT_UNSUPPORTED_MSVC char *(getpass)(char const *__prompt) __UNISTD_FUN(
 
 __IMP int (fsync)(int __fd)
 #ifdef __CRT_MSVC
-    __asm__("_commit")
+	__asm__("_commit")
 #else
-    __UNISTD_FUN("fsync")
+	__UNISTD_FUN("fsync")
 #endif
 ;
 
 #ifdef __USE_GNU
 __IMP __CRT_WORKAROUND_MSVC int (syncfs)(int __fd)
 #ifdef __CRT_MSVC
-    __asm__("_commit")
+	__asm__("_commit")
 #else
-    __UNISTD_FUN("syncfs")
+	__UNISTD_FUN("syncfs")
 #endif
 ;
 #endif
@@ -518,8 +518,7 @@ __IMP int (__msvc_ftruncate64)(int __fd, __UINT64_TYPE__ __sz) __asm__("_chsize_
  __extension({ int __fd = __msvc_open(file,0x0102,0777);\
                int __err = __fd >= 0 ? (callback) : -1;\
                close(__fd);\
-               __err;\
- })
+               __err; })
 #ifdef __USE_FILE_OFFSET64
 #   define truncate(file,length)   __msvc_truncate(file,__msvc_ftruncate64(__fd,length))
 #else
@@ -542,20 +541,20 @@ __IMP int (truncate64)(char const *__file, off64_t __length) __UNISTD_FUN64("tru
 __IMP int (ftruncate)(int __fd, off_t __length)
 #ifdef __CRT_MSVC
 #ifdef __USE_FILE_OFFSET64
-    __asm__("_chsize_s")
+	__asm__("_chsize_s")
 #else
-    __asm__("_chsize")
+	__asm__("_chsize")
 #endif
 #else
-    __UNISTD_FUN32("ftruncate")
+	__UNISTD_FUN32("ftruncate")
 #endif
 ;
 #ifdef __USE_LARGEFILE64
 __IMP int (ftruncate64)(int __fd, off64_t __length)
 #ifdef __CRT_MSVC
-    __asm__("_chsize_s")
+	__asm__("_chsize_s")
 #else
-    __UNISTD_FUN64("ftruncate")
+	__UNISTD_FUN64("ftruncate")
 #endif
 ;
 #endif
@@ -572,11 +571,11 @@ __IMP __CRT_UNSUPPORTED_MSVC __INTPTR_TYPE__ (syscall)(__INTPTR_TYPE__ __sysno, 
 #endif
 
 #if !defined(F_ULOCK) && (defined(__USE_MISC) || defined(__USE_XOPEN_EXTENDED))
-#define F_ULOCK 0 /* Unlock a previously locked region.  */
-#define F_LOCK  1 /* Lock a region for exclusive use.  */
+#	define F_ULOCK 0 /* Unlock a previously locked region.  */
+#	define F_LOCK  1 /* Lock a region for exclusive use.  */
 #ifndef __CRT_MSVC
-#define F_TLOCK 2 /* Test and lock a region for exclusive use.  */
-#define F_TEST  3 /* Test a region for other processes locks.  */
+#	define F_TLOCK 2 /* Test and lock a region for exclusive use.  */
+#	define F_TEST  3 /* Test a region for other processes locks.  */
 #endif
 
 #ifdef __CRT_MSVC
@@ -595,19 +594,18 @@ __IMP int (lockf64)(int __fd, int __cmd, off64_t __len) __UNISTD_FUN64("lockf");
 
 #ifdef __USE_GNU
 # define TEMP_FAILURE_RETRY(expression) \
- __extension__({ long int __result; \
-                 do __result = (long int)(expression); \
-                 while (__result == -1L && errno == EINTR); \
-                 __result; \
- })
+ __extension__({ long int __r; \
+                 do __r = (long int)(expression); \
+                 while (__r == -1L && errno == EINTR); \
+                 __r; })
 #endif
 
 #if defined(__USE_POSIX199309) || defined(__USE_UNIX98)
 __IMP __CRT_WORKAROUND_MSVC int (fdatasync)(int __fildes)
 #ifdef __CRT_MSVC
-    __asm__("_commit")
+	__asm__("_commit")
 #else
-    __UNISTD_FUN("fdatasync")
+	__UNISTD_FUN("fdatasync")
 #endif
 ;
 #endif
@@ -626,7 +624,7 @@ __IMP __CRT_UNSUPPORTED_MSVC char *(ctermid)(char *__s) __UNISTD_FUN("ctermid");
   ((__USE_FORTIFY_LEVEL-0) > 0) && \
     defined(__fortify_function) && \
     __has_include(<bits/unistd.h>)
-#include <bits/unistd.h>
+#	include <bits/unistd.h>
 #endif
 
 //__IMP __WUNUSED int (chsize)(int __fd, __MS_LONG __size) __UNISTD_FUN("chsize");

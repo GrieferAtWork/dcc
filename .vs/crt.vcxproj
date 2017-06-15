@@ -12,9 +12,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\lib\fixinclude\alloca.h" />
-    <ClInclude Include="..\lib\fixinclude\byteorder.h" />
+    <ClInclude Include="..\lib\fixinclude\byteswap.h" />
     <ClInclude Include="..\lib\fixinclude\ctype.h" />
     <ClInclude Include="..\lib\fixinclude\dcc.h" />
+    <ClInclude Include="..\lib\fixinclude\endian.h" />
     <ClInclude Include="..\lib\fixinclude\iso646.h" />
     <ClInclude Include="..\lib\fixinclude\limits.h" />
     <ClInclude Include="..\lib\fixinclude\malloc.h" />
@@ -34,6 +35,7 @@
     <ClInclude Include="..\lib\fixinclude\__stdinc.h" />
     <ClInclude Include="..\lib\include\ar.h" />
     <ClInclude Include="..\lib\include\assert.h" />
+    <ClInclude Include="..\lib\include\bits\byteswap.h" />
     <ClInclude Include="..\lib\include\bits\dirent.h" />
     <ClInclude Include="..\lib\include\bits\fcntl-linux.h" />
     <ClInclude Include="..\lib\include\bits\fcntl.h" />

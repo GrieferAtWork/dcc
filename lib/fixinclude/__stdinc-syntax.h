@@ -424,8 +424,8 @@ void __builtin_va_copy(__builtin_va_list &dst_ap, __builtin_va_list &src_ap, ...
 #   define __SIZEOF_JMP_BUF__ 64
 #endif
 
-template<class T> typename ____INTELLISENE_enableif<sizeof(T) == __SIZEOF_POINTER__,int>::__type __builtin_setjmp(T &jbuf);
-template<class T> __declspec(noreturn) typename ____INTELLISENE_enableif<sizeof(T) == __SIZEOF_POINTER__,void>::__type __builtin_longjmp(T &jbuf, int sig);
+template<class T> typename ____INTELLISENE_enableif<sizeof(T) == __SIZEOF_JMP_BUF__,int>::__type __builtin_setjmp(T &jbuf);
+template<class T> __declspec(noreturn) typename ____INTELLISENE_enableif<sizeof(T) == __SIZEOF_JMP_BUF__,void>::__type __builtin_longjmp(T &jbuf, int sig);
 
 __UINT16_TYPE__ __builtin_bswap16(__UINT16_TYPE__ x);
 __UINT32_TYPE__ __builtin_bswap32(__UINT32_TYPE__ x);

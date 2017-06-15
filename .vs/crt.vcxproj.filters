@@ -78,9 +78,6 @@
     <ClInclude Include="..\lib\fixinclude\alloca.h">
       <Filter>fixinclude</Filter>
     </ClInclude>
-    <ClInclude Include="..\lib\fixinclude\byteorder.h">
-      <Filter>fixinclude</Filter>
-    </ClInclude>
     <ClInclude Include="..\lib\include\ctype.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -173,6 +170,15 @@
     </ClInclude>
     <ClInclude Include="..\lib\include\sys\fcntl.h">
       <Filter>include\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\endian.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\bits\byteswap.h">
+      <Filter>include\bits</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\byteswap.h">
+      <Filter>fixinclude</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
