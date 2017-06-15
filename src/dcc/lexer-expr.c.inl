@@ -251,8 +251,41 @@ LEXPRIV int DCC_PARSE_CALL DCCParse_ExprType(void) {
  /* Parse a type prefix. - Don't parse a full type due to ambiguity between:
   * >> auto x = int(*)(int) (42); // This just looks weird. - Also: The '(*' is ambiguous
   */
- error = DCCParse_CTypePrefix(&type,&attr);
- if (!error) goto end;
+ error = !!DCCParse_CTypePrefix(&type,&attr);
+ if (!error) {
+  if (TPP_ISKEYWORD(TOK)) {
+   struct DCCDecl *tydecl;
+   /* >> struct point { int x,y; };
+    * >> static int x = sizeof(point); // Wrong: should be 'sizeof(struct point)'
+    * Check if a struct/union/enum type named 'TOKEN.t_kwd' exists, and it one does,
+    * warn about the missing type prefix before using that type here. */
+   if ((tydecl = DCCCompiler_GetDecl(TOKEN.t_kwd,DCC_NS_STRUCT)) != NULL) {
+    int wid = 0;
+    if (tydecl->d_kind == DCC_DECLKIND_STRUCT) {
+     wid = W_TYPE_IN_EXPRESSION_MISSING_STRUCT_PREFIX;
+     goto found_struct;
+    } else if (tydecl->d_kind == DCC_DECLKIND_UNION) {
+     wid = W_TYPE_IN_EXPRESSION_MISSING_UNION_PREFIX;
+found_struct:
+     type.t_type = DCCTYPE_STRUCTURE;
+     type.t_base = tydecl;
+     DCCDecl_Incref(tydecl);
+    } else if (tydecl->d_kind == DCC_DECLKIND_ENUM) {
+     wid = W_TYPE_IN_EXPRESSION_MISSING_ENUM_PREFIX;
+     assert(!type.t_base);
+     assert(type.t_type == DCCTYPE_INT);
+    }
+    if (wid) { /* Should always be the case... */
+     WARN(wid,&type);
+     YIELD();
+     error = 2;
+     goto got_type;
+    }
+   }
+  }
+  goto end;
+ }
+got_type:
  /* Special case: Still allow array extensions! */
  if (TOK == '[') DCCParse_CTypeSuffix(&type,&attr);
  /* Warn about use of types in expressions. */
