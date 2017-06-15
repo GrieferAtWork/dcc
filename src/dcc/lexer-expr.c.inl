@@ -1489,7 +1489,7 @@ DCCParse_CExpr2(int one, struct DCCSymExpr *__restrict result) {
  one ? DCCParse_Expr1() : DCCParse_Expr();
  vused();
  popf();
- result->e_int = DCCStackValue_SignedConst(vbottom);
+ result->e_int = vbottom->sv_const.it;
  result->e_sym = vbottom->sv_sym;
  /* TODO: Check 'vbottom' C type. */
  if (vbottom->sv_reg != DCC_RC_CONST ||

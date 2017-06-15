@@ -73,9 +73,9 @@ DCCVStack_BSwap(void) {
   else { /* Constant optimizations. */
    switch (size) {
    case 1: return;
-   case 2: vbottom->sv_const.u16 = DCC_BSWAP16(vbottom->sv_const.u16); break;
-   case 4: vbottom->sv_const.u32 = DCC_BSWAP32(vbottom->sv_const.u32); break;
-   case 8: vbottom->sv_const.u64 = DCC_BSWAP64(vbottom->sv_const.u64); break;
+   case 2: vbottom->sv_const.it = (int_t)DCC_BSWAP16(vbottom->sv_const.u16); break;
+   case 4: vbottom->sv_const.it = (int_t)DCC_BSWAP32(vbottom->sv_const.u32); break;
+   case 8: vbottom->sv_const.it = (int_t)DCC_BSWAP64(vbottom->sv_const.u64); break;
    default: goto copy_elem;
    }
    return;

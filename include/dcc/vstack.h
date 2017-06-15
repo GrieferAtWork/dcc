@@ -336,7 +336,7 @@ struct DCCStackValue {
 #define DCCSTACKVALUE_ISCONST_INT(self) \
  (!((self)->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) && \
    ((self)->sv_reg == DCC_RC_CONST) && !((self)->sv_sym))
-#define DCCSTACKVALUE_GTCONST_INT(self) DCCStackValue_SignedConst(self)
+#define DCCSTACKVALUE_GTCONST_INT(self) ((self)->sv_const.it)
 
 /* Check if 'self' is a constant expression value (symbol+offset) */
 #define DCCSTACKVALUE_ISCONST_XVAL(self) \
@@ -394,11 +394,6 @@ DCCFUN void DCC_VSTACK_CALL DCCStackValue_PromoteFunction(struct DCCStackValue *
  *              value was clamped (or ZERO(0) if none should be).
  *        NOTE: The warning is emit with a single argument containing the value's type. */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_ClampConst(struct DCCStackValue *__restrict self, int wid);
-
-/* Returns the signed constant value of the given stack-value.
- * This function automatically performs sign-extensions
- * for 8, 16 and 32-bit signed integral constants. */
-DCCFUN DCC(int_t) DCC_VSTACK_CALL DCCStackValue_SignedConst(struct DCCStackValue const *__restrict self);
 
 /* Perform integer promotion, as required by the C standard in practically any unary/binary operation.
  * Note, that v-stack API functions normally will _NOT_ do this, leaving the
