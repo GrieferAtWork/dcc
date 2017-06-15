@@ -175,21 +175,31 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_SkipExpr(void) {
 /* Fix a given type using the value from 'vbottom'. */
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_FixType(struct DCCType *__restrict type) {
+ tyid_t orig_qual;
  struct DCCType *real_sym_type = type;
  assert(type);
  /* Special handling for 'auto &x = y;' and 'char (&c)[] = z;' */
  if (DCCTYPE_GROUP(real_sym_type->t_type) == DCCTYPE_LVALUE)
      assert(real_sym_type->t_base),
      real_sym_type = &real_sym_type->t_base->d_type;
- if (real_sym_type->t_base &&
+ if (real_sym_type->t_base && DCCTYPE_ISARRAY(real_sym_type->t_type) &&
      DCCTYPE_ISBASIC(real_sym_type->t_base->d_type.t_type,DCCTYPE_AUTO) &&
-     DCCTYPE_ISARRAY(real_sym_type->t_type) &&
      DCCTYPE_GROUP(vbottom->sv_ctype.t_type) == DCCTYPE_ARRAY) {
+  struct DCCType *array_base;
   /* Special case: 'auto' used as base of array. */
+  array_base = &real_sym_type->t_base->d_type;
   assert(vbottom->sv_ctype.t_base);
   assert(!real_sym_type->t_base->d_type.t_base);
-  DCCType_InitCopy(&real_sym_type->t_base->d_type,
-                   &vbottom->sv_ctype.t_base->d_type);
+  orig_qual = array_base->t_type&DCCTYPE_QUAL;
+  DCCType_InitCopy(array_base,&vbottom->sv_ctype.t_base->d_type);
+  if (real_sym_type == type) {
+   /* Delete const qualifiers. */
+   assert(DCCTYPE_GROUP(type->t_type) != DCCTYPE_LVALUE);
+   array_base->t_type    &= ~(DCCTYPE_CONST);
+   array_base->t_type    |=  (orig_qual);
+   real_sym_type->t_type &= ~(DCCTYPE_CONST);
+   real_sym_type->t_type |=  (orig_qual);
+  }
  }
 
  if (DCCTYPE_ISBASIC(real_sym_type->t_type,DCCTYPE_AUTO)) {
@@ -197,7 +207,25 @@ DCCParse_FixType(struct DCCType *__restrict type) {
   DCCStackValue_PromoteFunction(vbottom);
   /* Fix automatically typed variables. */
   assert(!real_sym_type->t_base);
+  orig_qual = real_sym_type->t_type&DCCTYPE_QUAL;
   DCCType_InitCopy(real_sym_type,&vbottom->sv_ctype);
+  if (real_sym_type == type) {
+   struct DCCType *ty_iter;
+   assert(DCCTYPE_GROUP(type->t_type) != DCCTYPE_LVALUE);
+   /* Special case (Don't inherit const qualifiers):
+    * >> auto foo   = "foobar"; // Compile as 'char foo[7] = "foobar";'
+    * >> auto foo[] = "foobar"; // Compile as 'char foo[7] = "foobar";'
+    */
+   ty_iter = real_sym_type;
+   for (;;) {
+    ty_iter->t_type &= ~(DCCTYPE_CONST);
+    ty_iter->t_type |=  (orig_qual);
+    if (!ty_iter->t_base ||
+       (DCCTYPE_GROUP(ty_iter->t_type) != DCCTYPE_ARRAY &&
+        DCCTYPE_GROUP(ty_iter->t_type) != DCCTYPE_VARRAY)) break;
+    ty_iter = &ty_iter->t_base->d_type;
+   }
+  }
  } else if (DCCTYPE_GROUP(real_sym_type->t_type) == DCCTYPE_VARRAY) {
   size_t array_size;
   if (DCCTYPE_GROUP(vbottom->sv_ctype.t_type) == DCCTYPE_ARRAY) {
