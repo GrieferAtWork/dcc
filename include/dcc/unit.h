@@ -79,40 +79,58 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
                    struct DCCMemLoc const *__restrict pointer);
 
 
-#define DCC_SYMFLAG_NONE       0x00000000 /*< '[[visibility("default")]]': No special flags/default (aka. public) visibility. */
-#define DCC_SYMFLAG_INTERNAL   0x00000001 /*< '[[visibility("internal")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
-#define DCC_SYMFLAG_PRIVATE    0x00000002 /*< '[[visibility("hidden")]]': Private symbol (don't export from a binary/library). */
-#define DCC_SYMFLAG_PROTECTED  0x00000003 /*< '[[visibility("protected")]]': Protected symbol (don't export from the compilation unit). */
-#define DCC_SYMFLAG_VISIBILITY 0x00000003 /*< Mask for ELF-style symbol visibility. */
-#define DCC_SYMFLAG_STATIC     0x00000004 /*< 'static': FLAG: Protected symbol (don't export from the compilation unit). */
-#define DCC_SYMFLAG_WEAK       0x00000008 /*< '[[weak]]': FLAG: Weak symbol. A weak symbols can be overwritten at any time by another
-                                           *   symbol, meaning should assumptions may be made about its address, or its relation.
-                                           *   Access to such a symbol should take place exclusively through relocations. */
-#define DCC_SYMFLAG_NOCOLL     0x00000020 /*< '[[nocoll]]': Don't allow this symbol/section to be collapsed.
-                                           *                When this flag is set, optimization isn't allowed to move
-                                           *                the symbol to a different location within the same section. */
-#define DCC_SYMFLAG_USED       0x00000040 /*< '[[used]]': FLAG: Don't delete this symbol, even if it appears unused. */
-#define DCC_SYMFLAG_UNUSED     0x00000080 /*< '[[unused]]': FLAG: Don't warn if this symbol is deleted during unused symbol collection. */
+#define DCC_SYMFLAG_NONE         0x00000000
+#define DCC_SYMFLAG_DEFAULT      0x00000000 /*< '[[visibility("default")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
+#define DCC_SYMFLAG_INTERNAL     0x00000001 /*< '[[visibility("internal")]]': Internal symbol (Usually the same as 'DCC_SYMFLAG_PRIVATE', which it also implies). */
+#define DCC_SYMFLAG_PRIVATE      0x00000002 /*< '[[visibility("hidden")]]': Private symbol (don't export from a binary/library). */
+#define DCC_SYMFLAG_PROTECTED    0x00000003 /*< '[[visibility("protected")]]': Protected symbol (don't export from the compilation unit). */
+#define DCC_SYMFLAG_VISIBILITY   0x00000003 /*< Mask for ELF-style symbol visibility. */
+#define DCC_SYMFLAG_STATIC       0x00000004 /*< 'static': FLAG: Protected symbol (don't export from the compilation unit). */
+#define DCC_SYMFLAG_WEAK         0x00000008 /*< '[[weak]]': FLAG: Weak symbol. A weak symbols can be overwritten at any time by another
+                                             *   symbol, meaning should assumptions may be made about its address, or its relation.
+                                             *   Access to such a symbol should take place exclusively through relocations. */
+/*                               0x00000010 */
+#define DCC_SYMFLAG_NOCOLL       0x00000020 /*< '[[nocoll]]': Don't allow this symbol/section to be collapsed.
+                                             *                When this flag is set, optimization isn't allowed to move
+                                             *                the symbol to a different location within the same section. */
+#define DCC_SYMFLAG_USED         0x00000040 /*< '[[used]]': FLAG: Don't delete this symbol, even if it appears unused. */
+#define DCC_SYMFLAG_UNUSED       0x00000080 /*< '[[unused]]': FLAG: Don't warn if this symbol is deleted during unused symbol collection. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE
-#define DCC_SYMFLAG_DLLIMPORT  0x00000100 /*< '[[dllimport]]': On PE targets: explicit dllimport. */
-#define DCC_SYMFLAG_DLLEXPORT  0x00000200 /*< '[[dllexport]]': On PE targets: explicit dllexport. */
-#endif /* DCC_TARGET_BIN == DCC_BINARY_PE */
+#define DCC_SYMFLAG_DLLIMPORT    0x00000100 /*< '[[dllimport]]': On PE targets: explicit dllimport. */
+#define DCC_SYMFLAG_DLLEXPORT    0x00000200 /*< '[[dllexport]]': On PE targets: explicit dllexport. */
+#define DCC_SYMFLAG_PE_ITA_IND   0x00000400 /*< Try to perform PE:ITA-indirection on this symbol. */
+#else
+/*                               0x00000100 */
+/*                               0x00000200 */
+/*                               0x00000400 */
+#endif
 /* TODO: Add more flags for symbol typing (unknown|function|object) */
+/*                               0x00000800 */
+/*                               0x00001000 */
+/*                               0x00002000 */
+/*                               0x00004000 */
+/*                               0x00008000 */
+
+#define DCC_SYMFLAG_SYM_MASK     0x0000ffff /* Flags only  */
+#define DCC_SYMFLAG_SEC_MASK     0xffff0000
 
 /* Additional symbol flags only meaningful for section start symbols. */
-#define DCC_SYMFLAG_SEC_R     0x00010000 /*< The section is readable. */
-#define DCC_SYMFLAG_SEC_W     0x00020000 /*< The section is writable. */
-#define DCC_SYMFLAG_SEC_X     0x00040000 /*< The section is executable. */
-#define DCC_SYMFLAG_SEC_S     0x00080000 /*< The section is shared between multiple instances of a running binary (NOTE: May not be available for some targets). */
-#define DCC_SYMFLAG_SEC_M     0x00100000 /*< Symbols in this section can be merged. */
-#define DCC_SYMFLAG_SEC_U     0x00200000 /*< This section has no alignment requirements ('sc_start.sy_align' is ignored and interpreted as '1'). */
+#define DCC_SYMFLAG_SEC_R        0x00010000 /*< The section is readable. */
+#define DCC_SYMFLAG_SEC_W        0x00020000 /*< The section is writable. */
+#define DCC_SYMFLAG_SEC_X        0x00040000 /*< The section is executable. */
+#define DCC_SYMFLAG_SEC_S        0x00080000 /*< The section is shared between multiple instances of a running binary (NOTE: May not be available for some targets). */
+#define DCC_SYMFLAG_SEC_M        0x00100000 /*< Symbols in this section can be merged. */
+#define DCC_SYMFLAG_SEC_U        0x00200000 /*< This section has no alignment requirements ('sc_start.sy_align' is ignored and interpreted as '1'). */
 #define DCC_SYMFLAG_SEC(r,w,x,s,m,u) \
  (((r)?DCC_SYMFLAG_SEC_R:0)|((w)?DCC_SYMFLAG_SEC_W:0)\
  |((x)?DCC_SYMFLAG_SEC_X:0)|((s)?DCC_SYMFLAG_SEC_S:0)\
  |((m)?DCC_SYMFLAG_SEC_M:0)|((u)?DCC_SYMFLAG_SEC_U:0))
-#if DCC_TARGET_BIN == DCC_BINARY_PE
-#define DCC_SYMFLAG_PE_ITA_IND   0x08000000 /*< Try to perform PE:ITA-indirection on this symbol. */
-#endif
+/*                               0x00400000 */
+/*                               0x00800000 */
+/*                               0x01000000 */
+/*                               0x02000000 */
+/*                               0x04000000 */
+/*                               0x08000000 */
 #define DCC_SYMFLAG_SEC_ISIMPORT 0x10000100 /*< The section is not known at compile-time, but is linked as a shared library at run-time (The library name is used as section name). */
 #define DCC_SYMFLAG_SEC_FIXED    0x20000000 /*< The section must be loaded to a fixed address already specified by 'sy_addr'.
                                              *  When multiple sections overlap at the same virtual address, it is the linker's job to solve such problems. */

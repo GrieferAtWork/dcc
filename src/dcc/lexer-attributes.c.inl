@@ -73,16 +73,8 @@ DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
  if (!(self->a_specs&DCC_ATTRSPEC_FIXEDALIGN) &&
      !(self->a_alias)) self->a_align = rhs->a_align;
  /* TODO: Do more strict checking when comparing old against new attributes. */
- self->a_flags |= rhs->a_flags&(DCC_ATTRFLAG_MASK_MODE
-                               |DCC_ATTRFLAG_MASK_REACHABLE
-                               |DCC_ATTRFLAG_MASK_WARNING
-#ifdef DCC_ATTRFLAG_DLLIMPORT
-                               |DCC_ATTRFLAG_DLLIMPORT
-#endif
-#ifdef DCC_ATTRFLAG_DLLEXPORT
-                               |DCC_ATTRFLAG_DLLEXPORT
-#endif
-                                );
+ self->a_flags |= rhs->a_flags&(DCC_ATTRFLAG_MASK_MODE|
+                                DCC_ATTRFLAG_MASK_REACHABLE);
  if ((rhs->a_flags&DCC_ATTRFLAG_MASK_CALLCONV) &&
      (rhs->a_flags&DCC_ATTRFLAG_MASK_CALLCONV) !=
      (self->a_flags&DCC_ATTRFLAG_MASK_CALLCONV)) {
@@ -95,17 +87,17 @@ DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
   }
   self->a_flags |= rhs->a_flags&DCC_ATTRFLAG_MASK_CALLCONV;
  }
- if ((rhs->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) &&
-     (rhs->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) !=
-     (self->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY)) {
+ if ((rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) &&
+     (rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) !=
+     (self->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY)) {
   /* Warn about miss-matched ELF visibility. */
   WARN(W_ATTRIBUTE_MERGE_VISIBILITY,
-       elfvis_names[(rhs->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) >> ELFVISNAME_SHIFT],
-       elfvis_names[(self->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) >> ELFVISNAME_SHIFT]);
-  if ((rhs->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) >
-      (self->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY)) {
-   self->a_flags &= ~(DCC_ATTRFLAG_MASK_ELFVISIBILITY);
-   self->a_flags |= (rhs->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY);
+       elfvis_names[(rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) >> ELFVISNAME_SHIFT],
+       elfvis_names[(self->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) >> ELFVISNAME_SHIFT]);
+  if ((rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) >
+      (self->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY)) {
+   self->a_flags &= ~(DCC_ATTRFLAG_MASK_VISIBILITY);
+   self->a_flags |= (rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY);
   }
  }
  if (rhs->a_reach) {
@@ -198,6 +190,7 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   if (DCC_MACRO_FALSE) { case KWD_weak:case KWD_selectany: SPECF(DCC_ATTRSPEC_WEAK); }
   if (DCC_MACRO_FALSE) { case KWD_used:                    SPECF(DCC_ATTRSPEC_USED); }
   if (DCC_MACRO_FALSE) { case KWD_unused:                  SPECF(DCC_ATTRSPEC_UNUSED); }
+  if (DCC_MACRO_FALSE) { case KWD_nocoll:                  SPECF(DCC_ATTRSPEC_NOCOLL); }
   if (DCC_MACRO_FALSE) { case KWD_dllexport:               SPECF(DCC_ATTRSPEC_DLLEXPORT); }
   if (DCC_MACRO_FALSE) { case KWD_dllimport:               SPECF(DCC_ATTRSPEC_DLLIMPORT); }
   if (DCC_MACRO_FALSE) { case KWD_naked:                   SPECF(DCC_ATTRSPEC_NAKED); }
@@ -222,7 +215,7 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
 #if DCC_TARGET_BIN != DCC_BINARY_PE
   if (isspec && (flag == DCC_ATTRSPEC_DLLIMPORT ||
                  flag == DCC_ATTRSPEC_DLLEXPORT)) {
-   self->a_flags &= ~(DCC_ATTRFLAG_MASK_ELFVISIBILITY);
+   self->a_flags &= ~(DCC_ATTRFLAG_MASK_VISIBILITY);
    self->a_flags |= (delete_flag
                      ? DCC_ATTRFLAG_VIS_HIDDEN
                      : DCC_ATTRFLAG_VIS_NONE);
@@ -432,10 +425,10 @@ incref_section:
     else { WARN(W_ATTRIBUTE_VISIBILITY_UNKNOWN_VISIBILITY,text->s_text); goto cleanup_text; }
 #undef CHECK
 set_visibility :
-    self->a_flags &= ~(DCC_ATTRFLAG_MASK_ELFVISIBILITY);
+    self->a_flags &= ~(DCC_ATTRFLAG_MASK_VISIBILITY);
     self->a_flags |= new_visibility;
    }
-   self->a_flags &= ~(DCC_ATTRFLAG_MASK_ELFVISIBILITY);
+   self->a_flags &= ~(DCC_ATTRFLAG_MASK_VISIBILITY);
    self->a_flags |= new_visibility;
   } break;
 

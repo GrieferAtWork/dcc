@@ -107,63 +107,84 @@ struct DCCSymAddr {
 };
 
 
-#define DCC_ATTRSPEC_NONE          0x00000000
-#define DCC_ATTRSPEC_NOINLINE      0x00000001 /*< Used for functions: Mark as no-inline. */
-#define DCC_ATTRSPEC_NORETURN      0x00000002 /*< Used for functions: Mark as no-return. */
-#define DCC_ATTRSPEC_SECTION       0x00000004 /*< An explicit section was defined (When not set, the symbol is used as alias).
-                                               *  WARNING: This flag may only be set when 'a_section' is non-NULL. */
-#define DCC_ATTRSPEC_WEAK          0x00000008 /*< Used for symbols: Define as weak. */
+#define DCC_ATTRSPEC_NONE        0x00000000
+#define DCC_ATTRSPEC_NOINLINE    0x00000001 /*< Used for functions: Mark as no-inline. */
+#define DCC_ATTRSPEC_NORETURN    0x00000002 /*< Used for functions: Mark as no-return. */
+#define DCC_ATTRSPEC_SECTION     0x00000004 /*< An explicit section was defined (When not set, the symbol is used as alias).
+                                             *  WARNING: This flag may only be set when 'a_section' is non-NULL. */
+#define DCC_ATTRSPEC_WEAK        0x00000008 /*< Used for symbols: Define as weak. */
+/*                               0x00000010 */
+#define DCC_ATTRSPEC_NOCOLL      0x00000020 /*< Don't exclude a symbol associated with this because it appears unused. */
+#define DCC_ATTRSPEC_USED        0x00000040 /*< Don't exclude a symbol associated with this because it appears unused. */
+#define DCC_ATTRSPEC_UNUSED      0x00000080 /*< Don't warn about a associated with this not being used. */
 #if DCC_TARGET_BIN == DCC_BINARY_PE || \
     defined(GUARD_DCC_LEXER_C) || \
     defined(GUARD_DCC_LEXER_ATTRIBUTES_C_INL)
-#define DCC_ATTRSPEC_DLLIMPORT     0x00000010 /*< On PE targets: dllimport. */
-#define DCC_ATTRSPEC_DLLEXPORT     0x00000020 /*< On PE targets: dllexport. */
+#define DCC_ATTRSPEC_DLLIMPORT   0x00000100 /*< On PE targets: dllimport. */
+#define DCC_ATTRSPEC_DLLEXPORT   0x00000200 /*< On PE targets: dllexport. */
 #endif
-#define DCC_ATTRSPEC_USED          0x00000040 /*< Don't exclude a symbol associated with this because it appears unused. */
-#define DCC_ATTRSPEC_UNUSED        0x00000080 /*< Don't warn about a associated with this not being used. */
-#define DCC_ATTRSPEC_NAKED         0x00000100 /*< Used for functions: Don't generate a prologue/epilogue. */
-#define DCC_ATTRSPEC_CONSTRUCTOR   0x00000200 /*< Used for functions: Run before main(). */
-#define DCC_ATTRSPEC_DESTRUCTOR    0x00000400 /*< Used for functions: Run after main(). */
-#define DCC_ATTRSPEC_PACKED        0x00000800 /*< When set, tightly pack a structure. */
-#define DCC_ATTRSPEC_FIXEDALIGN    0x00001000 /*< When set, 'a_align' contains fixed alignment information. */
-#define DCC_ATTRSPEC_TRANSUNION    0x00002000 /*< When set for a union type, it may implicitly be cast of any of its members. */
-#define DCC_ATTRSPEC_MSSTRUCT      0x00004000 /*< A structure type is packed using the ms algorithm. */
-#define DCC_ATTRSPEC_ARITHMETIC    0x00008000 /*< Allow arithmetic operations with structure types. */
-#define DCC_ATTRSPEC_WUNUSED       0x00010000 /*< Used for functions: Warn when return value is unused. */
+/*                               0x00000400 */
+/*                               0x00000800 */
+/*                               0x00001000 */
+/*                               0x00002000 */
+/*                               0x00004000 */
+/*                               0x00008000 */
+#define DCC_ATTRSPEC_NAKED       0x00010000 /*< Used for functions: Don't generate a prologue/epilogue. */
+#define DCC_ATTRSPEC_CONSTRUCTOR 0x00020000 /*< Used for functions: Run before main(). */
+#define DCC_ATTRSPEC_DESTRUCTOR  0x00040000 /*< Used for functions: Run after main(). */
+#define DCC_ATTRSPEC_PACKED      0x00080000 /*< When set, tightly pack a structure. */
+#define DCC_ATTRSPEC_FIXEDALIGN  0x00100000 /*< When set, 'a_align' contains fixed alignment information. */
+#define DCC_ATTRSPEC_TRANSUNION  0x00200000 /*< When set for a union type, it may implicitly be cast of any of its members. */
+#define DCC_ATTRSPEC_MSSTRUCT    0x00400000 /*< A structure type is packed using the ms algorithm. */
+#define DCC_ATTRSPEC_ARITHMETIC  0x00800000 /*< Allow arithmetic operations with structure types. */
+#define DCC_ATTRSPEC_WUNUSED     0x01000000 /*< Used for functions: Warn when return value is unused. */
+/*                               0x02000000 */
+/*                               0x04000000 */
+/*                               0x08000000 */
+/*                               0x10000000 */
+/*                               0x20000000 */
+/*                               0x40000000 */
+/*                               0x80000000 */
 
 
+#define DCC_ATTRFLAG_NONE            0x00000000
+/*      DCC_ATTRFLAG_MASK_???        0x0000ffff */
 
-#define DCC_ATTRFLAG_NONE          0x00000000
+#define DCC_ATTRFLAG_MASK_MODE       0x000f0000 /*< Mask for type mode. */
+#define DCC_ATTRFLAG_MODE_NONE       0x00000000
+#define DCC_ATTRFLAG_MODE_QI         0x00010000 /*< An integer that is as wide as the smallest addressable unit, usually 8 bits. */
+#define DCC_ATTRFLAG_MODE_HI         0x00020000 /*< An integer, twice as wide as a QI mode integer, usually 16 bits. */
+#define DCC_ATTRFLAG_MODE_SI         0x00030000 /*< An integer, four times as wide as a QI mode integer, usually 32 bits. */
+#define DCC_ATTRFLAG_MODE_DI         0x00040000 /*< An integer, eight times as wide as a QI mode integer, usually 64 bits. */
+#define DCC_ATTRFLAG_MODE_SF         0x00050000 /*< A floating point value, as wide as a SI mode integer, usually 32 bits. */
+#define DCC_ATTRFLAG_MODE_DF         0x00060000 /*< A floating point value, as wide as a DI mode integer, usually 64 bits. */
+/*      DCC_ATTRFLAG_MODE_???        0x00070000 */
+/*      DCC_ATTRFLAG_MODE_???        ...        */
+/*      DCC_ATTRFLAG_MODE_???        0x000f0000 */
 
-#define DCC_ATTRFLAG_MODE_NONE     0x00000000
-#define DCC_ATTRFLAG_MODE_QI       0x00002000 /*< An integer that is as wide as the smallest addressable unit, usually 8 bits. */
-#define DCC_ATTRFLAG_MODE_HI       0x00004000 /*< An integer, twice as wide as a QI mode integer, usually 16 bits. */
-#define DCC_ATTRFLAG_MODE_SI       0x00006000 /*< An integer, four times as wide as a QI mode integer, usually 32 bits. */
-#define DCC_ATTRFLAG_MODE_DI       0x00008000 /*< An integer, eight times as wide as a QI mode integer, usually 64 bits. */
-#define DCC_ATTRFLAG_MODE_SF       0x0000a000 /*< A floating point value, as wide as a SI mode integer, usually 32 bits. */
-#define DCC_ATTRFLAG_MODE_DF       0x0000c000 /*< A floating point value, as wide as a DI mode integer, usually 64 bits. */
+#define DCC_ATTRFLAG_MASK_REACHABLE  0x00f00000 /*< Mask for behavior when reached. */
+#define DCC_ATTRFLAG_REACH_DEPR      0x00000000 /*< [if(a_depr != NULL)] Emit a deprecation warning when this function is reached. */
+#define DCC_ATTRFLAG_REACH_WARN      0x00100000 /*< [if(a_depr != NULL)] Emit a warning when this function is reached. */
+#define DCC_ATTRFLAG_REACH_ERROR     0x00200000 /*< [if(a_depr != NULL)] Emit an error when this function is reached. */
+/*      DCC_ATTRFLAG_REACH_???       0x00300000 */
+/*      DCC_ATTRFLAG_REACH_???       ...        */
+/*      DCC_ATTRFLAG_REACH_???       0x00f00000 */
 
-#define DCC_ATTRFLAG_REACH_DEPR    0x00000000 /*< [if(a_depr != NULL)] Emit a deprecation warning when this function is reached. */
-#define DCC_ATTRFLAG_REACH_WARN    0x00010000 /*< [if(a_depr != NULL)] Emit a warning when this function is reached. */
-#define DCC_ATTRFLAG_REACH_ERROR   0x00020000 /*< [if(a_depr != NULL)] Emit an error when this function is reached. */
+#define DCC_ATTRFLAG_MASK_CALLCONV   0x0f000000 /*< Mask for calling-convention flags. */
+#define DCC_ATTRFLAG_CC_CDECL        0x00000000 /*< Use cdecl calling conventions. */
+#define DCC_ATTRFLAG_CC_STDCALL      0x01000000 /*< Use stdcall calling conventions. */
+#define DCC_ATTRFLAG_CC_THISCALL     0x02000000 /*< Use thiscall calling conventions. */
+#define DCC_ATTRFLAG_CC_FASTCALL     0x03000000 /*< Use fastcall calling conventions. */
+/*      DCC_ATTRFLAG_CC_???          0x04000000 */
+/*      DCC_ATTRFLAG_CC_???          ...        */
+/*      DCC_ATTRFLAG_CC_???          0x0f000000 */
 
-#define DCC_ATTRFLAG_CC_CDECL      0x00000000 /*< Use cdecl calling conventions. */
-#define DCC_ATTRFLAG_CC_STDCALL    0x00100000 /*< Use stdcall calling conventions. */
-#define DCC_ATTRFLAG_CC_THISCALL   0x00200000 /*< Use thiscall calling conventions. */
-#define DCC_ATTRFLAG_CC_FASTCALL   0x00300000 /*< Use fastcall calling conventions. */
-
-#define DCC_ATTRFLAG_VIS_NONE      0x00000000 /*< No special visibility (use command-line option '-fvisibility=...'). */
-#define DCC_ATTRFLAG_VIS_DEFAULT   0x10000000 /*< Default/automatic visibility. */
-#define DCC_ATTRFLAG_VIS_HIDDEN    0x20000000 /*< Hidden visibility. */
-#define DCC_ATTRFLAG_VIS_PROTECTED 0x30000000 /*< Protected visibility. */
-#define DCC_ATTRFLAG_VIS_INTERNAL  0x40000000 /*< Internal visibility. */
-
-#define DCC_ATTRFLAG_MASK_MODE          0x0000e000 /*< Mask for type mode. */
-#define DCC_ATTRFLAG_MASK_REACHABLE     0x000f0000 /*< Mask for behavior when reached. */
-#define DCC_ATTRFLAG_MASK_CALLCONV      0x00f00000 /*< Mask for calling-convention flags. */
-#define DCC_ATTRFLAG_MASK_WARNING       0x07000000 /*< Mask for warning-related flags. */
-#define DCC_ATTRFLAG_MASK_ELFVISIBILITY 0x70000000 /*< Mask for ELF-visibility flags. */
-#define DCC_ATTRFLAG_MASK_VISIBILITY    0xf8000000 /*< Mask for visibility flags. */
+#define DCC_ATTRFLAG_MASK_VISIBILITY 0xf0000000 /*< Mask for ELF-visibility flags. */
+#define DCC_ATTRFLAG_VIS_NONE        0x00000000 /*< No special visibility (use command-line option '-fvisibility=...'). */
+#define DCC_ATTRFLAG_VIS_DEFAULT     0x10000000 /*< Default/automatic visibility. */
+#define DCC_ATTRFLAG_VIS_HIDDEN      0x20000000 /*< Hidden visibility. */
+#define DCC_ATTRFLAG_VIS_PROTECTED   0x30000000 /*< Protected visibility. */
+#define DCC_ATTRFLAG_VIS_INTERNAL    0x40000000 /*< Internal visibility. */
 
 struct DCCAttrDecl {
  uint32_t                  a_specs;    /*< Attribute specs (Set of 'DCC_ATTRSPEC_*') */

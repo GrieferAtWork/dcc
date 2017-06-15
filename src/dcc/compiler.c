@@ -220,6 +220,9 @@ DCCDecl_CalculateSymflags(struct DCCDecl const *__restrict self) {
 #if DCC_ATTRSPEC_UNUSED == DCC_SYMFLAG_UNUSED
                           |DCC_ATTRSPEC_UNUSED
 #endif
+#if DCC_ATTRSPEC_NOCOLL == DCC_SYMFLAG_NOCOLL
+                          |DCC_ATTRSPEC_NOCOLL
+#endif
                            );
 #endif /* ... */
 #if defined(DCC_ATTRSPEC_DLLIMPORT) && DCC_ATTRSPEC_DLLIMPORT != DCC_SYMFLAG_DLLIMPORT
@@ -237,7 +240,10 @@ DCCDecl_CalculateSymflags(struct DCCDecl const *__restrict self) {
 #if DCC_ATTRSPEC_UNUSED != DCC_SYMFLAG_UNUSED
   if (attr->a_specs&DCC_ATTRSPEC_UNUSED) result |= DCC_SYMFLAG_UNUSED;
 #endif
-  switch (attr->a_flags&DCC_ATTRFLAG_MASK_ELFVISIBILITY) {
+#if DCC_ATTRSPEC_NOCOLL != DCC_SYMFLAG_NOCOLL
+  if (attr->a_specs&DCC_ATTRSPEC_NOCOLL) result |= DCC_SYMFLAG_NOCOLL;
+#endif
+  switch (attr->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) {
   default: goto default_visibility;
   case DCC_ATTRFLAG_VIS_DEFAULT  : result |= DCC_SYMFLAG_NONE; break;
   case DCC_ATTRFLAG_VIS_INTERNAL : result |= DCC_SYMFLAG_INTERNAL; break;

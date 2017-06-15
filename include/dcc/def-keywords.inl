@@ -326,6 +326,7 @@ DEFINE_ATTRIBUTE(alias)
 DEFINE_ATTRIBUTE(weakref)
 DEFINE_ATTRIBUTE(used)
 DEFINE_ATTRIBUTE(unused)
+DEFINE_ATTRIBUTE(nocoll) /* Used in symbol definitions: Don't allow the optimizer to move the symbol to a different location later. */
 DEFINE_ATTRIBUTE(cdecl)
 DEFINE_ATTRIBUTE(stdcall)
 DEFINE_ATTRIBUTE(thiscall)
