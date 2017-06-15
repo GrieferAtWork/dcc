@@ -937,9 +937,10 @@ DCCType_DoToString(char *buf, size_t buflen,
  } break;
  default: break;
  }
+ if (self->t_type&DCCTYPE_ATOMIC) { WRITE("atomic ",7); }
  if (self->t_type&DCCTYPE_INLINE) { WRITE("inline ",7); }
 #ifdef DCCTYPE_TLS
- if (self->t_type&DCCTYPE_TLS) { WRITE("_Thread_local ",14); }
+ if (self->t_type&DCCTYPE_TLS) { WRITE("thread_local ",13); }
 #endif
  iter += DCCType_PutPrefix(iter,buflen,self,0);
  if (name && name->k_size) {

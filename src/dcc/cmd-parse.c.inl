@@ -431,8 +431,8 @@ check_depfile: if (preproc.p_depfd == TPP_STREAM_INVALID) preproc.p_depfd = DCC_
  case OPT_traditional:
   /* Enable old-style spelling of inplace operators ('x += 42;' --> 'x =+ 42;') */
   TPPLexer_Current->l_extokens |= TPPLEXER_TOKEN_EQUALBINOP;
-  /* Disable old-style function warnings. */
-  TPPLexer_SetWarning(WG_OLD_FUNCTION_DECL,WSTATE_DISABLED);
+  /* Enable traditional macro definitions. */
+  TPPLexer_EnableExtension(EXT_TRADITIONAL_MACRO);
   break;
 
 

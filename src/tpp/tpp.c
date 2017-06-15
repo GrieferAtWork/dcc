@@ -3380,7 +3380,7 @@ PRIVATE int set_wstate(int wid, wstate_t state) {
  if (state == WSTATE_SUPPRESS) {
   if (iter == end || iter->wse_wid != wid) {
    /* Must insert/allocate a new slot. */
-   newslot = curstate->ws_extendedv;
+   newslot = iter;
    while (newslot != end && newslot->wse_suppress) ++newslot;
    if (newslot == end) {
     /* No free slots. */
@@ -3397,7 +3397,7 @@ PRIVATE int set_wstate(int wid, wstate_t state) {
     newslot += curstate->ws_extendeda;
     curstate->ws_extendeda = newalloc;
    }
-   assert(iter <= newslot);
+   assertf(iter <= newslot,("iter = %p\nnewslot = %p\n",iter,newslot));
    assert(iter == newslot || iter->wse_wid > wid);
    assert(iter == curstate->ws_extendedv || iter[-1].wse_wid < wid);
    /* Move data between iter and newslot. */

@@ -866,6 +866,7 @@ WGROUP(WG_DECL_IN_FOR,"declaration-in-for",WSTATE_ERROR)                 /*< War
 WGROUP(WG_ZERO_TYPED_ARRAY,"zero-sized-arrays",WSTATE_ERROR)             /*< Warn about zero-sized array types. */
 WGROUP(WG_NESTED_FUNCTIONS,"nested-functions",WSTATE_ERROR)              /*< Warn about nested functions. */
 WGROUP(WG_EMPTY_STRUCTURES,"empty-structures",WSTATE_ERROR)              /*< Warn about empty structures. */
+WGROUP(WG_OLD_STORAGE_CLASS,"old-storage-class",WSTATE_ERROR)            /*< Warn about old-style use of 'auto' as storage class. */
 WGROUP(WG_OLD_FUNCTION_DECL,"old-function-decl",WSTATE_ERROR)            /*< Warn about old-style function declarations. */
 WGROUP(WG_OLD_VARIABLE_INIT,"old-variable-init",WSTATE_ERROR)            /*< Warn about old-style variable initialization. */
 WGROUP(WG_MIXED_DECLARATIONS,"declaration-after-statement",WSTATE_ERROR) /*< Warn about declarations mixed with statements. */
@@ -1047,6 +1048,7 @@ DEF_WARNING(W_TRUNC_INTEGRAL_OPERATION,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_DI
 DEF_WARNING(W_CLAMP_INTEGRAL_CONSTANT,(WG_POINTER_ARITHMETIC,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Integral constant " Q("%s") " is truncated"))
 DEF_WARNING(W_UNARY_CONSTANT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Unary operation on constant type " Q("%s")))
 DEF_WARNING(W_UNARY_RVALUE_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Unary operation on r-value of type " Q("%s")))
+DEF_WARNING(W_AUTO_TYPE_USED_AS_ARGUMENT_TYPE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING(Q("__auto_type") " in argument list is interpreted as " Q("int")))
 DEF_WARNING(W_EXPECTED_COMPLETE_TYPE_FOR_FUNCTION_BASE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected a complete type " Q("%s") " as function base"))
 DEF_WARNING(W_EXPECTED_COMPLETE_TYPE_FOR_ARRAY_BASE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected a complete type " Q("%s") " as array base"))
 DEF_WARNING(W_SIZEOF_INCOMPLETE_TYPE,(WG_SIZEOF,WG_TYPE),WSTATE_WARN,TYPE_WARNING("An imcomplete type " Q("%s") " is not allowed by sizeof()"))
@@ -1284,13 +1286,16 @@ DEF_WARNING(W_ARRAY_SIZE_ZERO,(WG_ZERO_TYPED_ARRAY,WG_EXTENSIONS),WSTATE_WARN,{
 })
 
 
-DEF_WARNING(W_QUALIFIER_ALREADY_IN_USE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("Qualifier " TOK_S " is already being used",TOK_A))
-DEF_WARNING(W_ALREADY_AN_LVALUE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("The type is already an l-value"))
-DEF_WARNING(W_QUAL_ON_LVALUE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("Qualifiers on l-value types have no defined semantics"))
-DEF_WARNING(W_LVALUE_POINTER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("Pointer to l-value type has no defined semantics"))
-DEF_WARNING(W_AUTO_STORAGE_ALREADY_BY_DEFAULT,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("Using " Q("auto") " to state automatic storage is unnecessary"))
-DEF_WARNING(W_RESTRICT_EXPECTS_POINTER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF(Q("restrict") " is only allowed for pointer types"))
-DEF_WARNING(W_UNKNOWN_FIELD,(WG_TYPE,WG_UNDEFINED),WSTATE_WARN,{
+DEF_WARNING(W_TYPE_QUALIFIER_ALREADY_IN_USE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("Type qualifier " TOK_S " is already being used",TOK_A))
+DEF_WARNING(W_TYPE_SIGN_MODIFIER_ALREADY_IN_USE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("Type sign-modifier " TOK_S " is already being used",TOK_A))
+DEF_WARNING(W_TYPE_INT_MODIFIER_ALREADY_IN_USE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("Type int-modifier " TOK_S " is already being used",TOK_A))
+DEF_WARNING(W_TYPE_WIDTH_MODIFIER_ALREADY_IN_USE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("Type width-modifier " TOK_S " is already being used",TOK_A))
+DEF_WARNING(W_TYPE_ALREADY_AN_LVALUE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("The type is already an l-value"))
+DEF_WARNING(W_TYPE_QUAL_ON_LVALUE,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("Qualifiers on l-value types have no defined semantics"))
+DEF_WARNING(W_TYPE_LVALUE_POINTER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF("Pointer to l-value type has no defined semantics"))
+DEF_WARNING(W_TYPE_AUTO_STORAGE_ALREADY_BY_DEFAULT,(WG_OLD_STORAGE_CLASS),WSTATE_WARN,WARNF("Using " Q("auto") " for automatic storage class"))
+DEF_WARNING(W_TYPE_RESTRICT_EXPECTS_POINTER,(WG_TYPE,WG_SYNTAX),WSTATE_WARN,WARNF(Q("restrict") " is only allowed for pointer types"))
+DEF_WARNING(W_TYPE_UNKNOWN_FIELD,(WG_TYPE,WG_UNDEFINED),WSTATE_WARN,{
  struct TPPString *tyrepr = DCCType_ToTPPString(ARG(struct DCCType *),NULL);
  char *kname = KWDNAME();
  WARNF("Type " Q("%s") " has no member " Q("%s") " (Did you mean " Q("%s") "?)",
@@ -1304,7 +1309,6 @@ DEF_WARNING(W_EXPECTED_TYPE_FOR_DECLARATION,(WG_OLD_FUNCTION_DECL),WSTATE_WARN,W
 DEF_WARNING(W_UNKNOWN_FUNCTION_ARGUMENT,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown function argument " Q("%s"),KWDNAME()))
 DEF_WARNING(W_EXPECTED_STRING_FOR_ASSEMBLY_NAME,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string for assembly name, but got " TOK_S,TOK_A))
 DEF_WARNING(W_AUTO_TYPE_USED_AS_POINTER_BASE,(WG_TYPE),WSTATE_WARN,WARNF(Q("__auto_type") " used as pointer base"))
-DEF_WARNING(W_QUAL_ON_AUTO_TYPE,(WG_TYPE),WSTATE_WARN,WARNF("Qualifiers on " Q("__auto_type") " have no defined semantics"))
 DEF_WARNING(W_VARIABLE_LENGTH_ARRAYS_NOT_ALLOWED_HERE,(WG_TYPE),WSTATE_WARN,WARNF("VLA array types are not allowed here"))
 DEF_WARNING(W_ARRAY_SIZE_DEPENDS_ON_SYMBOL,(WG_VALUE,WG_SYMBOL),WSTATE_WARN,WARNF("Array size depends on symbol " Q("%s"),KWDNAME()))
 

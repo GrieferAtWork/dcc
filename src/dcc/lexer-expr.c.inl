@@ -190,16 +190,20 @@ DCCParse_FixType(struct DCCType *__restrict type) {
   array_base = &real_sym_type->t_base->d_type;
   assert(vbottom->sv_ctype.t_base);
   assert(!real_sym_type->t_base->d_type.t_base);
-  orig_qual = array_base->t_type&DCCTYPE_QUAL;
+  orig_qual = array_base->t_type&(DCCTYPE_QUAL|DCCTYPE_ATOMIC|DCCTYPE_STOREMASK);
   DCCType_InitCopy(array_base,&vbottom->sv_ctype.t_base->d_type);
   if (real_sym_type == type) {
-   /* Delete const qualifiers. */
+   /* Special case (Don't inherit const qualifiers):
+    * >> auto foo[] = "foobar";    // Compile as 'char foo[7] = "foobar";'
+    * >> auto (&foo)[] = "foobar"; // Compile as 'char const (&foo)[7] = "foobar";'
+    */
    assert(DCCTYPE_GROUP(type->t_type) != DCCTYPE_LVALUE);
-   array_base->t_type    &= ~(DCCTYPE_CONST);
-   array_base->t_type    |=  (orig_qual);
-   real_sym_type->t_type &= ~(DCCTYPE_CONST);
-   real_sym_type->t_type |=  (orig_qual);
+   array_base->t_type &= ~(DCCTYPE_CONST|DCCTYPE_ATOMIC|DCCTYPE_STOREMASK);
+   array_base->t_type |=  (orig_qual);
+   type->t_type       &= ~(DCCTYPE_CONST);
   }
+  type->t_type &= ~(DCCTYPE_ATOMIC|DCCTYPE_STOREMASK);
+  type->t_type |=  (orig_qual);
  }
 
  if (DCCTYPE_ISBASIC(real_sym_type->t_type,DCCTYPE_AUTO)) {
@@ -207,24 +211,26 @@ DCCParse_FixType(struct DCCType *__restrict type) {
   DCCStackValue_PromoteFunction(vbottom);
   /* Fix automatically typed variables. */
   assert(!real_sym_type->t_base);
-  orig_qual = real_sym_type->t_type&DCCTYPE_QUAL;
+  orig_qual = real_sym_type->t_type&(DCCTYPE_QUAL|DCCTYPE_ATOMIC|DCCTYPE_STOREMASK);
   DCCType_InitCopy(real_sym_type,&vbottom->sv_ctype);
   if (real_sym_type == type) {
    struct DCCType *ty_iter;
    assert(DCCTYPE_GROUP(type->t_type) != DCCTYPE_LVALUE);
    /* Special case (Don't inherit const qualifiers):
-    * >> auto foo   = "foobar"; // Compile as 'char foo[7] = "foobar";'
-    * >> auto foo[] = "foobar"; // Compile as 'char foo[7] = "foobar";'
+    * >> auto foo = "foobar";  // Compile as 'char foo[7] = "foobar";'
+    * >> auto &foo = "foobar"; // Compile as 'char const (&foo)[7] = "foobar";'
     */
    ty_iter = real_sym_type;
    for (;;) {
-    ty_iter->t_type &= ~(DCCTYPE_CONST);
+    ty_iter->t_type &= ~(DCCTYPE_CONST|DCCTYPE_ATOMIC|DCCTYPE_STOREMASK);
     ty_iter->t_type |=  (orig_qual);
     if (!ty_iter->t_base ||
        (DCCTYPE_GROUP(ty_iter->t_type) != DCCTYPE_ARRAY &&
         DCCTYPE_GROUP(ty_iter->t_type) != DCCTYPE_VARRAY)) break;
     ty_iter = &ty_iter->t_base->d_type;
    }
+   type->t_type &= ~(DCCTYPE_ATOMIC|DCCTYPE_STOREMASK);
+   type->t_type |=  (orig_qual);
   }
  } else if (DCCTYPE_GROUP(real_sym_type->t_type) == DCCTYPE_VARRAY) {
   size_t array_size;
@@ -441,6 +447,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprGeneric(void) {
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprIf(void) {
  struct DCCSym *tt_label,*old_deadjmp;
  int is_true,is_dead = 0;
+ /* TODO: This probably doesn't work anymore... */
  assert(TOK == KWD_if);
  YIELD();
  DCCParse_ParPairBegin();
@@ -452,7 +459,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprIf(void) {
  DCCVStack_KillAll(1); /* Kill all registers before the jump. */
  vpushs(tt_label);
  vgen1('&');
- vjcc(1);             /* Jump across the true-branch. */
+ vjcc(1);              /* Jump across the true-branch. */
  pushf();
  if (is_true == 0) {
   compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
@@ -468,7 +475,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprIf(void) {
  popf();
  if (TOK != KWD_else) {
   if (is_dead == (1|2)) compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
-                                                 DCC_COMPILER_FLAG_DEAD);
+                                             DCC_COMPILER_FLAG_DEAD);
   vpop(1);
   /* This is where we jump to skip the false-branch. */
   t_defsym(tt_label);
@@ -1480,6 +1487,7 @@ DCCParse_CExpr2(int one, struct DCCSymExpr *__restrict result) {
  pushf();
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
  one ? DCCParse_Expr1() : DCCParse_Expr();
+ vused();
  popf();
  result->e_int = DCCStackValue_SignedConst(vbottom);
  result->e_sym = vbottom->sv_sym;

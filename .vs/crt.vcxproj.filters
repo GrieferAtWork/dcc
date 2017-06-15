@@ -203,5 +203,8 @@
     <ClCompile Include="..\lib\src\libc\string.c">
       <Filter>src\libc</Filter>
     </ClCompile>
+    <ClCompile Include="..\lib\test\constant_arithmetic.c">
+      <Filter>src\test</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

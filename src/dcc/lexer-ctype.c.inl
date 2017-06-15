@@ -83,7 +83,8 @@ DCCType_PromoteFunArg(struct DCCType *__restrict self) {
   DCCType_MkPointer(self);
   break;
  case DCCTYPE_AUTO:
-  /* TODO: Warn about auto used as argument type. */
+  /* Warn about auto used as argument type. */
+  WARN(W_AUTO_TYPE_USED_AS_ARGUMENT_TYPE);
   self->t_type = DCCTYPE_INT;
   break;
  default: break;
@@ -439,6 +440,7 @@ DCCParse_CTypeArrayExt(struct DCCType *__restrict self,
      ) compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
  /* TODO: Reclaim temporary storage used by this expression. */
  DCCParse_Expr();
+ vused();
  popf();
  if (!DCCType_IsComplete(self)) {
   WARN(W_EXPECTED_COMPLETE_TYPE_FOR_ARRAY_BASE,self);
@@ -599,16 +601,15 @@ parse_leading:
   tyid_t qual;
   if (DCC_MACRO_FALSE) { case KWD_const:    case KWD___const:    case KWD___const__:    qual = DCCTYPE_CONST; }
   if (DCC_MACRO_FALSE) { case KWD_volatile: case KWD___volatile: case KWD___volatile__: qual = DCCTYPE_VOLATILE; }
-  if (DCCTYPE_GROUP(self->t_type) == DCCTYPE_LVALUE) WARN(W_QUAL_ON_LVALUE);
-  else if (DCCTYPE_ISBASIC(self->t_type,DCCTYPE_AUTO)) WARN(W_QUAL_ON_AUTO_TYPE);
-  else { if (self->t_type&qual) WARN(W_QUALIFIER_ALREADY_IN_USE); self->t_type |= qual; }
+  if (DCCTYPE_GROUP(self->t_type) == DCCTYPE_LVALUE) WARN(W_TYPE_QUAL_ON_LVALUE);
+  else { if (self->t_type&qual) WARN(W_TYPE_QUALIFIER_ALREADY_IN_USE); self->t_type |= qual; }
   goto next_leading;
  } break;
 
  case '&':
  case '*':
   if (DCCTYPE_GROUP(self->t_type) == DCCTYPE_LVALUE)
-      WARN(TOK == '&' ? W_ALREADY_AN_LVALUE : W_LVALUE_POINTER);
+      WARN(TOK == '&' ? W_TYPE_ALREADY_AN_LVALUE : W_TYPE_LVALUE_POINTER);
   /* Disable typing for special l-value conditions.
    * NOTE: Internally, an l-value of an l-value does has a meaning,
    *       in that it describes the result of killing a stack-value
@@ -637,7 +638,7 @@ parse_leading:
  case KWD___restrict:
  case KWD___restrict__:
   if (DCCTYPE_GROUP(self->t_type) != DCCTYPE_POINTER)
-      WARN(W_RESTRICT_EXPECTS_POINTER);
+      WARN(W_TYPE_RESTRICT_EXPECTS_POINTER);
   goto next_leading;
 
  default: break;
@@ -832,7 +833,7 @@ DCCParse_CTypePrefix(struct DCCType *__restrict self,
 #define F_MISC    0x40 /* Everything else (e.g.: '_Atomic', 'const', 'volatile') */
 #define FIX_AUTO() \
 do{ if (flags&F_AUTO) {\
-     WARN(W_AUTO_STORAGE_ALREADY_BY_DEFAULT);\
+     WARN(W_TYPE_AUTO_STORAGE_ALREADY_BY_DEFAULT);\
      self->t_type &= ~(DCCTYPE_BASICMASK);\
      flags        &= ~(F_AUTO);\
     }\
@@ -854,25 +855,28 @@ again:
   tyid_t qual;
   if (DCC_MACRO_FALSE) { case KWD_const:    case KWD___const:    case KWD___const__:    qual = DCCTYPE_CONST; }
   if (DCC_MACRO_FALSE) { case KWD_volatile: case KWD___volatile: case KWD___volatile__: qual = DCCTYPE_VOLATILE; }
-  if (DCCTYPE_ISBASIC(self->t_type,DCCTYPE_AUTO)) WARN(W_QUAL_ON_AUTO_TYPE);
-  else { if (self->t_type&qual) WARN(W_QUALIFIER_ALREADY_IN_USE); self->t_type |= qual; }
+  else { if (self->t_type&qual) WARN(W_TYPE_QUALIFIER_ALREADY_IN_USE); self->t_type |= qual; }
   goto next;
  } break;
 
  { /* Integer type flag. */
  case KWD_int:
   /* HINT: 'DCCTYPE_INT' equals ZERO(0), so it's already set implicitly. */
-  if (flags&F_INT) WARN(W_QUALIFIER_ALREADY_IN_USE);
+  if (flags&F_INT) WARN(W_TYPE_INT_MODIFIER_ALREADY_IN_USE);
   else { FIX_AUTO(); flags |= F_INT; }
   goto next;
  } break;
 
  case KWD___auto_type:
-  if ((flags&(F_INT|F_SIGN|F_WIDTH)) ||
-      (self->t_type&DCCTYPE_QUAL)) break; /* TODO: Warning? */
-  self->t_type |= DCCTYPE_AUTO;
+  if (flags&(F_INT|F_SIGN|F_WIDTH)) break;
+  assert(!(self->t_type&DCCTYPE_BASICMASK));
+  self->t_type |= (DCCTYPE_AUTO);
   flags        |= (F_INT|F_SIGN|F_WIDTH);
-  flags        &= ~(F_AUTO); /* A previous 'auto' was a storage modifier. */
+  if (flags&F_AUTO) {
+   /* A previous 'auto' was a storage modifier. */
+   WARN(W_TYPE_AUTO_STORAGE_ALREADY_BY_DEFAULT);
+   flags &= ~(F_AUTO);
+  }
   goto next;
 
  /* Double-precision floating point modifier. */
@@ -922,7 +926,7 @@ again:
 #endif
     if (!HAS(EXT_FIXED_LENGTH_INTEGER_TYPES)) break;
   }
-  if (flags&F_WIDTH) WARN(W_QUALIFIER_ALREADY_IN_USE);
+  if (flags&F_WIDTH) WARN(W_TYPE_WIDTH_MODIFIER_ALREADY_IN_USE);
   self->t_type |= newwidth;
   flags        |= F_WIDTH;
   goto next;
@@ -975,7 +979,7 @@ again:
   tyid_t new_sign;
   if (DCC_MACRO_FALSE) { case KWD_unsigned: case KWD___unsigned: case KWD___unsigned__: new_sign = DCCTYPE_UNSIGNED; }
   if (DCC_MACRO_FALSE) { case KWD_signed:   case KWD___signed:   case KWD___signed__:   new_sign = 0; }
-  if (flags&F_SIGN) WARN(W_QUALIFIER_ALREADY_IN_USE);
+  if (flags&F_SIGN) WARN(W_TYPE_SIGN_MODIFIER_ALREADY_IN_USE);
   FIX_AUTO();
   flags |= F_SIGN;
   /* Apply the new sign flag. */

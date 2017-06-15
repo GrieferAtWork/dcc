@@ -78,6 +78,7 @@ PUBLIC void DCCCompiler_SetStd(int std) {
   /* Enable traditional macros & tokens, and disable old-style warnings. */
   TPPLexer_EnableExtension(EXT_TRADITIONAL_MACRO);
   CURRENT.l_extokens |= TPPLEXER_TOKEN_EQUALBINOP;
+  TPPLexer_SetWarningGroup(WG_OLD_STORAGE_CLASS,WSTATE_DISABLED);
   TPPLexer_SetWarningGroup(WG_OLD_FUNCTION_DECL,WSTATE_DISABLED);
   TPPLexer_SetWarningGroup(WG_OLD_VARIABLE_INIT,WSTATE_DISABLED);
   break;

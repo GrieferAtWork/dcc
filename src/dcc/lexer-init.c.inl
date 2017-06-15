@@ -229,7 +229,7 @@ parse_field_name:
             type->t_base->d_kind == DCC_DECLKIND_UNION);
      field_offset = 0;
      next_field = DCCDecl_FindStructField(type->t_base,TOKEN.t_kwd,&field_offset);
-     if (!next_field) WARN(W_UNKNOWN_FIELD,type,TOKEN.t_kwd),field_offset = 0;
+     if (!next_field) WARN(W_TYPE_UNKNOWN_FIELD,type,TOKEN.t_kwd),field_offset = 0;
      else field_curr = next_field; /* Select the explicit field. */
      YIELD();
      if (!cxx_field_name) {

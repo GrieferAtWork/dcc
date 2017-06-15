@@ -128,7 +128,8 @@ struct DCCDecl;
 #define DCCTYPE_CONST     0x00001000 /* FLAG: Constant type. */
 #define DCCTYPE_VOLATILE  0x00002000 /* FLAG: volatile type. */
 #define DCCTYPE_QUAL     (DCCTYPE_CONST|DCCTYPE_VOLATILE) /* Mask for type qualifiers. */
-#define DCCTYPE_ATOMIC    0x00020000 /* FLAG: TODO: atomic-seqcst read/write access (warn if not possible). */
+#define DCCTYPE_ATOMIC    0x00020000 /* FLAG: TODO: atomic-seqcst read/write access (warn if not possible).
+                                      * NOTE: This flag may _ONLY_ be 'DCCTYPE_POINTER' or 'DCCTYPE_BUILTIN' for non-floating types. */
 #define DCCTYPE_ALTLONG   0x01000000 /* FLAG: Alternative type 'long' (Used to differentiate during type-matching). */
 #define DCCTYPE_AUTOMATIC 0x00000000 /* STORAGE: Automatic storage duration (NOTE: Must always be ZERO(0)). */
 #define DCCTYPE_STATIC    0x10000000 /* STORAGE: Static storage duration. */

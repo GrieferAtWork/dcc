@@ -2351,7 +2351,7 @@ err:
  assert(!field || field->sf_decl);
  assert(!field || field->sf_decl->d_name);
  assert(!field || field->sf_decl->d_name != &TPPKeyword_Empty);
- WARN(W_UNKNOWN_FIELD,&self->sv_ctype,member_name,
+ WARN(W_TYPE_UNKNOWN_FIELD,&self->sv_ctype,member_name,
       field ? field->sf_decl->d_name->k_name : "??" "?");
 }
 
