@@ -3730,9 +3730,7 @@ DCCVStack_Binary(tok_t op) {
     /* Divide the result by the multiplier size (size of the pointer base). */
     DCCStackValue_Binary(&multiplier,vbottom+1,'/');
     /* Cast the result to 'ptrdiff_t'. */
-    was_lvalue = vbottom->sv_flags&DCC_SFLAG_LVALUE;
     DCCStackValue_Cast(vbottom+1,&ty_ptrdiff);
-    vbottom->sv_flags |= was_lvalue;
     goto end_pop;
    } else if (!DCCTYPE_ISINT(source_type->t_type)) {
     /* Check if vbottom is an integral type and warn if it isn't */
@@ -3742,9 +3740,7 @@ DCCVStack_Binary(tok_t op) {
    vbottom->sv_flags |= DCC_SFLAG_COPY;
    /* Make sure the multiplier base is of proper (and sufficient) typing. */
    { struct DCCType t = {DCCTYPE_INTPTR,NULL};
-     sflag_t was_lvalue = vbottom->sv_flags&DCC_SFLAG_LVALUE;
      DCCStackValue_Cast(vbottom,&t);
-     vbottom->sv_flags |= was_lvalue;
    }
    DCCStackValue_Binary(&multiplier,vbottom,'*');
    goto genbinary;
