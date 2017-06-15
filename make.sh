@@ -3,18 +3,30 @@
 CC="gcc"
 F=("-g" "-Iinclude" "-DDCC_PRIVATE_API")
 out_bin="bin/dcc"
+obj_path="build/dcc"
 
 CC_DCC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
+CC_DDC="/cygdrive/e/c/dcc/dcc/bin/ddc.exe"
 if [ -f "$CC_DCC" ]; then
 	CC="$CC_DCC";
+	obj_path="build/ddc"
 	out_bin="bin/ddc.exe"
 	F+=("-DDCC_PRIVATE_API")
 	F+=("-D_VA_LIST_DEFINED")
 	F+=("-D__SSE2__")
 	F+=("-ID:/cygwin32/usr/include/w32api")
 fi
+if [ -f "$CC_DDC" ]; then
+	CC="$CC_DDC";
+	obj_path="build/ddd"
+	out_bin="bin/ddd.exe"
+	F+=("-DDCC_PRIVATE_API")
+	F+=("-D_VA_LIST_DEFINED")
+	F+=("-D__SSE2__")
+	F+=("-ID:/cygwin32/usr/include/w32api")
+fi
 
-build() { echo "build/dcc/$1"; }
+build() { echo "$obj_path/$1"; }
 out() { echo "$(build $1).o"; }
 dep() { echo "$(build $1).d"; }
 

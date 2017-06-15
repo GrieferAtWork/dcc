@@ -80,7 +80,7 @@ DCCDisp_RegBinMems(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst,
  if (src_unsigned) {
   DCCDisp_BytBinMem(op,0,dst_bytes,&newdst,dst_bytes,1);
  } else {
-  DCCDisp_SignExtendReg(src);
+  DCCDisp_SignMirrorReg(src);
   DCCDisp_ByrBinMem(op,src,dst_bytes,&newdst,dst_bytes,1);
  }
 }
@@ -184,7 +184,7 @@ DCCDisp_RegsBinMems(tok_t op, rc_t src, rc_t src2,
     DCCDisp_BytBinMem(op,0,dst_bytes,&dst2,
                       dst_bytes,src_unsigned);
    } else {
-    DCCDisp_SignExtendReg(src);
+    DCCDisp_SignMirrorReg(src);
     DCCDisp_ByrBinMem(op,src,dst_bytes,&dst2,dst_bytes,0);
    }
   }
@@ -1678,7 +1678,7 @@ DCCDisp_ByrBinMem(tok_t op, rc_t                     src, target_siz_t src_bytes
  if (common_size) {
   if (!src_unsigned) {
    /* sign-extend: src = (uint8_t)sign_extend(src); */
-   DCCDisp_SignExtendReg(src);
+   DCCDisp_SignMirrorReg(src);
    DCCDisp_ByrBinMem(op,src,common_size,&new_dst,common_size,1);
   } else {
    DCCDisp_BytBinMem(op,0,common_size,&new_dst,common_size,1);

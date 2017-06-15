@@ -228,8 +228,8 @@ DCCFUN void DCCDisp_PopReg(DCC(rc_t) dst);
 
 /* Sign-extend the given register into itself, essentially meaning
  * that all bits will be set to a copy of the most significant bit. */
-DCCFUN void DCCDisp_SignExtendReg(DCC(rc_t) dst);
-DCCFUN void DCCDisp_SignExtendMem(struct DCCMemLoc const *__restrict dst, DCC(target_siz_t) n_bytes);
+DCCFUN void DCCDisp_SignMirrorReg(DCC(rc_t) dst);
+DCCFUN void DCCDisp_SignMirrorMem(struct DCCMemLoc const *__restrict dst, DCC(target_siz_t) n_bytes);
 
 /* Load one byte from 'src', filling 'dst' with the sign-extension of it. */
 DCCFUN void DCCDisp_MemSignExtendReg(struct DCCMemLoc const *__restrict src, DCC(rc_t) dst);
@@ -282,6 +282,7 @@ typedef uint8_t DCC(test_t);
 DCCFUN void DCCDisp_RegJmp(DCC(rc_t) reg);
 DCCFUN void DCCDisp_MemJmp(struct DCCMemLoc const *__restrict src, DCC(target_siz_t) n);
 DCCFUN void DCCDisp_LocJmp(struct DCCMemLoc const *__restrict addr);
+DCCFUN void DCCDisp_SymJmp(struct DCCSym const *__restrict sym);
 #define     DCCDisp_RegCll(reg)   DCCDisp_UnaryReg('(',reg)
 #define     DCCDisp_MemCll(src,n) DCCDisp_UnaryMem('(',src,n)
 DCCFUN void DCCDisp_LocCll(struct DCCMemLoc const *__restrict addr);

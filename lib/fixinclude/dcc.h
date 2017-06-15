@@ -41,7 +41,8 @@ typedef struct {
  * HINT: When given, '*INFO' is filled even upon failure.
  * @param: IP:   Instruction pointer that should be queried.
  * @param: INFO: User-provided buffer to fill with information.
- * @return: 0:   The given IP could not be found. */
+ * @return: 0:   The given IP could not be found.
+ * @return: !0:  Successfully queried information about IP. */
 extern _Bool _addr2line(void *__ip, lc_t *__info)
 	__asm__("__dcc_dbg_addr2line");
 
@@ -55,6 +56,43 @@ extern __INT64_TYPE__  __divti3(__INT64_TYPE__ __x, __INT64_TYPE__ __y);    /* '
 extern __UINT64_TYPE__ __umodti3(__UINT64_TYPE__ __x, __INT64_TYPE__ __y);  /* 'return (uint64_t)x % y' */
 extern __INT64_TYPE__  __modti3(__INT64_TYPE__ __x, __INT64_TYPE__ __y);    /* 'return (int64_t)x % y' */
 extern __INT64_TYPE__  __multi3(__INT64_TYPE__ __x, __INT64_TYPE__ __y);    /* 'return (uint64_t|int64_t)x * y' */
+
+
+
+struct [[__packed__]] __cpuinfo {
+#if defined(__i386__) || defined(__x86_64__)
+	unsigned __int32 __cpuid_1_eax;
+	unsigned __int32 __cpuid_1_ebx;
+	unsigned __int32 __cpuid_1_ecx;
+	unsigned __int32 __cpuid_1_edx;
+	unsigned __int32 __cpuid_7_ebx;
+	unsigned __int32 __cpuid_7_edx;
+	unsigned __int32 __cpuid_7_ecx;
+	unsigned __int32 __cpuid_0_eax;
+union [[__packed__]] {
+struct [[__packed__]] {
+	unsigned __int32 __cpuid_0_ebx;
+	unsigned __int32 __cpuid_0_edx;
+	unsigned __int32 __cpuid_0_ecx;
+	unsigned __int8  __cpuid_zero;
+};
+	char             __cpuid_vendor[12];
+};
+#else
+	int              __placeholder;
+#endif
+};
+
+
+/* CPU Information structure allocated and initialized
+ * if the application calls '__builtin_cpu_init()'
+ * NOTE: Access to this structure should always be performed using:
+ * >> int __builtin_cpu_is(char const *cpuname);
+ * >> int __builtin_cpu_supports(char const *feature);
+ */
+extern struct __cpuinfo __cpu_info [[__weak__]];
+
+
 
 
 

@@ -81,6 +81,7 @@
     <None Include="..\src\dcc\gen-one.c.inl" />
     <None Include="..\src\dcc\lexer-asm.c.inl" />
     <None Include="..\src\dcc\lexer-attributes.c.inl" />
+    <None Include="..\src\dcc\lexer-builtins-cpuid.c.inl" />
     <None Include="..\src\dcc\lexer-builtins-malloc.c.inl" />
     <None Include="..\src\dcc\lexer-builtins-string.c.inl" />
     <None Include="..\src\dcc\lexer-builtins-util.c.inl" />

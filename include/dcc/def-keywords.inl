@@ -162,6 +162,12 @@ DEF_BUILTIN(__builtin_bitfield)
 /* Builtin function for offsetof */
 DEF_BUILTIN(__builtin_offsetof)
 
+/* Builtin cpu features */
+DEF_BUILTIN(__builtin_cpu_init)
+DEF_BUILTIN(__builtin_cpu_is)
+DEF_BUILTIN(__builtin_cpu_supports)
+DEF_BUILTIN(__builtin_cpu_vendor)
+
 DEF_K(__builtin_va_list) MACRO(KWD___builtin_va_list,1)
 KWD_FLAGS(KWD___builtin_va_list,TPP_KEYWORDFLAG_HAS_BUILTIN)
 BUILTIN_MACRO(KWD___builtin_va_list,"char*")
@@ -1089,6 +1095,7 @@ DEF_WARNING(W_BUILTIN_MEMCPY_POINTERS_ALWAYS_EQUAL,(WG_QUALITY),WSTATE_WARN,WARN
 DEF_WARNING(W_BUILTIN_MEMCMP_POINTERS_ALWAYS_EQUAL,(WG_QUALITY),WSTATE_WARN,WARNF("Equal pointers passed to " Q("memcmp") " makes the call redundant"))
 DEF_WARNING(W_BUILTIN_RETURN_ADDRESS_CONST_LEVEL,(WG_VALUE),WSTATE_WARN,WARNF("__builtin_return_address/__builtin_frame_address expect a constant integral as argument"))
 DEF_WARNING(W_BUILTIN_RETURN_ADDRESS_NEG_LEVEL,(WG_VALUE),WSTATE_WARN,WARNF("__builtin_return_address/__builtin_frame_address expect a positive integral as argument"))
+DEF_WARNING(W_BUILTIN_CPU_EXPECTED_STRING,(WG_VALUE),WSTATE_WARN,WARNF("Expected string after __builtin_cpu_(is|supports), but got " TOK_S,TOK_A))
 DEF_WARNING(W_UNSUPPORTED_CAS_SIZE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Type " Q("%s") " has an unsupported CAS size"))
 #undef TYPE_WARNING
 #ifdef DECLARE_WARNING_MESSAGES

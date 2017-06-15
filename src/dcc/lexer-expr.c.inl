@@ -981,6 +981,11 @@ outside_function:
  case KWD___builtin_clz:  case KWD___builtin_clzll:
  case KWD___builtin_clzl: case KWD___builtin_clzcc: DCCParse_BuiltinScanner(); break;
  case KWD___builtin_assume_aligned: DCCParse_BuiltinAssumeAligned(); break;
+  /* CPU Information functions. */
+ case KWD___builtin_cpu_init: DCCParse_BuiltinCPUInit(); break;
+ case KWD___builtin_cpu_is:
+ case KWD___builtin_cpu_supports: DCCParse_BuiltinCPUQuery(); break;
+ case KWD___builtin_cpu_vendor: DCCParse_BuiltinCPUVendor(); break;
   /* Return/Frame pointers. */
  case KWD___builtin_return_address:
  case KWD___builtin_frame_address: DCCParse_BuiltinReturnAddr(); break;

@@ -353,7 +353,7 @@ asm_modreg(uint8_t group, uint8_t reg) {
 
 
 PUBLIC void
-DCCDisp_SignExtendReg(rc_t dst) {
+DCCDisp_SignMirrorReg(rc_t dst) {
  uint8_t shift; /* sar $7/15/31, %dst */
  if ((dst&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
  if (dst&DCC_RC_I16) t_putb(0xc1),shift = (dst&DCC_RC_I32) ? 31 : 15;
@@ -369,13 +369,13 @@ DCCDisp_MemSignExtendReg(struct DCCMemLoc const *__restrict src,
  if (dst&DCC_RC_I8) b8reg = dst&~(DCC_RC_I3264|DCC_RC_I16);
  else               b8reg = DCCVStack_GetReg(DCC_RC_I8,1);
  DCCDisp_MemMovReg(src,b8reg);   /* Load the byte at the given address. */
- DCCDisp_SignExtendReg(b8reg);   /* Sign-extend that byte. */
+ DCCDisp_SignMirrorReg(b8reg);   /* Sign-extend that byte. */
  DCCDisp_RegMovReg(b8reg,dst,0); /* Sign-extend it again, and move it into 'dst'. */
 }
 
 
 PUBLIC void
-DCCDisp_SignExtendMem(struct DCCMemLoc const *__restrict dst,
+DCCDisp_SignMirrorMem(struct DCCMemLoc const *__restrict dst,
                       target_siz_t n_bytes) {
  /* Special case: Small memory area. */
  if (CHECK_WIDTH(n_bytes)) {
@@ -394,7 +394,7 @@ DCCDisp_SignExtendMem(struct DCCMemLoc const *__restrict dst,
   msb           = *dst;
   msb.ml_off   += n_bytes-1;
   DCCDisp_MemMovReg(&msb,temp_register);
-  DCCDisp_SignExtendReg(temp_register);
+  DCCDisp_SignMirrorReg(temp_register);
   DCCDisp_ByrMovMem(temp_register,n_bytes,dst,n_bytes,1);
  }
 }

@@ -105,6 +105,14 @@ DCCDisp_LocJmp(struct DCCMemLoc const *__restrict addr) {
   DCCDisp_TargetJmp(&jcc_jmp,&addr->ml_sad);
  }
 }
+PUBLIC void
+DCCDisp_SymJmp(struct DCCSym const *__restrict sym) {
+ struct DCCMemLoc loc;
+ loc.ml_reg = DCC_RC_CONST;
+ loc.ml_off = 0;
+ loc.ml_sym = (struct DCCSym *)sym;
+ DCCDisp_LocJmp(&loc);
+}
 
 LOCAL void
 DCCDisp_TargetJmp(struct jmpop const *__restrict op,

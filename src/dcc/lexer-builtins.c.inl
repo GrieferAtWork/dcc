@@ -1001,9 +1001,10 @@ DCCParse_BuiltinNoop(void) {
 DCC_DECL_END
 
 #ifndef __INTELLISENSE__
+#include "lexer-builtins-cpuid.c.inl"
+#include "lexer-builtins-malloc.c.inl"
 #include "lexer-builtins-string.c.inl"
 #include "lexer-builtins-util.c.inl"
-#include "lexer-builtins-malloc.c.inl"
 #endif
 
 

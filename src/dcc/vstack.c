@@ -2101,7 +2101,7 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
     {
      DCCDisp_RegMovReg(self->sv_reg,self->sv_reg2,1);
     }
-    DCCDisp_SignExtendReg(self->sv_reg2);
+    DCCDisp_SignMirrorReg(self->sv_reg2);
    } else {
     DCCDisp_IntMovReg(0,self->sv_reg2);
    }
@@ -3057,9 +3057,9 @@ DCCVStack_PushStr(char const *__restrict p, size_t s) {
  if unlikely(!str_sym) { vpushi(DCCTYPE_INT,0); return; }
  slot.sv_ctype.t_base = NULL;
  /* TODO: 'DCCTYPE_CONST' should somehow be configurable. */
- slot.sv_ctype.t_type = DCCTYPE_BUILTIN|DCCTYPE_BYTE|DCCTYPE_CONST;
+ slot.sv_ctype.t_type = DCCTYPE_BUILTIN|DCCTYPE_CHAR|DCCTYPE_CONST;
  if (TPPLexer_Current->l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
-  slot.sv_ctype.t_type |= DCCTYPE_UNSIGNED;
+     slot.sv_ctype.t_type |= DCCTYPE_UNSIGNED;
  /* Use a character array as typing for the string. */
  DCCType_MkArray(&slot.sv_ctype,(s+1));
  assert(slot.sv_ctype.t_base);
@@ -4470,7 +4470,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
   if (sign_memory) {
    rc_t temp = DCCVStack_GetReg(DCC_RC_I8,1);
    DCCDisp_RegMovReg(r1,temp,0);
-   DCCDisp_SignExtendReg(temp);
+   DCCDisp_SignMirrorReg(temp);
    DCCDisp_ByrPush(temp,sign_memory);
   }
 #endif
@@ -4516,7 +4516,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
   }
 #if (DCC_TARGET_BYTEORDER == 1234) ^ DCC_TARGET_STACKDOWN
   if (sign_memory) {
-   DCCDisp_SignExtendReg(r1);
+   DCCDisp_SignMirrorReg(r1);
    DCCDisp_ByrPush(r1,sign_memory);
   }
 #endif

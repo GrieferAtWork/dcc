@@ -115,7 +115,7 @@ DCCDisp_RegMovMems(rc_t src, struct DCCMemLoc const *__restrict dst,
  if (src_unsigned) {
   DCCDisp_BytMovMem(0,dst_bytes,&newdst,dst_bytes,1);
  } else {
-  DCCDisp_SignExtendReg(src);
+  DCCDisp_SignMirrorReg(src);
   DCCDisp_ByrMovMem(src,dst_bytes,&newdst,dst_bytes,1);
  }
 }
@@ -370,7 +370,7 @@ DCCDisp_DoRepByrMovMem(rc_t                               src, target_siz_t src_
    max_width = 4;
    DCCDisp_IntMovReg(0,ax);
   } else {
-   DCCDisp_SignExtendReg(ax);
+   DCCDisp_SignMirrorReg(ax);
   }
   DCCDisp_AXMovDI(max_width,dst_bytes); /* Fill the remainder... */
  }
@@ -458,7 +458,7 @@ DCCDisp_DoMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_byt
  common_size = dst_bytes-common_size;
  if (common_size && !src_unsigned) {
   /* sign-extend: temp_register = (uint8_t)sign_extend(temp_register); */
-  DCCDisp_SignExtendReg(temp_register);
+  DCCDisp_SignMirrorReg(temp_register);
   DCCDisp_ByrMovMem(temp_register,common_size,&new_dst,common_size,1);
   if (must_pop_temp) DCCDisp_PopReg(temp_register);
  } else {
@@ -763,7 +763,7 @@ DCCDisp_ByrMovMem(rc_t                               src, target_siz_t src_bytes
  common_size = dst_bytes-common_size;
  if (common_size && !src_unsigned) {
   /* sign-extend: src = (uint8_t)sign_extend(src); */
-  DCCDisp_SignExtendReg(src);
+  DCCDisp_SignMirrorReg(src);
   DCCDisp_ByrMovMem(src,common_size,&new_dst,common_size,1);
  } else {
   DCCDisp_BytMovMem(0,common_size,&new_dst,common_size,1);
@@ -828,6 +828,16 @@ DCCDisp_RegMovReg(rc_t src, rc_t dst, int src_unsigned) {
   }
  } else if (c_dst&DCC_RC_I32) {
   rc_t temp;
+  if ((src&DCC_RI_MASK) == DCC_ASMREG_EAX &&
+      (dst&DCC_RI_MASK) == DCC_ASMREG_EAX) {
+   /* cwde // Same as 'movsx %ax, %eax' */
+   t_putb(0x98);
+   return;
+  }
+  /* movsx %r8, %r32 */
+  /* movsx %r16, %r32 */
+  /* movzx %r8, %r32 */
+  /* movzx %r16, %r32 */
   t_putb(0x0f);
   /* Expand: Use movzx / movsx */
   if (src_unsigned) {
@@ -840,7 +850,15 @@ DCCDisp_RegMovReg(rc_t src, rc_t dst, int src_unsigned) {
   /* Must swap registers because movzx uses the second operand as r/m argument. */
   temp = src,src = dst,dst = temp;
  } else {
+  /* movsx %r8, %r16 */
+  /* movzx %r8, %r16 */
   t_putb(0x66);
+  if ((src&DCC_RI_MASK) == DCC_ASMREG_EAX &&
+      (dst&DCC_RI_MASK) == DCC_ASMREG_EAX) {
+   /* cbw // Same as 'movsx %al, %ax' */
+   t_putb(0x98);
+   return;
+  }
   t_putb(0x0f);
   if (src_unsigned) goto upcast1632_u;
   else              goto upcast1632_s;

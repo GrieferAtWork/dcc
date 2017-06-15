@@ -220,6 +220,8 @@ PRIVATE char *tpp_hexrepr(void const *start, size_t size) {
  return result;
 }
 
+static int in_assertion = 0;
+
 PRIVATE
 #ifndef TPP_BREAKPOINT
 #if defined(__GNUC__) || __has_attribute(__noreturn__)
@@ -246,7 +248,6 @@ void tpp_assertion_failed(char const *expr, char const *file, int line,
   tpp_logerrf("\n");
  }
  {
-  static int in_assertion = 0;
   if (!in_assertion && TPPLexer_Current) {
    struct TPPLCInfo info;
    char const *lx_file;
@@ -3906,6 +3907,7 @@ PRIVATE struct tpp_extension const tpp_extensions[] = {
 #undef tolower
 #endif
 #define tolower(c) (char)((c) >= 'A' && (c) <= 'Z' ? ((c)+('a'-'A')) : (c))
+
 
 #if 0
 /* Fuzzy match two strings */

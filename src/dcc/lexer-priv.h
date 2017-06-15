@@ -172,6 +172,11 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMalloc(void);            /* void *__
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinRealloc(void);           /* void *__builtin_realloc(void *ptr, size_t n_bytes); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinFree(void);              /* void  __builtin_free(void *ptr); */
 
+/* CPU */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinCPUInit(void);           /* void __builtin_cpu_init(void); */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinCPUQuery(void);          /* int __builtin_cpu_is(char const *cpuname),__builtin_cpu_supports(char const *feature); */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinCPUVendor(void);         /* char (&__builtin_cpu_vendor(void))[...]; */
+
 /* MISC */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinScanner(void);           /* int __builtin_ffs(int x),__builtin_ffsl(long x),__builtin_ffsll(long long x),__builtin_ffscc(auto x, size_t s);
                                                                       * int __builtin_clz(int x),__builtin_clzl(long x),__builtin_clzll(long long x),__builtin_clzcc(auto x, size_t s); */
