@@ -97,11 +97,30 @@ DCCDisp_MemsBinRegs(tok_t op, struct DCCMemLoc const *__restrict src,
   target_siz_t s = DCC_RC_SIZE(dst);
   struct DCCSym *jsym = NULL;
   if (s > src_bytes) s = src_bytes;
-  DCCDisp_MemsBinReg(op,src,s,dst,src_unsigned);
+  new_src = *src;
+  if (src->ml_reg != DCC_RC_CONST &&
+     (src->ml_reg&DCC_RI_MASK) == (dst&DCC_RI_MASK)) {
+   /* Special case: The source value is offset from a register that overlaps with 'dst'.
+    * Based on the opcode, we must either update 'src' to use an additional regsiter,
+    * or simply invert the register operation order. */
+   if (op == '=' || op == '|' || op == '&' || op == '^') {
+    /* We can invert the operation order for these operands. */
+    new_src.ml_off += s;
+    DCCDisp_MemsBinReg(op,&new_src,src_bytes-s,dst2,src_unsigned);
+    DCCDisp_MemsBinReg(op,src,s,dst,src_unsigned);
+    return;
+   }
+   /* Allocate an additional register to use instead of that from 'src'. */
+   new_src.ml_reg = DCCVStack_GetRegOf(src->ml_reg&DCC_RC_MASK,(uint8_t)~(
+                                      (1 << (dst&DCC_RI_MASK))|
+                                      (1 << (dst2&DCC_RI_MASK))));
+   DCCDisp_RegMovReg(src->ml_reg,new_src.ml_reg,1);
+  }
+  DCCDisp_MemsBinReg(op,&new_src,s,dst,src_unsigned);
   if (op == '?' &&
      (jsym = DCCUnit_AllocSym()) != NULL)
       DCCDisp_SymJcc(DCC_TEST_NE,jsym);
-  new_src = *src,new_src.ml_off += s;
+  new_src.ml_off += s;
   src_bytes -= s;
        if (op == '+') op = TOK_INC;
   else if (op == '-') op = TOK_DEC;

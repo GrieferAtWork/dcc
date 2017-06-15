@@ -919,7 +919,7 @@ DCCA2l_Merge(struct DCCA2l *__restrict self,
 #if 1
   if (code == code_end) {
    /* Skip empty chunks. */
-   assert(!memcmp(&iter->c_smin,&iter->c_smax,sizeof(A2lState)));
+   assert(!memcmp(&iter->c_smin,&iter->c_smax,sizeof(struct A2lState)));
    if (!iter->c_smin.s_features) continue;
   }
 #endif
