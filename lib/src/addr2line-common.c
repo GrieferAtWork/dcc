@@ -182,7 +182,9 @@ after_il_sc_ia:
 
    {
    default:
-    if (op >= A2L_O_DEL_L && op <= A2L_O_DEL_N) {
+    if (op >= A2L_O_DEL_L && op <= (A2L_O_DEL_L|A2L_O_DEL_C|
+                                    A2L_O_DEL_P|A2L_O_DEL_F|
+                                    A2L_O_DEL_N)) {
 #if (A2L_STATE_HASLINE == A2L_O_DEL_L) && \
     (A2L_STATE_HASCOL  == A2L_O_DEL_C) && \
     (A2L_STATE_HASPATH == A2L_O_DEL_P) && \
