@@ -112,13 +112,13 @@ __IMP int (__msvc_vscprintf)(char const *,__builtin_va_list) __asm__("_vscprintf
 #define __vsnprintf(buf,bufsize,format,args) \
 	__extension__({\
 		int __r = -1; \
-		if ((#!bufsize)) { \
+		if ((bufsize)) { \
 			__builtin_va_list __acopy; \
-			__builtin_va_copy(__acopy,(#!args)); \
-			__r = __msvc_vsnprintf((#!buf),(#!bufsize),(#!format),__acopy); \
+			__builtin_va_copy(__acopy,(args)); \
+			__r = __msvc_vsnprintf((buf),(bufsize),(format),__acopy); \
 			__builtin_va_end(__acopy);\
 		} \
-		if (__r < 0) __r = __msvc_vscprintf((#!format),(#!args)); \
+		if (__r < 0) __r = __msvc_vscprintf((format),(args)); \
 		__r; \
 	})
 #define vsnprintf(buf,bufsize,format,args) \

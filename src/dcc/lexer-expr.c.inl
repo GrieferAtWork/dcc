@@ -738,8 +738,7 @@ check_rparen_break:
   YIELD();
   DCCParse_ExprUnary();
   vgen1(t);
-  break;
- }
+ } break;
 
  { /* Expand to the string representation of the current function. */
   char const *name; size_t size;

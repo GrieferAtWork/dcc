@@ -3583,7 +3583,7 @@ DCCVStack_Unary(tok_t op) {
  case TOK_INC:
  case TOK_DEC:
   if (!target_type) target_type = DCCType_Effective(&vbottom->sv_ctype);
-  if ((target_type->t_type&DCCTYPE_POINTER)) {
+  if (target_type->t_type&DCCTYPE_POINTER) {
    struct DCCStackValue multiplier;
    /* Pointer arithmetic: Add/Sub the size of the pointer base. */
    assert(target_type->t_base);
@@ -3600,11 +3600,7 @@ DCCVStack_Unary(tok_t op) {
    multiplier.sv_reg          = DCC_RC_CONST;
    multiplier.sv_reg2         = DCC_RC_CONST;
    multiplier.sv_sym          = NULL;
-   //vbottom->sv_flags |= DCC_SFLAG_COPY; /* DON'T! This is an in-place operation! */
    /* Make sure the multiplier base is of proper (and sufficient) typing. */
-   { struct DCCType t = {DCCTYPE_INTPTR,NULL};
-     DCCStackValue_Cast(vbottom,&t);
-   }
    DCCStackValue_Binary(&multiplier,vbottom,op == TOK_INC ? '+' : '-');
    /* Make sure 'gen2' didn't swap the operands (which it shouldn't) */
    assert(!multiplier.sv_sym);
@@ -3721,6 +3717,7 @@ DCCVStack_Binary(tok_t op) {
    source_type = DCCType_Effective(&vbottom[0].sv_ctype);
    
    if (op == '-' && (source_type->t_type&DCCTYPE_POINTER)) {
+    sflag_t was_lvalue;
     static struct DCCType const ty_ptrdiff = {DCCTYPE_PTRDIFF,NULL};
     /* Pointer/pointer difference >> (a-b)/sizeof(*a). */
     int compatible = DCCType_IsCompatible(pointer_base,&source_type->t_base->d_type,1);
@@ -3733,7 +3730,9 @@ DCCVStack_Binary(tok_t op) {
     /* Divide the result by the multiplier size (size of the pointer base). */
     DCCStackValue_Binary(&multiplier,vbottom+1,'/');
     /* Cast the result to 'ptrdiff_t'. */
+    was_lvalue = vbottom->sv_flags&DCC_SFLAG_LVALUE;
     DCCStackValue_Cast(vbottom+1,&ty_ptrdiff);
+    vbottom->sv_flags |= was_lvalue;
     goto end_pop;
    } else if (!DCCTYPE_ISINT(source_type->t_type)) {
     /* Check if vbottom is an integral type and warn if it isn't */
@@ -3743,7 +3742,9 @@ DCCVStack_Binary(tok_t op) {
    vbottom->sv_flags |= DCC_SFLAG_COPY;
    /* Make sure the multiplier base is of proper (and sufficient) typing. */
    { struct DCCType t = {DCCTYPE_INTPTR,NULL};
+     sflag_t was_lvalue = vbottom->sv_flags&DCC_SFLAG_LVALUE;
      DCCStackValue_Cast(vbottom,&t);
+     vbottom->sv_flags |= was_lvalue;
    }
    DCCStackValue_Binary(&multiplier,vbottom,'*');
    goto genbinary;

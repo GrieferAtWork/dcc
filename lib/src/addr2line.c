@@ -218,7 +218,7 @@ static void tb_printx(uintptr_t i) {
 }
 
 
-static void print_addr(void *p, size_t i) {
+static void print_addr(void *f, void *p, size_t i) {
  lc_t info;
  _addr2line(p,&info);
  if (info.path) { tb_prints(info.path); TB_PRINT("/"); }
@@ -230,6 +230,8 @@ static void print_addr(void *p, size_t i) {
  TB_PRINT(") : ");
  if (info.name) tb_prints(info.name); else TB_PRINT("??" "?");
  TB_PRINT(" : ");
+ tb_printx((uintptr_t)f);
+ TB_PRINT(" -> ");
  tb_printx((uintptr_t)p);
  TB_PRINT(" (Frame ");
  tb_printi((uintptr_t)i);
@@ -250,7 +252,7 @@ static LONG __stdcall tb_handler(PEXCEPTION_POINTERS ExceptionInfo) {
   if (ctx) {
    struct frame *iter,*start,*check;
    size_t num,index = 0;
-   print_addr((void *)ctx->Eip,0);
+   print_addr((void *)ctx->Esp,(void *)ctx->Eip,0);
    iter = start = (struct frame *)ctx->Ebp;
    while (iter) {
     check = start,num = 0;
@@ -270,7 +272,7 @@ static LONG __stdcall tb_handler(PEXCEPTION_POINTERS ExceptionInfo) {
      check = check->caller;
      ++num;
     }
-    print_addr(iter->addr,++index);
+    print_addr(iter,iter->addr,++index);
     iter = iter->caller;
    }
   }
