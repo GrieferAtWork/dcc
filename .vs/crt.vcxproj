@@ -81,6 +81,9 @@
     <ClCompile Include="..\lib\test\intprom.c" />
     <ClCompile Include="..\lib\test\sizeof.c" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\lib\src\chkstk.S" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{3E027BB2-167C-49CE-8B99-C1DD1538C103}</ProjectGuid>
     <RootNamespace>dcc</RootNamespace>

@@ -16,8 +16,6 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-/* Compile with: $ dcc -nostdlib -c -o crt1.o crt1.c */
-
 #pragma comment(lib,"msvcrt")
 
 /* Declare everything with hidden visibility. */

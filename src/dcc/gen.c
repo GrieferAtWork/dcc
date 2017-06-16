@@ -24,6 +24,7 @@
 #include <dcc/gen.h>
 #include <dcc/unit.h>
 #include <dcc/compiler.h>
+#include <dcc/linker.h>
 
 #include <string.h>
 
@@ -429,7 +430,11 @@ DCCDisp_FillNop(void *__restrict p, size_t n_bytes) {
  if (n_bytes) memcpy(p,nopseq[n_bytes-1],n_bytes);
 }
 
-#define PROLOG_SIZE  9
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+#   define MAX_PROLOG_SIZE  10
+#else
+#   define MAX_PROLOG_SIZE  9
+#endif
 
 PUBLIC void
 DCCDisp_FunProlog(struct DCCDispFunction *__restrict info) {
@@ -437,11 +442,18 @@ DCCDisp_FunProlog(struct DCCDispFunction *__restrict info) {
  info->df_proaddr = t_addr;
 #if DCC_DEBUG
  {
-  void *p = t_alloc(PROLOG_SIZE);
-  if (p) DCCDisp_FillNop(p,PROLOG_SIZE);
+  void *p = t_alloc(MAX_PROLOG_SIZE);
+  if (p) DCCDisp_FillNop(p,MAX_PROLOG_SIZE);
  }
 #else
- t_alloc(PROLOG_SIZE);
+ t_alloc(MAX_PROLOG_SIZE);
+#endif
+#if 0 /* Hardcore logging! */
+ if (compiler.c_fun && strcmp(compiler.c_fun->d_name->k_name,"__hardlog") != 0) {
+  struct DCCMemLoc loc;
+  loc.ml_sym = DCCUnit_NewSyms("__hardlog",DCC_SYMFLAG_NONE);
+  if (loc.ml_sym) loc.ml_off = 0,loc.ml_reg = DCC_RC_CONST,DCCDisp_LocCll(&loc);
+ }
 #endif
 #if 0 /* Hardcore debugging! */
  { struct DCCMemLoc loc;
@@ -458,14 +470,48 @@ DCCDisp_GenProlog(struct DCCDispFunction *__restrict info) {
  assert(info);
  stack_size = compiler.c_hwstack.hws_maxoffset;
  prologue = unit.u_tbuf.tb_begin+info->df_proaddr;
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+ if (stack_size >= DCC_TARGET_PAGESIZE ||
+    ((linker.l_flags&DCC_LINKER_FLAG_GENDEBUG) && stack_size)) {
+  struct DCCSymAddr chkstk;
+  /* Call '__chkstk' to allocate large amounts of stack memory.
+   * NOTE: Also call it for non-empty allocations in debug-mode. */
+  if ((chkstk.sa_sym = DCCUnit_NewSyms("__chkstk",DCC_SYMFLAG_HIDDEN)) != NULL) {
+   uint8_t *saved_textptr;
+   chkstk.sa_off = 0;
+   *prologue++ = 0xb8; /* movl $stack_size, %eax */
+   *(uint32_t *)prologue = (uint32_t)stack_size;
+   prologue += 4;
+   *prologue++ = 0xe8; /* call */
+   /* This looks kind of complicated, but simply
+    * generates a DISP relocation to 'chkstk'. */
+   saved_textptr         = unit.u_tbuf.tb_pos;
+   assert(saved_textptr >= unit.u_tbuf.tb_begin);
+   assert(saved_textptr <= unit.u_tbuf.tb_end);
+   assert(prologue      >= unit.u_tbuf.tb_begin);
+   assert(prologue      <= unit.u_tbuf.tb_end);
+   unit.u_tbuf.tb_pos    = prologue;
+   *(uint32_t *)prologue = (uint32_t)((int32_t)DCCDisp_PutDispRel(&chkstk,DCC_R_DISP_32)-4);
+   assert(saved_textptr >= unit.u_tbuf.tb_begin);
+   assert(saved_textptr <= unit.u_tbuf.tb_end);
+   unit.u_tbuf.tb_pos = saved_textptr;
+   return;
+  }
+ }
+#endif
  *prologue++ = 0x50+DCC_ASMREG_EBP;     /* push %ebp */
  *prologue++ = 0x89,*prologue++ = 0xe5; /* mov %esp, %ebp */
  if (stack_size) {
   *prologue++ = 0x81,*prologue++ = 0xec; /* sub $stack_size, %esp */
   *(uint32_t *)prologue = stack_size;
+#if MAX_PROLOG_SIZE == 10
+  *prologue++ = DCCGEN_NOPBYTE; /* nop. */
+#elif MAX_PROLOG_SIZE > 9
+  DCCDisp_FillNop(prologue,MAX_PROLOG_SIZE-9);
+#endif
  } else {
-  /* FIll the rest with NOPs (Still faster than 'sub $0, %esp'...) */
-  DCCDisp_FillNop(prologue,6);
+  /* Fill the rest with NOPs (Still faster than 'sub $0, %esp'...) */
+  DCCDisp_FillNop(prologue,MAX_PROLOG_SIZE-3);
  }
 }
 PUBLIC void DCCDisp_Ret(void) { t_putb(0xc3); }

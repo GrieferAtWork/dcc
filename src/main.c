@@ -37,6 +37,25 @@ DCC_DECL_BEGIN
 #ifdef __DCC_VERSION__
 /* Hot-fix for broken system headers. TODO: REMOVE ME */
 unsigned long __readfsdword(unsigned long) { return 0; }
+
+#define HAVE_HLOG 0
+#if HAVE_HLOG
+#include <dcc.h>
+
+FILE *hlog = NULL;
+void __hardlog(void) {
+ if (hlog) {
+  lc_t info;
+  _addr2line(__builtin_return_address(1),&info);
+  fprintf(hlog,"%s%s%s(%d,%d) : %s\n",
+          info.path ? info.path : "",
+          info.path ? "/" : "",
+          info.file,info.line,
+          info.col,info.name);
+  fflush(hlog);
+ }
+}
+#endif
 #endif
 
 
@@ -173,7 +192,12 @@ static void load_stdlib(void) {
 
 int main(int argc, char *argv[]) {
  int result = 0;
- 
+#ifdef __DCC_VERSION__
+#if HAVE_HLOG
+ hlog = fopen("hlog.txt","w");
+#endif
+#endif
+
 
  /*_CrtSetBreakAlloc(33398);*/
  if (!TPP_INITIALIZE()) return 1;

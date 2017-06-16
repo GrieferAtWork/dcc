@@ -1,1 +1,0 @@
-bin\ddc.exe -g -Iinclude -DDCC_PRIVATE_API -D_VA_LIST_DEFINED -D__SSE2__ -ID:/cygwin32/usr/include/w32api -MMD -MF build\ddd\main.c.d -c -o build\ddd\main.c.o src\main.c 

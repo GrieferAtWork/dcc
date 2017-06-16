@@ -210,4 +210,9 @@
       <Filter>src\test</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\lib\src\chkstk.S">
+      <Filter>src</Filter>
+    </None>
+  </ItemGroup>
 </Project>

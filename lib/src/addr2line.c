@@ -19,12 +19,9 @@
 #ifndef GUARD_LIB_SRC_ADDR2LINE_C
 #define GUARD_LIB_SRC_ADDR2LINE_C 1
 
-/* Compile with: $ dcc -nostdlib -c -o int64.o int64.c */
-/* Declare everything with hidden visibility. */
-#pragma warning("-Wno-c99")
-
 /* NOTE: This file is included when linking with '-g' */
 
+#pragma warning("-Wno-c99")
 #include <dcc.h>
 #include <stddef.h>
 #include <stdint.h>

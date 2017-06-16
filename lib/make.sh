@@ -71,6 +71,7 @@ mkdir -p "$OBJDIR" || exit $?
 crt-src-c                            "src/crt1.c"
 crt-src-c                            "src/int64.c"
 crt-src-d -DDCC_BUILDING_A2L_RUNTIME "src/addr2line.c" "src/addr2line-common.c"
+crt-src-c                            "src/chkstk.S"
 
 $CC -g -c -o dbg-crt.o ${debug_objects[@]}
 $CC -c -o crt.o ${ndebug_objects[@]}

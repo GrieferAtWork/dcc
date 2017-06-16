@@ -363,7 +363,7 @@ PRIVATE struct model const intel_model_nums[] = {
 #if EXT_INTEL_CPU
  {CPU_INTEL_BONELL,        numv_intel_bonell},
  {CPU_INTEL_SILVERMONT,    numv_intel_silvermont},
- {CPU_INTEL_KNL,           numv_intel_silvermont},
+ {CPU_INTEL_KNL,           numv_intel_knl},
  {CPU_INTEL_IVYBRIDGE,     numv_intel_ivybridge},
  {CPU_INTEL_HASWELL,       numv_intel_haswell},
  {CPU_INTEL_BROADWELL,     numv_intel_broadwell},
