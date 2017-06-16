@@ -480,6 +480,12 @@ DCCDisp_GenProlog(struct DCCDispFunction *__restrict info) {
    uint8_t *saved_textptr;
    chkstk.sa_off = 0;
    *prologue++ = 0xb8; /* movl $stack_size, %eax */
+   /* Make sure that EAX is at least __SIZEOF_POINTER__ when __chkstk is called.
+    * This, alongside aligning the stackframe-size by pointers,
+    * makes it much easier to view stack memory in a debugger. */
+   stack_size +=  (DCC_TARGET_SIZEOF_POINTER-1);
+   stack_size &= ~(DCC_TARGET_SIZEOF_POINTER-1);
+
    *(uint32_t *)prologue = (uint32_t)stack_size;
    prologue += 4;
    *prologue++ = 0xe8; /* call */

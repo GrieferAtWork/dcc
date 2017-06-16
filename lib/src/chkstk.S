@@ -85,7 +85,9 @@
  * OUT: EBP: EBP   = OLD(ESP);
  *           EBP+0 = OLD_FRAME_ADDRESS;
  *           EBP+4 = CALLER_RETURN_ADDRESS;
- * CLOBBER: NONE (IN|OUT: EAX, ESP, EBP)
+ * CLOBBER: EFLAGS (relation flags) (IN|OUT: EAX, ESP, EBP)
+ * 
+ * ASSUMES: IN(EAX) >= __SIZEOF_POINTER__
  */
 .hidden __chkstk
 #define PAGESIZE  4096
@@ -93,7 +95,7 @@ __chkstk:
 	xchg     %ebp,   (%esp) /* Load the caller return address into EBP and store the old EBP. */
 	mov      %ebp, -4(%esp) /* Store the 'SETUP_RETURN_ADDRESS' within caller-allocated stack memory. */
 	mov      %esp,    %ebp  /* Load the frame pointer into EBP. */
-#ifdef NDEBUG
+#ifndef NDEBUG
 	/* In debug-mode, this function is also called for small allocations
 	 * Because of its special debug capabilities of filling stack-memory
 	 * with special bytes, aiding in the detection of uninitialized variables.
@@ -101,7 +103,7 @@ __chkstk:
 	 * be allocated (meaning that the lowest address is either already part
 	 * of the stack, or lies within the associated guard page) */
 	cmpl $PAGESIZE,   %eax
-	jl       1f
+	jl       2f
 #endif
 1:	subl $PAGESIZE,   %esp  /* Advance to the next page. */
 	testb    $0,     (%esp) /* Touch the page. */
@@ -109,7 +111,7 @@ __chkstk:
 	/* 'subl' sets the flags the same way 'cmpl $PAGESIZE, %eax' would have.
 	 * With that in mind, continue iteration if 'OLD(EAX) > PAGESIZE' */
 	jg       1b             /* ZF == 0 && OF == SF */
-#ifdef NDEBUG
+#ifndef NDEBUG
 2:
 #endif
 	/* EAX may be negative now as we may have over-allocated a bit.
@@ -119,20 +121,20 @@ __chkstk:
 #ifndef NDEBUG
 	/* DEBUG: memset(%esp,0xcd,%ebp-%esp);
 	 * >> Fill all newly allocated stack-memory with '0xcd' */
-	movl     %esp,    %eax
 	pushl    %edi
 	pushl    %ecx
 	pushl    %edx
+	pushfl                  /* Preserve the direction flag. */
 	movl  -4(%ebp),   %edx  /* Save 'SETUP_RETURN_ADDRESS' to EDX before its overwritten. */
+	leal  16(%esp),   %edi  /* EDI = ESP+16 */
 	movl     %ebp,    %ecx
-	subl     %eax,    %ecx  /* ECX = EBP-ESP */
-	movl     %eax,    %edi  /* EDI = ESP */
-	movb     $0xcd,   %al   /* AL  = 0xcd */
-	pushf                   /* Preserve the direction flag. */
-	cld
+	subl     %edi,    %ecx  /* ECX = EBP-(ESP+16) */
+	movb     $0xff,   %al   /* AL  = 0xff */
+#	movb     $0xcd,   %al   /* AL  = 0xcd */
+	cld						/* Clear the direction bit. */
 	rep      stosb          /* while (ECX--) *EDI++ = AL; */
-	popf
 	movl     %edx,    %eax  /* Load 'SETUP_RETURN_ADDRESS' back into EAX */
+	popfl
 	popl     %edx
 	popl     %ecx
 	popl     %edi
