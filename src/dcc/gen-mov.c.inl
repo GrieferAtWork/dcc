@@ -831,7 +831,7 @@ DCCDisp_RegMovReg(rc_t src, rc_t dst, int src_unsigned) {
 #if USE_CBW
   if ((src&DCC_RI_MASK) == DCC_ASMREG_EAX &&
       (dst&DCC_RI_MASK) == DCC_ASMREG_EAX &&
-      !src_unsigned) {
+      (c_src&DCC_RC_I16) && !src_unsigned) {
    /* cwde // Same as 'movsx %ax, %eax' */
    t_putb(0x98);
    return;
