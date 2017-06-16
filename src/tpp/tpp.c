@@ -2433,7 +2433,8 @@ strop_normal:
                   ) goto seterr;
       func.f_deltotal += (size_t)(TOKEN.t_end-strop_begin);
       last_text_pointer = TOKEN.t_end;
-      if (strop != TPP_FUNOP_INS) ++iter->ai_ins_str;
+      if (strop != TPP_FUNOP_INS)
+           ++iter->ai_ins_str;
       else ++iter->ai_ins;
       TPPLexer_YieldRaw();
       goto next;
@@ -7270,8 +7271,7 @@ done_exec:
  assertf(source_iter <= source_end,
         ("The final SRC iterator %p is out-of-bounds of %p by %lu characters",
          source_iter,source_end,(unsigned long)(source_iter-source_end)));
- assertf((size_t)(dest_end-dest_iter) ==
-         (size_t)(source_end-source_iter),
+ assertf((size_t)(dest_end-dest_iter) == (size_t)(source_end-source_iter),
         ("Difference between the overflow buffer sizes (%lu != %lu).\n"
          "This means that either the cache generator, or interpreter is flawed.",
         (unsigned long)(dest_end-dest_iter),

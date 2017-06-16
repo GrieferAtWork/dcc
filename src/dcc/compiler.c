@@ -692,16 +692,16 @@ DCCCompiler_GetFileName(struct TPPFile *__restrict fp) {
   char const *path_begin,*path_end,*file_begin;
   /* Allocate a string for the file's filename in 'unit.u_dbgstr' */
   path_end = file_begin = (path_begin = fp->f_name)+fp->f_namesize;
-  while (file_begin != path_begin && (file_begin[-1] != '\\' &&
-                                      file_begin[-1] != '/')
-         ) --file_begin;
+  while ((file_begin != path_begin) &&
+         (file_begin[-1] != '\\' && file_begin[-1] != '/')
+          ) --file_begin;
   if (file_begin == path_end)
    /* This file has no associated name. */
 nofile:
    fp->f_textfile.f_dbg_file = DCC_DEBUG_FILE_NOFILE;
   else {
-   size_t size = (size_t)(path_end-path_begin);
-   result = DCCSection_DAllocSym(unit.u_dbgstr,path_begin,
+   size_t size = (size_t)(path_end-file_begin);
+   result = DCCSection_DAllocSym(unit.u_dbgstr,file_begin,
                                 (size+0)*sizeof(char),
                                 (size+1)*sizeof(char),1,0);
    if unlikely(!result) goto nofile;

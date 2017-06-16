@@ -348,25 +348,15 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
   switch (op) {
   case '=': DCCDisp_RegMovMem(src,dst); break;
   {
+   uint8_t skip_set;
   case '*':
-   if (src&(DCC_RC_I32|DCC_RC_I16)) {
-    /* 16/32-bit mul. */
-    if (!(src&DCC_RC_I32)) t_putb(0x66);
-    t_putb(0x0f);
-    t_putb(0xaf);
-    goto modrm;
-   }
-   /* 8-bit mul. */
-   temp = DCCVStack_GetReg(DCC_RC_I16,0);
-   assertf(temp&DCC_RC_I8,"Must always be the case for non-pointer classes.");
-   DCCDisp_IntMovReg(0,temp); /* Clear the 16-bit temp register. */
-   DCCDisp_MemMovReg(dst,temp&~(DCC_RC_I16));
-   /* imul %src, %temp */
-   t_putb(0x0f);
-   t_putb(0xaf);
-   asm_modreg(temp&DCC_RI_MASK,src&DCC_RI_MASK);
-   /* Store the multiplication result. */
-   DCCDisp_RegMovMem(temp&~(DCC_RC_I16),dst);
+   skip_set = (uint8_t)(1 << (src&DCC_RI_MASK));
+   if (dst->ml_reg != DCC_RC_CONST)
+       skip_set |= (uint8_t)(1 << (dst->ml_reg&DCC_RI_MASK));
+   temp = DCCVStack_GetRegOf(src&DCC_RC_MASK,(uint8_t)~skip_set);
+   DCCDisp_MemMovReg(dst,temp);
+   DCCDisp_RegBinReg(op,src,temp,src_unsigned);
+   DCCDisp_RegMovMem(temp,dst);
   } break;
 
   { /* Divide/Modulo */
@@ -389,8 +379,7 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
    DCCDisp_MemMovReg(dst,temp);
    DCCDisp_RegBinReg(op,src,temp,src_unsigned);
    DCCDisp_RegMovMem(temp,dst);
-   break;
-  }
+  } break;
 
   { /* Shift operations. */
    rc_t cl; struct DCCMemLoc used_dst;
@@ -426,7 +415,6 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
  /* *op %src, !dst */
  if ((src&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
  t_putb(bin_op->bo_r_rm8+!!(src&DCC_RC_I16));
-modrm:
  asm_modmem(src&DCC_RI_MASK,dst);
 }
 PUBLIC void
@@ -484,15 +472,16 @@ DCCDisp_RegBinReg(tok_t op, rc_t src, rc_t dst, int src_unsigned) {
     t_putb(0x66);
     t_putb(0x0f);
     t_putb(0xaf);
-    asm_modreg(src&DCC_RI_MASK,temp_dst&DCC_RI_MASK);
+    /* NOTE: Operands must be written reverse of the usual order. */
+    asm_modreg(temp_dst&DCC_RI_MASK,src&DCC_RI_MASK);
     DCCDisp_RegMovReg(temp_dst,dst,1);
-    return;
    } else {
     /* imulw/l %src, %dst */
     if (!(c_dst&DCC_RC_I3264)) t_putb(0x66);
     t_putb(0x0f);
     t_putb(0xaf);
-    goto modreg;
+    /* NOTE: Operands must be written reverse of the usual order. */
+    asm_modreg(dst&DCC_RI_MASK,src&DCC_RI_MASK);
    }
   } break;
 
@@ -840,6 +829,7 @@ DCCDisp_CstBinMem(tok_t op,
     if (width == 2) t_putb(0x66);
     if (!val->sa_sym && val->sa_off == (int8_t)val->sa_off) t_putb(0x6b),width = 1;
     else                                                    t_putb(0x69);
+    /* NOTE: Operands must be written reverse of the usual order. */
     asm_modmem(temp&DCC_RI_MASK,dst);
     DCCDisp_SymAddr(val,width);
    }
