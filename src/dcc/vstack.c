@@ -1870,16 +1870,16 @@ default_binary:
   old_val = target->sv_const.it;
   if (op == '+') target->sv_const.it += self->sv_const.it;
   else           target->sv_const.it -= self->sv_const.it;
-  /* Clamp the resulting constant to its proper typing. */
-  DCCStackValue_ClampConst(target,W_TRUNC_INTEGRAL_ADDITION);
   if (((op == '+') ^ (self->sv_const.it < 0))
       ? (old_val > target->sv_const.it)
       : (old_val < target->sv_const.it)) {
    /* Under-/Over-flow during constant addition/subtraction. */
    WARN(op == '+' ? W_INTEGER_OVERFLOW_DURING_ADDITION
                   : W_INTEGER_UNDERFLOW_DURING_SUBTRACTION,
-       &target->sv_ctype);
+        target->sv_const.it);
   }
+  /* Clamp the resulting constant to its proper typing. */
+  DCCStackValue_ClampConst(target,W_TRUNC_INTEGRAL_ADDITION);
   /* Set the X-offset flag to ensure the offset
    * is added even when the value isn't used. */
   target->sv_flags |= DCC_SFLAG_XOFFSET;

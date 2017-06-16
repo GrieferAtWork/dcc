@@ -247,10 +247,10 @@ void tpp_assertion_failed(char const *expr, char const *file, int line,
   va_end(args);
   tpp_logerrf("\n");
  }
- {
-  if (!in_assertion && TPPLexer_Current) {
-   struct TPPLCInfo info;
-   char const *lx_file;
+ if (TPPLexer_Current) {
+  struct TPPLCInfo info;
+  char const *lx_file;
+  if (!in_assertion) {
    ++in_assertion;
    TPPLexer_LC(&info);
    lx_file = TPPLexer_FILE(NULL);

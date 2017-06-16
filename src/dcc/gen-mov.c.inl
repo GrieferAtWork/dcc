@@ -771,7 +771,7 @@ DCCDisp_ByrMovMem(rc_t                               src, target_siz_t src_bytes
 }
 
 
-
+#define USE_CBW 1
 
 PUBLIC void
 DCCDisp_RegMovReg(rc_t src, rc_t dst, int src_unsigned) {
@@ -828,12 +828,15 @@ DCCDisp_RegMovReg(rc_t src, rc_t dst, int src_unsigned) {
   }
  } else if (c_dst&DCC_RC_I32) {
   rc_t temp;
+#if USE_CBW
   if ((src&DCC_RI_MASK) == DCC_ASMREG_EAX &&
-      (dst&DCC_RI_MASK) == DCC_ASMREG_EAX) {
+      (dst&DCC_RI_MASK) == DCC_ASMREG_EAX &&
+      !src_unsigned) {
    /* cwde // Same as 'movsx %ax, %eax' */
    t_putb(0x98);
    return;
   }
+#endif
   /* movsx %r8, %r32 */
   /* movsx %r16, %r32 */
   /* movzx %r8, %r32 */
@@ -853,12 +856,15 @@ DCCDisp_RegMovReg(rc_t src, rc_t dst, int src_unsigned) {
   /* movsx %r8, %r16 */
   /* movzx %r8, %r16 */
   t_putb(0x66);
+#if USE_CBW
   if ((src&DCC_RI_MASK) == DCC_ASMREG_EAX &&
-      (dst&DCC_RI_MASK) == DCC_ASMREG_EAX) {
+      (dst&DCC_RI_MASK) == DCC_ASMREG_EAX &&
+      !src_unsigned) {
    /* cbw // Same as 'movsx %al, %ax' */
    t_putb(0x98);
    return;
   }
+#endif
   t_putb(0x0f);
   if (src_unsigned) goto upcast1632_u;
   else              goto upcast1632_s;

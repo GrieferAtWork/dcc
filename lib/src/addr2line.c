@@ -245,6 +245,8 @@ struct frame {
 
 static LONG __stdcall tb_handler(PEXCEPTION_POINTERS ExceptionInfo) {
  TB_PRINT("Unhandled exception\n");
+ SetUnhandledExceptionFilter(NULL);
+ //for (;;);
  if (ExceptionInfo) {
   PCONTEXT ctx = ExceptionInfo->ContextRecord;
   PEXCEPTION_RECORD record = ExceptionInfo->ExceptionRecord;
@@ -284,7 +286,6 @@ done_tb:
    TB_PRINT("ADDR = "),tb_printx((uintptr_t)record->ExceptionAddress),TB_PRINT("\n");
   }
  }
- SetUnhandledExceptionFilter(NULL);
  return 0xffffffff;
 }
 

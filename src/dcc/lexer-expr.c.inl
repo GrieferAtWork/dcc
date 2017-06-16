@@ -1060,11 +1060,12 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprShift(void) {
  tok_t func;
  DCCParse_ExprSum();
  while (TOK == TOK_SHL || TOK == TOK_SHR) {
+  vpromi();
   func = TOK;
   YIELD();
   vrcopy();           /* dx */
   DCCParse_ExprSum(); /* dx, y */
-  //vpromi2();          /* dxi, yi */
+  //vpromi2();        /* dxi, yi */
   vgen2(func);        /* dxi#yi */
   vrval();            /* rdxi#yi */
  }

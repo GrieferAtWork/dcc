@@ -51,11 +51,11 @@ static void add_import(char const *filename) {
  DCCUnit_Push();
  { /* Load a static library or source file. */
    struct DCCLibDef def;
-   def.ld_flags    = (DCC_LIBDEF_FLAG_STATIC|
-                      DCC_LIBDEF_FLAG_NODYN|
-                      DCC_LIBDEF_FLAG_NOSEARCHSTD|
-                      DCC_LIBDEF_FLAG_NOSEARCHEXT|
-                      DCC_LIBDEF_FLAG_SOURCE);
+   def.ld_flags    = (uint32_t)(DCC_LIBDEF_FLAG_STATIC|
+                                DCC_LIBDEF_FLAG_NODYN|
+                                DCC_LIBDEF_FLAG_NOSEARCHSTD|
+                                DCC_LIBDEF_FLAG_NOSEARCHEXT|
+                                DCC_LIBDEF_FLAG_SOURCE);
    def.ld_name     = filename;
    def.ld_size     = strlen(filename);
    def.ld_expsymfa = (symflag_t)-1;
@@ -171,9 +171,9 @@ static void load_stdlib(void) {
  }
 }
 
-
 int main(int argc, char *argv[]) {
  int result = 0;
+ 
 
  /*_CrtSetBreakAlloc(33398);*/
  if (!TPP_INITIALIZE()) return 1;
@@ -428,5 +428,9 @@ end:
 }
 
 DCC_DECL_END
+
+//template<class T, class S> struct same { enum{value=false}; };
+//template<class T> struct same<T,T> { enum{value=true}; };
+//static_assert(same<decltype('c' >> 1),int>::value,"");
 
 #endif /* !GUARD_MAIN_C */

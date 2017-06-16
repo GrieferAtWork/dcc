@@ -30,6 +30,8 @@
 
 DCC_DECL_BEGIN
 
+#if defined(DCC_TARGET_X86)
+
 /* Additional support for feature detection. */
 #define EXT_INTEL_CPU     1
 #define EXT_CPUID_HAS     1 /* __builtin_cpu_supports("cpuid") */
@@ -392,6 +394,7 @@ PRIVATE void query_model(enum cpu_model model) {
  DCCDisp_CstBinMem('?',&val,&cpuinfo,4,1);
  DCCDisp_SymJcc(DCC_TEST_NE,sym_done);
  if (model >= CPU_AMD) {
+  /* TODO */
  } else {
   rc_t temp,temp2;
   struct model const *model_info;
@@ -588,6 +591,9 @@ DCCParse_BuiltinCPUVendor(void) {
  vpush(&val);
 }
 
+#else
+#error FIXME
+#endif
 
 
 DCC_DECL_END

@@ -76,7 +76,7 @@ struct [[__packed__]] {
 	unsigned __int32 __cpuid_0_ecx;
 	unsigned __int8  __cpuid_zero;
 };
-	char             __cpuid_vendor[12];
+	char             __cpuid_vendor[13];
 };
 #else
 	int              __placeholder;
