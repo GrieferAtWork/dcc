@@ -1856,10 +1856,10 @@ default_binary:
 
  assert(DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_LVALUE);
  assert(DCCTYPE_GROUP(target->sv_ctype.t_type) != DCCTYPE_LVALUE);
- if (self->sv_reg == DCC_RC_CONST &&
-    (op == '+' || op == '-') &&
+ if ((op == '+' || op == '-') && (self->sv_reg == DCC_RC_CONST) &&
+    (!(self->sv_flags&(DCC_SFLAG_TEST|DCC_SFLAG_LVALUE))) &&
+    (!(target->sv_flags&(DCC_SFLAG_TEST|DCC_SFLAG_LVALUE))) &&
     (!target->sv_sym || !self->sv_sym) &&
-    (!(target->sv_flags&DCC_SFLAG_LVALUE)) &&
     (!self->sv_sym || target->sv_reg == DCC_RC_CONST)) {
   int_t old_val;
   assert(self->sv_reg2 == DCC_RC_CONST);
