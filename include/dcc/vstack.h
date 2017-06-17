@@ -666,6 +666,7 @@ extern struct DCCStackValue *vbottom;
 #define vpushi     DCCVStack_PushInt
 #define vpushf     DCCVStack_PushFlt
 #define vpushc     DCCVStack_PushCst
+#define vpusht     DCCVStack_PushTst
 #define vpushr     DCCVStack_PushReg
 #define vpushxr    DCCVStack_PushXReg
 #define vpushs     DCCVStack_PushSym

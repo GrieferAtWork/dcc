@@ -1409,7 +1409,7 @@ normal:
    vpushi(DCCTYPE_BOOL,1);
   } else if (common_test != DCC_UNITST_FIRST) {
    vpop(1);
-   DCCVStack_PushTst(common_test);
+   vpusht(common_test);
   }
   if (sym) t_defsym(sym);
  }

@@ -2505,8 +2505,7 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
  tid = self->sv_ctype.t_type;
  if (DCCTYPE_GROUP(tid) == DCCTYPE_BUILTIN) {
   assert(!self->sv_ctype.t_base);
-  tid &= DCCTYPE_BASICMASK;
-  switch (tid) {
+  switch (tid&DCCTYPE_BASICMASK) {
   case DCCTYPE_BOOL:
   case DCCTYPE_AUTO:
 #if DCC_TARGET_SIZEOF_CHAR < DCC_TARGET_SIZEOF_INT
@@ -2521,20 +2520,16 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
   case DCCTYPE_IB8:
   case DCCTYPE_UNSIGNED|DCCTYPE_IB8:
 #endif
-   if (self->sv_flags&DCC_SFLAG_LVALUE) {
-    /* Must load the stack value into a register.
-     * >> This must be done to conform to the new storage rules. */
-    DCCStackValue_Load(self);
-   }
-   /* Nothing else to do here.
-    * The actual effect of this is handled once the value is used!
-    * NOTE: After loading l-value operands, we must also
-    *       remove c/v qualifiers to prevent warnings. */
-   self->sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK|DCCTYPE_QUAL);
+  {
+   struct DCCType prom;
+   prom.t_base = NULL;
+   prom.t_type = (self->sv_ctype.t_type&~
+                 (DCCTYPE_BASICMASK|DCCTYPE_ALTMASK|DCCTYPE_CONST));
 #if DCCTYPE_INT != 0
-   self->sv_ctype.t_type |=   DCCTYPE_INT;
+   prom.t_type |= DCCTYPE_INT;
 #endif
-   break;
+   DCCStackValue_Cast(self,&prom);
+  } break;
   default:
    break;
   }
@@ -4265,9 +4260,7 @@ DCCVStack_PromInt2(void) {
      /* Only perform promotions between integral types. */
     !DCCTYPE_ISFLOAT_OR_VOID(vbottom[0].sv_ctype.t_type) &&
     !DCCTYPE_ISFLOAT_OR_VOID(vbottom[1].sv_ctype.t_type)) {
-  tyid_t common_type;
-  DCCStackValue_PromoteInt(&vbottom[0]);
-  DCCStackValue_PromoteInt(&vbottom[1]);
+  struct DCCType cast_type; tyid_t common_type;
 #if 8 >= DCC_TARGET_SIZEOF_INT
   /* propagate long-long integeral width modifiers. */
   if ((vbottom[0].sv_ctype.t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_IB8 ||
@@ -4288,10 +4281,13 @@ DCCVStack_PromInt2(void) {
       vbottom[1].sv_ctype.t_type&DCCTYPE_UNSIGNED)
       common_type |= DCCTYPE_UNSIGNED;
   /* Apply the common typing to with stack-values. */
-  vbottom[0].sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK);
-  vbottom[1].sv_ctype.t_type &= ~(DCCTYPE_BASICMASK|DCCTYPE_ALTMASK);
-  vbottom[0].sv_ctype.t_type |=   common_type;
-  vbottom[1].sv_ctype.t_type |=   common_type;
+  cast_type.t_base = NULL;
+  cast_type.t_type = (vbottom[0].sv_ctype.t_type&~
+                     (DCCTYPE_BASICMASK|DCCTYPE_ALTMASK|DCCTYPE_CONST))|common_type;
+  DCCStackValue_Cast(&vbottom[0],&cast_type);
+  cast_type.t_type = (vbottom[1].sv_ctype.t_type&~
+                     (DCCTYPE_BASICMASK|DCCTYPE_ALTMASK|DCCTYPE_CONST))|common_type;
+  DCCStackValue_Cast(&vbottom[1],&cast_type);
  }
 }
 
