@@ -83,7 +83,8 @@ pe_alloca:
   struct DCCSym *sym; int eax_mode = 0;
   DCCStackValue_FixBitfield(vbottom);
   DCCStackValue_FixTest(vbottom);
-  DCCStackValue_FixRegOffset(vbottom);
+  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE))
+        DCCStackValue_FixRegOffset(vbottom);
   if ((vbottom->sv_reg != DCC_RC_CONST &&
       (vbottom->sv_reg&DCC_RI_MASK) == DCC_ASMREG_EAX) ||
       !DCCVStack_GetRegInuse(DCC_RR_XAX)) {

@@ -53,6 +53,9 @@ void __hardlog(void) {
           info.file,info.line,
           info.col,info.name);
   fflush(hlog);
+#ifndef __DCC_VERSION__
+  OutputDebugStringA("HLOG()\n");
+#endif
  }
 }
 #endif
@@ -194,7 +197,10 @@ int main(int argc, char *argv[]) {
  int result = 0;
 #ifdef __DCC_VERSION__
 #if HAVE_HLOG
- hlog = fopen("hlog.txt","w");
+ //INTDEF void dcc_outf(char const *fmt, ...);
+ //dcc_outf("dcc_outf() Message - %d\n",42);
+ if (strcmp(argv[1],"-g") != 0)
+     hlog = fopen("hlog.txt","w");
 #endif
 #endif
 
