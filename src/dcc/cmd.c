@@ -96,14 +96,14 @@ again:
  end = (arg_iter = c->c_argv)+c->c_argc;
  for (;;) {
   if (arg_iter == end) goto eof;
-  if (arg_iter[0][0] == '-' && arg_iter[0][1]) {
-   opt = (arg_iter[0][1] == '-') ? find_option(grp,arg_iter[0]+2,1)
-                                 : find_option(grp,arg_iter[0]+1,0);
+  arg = *arg_iter;
+  if (arg[0] == '-' && arg[1]) {
+   opt = (arg[1] == '-') ? find_option(grp,arg+2,1)
+                         : find_option(grp,arg+1,0);
    if (!opt || !(opt->o_flags&OPTION_FLAG_NOOPT)) break;
   }
   ++arg_iter;
  }
- arg = *arg_iter;
  if (arg_iter != c->c_argv) {
   /* Shift the argument list to move the option downwards. */
   assert(arg_iter >= c->c_argv);

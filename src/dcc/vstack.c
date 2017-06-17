@@ -1866,6 +1866,18 @@ default_binary:
      (self->sv_reg == DCC_RC_CONST) &&
     (!(self->sv_flags&(DCC_SFLAG_TEST|DCC_SFLAG_LVALUE))) &&
     (!(target->sv_flags&DCC_SFLAG_TEST)) &&
+     /* Don't use register offsets for non-copyable lvalues
+      * This check if required to properly compile code:
+      * >> char **iter = get_iter();
+      * >> ++iter;
+      * ASM (with check):
+      * >> addl $4, OFFSETOF(iter)(%ebp)
+      * ASM (without check):
+      * >> movl OFFSETOF(iter)(%ebp), %eax
+      * >> addl $4, %eax
+      */
+    (!(target->sv_flags&DCC_SFLAG_LVALUE) ||
+      (target->sv_flags&DCC_SFLAG_COPY)) &&
      /* Can only do offset-arithmetic with one symbol at compile-time. */
     (!target->sv_sym || !self->sv_sym)) {
   int_t old_val;

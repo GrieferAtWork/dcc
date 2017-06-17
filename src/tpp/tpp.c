@@ -190,7 +190,9 @@ PRIVATE void tpp_vlogerrf(char const *format, va_list args) {
 #ifdef _WIN32
  char buffer[4096];
  vsprintf(buffer,format,args);
+#ifndef __DCC_VERSION__
  OutputDebugStringA(buffer);
+#endif
  fwrite(buffer,sizeof(char),strlen(buffer),stderr);
 #else
  vfprintf(stderr,format,args);
@@ -9740,7 +9742,9 @@ PRIVATE void tpp_warnf(char const *fmt, ...) {
  va_end(args);
  bufsiz = strlen(buffer);
  fwrite(buffer,sizeof(char),bufsiz,stderr);
+#ifndef __DCC_VERSION__
  OutputDebugStringA(buffer);
+#endif
 }
 #define WARNF      tpp_warnf
 #else
