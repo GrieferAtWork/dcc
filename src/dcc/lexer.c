@@ -166,6 +166,60 @@ again:
  return result;
 }
 
+
+#define SKIP_WRAPLF(iter,end) \
+ (*(iter) == '\\' && (iter) != (end)-1\
+  ? ((iter)[1] == '\n' ? ((iter) += 2,1) :\
+     (iter)[1] == '\r' ? ((iter) += \
+    ((iter) != (end)-2 && (iter)[2] == '\n') ? 3 : 2,1)\
+  : 0) : 0)
+INTDEF struct TPPKeyword *
+lookup_escaped_keyword(char const *name, size_t namelen,
+                       size_t unescaped_size, int create_missing);
+
+LEXPRIV struct TPPKeyword *DCC_PARSE_CALL
+peek_keyword(struct TPPFile *__restrict tok_file,
+             char *__restrict tok_begin, int create_missing) {
+ struct TPPKeyword *kwd_entry;
+ size_t name_escapesize,name_size = 1;
+ uint8_t chflags = CH_ISALPHA;
+ char *iter = tok_begin,*end;
+ assert(tok_file);
+ assert(tok_begin);
+ assert(tok_begin >= tok_file->f_begin);
+ assert(tok_begin <= tok_file->f_end);
+ end = tok_file->f_end;
+ while (SKIP_WRAPLF(iter,end));
+ if (iter == end) return NULL; /* EOF */
+ /* Set the ANSI flag if we're supporting those characters. */
+ if (HAS(EXT_EXTENDED_IDENTS)) chflags |= CH_ISANSI;
+ if (!(chrattr[*iter]&chflags) ||
+    (!HAS(EXT_DOLLAR_IS_ALPHA) && *iter == '$'))
+      return NULL; /* Not-a-keyword. */
+ /* All non-first characters are allowed to be digits as well. */
+ chflags |= CH_ISDIGIT;
+ ++iter,++name_size;
+ /* keyword: scan until a non-alnum character is found. */
+ if (HAS(EXT_DOLLAR_IS_ALPHA)) for (;;) {
+  while (SKIP_WRAPLF(iter,end));
+  if (!(chrattr[*iter]&chflags)) break;
+  ++iter,++name_size;
+ } else for (;;) {
+  while (SKIP_WRAPLF(iter,end));
+  if (!(chrattr[*iter]&chflags) || *iter == '$') break;
+  ++iter,++name_size;
+ }
+ /* Lookup/generate the token id of this keyword. */
+ name_escapesize = (size_t)(iter-tok_begin);
+ if (name_size == name_escapesize) {
+  kwd_entry = TPPLexer_LookupKeyword(tok_begin,name_size,create_missing);
+ } else {
+  kwd_entry = lookup_escaped_keyword(tok_begin,name_escapesize,name_size,create_missing);
+ }
+ return kwd_entry;
+}
+
+
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_WarnAllocaInLoop(void) {
  /* Warn if used inside a loop construct */

@@ -38,6 +38,15 @@ LEXDECL struct TPPKeyword *DCC_PARSE_CALL tok_without_underscores(void);
 LEXDECL char *DCC_PARSE_CALL peek_next_token(struct TPPFile **tok_file);
 LEXDECL char *DCC_PARSE_CALL peek_next_advance(char *p, struct TPPFile *__restrict *tok_file);
 
+/* Using data retrieved by calling 'peek_next_token', return the keyword
+ * associated with the given token text, or NULL if allocation/lookup failed,
+ * or when the given token doesn't describe a keyword.
+ * NOTE: Escaped linefeeds are automatically parsed.
+ * WARNING: The caller is responsible to ensure that 'tok_begin' lies with the given 'tok_file' */
+LEXDECL struct TPPKeyword *DCC_PARSE_CALL
+peek_keyword(struct TPPFile *__restrict tok_file,
+             char *__restrict tok_begin, int create_missing);
+
 
 INTDEF void DCCDecl_CalculateFunctionOffsets(struct DCCDecl *__restrict funtydecl);
 INTDEF void DCCDecl_CalculateStructureOffsets(struct DCCDecl *__restrict self);

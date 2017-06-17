@@ -46,6 +46,12 @@ DEF_K(library_path)   /* #pragma DCC library_path(...) */
   (((tok) >= DCC_TOK_STMTKWD_MIN && (tok) <= DCC_TOK_STMTKWD_MAX) || \
     (tok) == DCC(KWD_else))
 
+/* Keywords considered exclusive to types. */
+#define DCC_TOK_TYPEKWD_MIN   DCC(KWD_struct)
+#define DCC_TOK_TYPEKWD_MAX   DCC(KWD___restrict__)
+#define DCC_ISTYPEKWD(tok) \
+  ((tok) >= DCC_TOK_TYPEKWD_MIN && (tok) <= DCC_TOK_TYPEKWD_MAX)
+
 /* C statement keywords. */
 DEF_K(while) DEF_K(do) DEF_K(for)
 DEF_K(break) DEF_K(continue)
@@ -1041,9 +1047,12 @@ DEF_WARNING(W_EMPTY_RANGE_IN_ARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNIN
 DEF_WARNING(W_NON_CONSTANT_GLOBAL_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Static initializer for " Q("%s") " cannot be determined at compile-time (Consider moving it into a function scope)"))
 DEF_WARNING(W_NON_CONSTANT_STATIC_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Static initializer for " Q("%s") " is evaluated at runtime"))
 DEF_WARNING(W_TYPE_IN_EXPRESSION,(WG_TYPE_IN_EXPRESSION,WG_EXTENSIONS),WSTATE_WARN,TYPE_WARNING("Type " Q("%s") " appears in expression"))
-DEF_WARNING(W_TYPE_IN_EXPRESSION_MISSING_STRUCT_PREFIX,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Missing " Q("struct") " prefix before type " Q("%s")))
-DEF_WARNING(W_TYPE_IN_EXPRESSION_MISSING_UNION_PREFIX,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Missing " Q("union") " prefix before type " Q("%s")))
-DEF_WARNING(W_TYPE_IN_EXPRESSION_MISSING_ENUM_PREFIX,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Missing " Q("enum") " prefix before type " Q("%s")))
+DEF_WARNING(W_TYPE_IN_EXPRESSION_MISSING_STRUCT_PREFIX,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Missing " Q("struct") " prefix before type " Q("%s") " in expression"))
+DEF_WARNING(W_TYPE_IN_EXPRESSION_MISSING_UNION_PREFIX,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Missing " Q("union") " prefix before type " Q("%s") " in expression"))
+DEF_WARNING(W_TYPE_IN_EXPRESSION_MISSING_ENUM_PREFIX,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Missing " Q("enum") " prefix before type " Q("%s") " in expression"))
+DEF_WARNING(W_DECLARATION_TYPE_MISSES_PREFIX_STRUCT,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Missing " Q("struct") " prefix before type " Q("%s") " in declaration"))
+DEF_WARNING(W_DECLARATION_TYPE_MISSES_PREFIX_UNION,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Missing " Q("union") " prefix before type " Q("%s") " in declaration"))
+DEF_WARNING(W_DECLARATION_TYPE_MISSES_PREFIX_ENUM,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Missing " Q("enum") " prefix before type " Q("%s") " in declaration"))
 DEF_WARNING(W_INITIALIZER_MISSING_BRACE,(WG_TYPE,WG_QUALITY),WSTATE_WARN,TYPE_WARNING("Missing braces around initializer for " Q("%s")))
 DEF_WARNING(W_EXPECTED_LPAREN_AFTER_TYPE_IN_EXPRESSION,(WG_SYNTAX),WSTATE_WARN,TYPE_WARNING("Expected " Q("(") " or " Q("{") " after type " Q("%s") " in expression"))
 DEF_WARNING(W_BRACE_INITIALIZER_DURING_ASSIGNMENT,(WG_ASSIGN_INITIALIZER,WG_EXTENSIONS),WSTATE_WARN,TYPE_WARNING("Encountered brace-initializers during assignment of type " Q("%s")))
@@ -1219,9 +1228,11 @@ DEF_WARNING(W_DECL_TYPEDEF_WITH_INITIALIZER,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,{
 DEF_WARNING(W_STMT_ASM_EXPECTED_STRING,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string after __asm__, but got " TOK_S,TOK_A))
 DEF_WARNING(W_CONSTANT_EXPR_DEPENDS_ON_SYMBOL,(WG_SYNTAX,WG_VALUE,WG_SYMBOL),WSTATE_WARN,{ WARNF("A constant expression here can't depend on a symbol " Q("%s"),KWDNAME()); })
 DEF_WARNING(W_EXPECTED_CONSTANT_EXPRESSION,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,WARNF("Expected a constant expression"))
-DEF_WARNING(W_UNEXPECTED_TOKEN_IN_C_EXPRESSION,(WG_SYNTAX),WSTATE_WARN,WARNF("Unexpected token " TOK_S " in c expression",TOK_A))
-DEF_WARNING(W_GOT_TYPE_IN_EXPRESSION,(WG_SYNTAX),WSTATE_WARN,WARNF("Got type in expression"))
-DEF_WARNING(W_UNKNOWN_IDENTIFIER,(WG_SYNTAX,WG_UNDEFINED),WSTATE_WARN,WARNF("Unknown identifier " Q("%s") " in expression",KWDNAME()))
+DEF_WARNING(W_DECLARATION_CONTAINS_UNKNOWN_TYPE,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown type keyword " TOK_S " in declaration interpreted as " Q("int"),TOK_A))
+DEF_WARNING(W_EXPRESSION_CONTAINS_STMT_KEYWORD,(WG_SYNTAX),WSTATE_WARN,WARNF("Encountered statement keyword " TOK_S " inside an expression",TOK_A))
+DEF_WARNING(W_EXPRESSION_CONTAINS_TYPE,(WG_SYNTAX),WSTATE_WARN,WARNF("Got type in expression"))
+DEF_WARNING(W_EXPRESSION_CONTAINS_UNKNOWN_KEYWORD,(WG_SYNTAX,WG_UNDEFINED),WSTATE_WARN,WARNF("Unknown identifier " Q("%s") " in expression",KWDNAME()))
+DEF_WARNING(W_EXPRESSION_CONTAINS_UNKNOWN_TOKEN,(WG_SYNTAX),WSTATE_WARN,WARNF("Unexpected token " TOK_S " in c expression",TOK_A))
 DEF_WARNING(W_EXPECTED_KEYWORD_FOR_SUBSCRIPT,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword for subscript, but got " TOK_S,TOK_A))
 DEF_WARNING(W_EXPECTED_REGISTER_NAME,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected register name after " Q("%") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_INVALID_REGISTER_PAIR,(WG_SYNTAX),WSTATE_WARN,WARNF("Invalid register pair. Both registers must be 32-bit wide"))

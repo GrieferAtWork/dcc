@@ -363,11 +363,12 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprDefault(void) {
  struct DCCDecl *decl;
  struct TPPKeyword *ident = NULL;
  if (TPP_ISKEYWORD(TOK)) {
+  if (DCC_ISSTMTKWD(TOK)) WARN(W_EXPRESSION_CONTAINS_STMT_KEYWORD);
   decl = DCCCompiler_GetDecl(TOKEN.t_kwd,DCC_NS_LOCALS);
   if (decl) {
    YIELD();
    if (decl->d_kind&DCC_DECLKIND_TYPE) {
-    WARN(W_GOT_TYPE_IN_EXPRESSION);
+    WARN(W_EXPRESSION_CONTAINS_TYPE);
     YIELD();
     goto push_int0;
    }
@@ -378,10 +379,10 @@ default_expr:
    if (DCCParse_ExprType()) return;
    if (DCCParse_ExprMissingSym()) return;
    if (ident) {
-    WARN(W_UNKNOWN_IDENTIFIER,ident);
+    WARN(W_EXPRESSION_CONTAINS_UNKNOWN_KEYWORD,ident);
     YIELD();
    } else {
-    WARN(W_UNEXPECTED_TOKEN_IN_C_EXPRESSION);
+    WARN(W_EXPRESSION_CONTAINS_UNKNOWN_TOKEN);
    }
 push_int0: /* fallback... */
    vpushi(DCCTYPE_INT,0);
