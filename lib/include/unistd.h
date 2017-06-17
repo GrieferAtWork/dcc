@@ -204,7 +204,7 @@ __IMP /*__CRT_WORKAROUND_MSVC*/ __INT32_TYPE__ (__msvc_write)(int __fd, void con
 
 #if defined(__USE_UNIX98) || defined(__USE_XOPEN2K8)
 __IMP __CRT_UNSUPPORTED_MSVC ssize_t (pread)(int __fd, void *__buf, size_t __nbytes, off_t __offset) __UNISTD_FUN32("pread");
-__IMP __CRT_UNSUPPORTED_MSVC ssize_t (pwrite)(int __fd, void const *__buf, size_t __n, off_t __offset) __UNISTD_FUN32("pwrite");
+__IMP __CRT_UNSUPPORTED_MSVC ssize_t (pwrite)(int __fd, void const *__buf, size_t __nbytes, off_t __offset) __UNISTD_FUN32("pwrite");
 #ifdef __USE_LARGEFILE64
 __IMP __CRT_UNSUPPORTED_MSVC ssize_t (pread64)(int __fd, void *__buf, size_t __nbytes, off64_t __offset) __UNISTD_FUN64("pread");
 __IMP __CRT_UNSUPPORTED_MSVC ssize_t (pwrite64)(int __fd, void const *__buf, size_t __n, off64_t __offset) __UNISTD_FUN64("pwrite");
@@ -236,8 +236,8 @@ __IMP __CRT_UNSUPPORTED_MSVC int (usleep)(__useconds_t __useconds) __UNISTD_FUN(
 __IMP __CRT_UNSUPPORTED_MSVC int (pause)(void) __UNISTD_FUN("pause");
 __IMP __CRT_UNSUPPORTED_MSVC int (chown)(char const *__file, __uid_t __owner, __gid_t __group) __UNISTD_FUN("chown");
 #if defined(__USE_XOPEN_EXTENDED) || defined(__USE_XOPEN2K8)
-__IMP __CRT_UNSUPPORTED_MSVC int fchown(int __fd, __uid_t __owner, __gid_t __group) __UNISTD_FUN("fchown");
-__IMP __CRT_UNSUPPORTED_MSVC int lchown(char const *__file, __uid_t __owner, __gid_t __group) __UNISTD_FUN("lchown");
+__IMP __CRT_UNSUPPORTED_MSVC int (fchown)(int __fd, __uid_t __owner, __gid_t __group) __UNISTD_FUN("fchown");
+__IMP __CRT_UNSUPPORTED_MSVC int (lchown)(char const *__file, __uid_t __owner, __gid_t __group) __UNISTD_FUN("lchown");
 #endif
 #ifdef __USE_ATFILE
 __IMP __CRT_UNSUPPORTED_MSVC int (fchownat)(int __fd, char const *__file, __uid_t __owner, __gid_t __group, int __flag) __UNISTD_FUN("fchownat");
@@ -281,13 +281,13 @@ __IMP int (__msvc_setmode)(int __fd, int __mode) __UNISTD_FUN("setmode");
 #endif
 
 __IMP __WUNUSED int (dup)(int __fd) __UNISTD_FUN("dup");
-__IMP int (dup2)(int __filehandlesrc, int __filehandledst) __UNISTD_FUN("dup2");
+__IMP int (dup2)(int __fdsrc, int __fddst) __UNISTD_FUN("dup2");
 
 #ifdef __USE_GNU
 #if defined(__CRT_MSVC) && !defined(__INTELLISENSE__)
 #	define dup3(fd,fd2,flags) (dup2(fd,fd2) ?: __msvc_setmode(fd2,flags))
 #else
-__IMP int (dup3)(int __fd, int __fd2, int __flags) __UNISTD_FUN("dup3");
+__IMP int (dup3)(int __fdsrc, int __fddst, int __flags) __UNISTD_FUN("dup3");
 #endif
 #endif
 
@@ -305,10 +305,14 @@ __IMP extern char ***(__cdecl __p__environ)(void);
 #	define environ   (*__p__environ())
 #endif
 
-#if !defined(__CRT_MSVC) || __SIZEOF_POINTER__ == __SIZEOF_INT__
+#ifdef __CRT_MSVC
+#if __SIZEOF_POINTER__ == __SIZEOF_INT__
 #	define __PROC_RETURN __pid_t
 #else
 #	define __PROC_RETURN __INTPTR_TYPE__
+#endif
+#else
+#	define __PROC_RETURN int
 #endif
 
 __IMP __PROC_RETURN (execve)(char const *__path, char *const __argv[], char *const __envp[]) __UNISTD_FUN("execve");
@@ -451,11 +455,11 @@ __IMP __CRT_UNSUPPORTED_MSVC int (getopt)(int ___argc, char *const *___argv, cha
 ;
 #endif
 
-#if defined __USE_UNIX98 || defined __USE_XOPEN2K
+#if defined(__USE_UNIX98) || defined(__USE_XOPEN2K)
 __IMP __CRT_UNSUPPORTED_MSVC int (gethostname)(char *__name, size_t __len) __UNISTD_FUN("gethostname");
 #endif
 
-#if defined __USE_MISC
+#if defined(__USE_MISC)
 __IMP __CRT_UNSUPPORTED_MSVC int (sethostname)(char const *__name, size_t __len) __UNISTD_FUN("sethostname");
 __IMP __CRT_UNSUPPORTED_MSVC int (sethostid)(long int __id) __UNISTD_FUN("sethostid");
 __IMP __CRT_UNSUPPORTED_MSVC int (getdomainname)(char *__name, size_t __len) __UNISTD_FUN("getdomainname");
@@ -498,7 +502,7 @@ __IMP __CRT_WORKAROUND_MSVC int (syncfs)(int __fd)
     defined(__USE_XOPEN_EXTENDED)
 __IMP __CRT_UNSUPPORTED_MSVC long int (gethostid)(void) __UNISTD_FUN("gethostid");
 __IMP __CRT_UNSUPPORTED_MSVC void (sync)(void) __UNISTD_FUN("sync");
-#if defined __USE_MISC || !defined __USE_XOPEN2K
+#if defined(__USE_MISC) || !defined(__USE_XOPEN2K)
 #if defined(__CRT_MSVC) && defined(__i386__)
 #   define getpagesize()          4096
 #else

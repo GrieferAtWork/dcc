@@ -164,6 +164,8 @@ PRIVATE symflag_t const elfvismap[] = {
  /* [STV_PROTECTED] = */DCC_SYMFLAG_PROTECTED,
 };
 
+INTDEF void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym);
+
 INTERN int DCCUNIT_IMPORTCALL
 DCCUnit_LoadELF(struct DCCLibDef *__restrict def,
                 char const *__restrict file,
@@ -757,8 +759,11 @@ skip_symdef:
      default       : break;
      }
      if (*name) {
-      sym = DCCUnit_NewSyms(name,symflags);
+      struct TPPKeyword *sym_kwd;
+      sym_kwd = TPPLexer_LookupKeyword(name,strlen(name),1);
+      sym = sym_kwd ? DCCSym_New(sym_kwd,symflags) : NULL;
       if unlikely(!sym) goto skip_symdef;
+      DCCUnit_InsSym(sym); /* Inherit reference. */
      } else {
       sym = DCCUnit_AllocSym();
       if unlikely(!sym) goto skip_symdef;

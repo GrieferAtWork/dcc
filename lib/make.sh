@@ -47,7 +47,7 @@ src() {
 		depfile="$DEPDIR/dbg-$name.d"
 		if ! src_changed "$objfile" "$depfile"; then
 			echo "Compiling: $objfile"
-			$CC "${args[@]}" -g -nostdlib -c -MMD -MF "$depfile" -o "$objfile" $*
+			$CC "${args[@]}" -g -nostdlib -c -MMD -MF "$depfile" -o "$objfile" $* || exit $?
 		fi
 	fi
 	if [[ "$mode" == *"N"* ]]; then
@@ -56,7 +56,7 @@ src() {
 		depfile="$DEPDIR/ndbg-$name.d"
 		if ! src_changed "$objfile" "$depfile"; then
 			echo "Compiling: $objfile"
-			$CC "${args[@]}" -DNDEBUG -nostdlib -c -MMD -MF "$depfile" -o "$objfile" $*
+			$CC "${args[@]}" -DNDEBUG -nostdlib -c -MMD -MF "$depfile" -o "$objfile" $* || exit $?
 		fi
 	fi
 }
@@ -68,10 +68,11 @@ crt-src-d() { src "D" $*; }
 mkdir -p "$DEPDIR" || exit $?
 mkdir -p "$OBJDIR" || exit $?
 
-crt-src-c                            "src/crt1.c"
-crt-src-c                            "src/int64.c"
-crt-src-d -DDCC_BUILDING_A2L_RUNTIME "src/addr2line.c" "src/addr2line-common.c"
-crt-src-c                            "src/chkstk.S"
+crt-src-c                            "src/crt/crt1.c"
+crt-src-c                            "src/crt/int64.c"
+crt-src-d -DDCC_BUILDING_A2L_RUNTIME "src/crt/addr2line.c" "src/a2l/addr2line-common.c"
+crt-src-c                            "src/crt/chkstk.S"
+crt-src-c                            "src/crt/alloca.S"
 
 $CC -g -c -o dbg-crt.o ${debug_objects[@]}
 $CC -c -o crt.o ${ndebug_objects[@]}

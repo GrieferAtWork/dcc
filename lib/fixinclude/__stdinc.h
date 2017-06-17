@@ -64,6 +64,27 @@
 #else
 #	define __CRT_GLIBC 1
 #endif
+#ifdef __CRT_DCC
+#   undef __CRT_GLIBC
+#   undef __CRT_KOS
+#   undef __CRT_MSVC
+#endif
+#ifdef __CRT_MSVC
+#   undef __CRT_DCC
+#   undef __CRT_GLIBC
+#   undef __CRT_KOS
+#endif
+#ifdef __CRT_GLIBC
+#   undef __CRT_DCC
+#   undef __CRT_KOS
+#   undef __CRT_MSVC
+#endif
+#ifdef __CRT_KOS
+#   undef __CRT_DCC
+#   undef __CRT_GLIBC
+#   undef __CRT_KOS
+#   undef __CRT_MSVC
+#endif
 
 #define __CRT_UNSUPPORTED(crt) [[__error__("Function is unsupported by <" crt ">")]]
 #define __CRT_WORKAROUND(crt)  [[__warning__("Function only works in <" crt "> thanks to a workaround")]]

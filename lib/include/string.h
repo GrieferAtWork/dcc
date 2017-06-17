@@ -150,6 +150,10 @@ __IMP __WUNUSED void *(umemlen)(const void *,int)
 #endif
 
 #ifdef __USE_GNU
+#ifdef __INTELLISENSE__
+extern char *strdupa(char const *str);
+extern char *strndupa(char const *str, size_t max_chars);
+#else
 #define strdupa(s) \
 (__extension__({\
 	char const *const __old = (s);\
@@ -165,6 +169,7 @@ __IMP __WUNUSED void *(umemlen)(const void *,int)
 	__new[__len] = '\0';\
 	(char *)memcpy(__new,__old,__len);\
 }))
+#endif
 #endif
 
 

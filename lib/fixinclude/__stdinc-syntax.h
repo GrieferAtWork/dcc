@@ -25,8 +25,6 @@
 #error "Using this file in c-mode may cause invalid syntax highlighting"
 #endif
 
-#define _LARGEFILE64_SOURCE 1
-
 /* Helper magic. */
 template<class T> struct ____INTELLISENE_remlval { typedef T __type; };
 template<class T> struct ____INTELLISENE_remlval<T &> { typedef T __type; };
@@ -44,7 +42,6 @@ template<bool> struct ____INTELLISENE_static_if_helper {};
 template<> struct ____INTELLISENE_static_if_helper<true> { bool __is_true__(); };
 template<bool C, class T> struct ____INTELLISENE_enableif { typedef T __type; };
 template<bool C, class T> struct ____INTELLISENE_enableif<false,T> {};
-template<class T> T ____INTELLISENE_va_arg_helper(__builtin_va_list &);
 
 #define ____INTELLISENE_MUL8_1  8
 #define ____INTELLISENE_MUL8_2  16
@@ -211,7 +208,7 @@ template<class T> T ____INTELLISENE_va_arg_helper(__builtin_va_list &);
 
 #define __SIZE_TYPE__      unsigned ____INTELLISENE_TYPE(__SIZEOF_SIZE_T__)
 #define __PTRDIFF_TYPE__     signed ____INTELLISENE_TYPE(__SIZEOF_PTRDIFF_T__)
-#define __WCHAR_TYPE__     unsigned ____INTELLISENE_TYPE(__SIZEOF_WCHAR_T__)
+#define __WCHAR_TYPE__       wchar_t
 #define __WINT_TYPE__        signed ____INTELLISENE_TYPE(__SIZEOF_WINT_T__)
 #define __INTMAX_TYPE__      signed ____INTELLISENE_TYPE(__SIZEOF_INTMAX_T__)
 #define __UINTMAX_TYPE__   unsigned ____INTELLISENE_TYPE(__SIZEOF_INTMAX_T__)
@@ -415,6 +412,7 @@ void __builtin_va_start(__builtin_va_list &ap, ...);
 template<class T> void __builtin_va_start(__builtin_va_list &ap, T &before_start, ...);
 void __builtin_va_end(__builtin_va_list &ap, ...);
 void __builtin_va_copy(__builtin_va_list &dst_ap, __builtin_va_list &src_ap, ...);
+template<class T> T ____INTELLISENE_va_arg_helper(__builtin_va_list &);
 #define __builtin_va_arg(ap,T,...)  ____INTELLISENE_va_arg_helper< T >(ap)
 
 

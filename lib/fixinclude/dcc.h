@@ -57,7 +57,9 @@ extern __UINT64_TYPE__ __umodti3(__UINT64_TYPE__ __x, __INT64_TYPE__ __y);  /* '
 extern __INT64_TYPE__  __modti3(__INT64_TYPE__ __x, __INT64_TYPE__ __y);    /* 'return (int64_t)x % y' */
 extern __INT64_TYPE__  __multi3(__INT64_TYPE__ __x, __INT64_TYPE__ __y);    /* 'return (uint64_t|int64_t)x * y' */
 
-
+#if defined(__PE__)
+extern void *__stdcall __pe_alloca(__SIZE_TYPE__ s);
+#endif
 
 struct [[__packed__]] __cpuinfo {
 #if defined(__i386__) || defined(__x86_64__)

@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\lib\src\addr2line-common.c" />
+    <ClCompile Include="..\lib\src\a2l\addr2line-common.c" />
     <ClCompile Include="..\src\dcc\addr2line.c" />
     <ClCompile Include="..\src\dcc\assembler.c" />
     <ClCompile Include="..\src\dcc\cmd-help.c" />
@@ -56,7 +56,7 @@
     <ClInclude Include="..\include\dcc\unit.h" />
     <ClInclude Include="..\include\dcc\vstack.h" />
     <ClInclude Include="..\include\dcc_winmin.h" />
-    <ClInclude Include="..\lib\src\addr2line.h" />
+    <ClInclude Include="..\lib\src\a2l\addr2line.h" />
     <ClInclude Include="..\src\dcc\cmd.h" />
     <ClInclude Include="..\src\dcc\lexer-priv.h" />
     <ClInclude Include="..\src\dcc\linker-elf.h" />

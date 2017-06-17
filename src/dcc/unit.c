@@ -868,7 +868,7 @@ DCCSection_Allocrel(struct DCCSection *__restrict self,
  assert(n_relocs);
  DCCSECTION_ASSERT_NOTANIMPORT(self);
  minsize = self->sc_relc+n_relocs;
- if (minsize > self->sc_relc) {
+ if (minsize > self->sc_rela) {
   /* Must increase the buffer size. */
   newsize = self->sc_rela;
   if unlikely(!newsize) newsize = 1;
@@ -889,7 +889,8 @@ DCCSection_Allocrel(struct DCCSection *__restrict self,
  }
  self->sc_relc += n_relocs;
  return result;
-seterr: TPPLexer_SetErr();
+seterr:
+ TPPLexer_SetErr();
  return NULL;
 }
 

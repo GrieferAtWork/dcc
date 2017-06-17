@@ -13,14 +13,20 @@
     <Filter Include="src\libc">
       <UniqueIdentifier>{7c0cb975-e360-4d5e-9e56-d7b645be2560}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\test">
-      <UniqueIdentifier>{09f26d10-d18c-44db-b8b2-dbb6615c2a88}</UniqueIdentifier>
-    </Filter>
     <Filter Include="include\sys">
       <UniqueIdentifier>{07cac6ef-7dea-42b2-a3ec-13b52f3a39b6}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\bits">
       <UniqueIdentifier>{24558bec-ae78-4fff-8027-b6958c8f3e74}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\crt">
+      <UniqueIdentifier>{869944fa-bbb8-4d2f-82c6-111de065d761}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="test">
+      <UniqueIdentifier>{09f26d10-d18c-44db-b8b2-dbb6615c2a88}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\a2l">
+      <UniqueIdentifier>{bea20d2f-f3b7-4a24-96d4-36f029a3e00c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -108,9 +114,6 @@
     <ClInclude Include="..\lib\fixinclude\__stdinc.h">
       <Filter>fixinclude</Filter>
     </ClInclude>
-    <ClInclude Include="..\lib\src\addr2line.h">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="..\lib\src\libc\common.h">
       <Filter>src\libc</Filter>
     </ClInclude>
@@ -180,39 +183,57 @@
     <ClInclude Include="..\lib\fixinclude\byteswap.h">
       <Filter>fixinclude</Filter>
     </ClInclude>
+    <ClInclude Include="..\lib\src\a2l\addr2line.h">
+      <Filter>src\a2l</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\src\crt\crtdbg.h">
+      <Filter>src\crt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\wchar.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\lib\src\addr2line-common.c">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\src\crt1.c">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\src\int64.c">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\src\addr2line.c">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\lib\test\sizeof.c">
-      <Filter>src\test</Filter>
+      <Filter>test</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\test\intprom.c">
-      <Filter>src\test</Filter>
+      <Filter>test</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\src\libc\string.c">
       <Filter>src\libc</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\test\constant_arithmetic.c">
-      <Filter>src\test</Filter>
+      <Filter>test</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\test\int64.c">
-      <Filter>src\test</Filter>
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\crt\addr2line.c">
+      <Filter>src\crt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\crt\crt1.c">
+      <Filter>src\crt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\crt\int64.c">
+      <Filter>src\crt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\a2l\addr2line-common.c">
+      <Filter>src\a2l</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\libc\fcntl.c">
+      <Filter>src\libc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\src\libc\unistd.c">
+      <Filter>src\libc</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\lib\src\chkstk.S">
-      <Filter>src</Filter>
+    <None Include="..\lib\src\crt\chkstk.S">
+      <Filter>src\crt</Filter>
+    </None>
+    <None Include="..\lib\src\crt\alloca.S">
+      <Filter>src\crt</Filter>
     </None>
   </ItemGroup>
 </Project>

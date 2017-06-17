@@ -1858,11 +1858,16 @@ default_binary:
  assert(DCCTYPE_GROUP(target->sv_ctype.t_type) != DCCTYPE_LVALUE);
  if ((op == '+' || op == '-') && (self->sv_reg == DCC_RC_CONST) &&
     (!(self->sv_flags&(DCC_SFLAG_TEST|DCC_SFLAG_LVALUE))) &&
-    (!(target->sv_flags&(DCC_SFLAG_TEST|DCC_SFLAG_LVALUE))) &&
-    (!target->sv_sym || !self->sv_sym) &&
-    (!self->sv_sym || target->sv_reg == DCC_RC_CONST)) {
+    (!(target->sv_flags&DCC_SFLAG_TEST)) &&
+     /* Can only do offset-arithmetic with one symbol at compile-time. */
+    (!target->sv_sym || !self->sv_sym)) {
   int_t old_val;
   assert(self->sv_reg2 == DCC_RC_CONST);
+  /* Make sure to load l-value stack values. */
+  if (target->sv_flags&DCC_SFLAG_LVALUE)
+      DCCStackValue_Load(target);
+  assert(!(target->sv_flags&DCC_SFLAG_LVALUE));
+
   /* Special case: Add/Sub offset. */
   if (self->sv_sym) assert(!target->sv_sym),
                     target->sv_sym = self->sv_sym,

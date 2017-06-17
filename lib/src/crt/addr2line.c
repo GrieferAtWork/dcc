@@ -26,7 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "addr2line.h"
+#include "../a2l/addr2line.h"
 
 /* NOTE: This data structure must mirror the offsets found in '/src/dcc/unit-debug.c' */
 struct sec_info {
@@ -175,6 +175,7 @@ K32 LPTOP_LEVEL_EXCEPTION_FILTER WINAPI SetUnhandledExceptionFilter(LPTOP_LEVEL_
 K32 BOOL WINAPI WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped);
 K32 HANDLE WINAPI GetStdHandle(DWORD nStdHandle);
 K32 void WINAPI OutputDebugStringA(LPCSTR lpOutputString);
+K32 BOOL WINAPI IsDebuggerPresent(void);
 
 
 #include <stddef.h>
@@ -185,7 +186,7 @@ K32 void WINAPI OutputDebugStringA(LPCSTR lpOutputString);
 #define TB_PRINT(x) tb_print(x,sizeof(x)-sizeof(char))
 static void tb_print(char const *s, size_t len) {
  WriteFile(GetStdHandle(STD_ERROR_HANDLE),s,len,0,0);
- OutputDebugStringA(s);
+ //if (IsDebuggerPresent()) OutputDebugStringA(s);
 }
 static void tb_prints(char const *s) {
  char const *end = s;
@@ -241,48 +242,45 @@ struct frame {
 };
 
 static LONG __stdcall tb_handler(PEXCEPTION_POINTERS ExceptionInfo) {
+ PEXCEPTION_RECORD record = ExceptionInfo->ExceptionRecord;
+ PCONTEXT ctx; DWORD code = record->ExceptionCode;
+ //if (code < 0x80000000) goto done; /* ??? */
  TB_PRINT("Unhandled exception\n");
  SetUnhandledExceptionFilter(NULL);
- //for (;;);
- if (ExceptionInfo) {
-  PCONTEXT ctx = ExceptionInfo->ContextRecord;
-  PEXCEPTION_RECORD record = ExceptionInfo->ExceptionRecord;
-  /* Display a traceback. */
-  if (ctx) {
-   struct frame *iter,*start,*check;
-   size_t num,index = 0;
-   print_addr((void *)ctx->Esp,(void *)ctx->Eip,0);
-   iter = start = (struct frame *)ctx->Ebp;
-   while (iter) {
-    check = start,num = 0;
-    while (num < index) {
-     if (check == iter) {
-      TB_PRINT("Recursion: Frame ");
-      tb_printi(index+1);
-      TB_PRINT(" (");
-      tb_printx((uintptr_t)check);
-      TB_PRINT(") == Frame ");
-      tb_printi(num+1);
-      TB_PRINT(" (");
-      tb_printx((uintptr_t)iter);
-      TB_PRINT(")\n");
-      goto done_tb;
-     }
-     check = check->caller;
-     ++num;
+ /* Display a traceback. */
+ if ((ctx = ExceptionInfo->ContextRecord) != NULL) {
+  struct frame *iter,*start,*check;
+  size_t num,index = 0;
+  print_addr((void *)ctx->Esp,(void *)ctx->Eip,0);
+  iter = start = (struct frame *)ctx->Ebp;
+  while (iter) {
+   check = start,num = 0;
+   while (num < index) {
+    if (check == iter) {
+     TB_PRINT("Recursion: Frame ");
+     tb_printi(index+1);
+     TB_PRINT(" (");
+     tb_printx((uintptr_t)check);
+     TB_PRINT(") == Frame ");
+     tb_printi(num+1);
+     TB_PRINT(" (");
+     tb_printx((uintptr_t)iter);
+     TB_PRINT(")\n");
+     goto done_tb;
     }
-    print_addr(iter,iter->addr,++index);
-    iter = iter->caller;
+    check = check->caller;
+    ++num;
    }
-  }
-done_tb:
-  /* Display additional informations. */
-  if (record) {
-   TB_PRINT("CODE = "),tb_printx((uintptr_t)record->ExceptionCode),TB_PRINT("\n");
-   TB_PRINT("FLAG = "),tb_printx((uintptr_t)record->ExceptionFlags),TB_PRINT("\n");
-   TB_PRINT("ADDR = "),tb_printx((uintptr_t)record->ExceptionAddress),TB_PRINT("\n");
+   print_addr(iter,iter->addr,++index);
+   iter = iter->caller;
   }
  }
+done_tb:
+ /* Display additional informations. */
+ TB_PRINT("CODE = "),tb_printx((uintptr_t)code),TB_PRINT("\n");
+ TB_PRINT("FLAG = "),tb_printx((uintptr_t)record->ExceptionFlags),TB_PRINT("\n");
+ TB_PRINT("ADDR = "),tb_printx((uintptr_t)record->ExceptionAddress),TB_PRINT("\n");
+done:
  return 0xffffffff;
 }
 

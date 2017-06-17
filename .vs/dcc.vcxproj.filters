@@ -22,6 +22,9 @@
     <Filter Include="lib\src">
       <UniqueIdentifier>{cb8ab338-fc6b-4b1f-a572-4be866ed9ff5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lib\src\a2l">
+      <UniqueIdentifier>{62e7da98-913a-4042-ad3d-21b9cc14a650}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.c">
@@ -93,8 +96,8 @@
     <ClCompile Include="..\src\dcc\unit-debug.c">
       <Filter>src\dcc</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\src\addr2line-common.c">
-      <Filter>lib\src</Filter>
+    <ClCompile Include="..\lib\src\a2l\addr2line-common.c">
+      <Filter>lib\src\a2l</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -170,11 +173,11 @@
     <ClInclude Include="..\include\dcc_winmin.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\lib\src\addr2line.h">
-      <Filter>lib\src</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\dcc\addr2line.h">
       <Filter>include\dcc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\src\a2l\addr2line.h">
+      <Filter>lib\src\a2l</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

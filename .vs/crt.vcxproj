@@ -60,29 +60,34 @@
     <ClInclude Include="..\lib\include\sys\types.h" />
     <ClInclude Include="..\lib\include\time.h" />
     <ClInclude Include="..\lib\include\unistd.h" />
+    <ClInclude Include="..\lib\include\wchar.h" />
     <ClInclude Include="..\lib\include\xlocale.h" />
-    <ClInclude Include="..\lib\src\addr2line.h" />
+    <ClInclude Include="..\lib\src\a2l\addr2line.h" />
+    <ClInclude Include="..\lib\src\crt\crtdbg.h" />
     <ClInclude Include="..\lib\src\libc\common.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\lib\src\addr2line-common.c">
-      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">DCC_BUILDING_A2L_RUNTIME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">DCC_BUILDING_A2L_RUNTIME;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    <ClCompile Include="..\lib\src\a2l\addr2line-common.c">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">DCC_BUILDING_A2L_RUNTIME;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">DCC_BUILDING_A2L_RUNTIME;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <ClCompile Include="..\lib\src\addr2line.c">
-      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">DCC_BUILDING_A2L_RUNTIME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">DCC_BUILDING_A2L_RUNTIME;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    <ClCompile Include="..\lib\src\crt\addr2line.c">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">DCC_BUILDING_A2L_RUNTIME;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">DCC_BUILDING_A2L_RUNTIME;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <ClCompile Include="..\lib\src\crt1.c" />
-    <ClCompile Include="..\lib\src\int64.c" />
+    <ClCompile Include="..\lib\src\crt\crt1.c" />
+    <ClCompile Include="..\lib\src\crt\int64.c" />
+    <ClCompile Include="..\lib\src\libc\fcntl.c" />
     <ClCompile Include="..\lib\src\libc\string.c" />
+    <ClCompile Include="..\lib\src\libc\unistd.c" />
     <ClCompile Include="..\lib\test\constant_arithmetic.c" />
     <ClCompile Include="..\lib\test\int64.c" />
     <ClCompile Include="..\lib\test\intprom.c" />
     <ClCompile Include="..\lib\test\sizeof.c" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\lib\src\chkstk.S" />
+    <None Include="..\lib\src\crt\alloca.S" />
+    <None Include="..\lib\src\crt\chkstk.S" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{3E027BB2-167C-49CE-8B99-C1DD1538C103}</ProjectGuid>
@@ -130,6 +135,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <CompileAs>CompileAsCpp</CompileAs>
+      <PreprocessorDefinitions>__CRT_DCC;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -145,6 +151,7 @@
       <CompileAs>CompileAsCpp</CompileAs>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <PreprocessorDefinitions>__CRT_DCC;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

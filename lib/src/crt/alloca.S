@@ -16,36 +16,63 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#pragma once
-#pragma GCC system_header
+/* Only used for PE targets. */
+#include "crtdbg.h"
+#if defined(__PE__) || defined(CRTDBG_INIT_ALLOCA)
 
-#ifndef __has_include_next
-#define __has_include_next(x) 0
-#endif
+#ifdef __i386__
 
-#if __has_include_next(<assert.h>)
-#include_next <assert.h>
+#define PAGESIZE  4096
+
+.hidden __pe_alloca
+.hidden __pe_alloca_eax
+__pe_alloca:
+	popl     %edx          /* Return address. */
+	popl     %eax          /* Allocation count. */
+	jmp      7f
+__pe_alloca_eax:
+	popl     %edx          /* Return address. */
+7:
+#ifdef CRTDBG_INIT_ALLOCA
+	cmpl     $8,  %eax
+	jl       1f
+	pushfl
+	pushl    %edi
+	leal  -8(%eax), %ecx
+	movl     %esp,  %edi
+	decl     %edi
+	movb     $CRTDBG_INIT_ALLOCA, %al
+	std
+	rep stosb
+	incl     %edi
+	movl     %edi,  %eax
+	popl	 %edi
+	popfl
+	movl     $(0x01010101*CRTDBG_INIT_ALLOCA), -4(%esp)
+	movl     $(0x01010101*CRTDBG_INIT_ALLOCA), -8(%esp)
+	movl     %eax,  %esp
+	jmp      2f
+1:	decl     %esp
+	movb     $CRTDBG_INIT_ALLOCA, (%esp)
+	dec      %eax
+	test	 %eax, %eax
+	jnz		 1b
+	movl     %esp, %eax
+2:
 #else
-#include <__stdinc.h>
+	cmpl $PAGESIZE,   %eax
+	jl       2f
+1:	subl $PAGESIZE,   %esp  /* Advance to the next page. */
+	testb    $0,     (%esp) /* Touch the page. */
+	subl $PAGESIZE,   %eax  /* Advance the size counter. */
+	jg       1b             /* ZF == 0 && OF == SF */
+2:	subl     %eax,    %esp
+#endif
+	jmpl    *%edx
+.size __pe_alloca_eax, . - __pe_alloca_eax
+.size __pe_alloca, . - __pe_alloca
 
-#ifndef __DCC_ASSERT_LIB_DEFINED
-#define __DCC_ASSERT_LIB_DEFINED 1
-#ifdef __CRT_MSVC
-__IMP void (__assertion_failed)(char const *,char const *,unsigned int) __asm__("_assert");
-#elif defined(__CRT_DCC)
-__IMP void (__assertion_failed)(char const *,char const *,unsigned int);
 #else
-#error FIXME
+#	error FIXME
 #endif
-#endif /* !__DCC_ASSERT_LIB_DEFINED */
-
-/* NOTE: '__builtin_assume' will mark code flow as
- *       unreachable for compile-time false expressions:
- *       >> assert(0); // Mark control flow as unreachable, but check the fact at runtime!
- */
-#ifdef NDEBUG
-#	define assert         __builtin_assume
-#else
-#	define assert(expr)  (void)((expr) || (__assertion_failed(#expr,__FILE__,__LINE__),__builtin_breakpoint(),0))
-#endif
-#endif
+#endif /* __PE__ || CRTDBG_INIT_ALLOCA */

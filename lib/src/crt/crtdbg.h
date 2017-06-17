@@ -17,35 +17,9 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 #pragma once
-#pragma GCC system_header
 
-#ifndef __has_include_next
-#define __has_include_next(x) 0
+#ifndef NDEBUG
+#define CRTDBG_INIT_CHKSTK  0xcd
+#define CRTDBG_INIT_ALLOCA  0xad
 #endif
 
-#if __has_include_next(<assert.h>)
-#include_next <assert.h>
-#else
-#include <__stdinc.h>
-
-#ifndef __DCC_ASSERT_LIB_DEFINED
-#define __DCC_ASSERT_LIB_DEFINED 1
-#ifdef __CRT_MSVC
-__IMP void (__assertion_failed)(char const *,char const *,unsigned int) __asm__("_assert");
-#elif defined(__CRT_DCC)
-__IMP void (__assertion_failed)(char const *,char const *,unsigned int);
-#else
-#error FIXME
-#endif
-#endif /* !__DCC_ASSERT_LIB_DEFINED */
-
-/* NOTE: '__builtin_assume' will mark code flow as
- *       unreachable for compile-time false expressions:
- *       >> assert(0); // Mark control flow as unreachable, but check the fact at runtime!
- */
-#ifdef NDEBUG
-#	define assert         __builtin_assume
-#else
-#	define assert(expr)  (void)((expr) || (__assertion_failed(#expr,__FILE__,__LINE__),__builtin_breakpoint(),0))
-#endif
-#endif

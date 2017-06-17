@@ -157,13 +157,9 @@ DCCParse_BuiltinAlloca(void) {
  YIELD();
  DCCParse_ParPairBegin();
  DCCParse_Expr1();
+ DCCVStack_Alloca();
  DCCParse_ParPairEnd();
- vpushxr(DCC_RR_XSP); /* x, %esp */
- vswap();             /* %esp, x */
- vgen2('-');          /* %esp */
- vpop(1);             /* Force apply disposition. */
- vpushxr(DCC_RR_XSP); /* Push the ESP register again. */
- vcast_pt(DCCTYPE_VOID,1);
+ vwunused();
 }
 
 
@@ -173,6 +169,7 @@ LEXPRIV void DCC_PARSE_CALL
 DCCParse_BuiltinAllocaWithAlign(void) {
  /* Allocate stack memory. */
  assert(TOK == KWD___builtin_alloca_with_align);
+ /* TODO: PE stack probing integration? */
  DCCParse_WarnAllocaInLoop();
  YIELD();
  /* generate code equivalent to:

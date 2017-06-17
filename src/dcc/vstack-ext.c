@@ -25,6 +25,7 @@
 #include <dcc/gen.h>
 #include <dcc/type.h>
 #include <dcc/compiler.h>
+#include <dcc/linker.h>
 #include <dcc/byteorder.h>
 
 DCC_DECL_BEGIN
@@ -45,6 +46,19 @@ DCCVStack_PushSym_vpfun(struct DCCSym *__restrict sym) {
  DCCType_Quit(&type);
 }
 INTERN void DCC_VSTACK_CALL
+DCCVStack_PushSym_stdcall_vpfun(struct DCCSym *__restrict sym) {
+ struct DCCType type = {DCCTYPE_VOID,NULL};
+ DCCType_MkPointer(&type);
+ DCCType_MkOldFunc(&type);
+ if (type.t_base) {
+  struct DCCAttrDecl attr = DCCATTRDECL_INIT;
+  attr.a_flags |= DCC_ATTRFLAG_CC_STDCALL;
+  DCCDecl_SetAttr(type.t_base,&attr);
+ }
+ vpushst(&type,sym);
+ DCCType_Quit(&type);
+}
+INTERN void DCC_VSTACK_CALL
 DCCVStack_PushSym_ifun(struct DCCSym *__restrict sym) {
  struct DCCType type = {DCCTYPE_INT,NULL};
  DCCType_MkOldFunc(&type);
@@ -57,6 +71,47 @@ DCCVStack_PushSym_szfun(struct DCCSym *__restrict sym) {
  DCCType_MkOldFunc(&type);
  vpushst(&type,sym);
  DCCType_Quit(&type);
+}
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_Alloca(void) {
+ assert(vsize >= 1);
+ if (linker.l_flags&DCC_LINKER_FLAG_GENDEBUG) {
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+pe_alloca:
+#endif
+  struct DCCSym *sym; int eax_mode = 0;
+  DCCStackValue_FixBitfield(vbottom);
+  DCCStackValue_FixTest(vbottom);
+  DCCStackValue_FixRegOffset(vbottom);
+  if ((vbottom->sv_reg != DCC_RC_CONST &&
+      (vbottom->sv_reg&DCC_RI_MASK) == DCC_ASMREG_EAX) ||
+      !DCCVStack_GetRegInuse(DCC_RR_XAX)) {
+   DCCStackValue_LoadExplicit(vbottom,DCC_RR_XAX);
+   eax_mode = 1;
+   sym = DCCUnit_NewSyms("__pe_alloca_eax",DCC_SYMFLAG_HIDDEN);
+  } else {
+   sym = DCCUnit_NewSyms("__pe_alloca",DCC_SYMFLAG_HIDDEN);
+  }
+  sym ? DCCVStack_PushSym_stdcall_vpfun(sym) : vpushv();
+  vswap();
+  if (!eax_mode) vcall(1);
+  else   vpop(1),vcall(0);
+ } else {
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+  /* Make sure to handle very large, or unknown-sized
+   * requests with __pe_alloca on PE targets. */
+  if (!visconst_int() ||
+       vgtconst_int() >= DCC_TARGET_PAGESIZE)
+       goto pe_alloca;
+#endif
+  vpushxr(DCC_RR_XSP); /* x, %esp */
+  vswap();             /* %esp, x */
+  vgen2('-');          /* %esp */
+  vpop(1);             /* Force apply disposition. */
+  vpushxr(DCC_RR_XSP); /* Push the ESP register again. */
+  vcast_pt(DCCTYPE_VOID,1);
+ }
 }
 
 PUBLIC void DCC_VSTACK_CALL

@@ -196,9 +196,13 @@ __IMP int __msvc_locking(int __fd, int __cmd, __UINT32_TYPE__ __len) __asm__("_l
 #	define lockf64(fd,cmd,len) __msvc_locking((fd),(cmd),(__UINT32_TYPE__)(len))
 #endif
 #else /* __CRT_MSVC */
-__IMP int (lockf)(int __fd, int __cmd, off_t __len) __UNISTD_FUN32("lockf");
+__IMP int (lockf)(int __fd, int __cmd, off_t __len)
+#ifdef __USE_FILE_OFFSET64
+	__asm__("lockf64")
+#endif
+;
 #ifdef __USE_LARGEFILE64
-__IMP int (lockf64)(int __fd, int __cmd, off64_t __len) __UNISTD_FUN64("lockf");
+__IMP int (lockf64)(int __fd, int __cmd, off64_t __len);
 #endif
 #endif /* !__CRT_MSVC */
 #endif
@@ -213,13 +217,13 @@ __IMP int (posix_fadvise)(int __fd, off_t __offset, off_t __len, int __advise)
 #ifdef __USE_LARGEFILE64
 __IMP int (posix_fadvise64)(int __fd, off64_t __offset, off64_t __len, int __advise);
 #endif
-extern int (posix_fallocate)(int __fd, off_t __offset, off_t __len)
+__IMP int (posix_fallocate)(int __fd, off_t __offset, off_t __len)
 #ifdef __USE_FILE_OFFSET64
 	__asm__("posix_fallocate64")
 #endif
 ;
 #ifdef __USE_LARGEFILE64
-extern int (posix_fallocate64)(int __fd, off64_t __offset, off64_t __len);
+__IMP int (posix_fallocate64)(int __fd, off64_t __offset, off64_t __len);
 #endif
 #else /* __CRT_GLIBC */
 #	define posix_fadvise(fd,offset,len,advise)   ((fd),(offset),(len),(advise),0)

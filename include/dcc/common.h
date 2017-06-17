@@ -255,19 +255,24 @@ extern void __debugbreak(void);
 #   define DCC_BREAKPOINT() (void)0
 #endif
 
+
 DCCFUN
 #ifdef DCC_NO_BREAKPOINT
        DCC_ATTRIBUTE_NORETURN
 #endif
-void dcc_assertion_failed(char const *expr, char const *file,
-                          int line, char const *fmt, ...);
+void dcc_assertion_failed(char const *expr, char const *file, int line);
+DCCFUN
+#ifdef DCC_NO_BREAKPOINT
+       DCC_ATTRIBUTE_NORETURN
+#endif
+void dcc_assertion_failedf(char const *expr, char const *file, int line, char const *fmt, ...);
 
 DCC_DECL_END
 
 
 #if DCC_DEBUG
-#   define DCC_ASSERT(expr)      ((expr) || (dcc_assertion_failed(#expr,__FILE__,__LINE__,0),DCC_BREAKPOINT(),0))
-#   define DCC_ASSERTF(expr,...) ((expr) || (dcc_assertion_failed(#expr,__FILE__,__LINE__,__VA_ARGS__),DCC_BREAKPOINT(),0))
+#   define DCC_ASSERT(expr)      ((expr) || (dcc_assertion_failed(#expr,__FILE__,__LINE__),DCC_BREAKPOINT(),0))
+#   define DCC_ASSERTF(expr,...) ((expr) || (dcc_assertion_failedf(#expr,__FILE__,__LINE__,__VA_ARGS__),DCC_BREAKPOINT(),0))
 #elif defined(_MSC_VER)
 #   define DCC_ASSERT __assume
 #elif __has_builtin(__builtin_assume)

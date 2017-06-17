@@ -645,7 +645,7 @@ dont_redef:
   srcsec->sc_relv = NULL;
 
   relbase = dstsec->sc_text.tb_begin;
-  for (; rel_iter != rel_end; ++rel_iter,++reldst) {
+  if likely(reldst) for (; rel_iter != rel_end; ++rel_iter,++reldst) {
    uint8_t *reldata; struct DCCSym *relsym;
    relsym = rel_iter->r_sym;
    DCCSym_ASSERT(relsym);

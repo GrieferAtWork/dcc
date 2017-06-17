@@ -103,18 +103,47 @@ DCCDisp_LargeMemBinMem_fixed(tok_t op,
                              struct DCCMemLoc const *__restrict src,
                              struct DCCMemLoc const *__restrict dst,
                              target_siz_t n_bytes, int src_unsigned) {
+ uint8_t kill_mask;
  struct DCCMemLoc funloc;
  struct DCCSymAddr cleanup;
  assert(IS_LARGE_OP(op));
  assert(n_bytes > DCC_TARGET_SIZEOF_ARITH_MAX);
  assert(src),assert(dst);
+ kill_mask = 0xff;
+ if (src->ml_reg != DCC_RC_CONST) kill_mask &= ~(1 << (src->ml_reg&DCC_RI_MASK));
+ if (dst->ml_reg != DCC_RC_CONST) kill_mask &= ~(1 << (dst->ml_reg&DCC_RI_MASK));
+
+ DCCVStack_KillInt(kill_mask);
 #ifdef LARGEMEM_STACK_LLONG
  if (n_bytes == LARGEMEM_STACK_LLONG) {
-  DCCDisp_MemPush(src,REQSIZE(op,LARGEMEM_STACK_LLONG));
-  DCCDisp_MemPush(dst,LARGEMEM_STACK_LLONG);
-  DCCVStack_KillAll(0);
-  DCCDisp_LargeBinLLong(op,src_unsigned);
-  DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,dst,LARGEMEM_STACK_LLONG,1);
+  if (dst->ml_reg != DCC_RC_CONST &&
+     !DCC_ASMREG_ISPROTECTED(dst->ml_reg&DCC_RI_MASK)) {
+   /* Must safe the destination register across the call. */
+   if ((dst->ml_reg&DCC_RI_MASK) != DCC_ASMREG_EAX &&
+       (dst->ml_reg&DCC_RI_MASK) != DCC_ASMREG_EDX) {
+    DCCDisp_RegPush(dst->ml_reg);
+    DCCDisp_MemPush(src,REQSIZE(op,LARGEMEM_STACK_LLONG));
+    DCCDisp_MemPush(dst,LARGEMEM_STACK_LLONG);
+    DCCDisp_LargeBinLLong(op,src_unsigned);
+    DCCDisp_PopReg(dst->ml_reg);
+    DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,dst,LARGEMEM_STACK_LLONG,1);
+   } else {
+    struct DCCMemLoc new_dst = *dst;
+    DCCDisp_RegPush(new_dst.ml_reg);
+    DCCDisp_MemPush(src,REQSIZE(op,LARGEMEM_STACK_LLONG));
+    DCCDisp_MemPush(dst,LARGEMEM_STACK_LLONG);
+    DCCDisp_LargeBinLLong(op,src_unsigned);
+    new_dst.ml_reg = DCCVStack_GetRegOf(dst->ml_reg&DCC_RC_MASK,kill_mask);
+    DCCDisp_PopReg(new_dst.ml_reg);
+    DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,&new_dst,LARGEMEM_STACK_LLONG,1);
+    DCCDisp_RegMovReg(new_dst.ml_reg,dst->ml_reg,1);
+   }
+  } else {
+   DCCDisp_MemPush(src,REQSIZE(op,LARGEMEM_STACK_LLONG));
+   DCCDisp_MemPush(dst,LARGEMEM_STACK_LLONG);
+   DCCDisp_LargeBinLLong(op,src_unsigned);
+   DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,dst,LARGEMEM_STACK_LLONG,1);
+  }
   return;
  }
 #endif
@@ -123,7 +152,7 @@ DCCDisp_LargeMemBinMem_fixed(tok_t op,
  DCCDisp_LocPush(dst);
  funloc.ml_reg = DCC_RC_CONST;
  funloc.ml_off = 0;
- n_bytes *= 8;
+ n_bytes *= DCC_TARGET_BITPERBYTE;
  switch (op) { /* Special functions for variadic integral size. */
  case TOK_SHL:     funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xshl%lu",(unsigned long)n_bytes); break;
  case TOK_SHR:     funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xshr%lu",(unsigned long)n_bytes); break;
@@ -132,7 +161,6 @@ DCCDisp_LargeMemBinMem_fixed(tok_t op,
  case '%':         funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,src_unsigned ? "__xumod%lu" : "__xdiv%lu",(unsigned long)n_bytes); break;
  default:          funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xmul%lu",(unsigned long)n_bytes); break;
  }
- DCCVStack_KillAll(0);
  DCCDisp_LocCll(&funloc);
  cleanup.sa_off = 2*DCC_TARGET_SIZEOF_POINTER;
  cleanup.sa_sym = NULL;
@@ -148,11 +176,37 @@ DCCDisp_LargeMemBinMem(tok_t op,
  target_siz_t reqbytes = REQSIZE(op,dst_bytes);
 #ifdef LARGEMEM_STACK_LLONG
  if (dst_bytes == LARGEMEM_STACK_LLONG) {
-  DCCDisp_MemPushs(src,src_bytes,reqbytes,src_unsigned);
-  DCCDisp_MemPush (dst,LARGEMEM_STACK_LLONG);
-  DCCVStack_KillAll(0);
-  DCCDisp_LargeBinLLong(op,src_unsigned);
-  DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,dst,dst_bytes,1);
+  uint8_t kill_mask = 0xff & ~(1 << (dst->ml_reg&DCC_RI_MASK));
+  if (src->ml_reg != DCC_RC_CONST) kill_mask &= ~(1 << (src->ml_reg&DCC_RI_MASK));
+  DCCVStack_KillInt(kill_mask);
+  if (dst->ml_reg != DCC_RC_CONST &&
+     !DCC_ASMREG_ISPROTECTED(dst->ml_reg&DCC_RI_MASK)) {
+   /* Must safe the destination register across the call. */
+   if ((dst->ml_reg&DCC_RI_MASK) != DCC_ASMREG_EAX &&
+       (dst->ml_reg&DCC_RI_MASK) != DCC_ASMREG_EDX) {
+    DCCDisp_RegPush(dst->ml_reg);
+    DCCDisp_MemPushs(src,src_bytes,reqbytes,src_unsigned);
+    DCCDisp_MemPush (dst,LARGEMEM_STACK_LLONG);
+    DCCDisp_LargeBinLLong(op,src_unsigned);
+    DCCDisp_PopReg(dst->ml_reg);
+    DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,dst,dst_bytes,1);
+   } else {
+    struct DCCMemLoc new_dst = *dst;
+    DCCDisp_RegPush(new_dst.ml_reg);
+    DCCDisp_MemPushs(src,src_bytes,reqbytes,src_unsigned);
+    DCCDisp_MemPush (dst,LARGEMEM_STACK_LLONG);
+    DCCDisp_LargeBinLLong(op,src_unsigned);
+    new_dst.ml_reg = DCCVStack_GetRegOf(dst->ml_reg&DCC_RC_MASK,kill_mask);
+    DCCDisp_PopReg(new_dst.ml_reg);
+    DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,&new_dst,dst_bytes,1);
+    DCCDisp_RegMovReg(new_dst.ml_reg,dst->ml_reg,1);
+   }
+  } else {
+   DCCDisp_MemPushs(src,src_bytes,reqbytes,src_unsigned);
+   DCCDisp_MemPush (dst,LARGEMEM_STACK_LLONG);
+   DCCDisp_LargeBinLLong(op,src_unsigned);
+   DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,dst,dst_bytes,1);
+  }
   return;
  }
 #endif

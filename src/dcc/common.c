@@ -41,7 +41,9 @@ DCC_DECL_BEGIN
 INTERN void dcc_voutf(char const *fmt, va_list args) {
  char buffer[4096];
  vsnprintf(buffer,sizeof(buffer),fmt,args);
+#ifndef __DCC_VERSION__
  OutputDebugStringA(buffer);
+#endif
  fwrite(buffer,sizeof(char),strlen(buffer),stderr);
 }
 INTERN void dcc_outf(char const *fmt, ...) {
@@ -69,8 +71,15 @@ PUBLIC
 #ifdef DCC_NO_BREAKPOINT
        DCC_ATTRIBUTE_NORETURN
 #endif
-void dcc_assertion_failed(char const *expr, char const *file,
-                          int line, char const *fmt, ...) {
+void dcc_assertion_failed(char const *expr, char const *file, int line) {
+ dcc_assertion_failedf(expr,file,line,NULL);
+}
+PUBLIC
+#ifdef DCC_NO_BREAKPOINT
+       DCC_ATTRIBUTE_NORETURN
+#endif
+void dcc_assertion_failedf(char const *expr, char const *file,
+                           int line, char const *fmt, ...) {
  static int in_assert = 0;
 #ifdef _MSC_VER
  int msvc_mode = !TPPLexer_Current || !!(TPPLexer_Current->l_flags&TPPLEXER_FLAG_MSVC_MESSAGEFORMAT);

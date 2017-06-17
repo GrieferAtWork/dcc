@@ -583,6 +583,9 @@ DCCFUN int DCC_VSTACK_CALL DCCVStack_HasTst(void);
 /* VStack extensions from 'vstack-ext.c' */
 /* ************************************* */
 
+/* [-1, +1]: push(__builtin_alloca(vbottom[0])) */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_Alloca(void);
+
 /* [-1, +1]: push(__builtin_bswapcc(vbottom[0])) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_BSwap(void);
 

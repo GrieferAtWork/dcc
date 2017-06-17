@@ -16,8 +16,8 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#ifndef GUARD_DCC_LIB_SRC_ADDR2LINE_COMMON_C
-#define GUARD_DCC_LIB_SRC_ADDR2LINE_COMMON_C 1
+#ifndef GUARD_DCC_LIB_SRC_A2L_ADDR2LINE_COMMON_C
+#define GUARD_DCC_LIB_SRC_A2L_ADDR2LINE_COMMON_C 1
 
 #include "addr2line.h"
 
@@ -238,4 +238,4 @@ found:
 }
 #endif
 
-#endif /* !GUARD_DCC_LIB_SRC_COMMON_ADDR2LINE_C */
+#endif /* !GUARD_DCC_LIB_SRC_A2L_ADDR2LINE_COMMON_C */

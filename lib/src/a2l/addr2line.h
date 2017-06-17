@@ -16,8 +16,8 @@
  *    misrepresented as being the original software.                          *
  * 3. This notice may not be removed or altered from any source distribution. *
  */
-#ifndef GUARD_DCC_LIB_SRC_ADDR2LINE_H
-#define GUARD_DCC_LIB_SRC_ADDR2LINE_H 1
+#ifndef GUARD_DCC_LIB_SRC_A2L_ADDR2LINE_H
+#define GUARD_DCC_LIB_SRC_A2L_ADDR2LINE_H 1
 
 #include <stddef.h>
 #include <stdint.h>
@@ -231,4 +231,4 @@ A2L_NAME(a2l_exec)(struct A2lState *s_begin,
 }
 #endif
 
-#endif /* !GUARD_DCC_LIB_SRC_ADDR2LINE_H */
+#endif /* !GUARD_DCC_LIB_SRC_A2L_ADDR2LINE_H */

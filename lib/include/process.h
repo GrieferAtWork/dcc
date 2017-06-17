@@ -68,28 +68,33 @@ __IMP _Noreturn void (abort)(void);
 #define WAIT_CHILD      0
 #define WAIT_GRANDCHILD 1
 
-#if !defined(__CRT_MSVC) || __SIZEOF_POINTER__ == __SIZEOF_INT__
+#ifdef __CRT_MSVC
+#if __SIZEOF_POINTER__ == __SIZEOF_INT__
 #	define __PROC_RETURN __pid_t
 #else
 #	define __PROC_RETURN __INTPTR_TYPE__
 #endif
+#else
+#	define __PROC_RETURN int
+#endif
+
 __IMP __PROC_RETURN (cwait)(int *__term_status, __PROC_RETURN __proc_handle, int __action) __PROCESS_FUN("cwait");
 __IMP __PROC_RETURN (execl)(char const *__path, char const *__arg0, ...) __PROCESS_FUN("execl");
 __IMP __PROC_RETURN (execle)(char const *__path, char const *__arg0, ...) __PROCESS_FUN("execle");
-__IMP __PROC_RETURN (execlp)(char const *__path, char const *__arg0, ...) __PROCESS_FUN("execlp");
-__IMP __PROC_RETURN (execlpe)(char const *__path, char const *__arg0, ...) __PROCESS_FUN("execlpe");
+__IMP __PROC_RETURN (execlp)(char const *__file, char const *__arg0, ...) __PROCESS_FUN("execlp");
+__IMP __PROC_RETURN (execlpe)(char const *__file, char const *__arg0, ...) __PROCESS_FUN("execlpe");
 __IMP __PROC_RETURN (execv)(char const *__path, char *const __argv[]) __PROCESS_FUN("execv");
 __IMP __PROC_RETURN (execve)(char const *__path, char *const __argv[], char *const __envp[]) __PROCESS_FUN("execve");
-__IMP __PROC_RETURN (execvp)(char const *__path, char *const __argv[]) __PROCESS_FUN("execvp");
-__IMP __PROC_RETURN (execvpe)(char const *__path, char *const __argv[], char *const __envp[]) __PROCESS_FUN("execvpe");
+__IMP __PROC_RETURN (execvp)(char const *__file, char *const __argv[]) __PROCESS_FUN("execvp");
+__IMP __PROC_RETURN (execvpe)(char const *__file, char *const __argv[], char *const __envp[]) __PROCESS_FUN("execvpe");
 __IMP __PROC_RETURN (spawnl)(int __mode, char const *__path, char const *__arg0, ...) __PROCESS_FUN("spawnl");
 __IMP __PROC_RETURN (spawnle)(int __mode, char const *__path, char const *__arg0, ...) __PROCESS_FUN("spawnle");
-__IMP __PROC_RETURN (spawnlp)(int __mode, char const *__path, char const *__arg0, ...) __PROCESS_FUN("spawnlp");
-__IMP __PROC_RETURN (spawnlpe)(int __mode, char const *__path, char const *__arg0, ...) __PROCESS_FUN("spawnlpe");
+__IMP __PROC_RETURN (spawnlp)(int __mode, char const *__file, char const *__arg0, ...) __PROCESS_FUN("spawnlp");
+__IMP __PROC_RETURN (spawnlpe)(int __mode, char const *__file, char const *__arg0, ...) __PROCESS_FUN("spawnlpe");
 __IMP __PROC_RETURN (spawnv)(int __mode, char const *__path, char *const __argv[]) __PROCESS_FUN("spawnv");
 __IMP __PROC_RETURN (spawnve)(int __mode, char const *__path, char *const __argv[], char *const __envp[]) __PROCESS_FUN("spawnve");
-__IMP __PROC_RETURN (spawnvp)(int __mode, char const *__path, char *const __argv[]) __PROCESS_FUN("spawnvp");
-__IMP __PROC_RETURN (spawnvpe)(int __mode, char const *__path, char *const __argv[], char *const __envp[]) __PROCESS_FUN("spawnvpe");
+__IMP __PROC_RETURN (spawnvp)(int __mode, char const *__file, char *const __argv[]) __PROCESS_FUN("spawnvp");
+__IMP __PROC_RETURN (spawnvpe)(int __mode, char const *__file, char *const __argv[], char *const __envp[]) __PROCESS_FUN("spawnvpe");
 __IMP __pid_t (getpid)(void) __PROCESS_FUN("getpid");
 #undef __PROC_RETURN
 

@@ -448,7 +448,7 @@ DCCDisp_FunProlog(struct DCCDispFunction *__restrict info) {
 #else
  t_alloc(MAX_PROLOG_SIZE);
 #endif
-#if 0 /* Hardcore logging! */
+#if 0 /* HAVE_HLOG Hardcore logging! */
  if (compiler.c_fun && strcmp(compiler.c_fun->d_name->k_name,"__hardlog") != 0) {
   struct DCCMemLoc loc;
   loc.ml_sym = DCCUnit_NewSyms("__hardlog",DCC_SYMFLAG_NONE);

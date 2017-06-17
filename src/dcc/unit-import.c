@@ -289,6 +289,7 @@ search_extensions[] = {
 #endif
  {{'.','d','e','f'}},
 };
+
 PRIVATE int DCCUNIT_IMPORTCALL
 DCCUnit_ImportWithPath(struct TPPString *__restrict path,
                        struct DCCLibDef *__restrict def) {

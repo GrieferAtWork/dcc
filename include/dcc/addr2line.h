@@ -21,7 +21,7 @@
 
 #include "common.h"
 #include "lexer.h"
-#include "../../lib/src/addr2line.h"
+#include "../../lib/src/a2l/addr2line.h"
 
 #include <stdint.h>
 

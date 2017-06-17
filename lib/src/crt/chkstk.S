@@ -18,6 +18,8 @@
  */
 /* Only used for PE targets. */
 #ifdef __PE__
+#include "crtdbg.h"
+
 #ifdef __i386__
 
 /* Similar to __builtin_alloca(), this function decrements
@@ -118,7 +120,7 @@ __chkstk:
 	 * This error can easily be un-done by subtracting EAX from ESP */
 	subl     %eax,    %esp
 	/* And we're done! */
-#ifndef NDEBUG
+#ifdef CRTDBG_INIT_CHKSTK
 	/* DEBUG: memset(%esp,0xcd,%ebp-%esp);
 	 * >> Fill all newly allocated stack-memory with '0xcd' */
 	pushl    %edi
@@ -129,8 +131,7 @@ __chkstk:
 	leal  16(%esp),   %edi  /* EDI = ESP+16 */
 	movl     %ebp,    %ecx
 	subl     %edi,    %ecx  /* ECX = EBP-(ESP+16) */
-	movb     $0xff,   %al   /* AL  = 0xff */
-#	movb     $0xcd,   %al   /* AL  = 0xcd */
+	movb     $CRTDBG_INIT_CHKSTK, %al   /* AL = ... */
 	cld						/* Clear the direction bit. */
 	rep      stosb          /* while (ECX--) *EDI++ = AL; */
 	movl     %edx,    %eax  /* Load 'SETUP_RETURN_ADDRESS' back into EAX */
@@ -139,9 +140,9 @@ __chkstk:
 	popl     %ecx
 	popl     %edi
 	jmpl    *%eax           /* Now simply jump to 'SETUP_RETURN_ADDRESS' */
-#else
+#else /* CRTDBG_INIT_CHKSTK */
 	jmpl *-4(%ebp)          /* Now simply jump to 'SETUP_RETURN_ADDRESS' */
-#endif
+#endif /* !CRTDBG_INIT_CHKSTK */
 .size __chkstk, . - __chkstk
 
 #else
