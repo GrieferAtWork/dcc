@@ -454,6 +454,7 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Push(struct DCCStackValue const *__restric
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushInt(DCC(tyid_t) type, DCC(int_t) v);             /* +1 ('type': 'DCCTYPE_*') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushFlt(DCC(tyid_t) type, DCC(float_t) v);           /* +1 ('type': 'DCCTYPE_*') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushCst(struct DCCType const *__restrict type, DCC(int_t) v); /* +1 */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_PushTst(uint8_t test);                               /* +1 ('test': Actually a 'test_t') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushMloc(struct DCCType const *__restrict type, struct DCCMemLoc *__restrict loc); /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushSym(struct DCCSym *__restrict sym);              /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushSymt(struct DCCType const *__restrict type, struct DCCSym *__restrict sym); /* +1 */

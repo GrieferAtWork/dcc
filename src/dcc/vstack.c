@@ -2844,7 +2844,6 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_KillAll(size_t n_skip) {
  struct DCCStackValue *iter,*end;
  assert(n_skip <= vsize);
- if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  end  = compiler.c_vstack.v_end;
  iter = compiler.c_vstack.v_bottom+n_skip;
  for (; iter != end; ++iter) {
@@ -2859,7 +2858,6 @@ DCCVStack_KillAll(size_t n_skip) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_KillInt(uint8_t mask) {
  struct DCCStackValue *iter,*end;
- if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  end   = compiler.c_vstack.v_end;
  iter  = compiler.c_vstack.v_bottom;
  mask &= ~((1 << DCC_ASMREG_EBP)
@@ -2883,7 +2881,6 @@ DCCVStack_KillInt(uint8_t mask) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_KillTst(void) {
  struct DCCStackValue *iter,*end;
- if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  iter = compiler.c_vstack.v_bottom;
  end  = compiler.c_vstack.v_end;
  for (; iter != end; ++iter) {
@@ -2946,7 +2943,8 @@ DCCVStack_PushInt(tyid_t type, int_t v) {
  slot.sv_reg          = DCC_RC_CONST;
  slot.sv_reg2         = DCC_RC_CONST;
  slot.sv_const.it     = v;
- slot.sv_sym          = NULL; /* If set, this would could be used for a relocation added to 'v'. */
+ /* If set, this would could be used for a relocation added to 'v'. */
+ slot.sv_sym          = NULL;
  vpush(&slot);
 }
 PUBLIC void DCC_VSTACK_CALL
@@ -2958,7 +2956,7 @@ DCCVStack_PushFlt(tyid_t type, float_t v) {
  slot.sv_reg          = DCC_RC_CONST;
  slot.sv_reg2         = DCC_RC_CONST;
  slot.sv_const.flt    = v;
- slot.sv_sym          = NULL; /* If set, this would could be used for a relocation added to 'v'. */
+ slot.sv_sym          = NULL;
  vpush(&slot);
 }
 
@@ -2970,7 +2968,21 @@ DCCVStack_PushCst(struct DCCType const *__restrict type, int_t v) {
  slot.sv_reg      = DCC_RC_CONST;
  slot.sv_reg2     = DCC_RC_CONST;
  slot.sv_const.it = v;
- slot.sv_sym      = NULL; /* If set, this would could be used for a relocation added to 'v'. */
+ slot.sv_sym      = NULL;
+ vpush(&slot);
+}
+
+PUBLIC void DCC_VSTACK_CALL
+DCCVStack_PushTst(uint8_t test) {
+ struct DCCStackValue slot;
+ assert(test <= 0xf);
+ slot.sv_ctype.t_base = NULL;
+ slot.sv_ctype.t_type = DCCTYPE_BOOL;
+ slot.sv_flags        = DCC_SFLAG_RVALUE|DCC_SFLAG_MKTEST(test);
+ slot.sv_reg          = DCC_RC_CONST;
+ slot.sv_reg2         = DCC_RC_CONST;
+ slot.sv_const.it     = 0;
+ slot.sv_sym          = NULL;
  vpush(&slot);
 }
 

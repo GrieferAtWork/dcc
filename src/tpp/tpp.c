@@ -5601,7 +5601,12 @@ def_skip_until_lf:
     struct TPPFile *curfile;
     if (FALSE) { case KWD_ifdef:  block_mode = 0; }
     if (FALSE) { case KWD_ifndef: block_mode = 1; }
-    assert(block_mode == (TOK == KWD_ifndef));
+    assertf(block_mode == (TOK == KWD_ifndef),
+           ("block_mode = %d\n"
+            "TOK        = %d\n"
+            "KWD_ifdef  = %d\n"
+            "KWD_ifndef = %d\n",
+            block_mode,TOK,KWD_ifdef,KWD_ifndef));
     ifndef_keyword = NULL;
     TPPLexer_YieldRaw();
     if (TPP_ISKEYWORD(TOK)) {

@@ -459,8 +459,4 @@ end:
 
 DCC_DECL_END
 
-//template<class T, class S> struct same { enum{value=false}; };
-//template<class T> struct same<T,T> { enum{value=true}; };
-//static_assert(same<decltype('c' >> 1),int>::value,"");
-
 #endif /* !GUARD_MAIN_C */

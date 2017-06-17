@@ -1300,43 +1300,56 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprOr(void) {
 }
 
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLAnd(void) {
- struct DCCSym *sym = NULL;
- test_t common_test = DCC_UNITST_FIRST;
  DCCParse_ExprOr();
- while (TOK == TOK_LAND) {
-  YIELD();
-  if (!sym && (sym = DCCUnit_AllocSym()) == NULL) return;
-  if (visconst_bool()) {
-   if (vgtconst_bool()) {
+ if (TOK == TOK_LAND) {
+  struct DCCSym *sym = DCCUnit_AllocSym();
+  test_t common_test = DCC_UNITST_FIRST;
+  int found_cfalse = 0;
+  if (!sym) return;
+  do {
+   YIELD();
+   if (visconst_bool()) {
+    if (!vgtconst_bool()) { found_cfalse = 1; goto normal; }
     vpop(1);
     DCCParse_ExprOr();
+    common_test = DCCVStack_UniTst(common_test);
    } else {
-    struct DCCSym *old_deadjmp;
-    pushf();
-    old_deadjmp = compiler.c_deadjmp;
-    compiler.c_deadjmp = sym;
-    compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
-                         DCC_COMPILER_FLAG_DEAD);
-    DCCParse_ExprOr();
-    compiler.c_deadjmp = old_deadjmp;
-    popf();
-    vpop(1);
+normal:
+    if (found_cfalse) {
+     struct DCCSym *old_deadjmp;
+     pushf();
+     old_deadjmp = compiler.c_deadjmp;
+     compiler.c_deadjmp = sym;
+     compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
+                          DCC_COMPILER_FLAG_DEAD);
+     DCCParse_ExprOr();
+     vpop(1);
+     compiler.c_deadjmp = old_deadjmp;
+     popf();
+    } else {
+     common_test = DCCVStack_UniTst(common_test);
+     DCCVStack_KillAll(1);  /* Kill all registers before doing the jump.
+                             * NOTE: This mustn't modify EFLAGS, so we're safe! */
+     vpushs(sym);
+     vgen1('&');
+     vjcc(1);               /* Jump over the second operand(s) if first was false. */
+     pushf();
+     DCCParse_ExprOr();     /* Parse the second operand. */
+     common_test = DCCVStack_UniTst(common_test);
+     popf();
+    }
    }
-   vgen1('!'),vgen1('!'); /* Force the second expression into a boolean. */
-  } else {
-   common_test = DCCVStack_UniTst(common_test);
-   DCCVStack_KillAll(1);  /* Kill all registers before doing the jump.
-                           * NOTE: This mustn't modify EFLAGS, so we're safe! */
-   vpushs(sym);
-   vgen1('&');
-   vjcc(1);               /* Jump over the second operand(s) if first was false. */
-   pushf();
-   DCCParse_ExprOr();     /* Parse the second operand. */
-   common_test = DCCVStack_UniTst(common_test);
-   popf();
+  } while (TOK == TOK_LAND);
+  if (visconst_bool() && !vgtconst_bool()) found_cfalse = 1;
+  if (found_cfalse) {
+   vpop(1);
+   vpushi(DCCTYPE_BOOL,0);
+  } else if (common_test != DCC_UNITST_FIRST) {
+   vpop(1);
+   DCCVStack_PushTst(common_test);
   }
+  if (sym) t_defsym(sym);
  }
- if (sym) t_defsym(sym);
 }
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLXor(void) {
  DCCParse_ExprLAnd();
@@ -1349,43 +1362,57 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLXor(void) {
  }
 }
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
- struct DCCSym *sym = NULL;
- test_t common_test = DCC_UNITST_FIRST;
  DCCParse_ExprLXor();
- while (TOK == TOK_LOR) {
-  YIELD();
-  if (!sym && (sym = DCCUnit_AllocSym()) == NULL) return;
-  if (visconst_bool()) {
-   if (vgtconst_bool()) {
-    struct DCCSym *old_deadjmp;
-    pushf();
-    old_deadjmp = compiler.c_deadjmp;
-    compiler.c_deadjmp = sym;
-    compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
-                         DCC_COMPILER_FLAG_DEAD);
-    DCCParse_ExprLXor();
-    compiler.c_deadjmp = old_deadjmp;
-    popf();
+ if (TOK == TOK_LOR) {
+  struct DCCSym *sym = DCCUnit_AllocSym();
+  test_t common_test = DCC_UNITST_FIRST;
+  int found_ctrue = 0;
+  if (!sym) return;
+  do {
+   YIELD();
+   if (visconst_bool()) {
+    if (vgtconst_bool()) { found_ctrue = 1; goto normal; }
+    /* Constant false. */
     vpop(1);
+    DCCParse_ExprLXor();
+    common_test = DCCVStack_UniTst(common_test);
    } else {
-    vpop(1);
-    DCCParse_ExprLXor();
+normal:
+    if (found_ctrue) {
+     struct DCCSym *old_deadjmp;
+     pushf();
+     old_deadjmp = compiler.c_deadjmp;
+     compiler.c_deadjmp = sym;
+     compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
+                          DCC_COMPILER_FLAG_DEAD);
+     DCCParse_ExprLXor();
+     vpop(1);
+     compiler.c_deadjmp = old_deadjmp;
+     popf();
+    } else {
+     common_test = DCCVStack_UniTst(common_test);
+     DCCVStack_KillAll(1); /* Kill all registers before doing the jump.
+                            * NOTE: This mustn't modify EFLAGS, so we're safe! */
+     vpushs(sym);
+     vgen1('&');
+     vjcc(0);             /* Jump over the second operand(s) if first was true. */
+     pushf();
+     DCCParse_ExprLXor(); /* Parse the second operand. */
+     common_test = DCCVStack_UniTst(common_test);
+     popf();
+    }
    }
-   vgen1('!'),vgen1('!'); /* Force the second expression into a boolean. */
-  } else {
-   common_test = DCCVStack_UniTst(common_test);
-   DCCVStack_KillAll(1); /* Kill all registers before doing the jump.
-                          * NOTE: This mustn't modify EFLAGS, so we're safe! */
-   vpushs(sym);
-   vgen1('&');
-   vjcc(0);             /* Jump over the second operand(s) if first was true. */
-   pushf();
-   DCCParse_ExprLXor(); /* Parse the second operand. */
-   common_test = DCCVStack_UniTst(common_test);
-   popf();
+  } while (TOK == TOK_LOR);
+  if (visconst_bool() && vgtconst_bool()) found_ctrue = 1;
+  if (found_ctrue) {
+   vpop(1);
+   vpushi(DCCTYPE_BOOL,1);
+  } else if (common_test != DCC_UNITST_FIRST) {
+   vpop(1);
+   DCCVStack_PushTst(common_test);
   }
+  if (sym) t_defsym(sym);
  }
- if (sym) t_defsym(sym);
 }
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
  DCCParse_ExprLOr();
