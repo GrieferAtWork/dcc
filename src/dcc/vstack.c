@@ -1934,10 +1934,10 @@ exec_mem_or_reg:
      temp.e_int = self->sv_const.it;
      temp.e_sym = self->sv_sym;
      if (DCCStackValue_ConstBinary(target,op,&temp,self)) return;
-    } else {
-     /* Load a constant expression into register storage. */
-     DCCStackValue_Load(target);
     }
+    /* Load a constant expression into register storage. */
+    assert(!(target->sv_flags&DCC_SFLAG_LVALUE));
+    DCCStackValue_Load(target);
    } else if (op != '?') {
     WARN(W_EXPECTED_LVALUE_FOR_BINARY_OP,&target->sv_ctype);
    }
