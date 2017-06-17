@@ -41,6 +41,6 @@
 #define LONG_MIN    __LONG_MIN__
 #define LONG_MAX    __LONG_MAX__
 #define ULONG_MAX   __ULONG_MAX__
-#define LLONG_MIN   __LLONG_MIN__
-#define LLONG_MAX   __LLONG_MAX__
-#define ULLONG_MAX  __ULLONG_MAX__
+#define LLONG_MIN   __LONG_LONG_MIN__
+#define LLONG_MAX   __LONG_LONG_MAX__
+#define ULLONG_MAX  __ULONG_LONG_MAX__

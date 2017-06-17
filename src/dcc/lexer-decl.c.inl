@@ -430,6 +430,120 @@ DCCParse_DeclWithBase(struct DCCType *__restrict base_type,
  return result;
 }
 
+struct missing_type {
+ char const    *mt_name; /*< [1..1|eof(0..0)] Name of the type. */
+ size_t         mt_size; /*< == strlen(mt_name). */
+ struct DCCType mt_type; /*< The type itself. */
+};
+#define TYPE(name,ty)       {name,DCC_COMPILER_STRLEN(name),{ty,NULL}}
+#define XTYPE(name,ty,base) {name,DCC_COMPILER_STRLEN(name),{ty,base}}
+PRIVATE struct missing_type const mtypes[] = {
+ /* Recognize a collection of standard types by name.
+  * (Improves error handling for unknown types) */
+#if 1 /* <stddef.h> */
+ TYPE("size_t",DCCTYPE_SIZE|DCCTYPE_UNSIGNED),
+ TYPE("ptrdiff_t",DCCTYPE_PTRDIFF),
+#endif
+#if 1 /* misc... */
+ TYPE("ssize_t",DCCTYPE_SIZE),
+#endif
+#if 1 /* <stdint.h> */
+ TYPE("intmax_t",DCCTYPE_INTMAX),
+ TYPE("uintmax_t",DCCTYPE_INTMAX|DCCTYPE_UNSIGNED),
+#ifdef DCCTYPE_INT8
+ TYPE("int8_t",DCCTYPE_INT8),
+ TYPE("uint8_t",DCCTYPE_INT8|DCCTYPE_UNSIGNED),
+#endif
+#ifdef DCCTYPE_INT16
+ TYPE("int16_t",DCCTYPE_INT16),
+ TYPE("uint16_t",DCCTYPE_INT16|DCCTYPE_UNSIGNED),
+#endif
+#ifdef DCCTYPE_INT32
+ TYPE("int32_t",DCCTYPE_INT32),
+ TYPE("uint32_t",DCCTYPE_INT32|DCCTYPE_UNSIGNED),
+#endif
+#ifdef DCCTYPE_INT64
+ TYPE("int64_t",DCCTYPE_INT64),
+ TYPE("uint64_t",DCCTYPE_INT64|DCCTYPE_UNSIGNED),
+#endif
+ TYPE("int_least8_t",DCCTYPE_INT_LEAST8),
+ TYPE("int_least16_t",DCCTYPE_INT_LEAST16),
+ TYPE("int_least32_t",DCCTYPE_INT_LEAST32),
+ TYPE("int_least64_t",DCCTYPE_INT_LEAST64),
+ TYPE("uint_least8_t",DCCTYPE_INT_LEAST8|DCCTYPE_UNSIGNED),
+ TYPE("uint_least16_t",DCCTYPE_INT_LEAST16|DCCTYPE_UNSIGNED),
+ TYPE("uint_least32_t",DCCTYPE_INT_LEAST32|DCCTYPE_UNSIGNED),
+ TYPE("uint_least64_t",DCCTYPE_INT_LEAST64|DCCTYPE_UNSIGNED),
+ TYPE("int_fast8_t",DCCTYPE_INT_FAST8),
+ TYPE("int_fast16_t",DCCTYPE_INT_FAST16),
+ TYPE("int_fast32_t",DCCTYPE_INT_FAST32),
+ TYPE("int_fast64_t",DCCTYPE_INT_FAST64),
+ TYPE("uint_fast8_t",DCCTYPE_INT_FAST8|DCCTYPE_UNSIGNED),
+ TYPE("uint_fast16_t",DCCTYPE_INT_FAST16|DCCTYPE_UNSIGNED),
+ TYPE("uint_fast32_t",DCCTYPE_INT_FAST32|DCCTYPE_UNSIGNED),
+ TYPE("uint_fast64_t",DCCTYPE_INT_FAST64|DCCTYPE_UNSIGNED),
+ TYPE("intptr_t",DCCTYPE_INTPTR),
+ TYPE("uintptr_t",DCCTYPE_INTPTR|DCCTYPE_UNSIGNED),
+#endif
+#if 1 /* <wchar.h> */
+ TYPE("wchar_t",DCCTYPE_WCHAR|DCCTYPE_UNSIGNED),
+ TYPE("__wchar_t",DCCTYPE_WCHAR|DCCTYPE_UNSIGNED),
+#endif
+#if 1 /* <stdatomic.h> */
+ TYPE("sig_atomic_t",DCCTYPE_SIG_ATOMIC|DCCTYPE_UNSIGNED),
+#endif
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+ /* Type names commonly used in windows. */
+ TYPE("VOID",DCCTYPE_VOID),
+ TYPE("INT",DCCTYPE_INT),
+ TYPE("UINT",DCCTYPE_INT|DCCTYPE_UNSIGNED),
+ TYPE("CHAR",DCCTYPE_CHAR),
+ TYPE("WCHAR",DCCTYPE_WCHAR),
+ TYPE("SHORT",DCCTYPE_SHORT),
+ TYPE("LONG",DCCTYPE_LONG|DCCTYPE_ALTLONG),
+ TYPE("BOOL",DCCTYPE_INT),
+ TYPE("BYTE",DCCTYPE_BYTE|DCCTYPE_UNSIGNED),
+ TYPE("BOOLEAN",DCCTYPE_BYTE|DCCTYPE_UNSIGNED),
+ TYPE("WORD",DCCTYPE_WORD|DCCTYPE_UNSIGNED),
+ TYPE("DWORD",DCCTYPE_LONG|DCCTYPE_ALTLONG|DCCTYPE_UNSIGNED),
+ TYPE("FLOAT",DCCTYPE_FLOAT),
+ TYPE("LONGLONG",DCCTYPE_LLONG),
+ TYPE("ULONGLONG",DCCTYPE_LLONG|DCCTYPE_UNSIGNED),
+ TYPE("INT_PTR",DCCTYPE_INTPTR),
+ TYPE("UINT_PTR",DCCTYPE_INTPTR|DCCTYPE_UNSIGNED),
+#if DCC_TARGET_SIZEOF_POINTER == DCC_TARGET_SIZEOF_LONG
+ TYPE("LONG_PTR",DCCTYPE_LONG|DCCTYPE_ALTLONG),
+ TYPE("ULONG_PTR",DCCTYPE_LONG|DCCTYPE_ALTLONG|DCCTYPE_UNSIGNED),
+#else
+ TYPE("LONG_PTR",DCCTYPE_INTPTR),
+ TYPE("ULONG_PTR",DCCTYPE_INTPTR|DCCTYPE_UNSIGNED),
+#endif
+ TYPE("INT8",  DCCTYPE_INT8),
+ TYPE("INT16", DCCTYPE_INT16),
+ TYPE("INT32", DCCTYPE_INT32),
+ TYPE("INT64", DCCTYPE_INT64),
+ TYPE("INT8",  DCCTYPE_INT8|DCCTYPE_UNSIGNED),
+ TYPE("INT16", DCCTYPE_INT16|DCCTYPE_UNSIGNED),
+ TYPE("INT32", DCCTYPE_INT32|DCCTYPE_UNSIGNED),
+ TYPE("INT64", DCCTYPE_INT64|DCCTYPE_UNSIGNED),
+ TYPE("LONG32",DCCTYPE_INT32),
+#endif
+#if !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
+ /* Type names commonly used in unix. */
+ TYPE("s8", DCCTYPE_INT8), TYPE("__s8", DCCTYPE_INT8),
+ TYPE("s16",DCCTYPE_INT16),TYPE("__s16",DCCTYPE_INT16),
+ TYPE("s32",DCCTYPE_INT32),TYPE("__s32",DCCTYPE_INT32),
+ TYPE("s64",DCCTYPE_INT64),TYPE("__s64",DCCTYPE_INT64),
+ TYPE("u8", DCCTYPE_INT8|DCCTYPE_UNSIGNED), TYPE("__u8", DCCTYPE_INT8|DCCTYPE_UNSIGNED),
+ TYPE("u16",DCCTYPE_INT16|DCCTYPE_UNSIGNED),TYPE("__u16",DCCTYPE_INT16|DCCTYPE_UNSIGNED),
+ TYPE("u32",DCCTYPE_INT32|DCCTYPE_UNSIGNED),TYPE("__u32",DCCTYPE_INT32|DCCTYPE_UNSIGNED),
+ TYPE("u64",DCCTYPE_INT64|DCCTYPE_UNSIGNED),TYPE("__u64",DCCTYPE_INT64|DCCTYPE_UNSIGNED),
+#endif
+ {NULL,0,{0,NULL}},
+};
+#undef XTYPE
+#undef TYPE
+
 
 PUBLIC int DCC_PARSE_CALL DCCParse_Decl(void) {
  struct DCCType base; int result;
@@ -442,8 +556,8 @@ got_prefix:
  } else {
   struct DCCDecl *struct_decl;
   struct TPPKeyword *next_kwd;
-  struct TPPFile *next_file;
-  char *next_tok;
+  struct TPPFile *next_file; char *next_tok;
+  int recognized_type;
   /* Better error handling for something like this:
    * >> DWORD x = 42;
    *    ^^^^^ - Never defined
@@ -469,6 +583,7 @@ got_prefix:
    * typedef for 'DWORD', the above expression will be
    * compiled as 'int x = 42;' */
   if (!TPP_ISKEYWORD(TOK)) goto end;
+  assert(TOKEN.t_kwd);
   if (DCCCompiler_GetDecl(TOKEN.t_kwd,DCC_NS_LOCALS)) goto end;
   next_tok = peek_next_token(&next_file);
   next_kwd = peek_keyword(next_file,next_tok,1);
@@ -484,6 +599,7 @@ got_prefix:
    *  with the fact that DCC even supports l-values in mind),
    * emit a different warning and automatically prepend the prefix. */
   struct_decl = DCCCompiler_GetDecl(TOKEN.t_kwd,DCC_NS_STRUCT);
+  recognized_type = 0;
   if (struct_decl) {
    if (struct_decl->d_kind == DCC_DECLKIND_STRUCT ||
        struct_decl->d_kind == DCC_DECLKIND_UNION) {
@@ -499,22 +615,61 @@ got_prefix:
     assert(!base.t_base);
     WARN(W_DECLARATION_TYPE_MISSES_PREFIX_ENUM,&base);
    } else goto default_unknown_type;
+   recognized_type = 1;
   } else {
+   struct missing_type const *iter;
+   char const *type_name; size_t type_size;
+   tyid_t flags;
 default_unknown_type:
-   WARN(W_DECLARATION_CONTAINS_UNKNOWN_TYPE);
+   /* Check if we recognize the type's name from the C standard library. */
+   type_name = TOKEN.t_kwd->k_name;
+   type_size = TOKEN.t_kwd->k_size;
+   assert(!base.t_base);
+   flags = 0;
+   for (;;) {
+    if (type_size > 7 &&
+       !memcmp(type_name,"atomic_",7*sizeof(char))) {
+     /* Automatically recognize 'atomic_*' prefix, as used in <stdatomic.h> */
+     type_name += 7;
+     type_size -= 7;
+     flags     |= DCCTYPE_ATOMIC;
+     continue;
+    }
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+    /* Windows-style leading type modifiers (e.g.: 'typedef void *PVOID,*LPVOID;') */
+    if (type_size > 1 && type_name[0] == 'P') { ++type_name,--type_size; flags |= DCCTYPE_POINTER; continue; }
+    if (type_size > 2 && type_name[0] == 'L' && type_name[1] == 'P') { type_name += 2,type_size -= 2; flags |= DCCTYPE_POINTER; continue; }
+    if (type_size > 1 && type_name[0] == 'C') { ++type_name,--type_size; flags |= DCCTYPE_CONST; continue; }
+    if (type_size > 1 && type_name[0] == 'V') { ++type_name,--type_size; flags |= DCCTYPE_VOLATILE; continue; }
+#endif
+    break;
+   }
+
+   for (iter = mtypes; iter->mt_name; ++iter) {
+    if (iter->mt_size == type_size &&
+       !memcmp(iter->mt_name,type_name,type_size*sizeof(char)) &&
+       (!(flags&DCCTYPE_ATOMIC) || !iter->mt_type.t_base)) {
+     DCCType_InitCopy(&base,&iter->mt_type);
+     base.t_type |= flags&~(DCCTYPE_GROUPMASK);
+     if (flags&DCCTYPE_POINTER) DCCType_MkPointer(&base);
+     recognized_type = 1;
+     break;
+    }
+   }
+   WARN(W_DECLARATION_CONTAINS_UNKNOWN_TYPE,&base);
   }
   YIELD();
   /* Special case: Parse the type again if the ~real~ keyword
    *               following an unknown one inside a declaration
    *               is exclusive to type declarations. */
   if (DCC_ISTYPEKWD(TOKEN.t_id)) {
-   if (!base.t_base) goto parse_prefix;
    /* TODO: What about:
     * >> [[arithmetic]] struct int128 { char v[16]; };
     * >> 
     * >> int128 unsigned x = 0; // The fallback parser for this still decides wrong.
     * >> unsigned int128 x = 0; // The fallback parser will ignore the 'unsigned' in this.
     */
+   if (!recognized_type) goto parse_prefix;
   }
   /* Continue parsing with the type  */
   goto got_prefix;

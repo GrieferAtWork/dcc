@@ -237,8 +237,16 @@ template<bool C, class T> struct ____INTELLISENE_enableif<false,T> {};
 
 #define __CHAR_BIT__              ____INTELLISENE_MUL8(__SIZEOF_CHAR__)
 
+#ifdef __CHAR_UNSIGNED__
+#define __CHAR_MIN__        ____INTELLISENE_MIN_U(__SIZEOF_CHAR__)
+#define __CHAR_MAX__        ____INTELLISENE_MAX_U(__SIZEOF_CHAR__)
+#else
+#define __CHAR_MIN__        ____INTELLISENE_MIN_S(__SIZEOF_CHAR__)
+#define __CHAR_MAX__        ____INTELLISENE_MAX_S(__SIZEOF_CHAR__)
+#endif
 #define __SCHAR_MIN__       ____INTELLISENE_MIN_S(__SIZEOF_CHAR__)
 #define __SCHAR_MAX__       ____INTELLISENE_MAX_S(__SIZEOF_CHAR__)
+#define __UCHAR_MAX__       ____INTELLISENE_MAX_U(__SIZEOF_CHAR__)
 #define __WCHAR_MIN__       0
 #define __WCHAR_MAX__       ____INTELLISENE_MAX_U(__SIZEOF_WCHAR_T__
 #define __SHRT_MIN__        ____INTELLISENE_MIN_S(__SIZEOF_SHORT__)

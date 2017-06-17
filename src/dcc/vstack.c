@@ -65,6 +65,7 @@ PRIVATE void DCC_VSTACK_CALL DCCStackValue_BinMem(struct DCCStackValue *__restri
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_BinReg(struct DCCStackValue *__restrict self, tok_t op, rc_t dst, rc_t dst2);                             /* *op self, %dst; mov self, %dst2 */
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Binary(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict target, tok_t op);
+PRIVATE int  DCC_VSTACK_CALL DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op, struct DCCSymExpr const *__restrict exprval, struct DCCStackValue *__restrict other);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Cast(struct DCCStackValue *__restrict self, struct DCCType const *__restrict type);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Call(struct DCCStackValue *__restrict self);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Jcc(struct DCCStackValue *__restrict cond, struct DCCStackValue *__restrict target, int invert);
@@ -1257,9 +1258,13 @@ del_target_sym:
  case '/':
  case '%':
   if (self->sv_sym || exprval->e_sym) {
+#if 1
+   return 0;
+#else
    WARN(W_UNSUPPORTED_SYMOBL_ARITHMETIC,(int)op);
    DCCSym_XDecref(self->sv_sym);
    self->sv_sym = NULL;
+#endif
   }
        if (op == '&') iv &= rhsv;
   else if (op == '|') iv |= rhsv;
