@@ -535,11 +535,11 @@ DCCStackValue_FixRegister(struct DCCStackValue *__restrict self) {
 PUBLIC void DCC_VSTACK_CALL
 DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
  assert(!(self->sv_flags&DCC_SFLAG_LVALUE));
- if (self->sv_const.it) {
+ if (self->sv_const.it || self->sv_sym) {
   DCCStackValue_FixRegister(self);
-  if (self->sv_const.it) {
+  if (self->sv_const.it || self->sv_sym) {
    struct DCCSymAddr temp;
-   temp.sa_off = (target_off_t)(self->sv_const.it);
+   temp.sa_off = (target_off_t)self->sv_const.it;
    temp.sa_sym = self->sv_sym;
    if (self->sv_reg2 == DCC_RC_CONST) {
     /* Must use 'lea' instead of 'add' when the v-stack includes tests. */
@@ -576,6 +576,7 @@ DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
    }
 done:
    self->sv_const.it = 0;
+   DCCSym_XDecref(self->sv_sym);
    self->sv_sym      = NULL;
   }
  }
@@ -4076,7 +4077,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
    if (DCCTYPE_ISFLOATT(vid)) return W_CAST_FLOAT_TO_POINTER;
    if (explicit_cast) return 0; /* Always OK for explicit casts. */
    /* Allow implicit cast from constant 0 to NULL. */
-   if (is_const && !value->sv_const.it) return 0;
+   if (is_const && !value->sv_const.it && !value->sv_sym) return 0;
    vid &= DCCTYPE_BASICMASK;
    /* Check for non-integral basic type. */
    if (vid >= 8) return W_CAST_TO_POINTER;

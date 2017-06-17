@@ -77,7 +77,7 @@ crt-src-c                            "src/crt/alloca.S"
 $CC -g -c -o dbg-crt.o ${debug_objects[@]}
 $CC -c -o crt.o ${ndebug_objects[@]}
 
-
+# -DDCC_BUILDING_A2L_RUNTIME -g -nostdlib -c -MMD -MF .deps/dbg-addr2line.c.d -o .objs/dbg-addr2line.c.o src/crt/addr2line.c src/a2l/addr2line-common.c
 
 
 
