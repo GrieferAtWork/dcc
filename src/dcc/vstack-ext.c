@@ -296,6 +296,10 @@ fix_stack:
   assert(!(vbottom[0].sv_flags&DCC_SFLAG_LVALUE));
   assert(!(vbottom[1].sv_flags&DCC_SFLAG_LVALUE));
   assert(!(vbottom[2].sv_flags&DCC_SFLAG_LVALUE));
+  /* Fix explicit register offsets now, as the addition/
+   * subtraction may otherwise skew the result below. */
+  if (vbottom[1].sv_flags&DCC_SFLAG_XOFFSET) DCCStackValue_FixRegOffset(&vbottom[1]);
+  if (vbottom[2].sv_flags&DCC_SFLAG_XOFFSET) DCCStackValue_FixRegOffset(&vbottom[2]);
   a_loc.ml_reg = vbottom[1].sv_reg;
   a_loc.ml_off = vbottom[1].sv_const.offset;
   a_loc.ml_sym = vbottom[1].sv_sym;

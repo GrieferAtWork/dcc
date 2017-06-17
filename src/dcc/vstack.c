@@ -1886,9 +1886,10 @@ default_binary:
      /* Can only do offset-arithmetic with one symbol at compile-time. */
     (!target->sv_sym || !self->sv_sym)) {
   int_t old_val;
+  sflag_t target_flags = target->sv_flags;
   assert(self->sv_reg2 == DCC_RC_CONST);
   /* Make sure to load l-value stack values. */
-  if (target->sv_flags&DCC_SFLAG_LVALUE)
+  if (target_flags&DCC_SFLAG_LVALUE)
       DCCStackValue_Load(target);
   assert(!(target->sv_flags&DCC_SFLAG_LVALUE));
 
@@ -1911,7 +1912,8 @@ default_binary:
   DCCStackValue_ClampConst(target,W_TRUNC_INTEGRAL_ADDITION);
   /* Set the X-offset flag to ensure the offset
    * is added even when the value isn't used. */
-  target->sv_flags |= DCC_SFLAG_XOFFSET;
+  if (!(target_flags&DCC_SFLAG_COPY))
+        target->sv_flags |= DCC_SFLAG_XOFFSET;
   return;
  }
 
