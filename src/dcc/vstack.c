@@ -1229,11 +1229,13 @@ assign_sym:
   if (self->sv_sym && exprval->e_sym) {
    if (self->sv_sym == exprval->e_sym) {
     /* Always succeeds: Difference between the same symbol. */
+    goto del_target_sym;
    } else if (DCCSym_SECTION(self->sv_sym) &&
               DCCSym_SECTION(self->sv_sym) ==
               DCCSym_SECTION(exprval->e_sym)) {
     /* Special case: Difference between two defined symbols from the same section. */
     iv += self->sv_sym->sy_addr-exprval->e_sym->sy_addr;
+del_target_sym:
     DCCSym_Decref(self->sv_sym);
     self->sv_sym = NULL;
     break;
@@ -1856,7 +1858,12 @@ default_binary:
 
  assert(DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_LVALUE);
  assert(DCCTYPE_GROUP(target->sv_ctype.t_type) != DCCTYPE_LVALUE);
- if ((op == '+' || op == '-') && (self->sv_reg == DCC_RC_CONST) &&
+ if ((op == '+' ||
+      /* NOTE: When subtracting, the rhs operand must not be offset from a symbol,
+       *       as the code below is only capable of _ADDING_ one symbol, but not
+       *       subtracting it! */
+     (op == '-' && !self->sv_sym)) &&
+     (self->sv_reg == DCC_RC_CONST) &&
     (!(self->sv_flags&(DCC_SFLAG_TEST|DCC_SFLAG_LVALUE))) &&
     (!(target->sv_flags&DCC_SFLAG_TEST)) &&
      /* Can only do offset-arithmetic with one symbol at compile-time. */
