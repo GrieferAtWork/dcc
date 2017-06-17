@@ -91,11 +91,17 @@ DCCParse_Function(struct DCCDecl *fun_decl, struct TPPKeyword const *asmname,
                   struct DCCType const *__restrict fun_type,
                   struct DCCAttrDecl const *__restrict fun_attr);
 LEXDECL int DCC_PARSE_CALL
-DCCParse_DeclWithBase(struct DCCType const *__restrict base_type,
-                      struct DCCAttrDecl const *__restrict base_attr);
+DCCParse_DeclWithBase(struct DCCType *__restrict base_type,
+                      struct DCCAttrDecl *__restrict base_attr,
+                      int has_real_base_type);
 LEXDECL int DCC_PARSE_CALL
-DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
-                         struct DCCAttrDecl const *__restrict base_attr);
+DCCParse_OneDeclWithBase(struct DCCType *__restrict base_type,
+                         struct DCCAttrDecl *__restrict base_attr,
+                         int *__restrict has_real_base_type);
+LEXDECL int DCC_PARSE_CALL
+DCCParse_OneDeclWithType(struct DCCType *__restrict decl_type,
+                         struct DCCAttrDecl *__restrict decl_attr,
+                         struct TPPKeyword *__restrict decl_name);
 
 LEXDECL void DCC_PARSE_CALL DCCParse_DoWhileStmt(void);    /* do ... while(...); */
 LEXDECL void DCC_PARSE_CALL DCCParse_WhileStmt(void);      /* while (...) ... */

@@ -39,6 +39,13 @@ DEF_K(library_path)   /* #pragma DCC library_path(...) */
 #define DEF_TPP_BUILTIN(name) KWD(KWD_##name,#name) KWD_FLAGS(KWD_##name,TPP_KEYWORDFLAG_HAS_BUILTIN|TPP_KEYWORDFLAG_HAS_TPP_BUILTIN)
 #define DEF_BUILTIN(name)     KWD(KWD_##name,#name) KWD_FLAGS(KWD_##name,TPP_KEYWORDFLAG_HAS_BUILTIN)
 
+/* Keywords considered exclusive to statements. */
+#define DCC_TOK_STMTKWD_MIN   DCC(KWD_while)
+#define DCC_TOK_STMTKWD_MAX   DCC(KWD___label__)
+#define DCC_ISSTMTKWD(tok) \
+  (((tok) >= DCC_TOK_STMTKWD_MIN && (tok) <= DCC_TOK_STMTKWD_MAX) || \
+    (tok) == DCC(KWD_else))
+
 /* C statement keywords. */
 DEF_K(while) DEF_K(do) DEF_K(for)
 DEF_K(break) DEF_K(continue)
@@ -1129,6 +1136,7 @@ DEF_WARNING(W_MISSING_RETURN_EXPRESSION,(WG_TYPE),WSTATE_WARN,{
 #endif
 DEF_WARNING(W_FAILED_ASSUMPTION_UNAVOIDABLE,(WG_USAGE),WSTATE_WARN,WARNF("Wrong compile-timed assumption is unavoidable"))
 DEF_WARNING(W_UNKNOWN_SYMBOL_IN_EXPRESSION,(WG_UNDEFINED,WG_SYMBOL),WSTATE_WARN,WARNF("Assuming " Q("extern int %s();") " for unknown symbol",KWDNAME()))
+DEF_WARNING(W_MISSING_SYMBOL_IN_EXPRESSION,(WG_UNDEFINED,WG_SYMBOL),WSTATE_WARN,WARNF("Undefined keyword " Q("%s") " in expression",KWDNAME()))
 
 DEF_WARNING(W_ATTRIBUTE_ALREADY_DEFINED,(WG_REDEFINE,WG_ATTRIBUTE,WG_VALUE),WSTATE_DISABLED,WARNF("Attribute " Q("%s") " was already set",KWDNAME()))
 DEF_WARNING(W_ATTRIBUTE_NOT_DEFINED,(WG_ATTRIBUTE,WG_VALUE),WSTATE_DISABLED,WARNF("Attribute " Q("%s") " was not set",KWDNAME()))
@@ -1332,8 +1340,8 @@ DEF_WARNING(W_AUTO_TYPE_USED_AS_POINTER_BASE,(WG_TYPE),WSTATE_WARN,WARNF(Q("__au
 DEF_WARNING(W_VARIABLE_LENGTH_ARRAYS_NOT_ALLOWED_HERE,(WG_TYPE),WSTATE_WARN,WARNF("VLA array types are not allowed here"))
 DEF_WARNING(W_ARRAY_SIZE_DEPENDS_ON_SYMBOL,(WG_VALUE,WG_SYMBOL),WSTATE_WARN,WARNF("Array size depends on symbol " Q("%s"),KWDNAME()))
 
+DEF_WARNING(W_UNKNOWN_KEYWORD_BEFORE_DECLARATION,(WG_SYNTAX),WSTATE_WARN,WARNF("Unrecognized keyword " Q("%s") " before declaration (missing macro?)",KWDNAME()))
 DEF_WARNING(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P,(WG_TYPE),WSTATE_WARN,WARNF("Expected type after " Q("__builtin_types_compatible_p")))
-//DEF_WARNING(W_INCOMPATIBLE_ALIAS_TYPES,(WG_TYPE),WSTATE_WARN,WARNF("Aliasing " Q("%s") " and " Q("%s") " with incompatible types",KWDNAME(),KWDNAME()))
 DEF_WARNING(W_ALIAS_WITHOUT_AUTOMATIC_STORAGE,(WG_TYPE),WSTATE_WARN,WARNF("Alias " Q("%s") " does not use automatic storage",KWDNAME()))
 DEF_WARNING(W_ALIAS_WITH_INITIALIZER,(WG_TYPE),WSTATE_WARN,WARNF("Alias " Q("%s") " has an initializer",KWDNAME()))
 DEF_WARNING(W_EXTERN_VARIABLE_LOCALLY_INITIALIZED,(WG_TYPE),WSTATE_WARN,WARNF("Extern variable " Q("%s") " is being initialized locally",KWDNAME()))

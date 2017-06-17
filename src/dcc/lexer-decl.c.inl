@@ -131,22 +131,93 @@ done:
 
 
 LEXPRIV int DCC_PARSE_CALL
-DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
-                         struct DCCAttrDecl const *__restrict base_attr) {
- struct DCCType type,*real_decl_type;
+DCCParse_OneDeclWithBase(struct DCCType *__restrict base_type,
+                         struct DCCAttrDecl *__restrict base_attr,
+                         int *__restrict has_real_base_type) {
+ struct DCCType type;
+ struct DCCAttrDecl attr; int result;
  struct TPPKeyword *decl_name;
- struct TPPKeyword const *asmname = NULL;
- struct DCCAttrDecl attr;
- struct DCCDecl *decl;
- int result = 1;
+again:
  DCCType_ASSERT(base_type);
  DCCType_InitCopy(&type,base_type);
  DCCAttrDecl_InitCopy(&attr,base_attr);
  decl_name = DCCParse_CTypeSuffix(&type,&attr);
  DCCType_ASSERT(&type);
+ if (!*has_real_base_type &&
+     decl_name != &TPPKeyword_Empty &&
+     type.t_type == (DCCTYPE_BUILTIN|DCCTYPE_INT)) {
+  /* Explicitly check for situations like this:
+   * >> LOCAL int add(int x, int y) { return x+y; }
+   *    ^^^^^ - This was never defined
+   * Mainly because this is quite a reasonably common situation,
+   * as well as the fact that while the lexer is fully capable of
+   * doing ~something~ even without this check, we perform it to
+   * improve error messages, as well as increase the chances of
+   * still managing to parse broken code correctly.
+   * >> The way this check if performed, is by looking
+   *    at weather the determined type is 'int' and
+   *    if that type was just guessed. */
+  assert(!type.t_base);
+  /* Check if what follows indicates an initializer. */
+  if (TOK == ',' || TOK == ';' || TOK == '=' || TOK == '{' ||
+     (TOK == KWD_asm && HAS(EXT_SHORT_EXT_KEYWORDS)) ||
+      TOK == KWD___asm || TOK == KWD___asm__ ||
+     (HAS(EXT_OLD_VARIABLE_INIT) && DCCParse_IsExpr()));
+  else {
+   /* Something that isn't an initializer follows!
+    * Looking back at the example above, 'int' follows
+    * the unknown LOCAL keyword.
+    * _BUT_ you have to remember that there is that whole
+    * implicit int-typing thing, meaning that unless we
+    * can prove that a real type follows 'LOCAL', we'll
+    * be forced to compile the statement as usual. */
+   struct DCCAttrDecl follow_attr = DCCATTRDECL_INIT;
+   struct DCCType follow_type;
+   if (DCCParse_CTypePrefix(&follow_type,&follow_attr)) {
+    /* There is a real type located after the unknown keyword.
+     * So with that in mind, emit a warning and begin using
+     * that ~real~ type as base for all further declarations
+     * within the current type-group. */
+    WARN(W_UNKNOWN_KEYWORD_BEFORE_DECLARATION,decl_name);
+    /* Indicate that a real type base has been found. */
+    *has_real_base_type = 1;
+    /* Override the base type with the real
+     * follow-type after the unknown keyword. */
+    DCCType_Quit(base_type);
+    *base_type = follow_type;
+    /* Merge all attribute we've encountered along the way. */
+    DCCAttrDecl_Merge(base_attr,&attr);
+    DCCAttrDecl_Quit(&attr);
+    DCCAttrDecl_Merge(base_attr,&follow_attr);
+    DCCAttrDecl_Quit(&follow_attr);
+    /* Start over parsing with the new base & attributes in mind. */
+    goto again;
+   }
+   /* Merge follow-attributes into 'attr' */
+   DCCAttrDecl_Merge(&attr,&follow_attr);
+   DCCAttrDecl_Quit(&follow_attr);
+  }
+ }
+ result = DCCParse_OneDeclWithType(&type,&attr,decl_name);
+ DCCType_Quit(&type);
+ DCCAttrDecl_Quit(&attr);
+ return result;
+}
+LEXDECL int DCC_PARSE_CALL
+DCCParse_OneDeclWithType(struct DCCType *__restrict decl_type,
+                         struct DCCAttrDecl *__restrict decl_attr,
+                         struct TPPKeyword *__restrict decl_name) {
+ struct DCCDecl *decl;
+ struct TPPKeyword const *asmname = NULL;
+ struct DCCType *real_decl_type;
+ int result = 1;
+ assert(decl_type);
+ assert(decl_attr);
+ assert(decl_name);
+ DCCType_ASSERT(decl_type);
+
  if ((TOK == KWD_asm && HAS(EXT_SHORT_EXT_KEYWORDS)) ||
-      TOK == KWD___asm ||
-      TOK == KWD___asm__) {
+      TOK == KWD___asm || TOK == KWD___asm__) {
   struct TPPString *asmname_string;
   /* Assembly name declaration. */
   YIELD();
@@ -163,9 +234,9 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
                                     asmname_string->s_size,1);
    TPPString_Decref(asmname_string);
   }
-  DCCParse_Attr(&attr);
+  DCCParse_Attr(decl_attr);
  }
- if (DCCType_ISVLA(&type)) DCCParse_WarnAllocaInLoop();
+ if (DCCType_ISVLA(decl_type)) DCCParse_WarnAllocaInLoop();
  if (decl_name != &TPPKeyword_Empty) {
   decl = DCCCompiler_NewLocalDecl(decl_name,DCC_NS_LOCALS);
  } else if (TOK != '=' && TOK != '{' &&
@@ -180,7 +251,7 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
   if (decl->d_kind != DCC_DECLKIND_NONE) {
    int declaration_did_change = 0;
    /* Fix redeclaration types. */
-   DCCType_FixRedeclaration(&type,&decl->d_type);
+   DCCType_FixRedeclaration(decl_type,&decl->d_type);
    if (decl->d_kind&DCC_DECLKIND_MLOC) {
     /* Warn about re-declarations. */
     if (decl->d_mdecl.md_loc.ml_reg != DCC_RC_CONST) {
@@ -201,11 +272,11 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
     }
    }
    /* Warn if the types changed between the declaration and here! */
-   if (!DCCType_IsCompatible(&decl->d_type,&type,0)) {
-    WARN((type.t_type&DCCTYPE_STOREBASE) == DCCTYPE_TYPEDEF
+   if (!DCCType_IsCompatible(&decl->d_type,decl_type,0)) {
+    WARN((decl_type->t_type&DCCTYPE_STOREBASE) == DCCTYPE_TYPEDEF
          ? W_INCOMPATIBLE_TYPEDEF_TYPES
          : W_INCOMPATIBLE_IMPLEMENTATION_TYPES,
-         decl,&decl->d_type,&type);
+         decl,&decl->d_type,decl_type);
     declaration_did_change = 1;
    }
    /* Clear the declaration before re-initialization. */
@@ -214,7 +285,7 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
     struct DCCDecl *newdecl;
     if (declaration_did_change) {
      WARN(W_INCOMPATIBLE_CANNOT_REDEFINE,
-          decl,&decl->d_type,&type);
+          decl,&decl->d_type,decl_type);
     }
     newdecl = DCCDecl_New(&TPPKeyword_Empty);
     if (decl_name == &TPPKeyword_Empty)
@@ -226,13 +297,13 @@ DCCParse_OneDeclWithBase(struct DCCType const *__restrict base_type,
     DCCDecl_Clear(decl,compiler.c_scope.s_depth);
    }
   }
-  DCCType_ASSERT(&type);
-  decl->d_type = type; /* Inherit object. */
-  DCCDecl_SetAttr(decl,&attr);
+  DCCType_ASSERT(decl_type);
+  DCCType_InitCopy(&decl->d_type,decl_type);
+  DCCDecl_SetAttr(decl,decl_attr);
   real_decl_type = &decl->d_type;
  } else {
 no_decl:
-  real_decl_type = &type;
+  real_decl_type = decl_type;
  }
  if (TOK == '=') {
   /* Symbol initializer. */
@@ -254,7 +325,7 @@ init_after_equals:
    WARN(W_DECL_TYPEDEF_WITH_INITIALIZER,decl);
    goto declare_typedef;
   }
-  DCCParse_Init(real_decl_type,&attr,NULL,
+  DCCParse_Init(real_decl_type,decl_attr,NULL,
                 DCCPARSE_INITFLAG_INITIAL);
   DCCParse_FixType(real_decl_type);
   if (decl) {
@@ -304,7 +375,7 @@ init_after_equals:
   if (HAS(EXT_OLD_VARIABLE_INIT) && decl &&
       DCCTYPE_GROUP(decl->d_type.t_type) != DCCTYPE_FUNCTION)
       goto old_style_init; /* Old-style brace initializer. */
-  DCCParse_Function(decl,asmname,real_decl_type,&attr);
+  DCCParse_Function(decl,asmname,real_decl_type,decl_attr);
   result = 2;
   if (decl && (real_decl_type->t_type&DCCTYPE_STOREBASE) ==
       DCCTYPE_TYPEDEF) goto declare_typedef;
@@ -331,27 +402,26 @@ declare_typedef:
 push_void:
   vpushv();
  }
- if (!decl)
-  DCCType_Quit(&type);
- else {
+ if (decl) {
   vpushd(decl);
   /* Drop a reference from an unnamed decl (created as reference above!) */
 end_nopush:
   if (decl_name == &TPPKeyword_Empty)
       DCCDecl_XDecref(decl);
  }
- DCCAttrDecl_Quit(&attr);
  return result;
 }
 
 LEXPRIV int DCC_PARSE_CALL
-DCCParse_DeclWithBase(struct DCCType const *__restrict base_type,
-                      struct DCCAttrDecl const *__restrict base_attr) {
+DCCParse_DeclWithBase(struct DCCType *__restrict base_type,
+                      struct DCCAttrDecl *__restrict base_attr,
+                      int has_real_base_type) {
  int result;
  assert(base_type);
  for (;;) {
   DCCType_ASSERT(base_type);
-  result = DCCParse_OneDeclWithBase(base_type,base_attr);
+  result = DCCParse_OneDeclWithBase(base_type,base_attr,
+                                   &has_real_base_type);
   DCCType_ASSERT(base_type);
   if (TOK != ',') break;
   vpop(1); /* Pop this declaration. */
@@ -365,7 +435,7 @@ PUBLIC int DCC_PARSE_CALL DCCParse_Decl(void) {
  struct DCCType base; int result;
  struct DCCAttrDecl attr = DCCATTRDECL_INIT;
  result = DCCParse_CTypePrefix(&base,&attr);
- if (result) result = DCCParse_DeclWithBase(&base,&attr);
+ if (result) result = DCCParse_DeclWithBase(&base,&attr,1);
  DCCType_Quit(&base);
  DCCAttrDecl_Quit(&attr);
  return result;

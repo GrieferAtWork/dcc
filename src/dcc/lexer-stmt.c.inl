@@ -888,7 +888,7 @@ LEXPRIV int DCC_PARSE_CALL DCCParse_GlobalDecl(void) {
  DCCType_ASSERT(&base);
  /* 'base' already defaults to 'int'. */
  if (!error) WARN(W_EXPECTED_TYPE_FOR_DECLARATION);
- error = DCCParse_DeclWithBase(&base,&attr);
+ error = DCCParse_DeclWithBase(&base,&attr,error);
  DCCType_Quit(&base);
  DCCAttrDecl_Quit(&attr);
  return error;

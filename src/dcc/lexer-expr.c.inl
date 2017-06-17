@@ -263,6 +263,12 @@ DCCParse_ExprMissingSym(void) {
  /* Last chance: Try to declare a new, missing symbol
   *              as an old-style function returning int. */
  if (!TPP_ISKEYWORD(TOK)) return 0;
+#define KEYWORD(x) \
+  (TOKEN.t_kwd->k_size == DCC_COMPILER_STRLEN(x) && \
+  !memcmp(TOKEN.t_kwd->k_name,x,sizeof(x)-sizeof(char)))
+ /* Explicitly recognize some special keywords such as 'NULL' */
+ if (KEYWORD("NULL")) { vpushi(DCCTYPE_INT,0); goto missing; }
+#undef KEYWORD
  WARN(W_UNKNOWN_SYMBOL_IN_EXPRESSION,TOKEN.t_kwd);
  /* Declare a new public symbol. */
  decl = DCCCompiler_NewDecl(TOKEN.t_kwd,DCC_NS_LOCALS);
@@ -276,6 +282,10 @@ DCCParse_ExprMissingSym(void) {
  DCCSym_XIncref(decl->d_mdecl.md_loc.ml_sym);
  YIELD();
  vpushd(decl);
+ return 1;
+missing:
+ WARN(W_MISSING_SYMBOL_IN_EXPRESSION,TOKEN.t_kwd);
+ YIELD();
  return 1;
 }
 
@@ -1503,6 +1513,10 @@ DCCParse_IsExpr(void) {
  case '(': case TOK_INC: case TOK_DEC: goto yes;
  default:
   if (!TPP_ISKEYWORD(TOK)) break;
+  /* Don't consider statement/type keywords part of expressions.
+   * NOTE: Yes: Even though they can (somewhat) be parsed inside,
+   *            types are _NOT_ considered allowed inside of expressions. */
+  if (DCC_ISSTMTKWD(TOK)) break;
 yes: return 1;
  }
  return 0;
