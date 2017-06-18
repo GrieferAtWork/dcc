@@ -388,7 +388,7 @@ DCCFUN void DCC_VSTACK_CALL DCCStackValue_FixRegOffset(struct DCCStackValue *__r
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_FixTest(struct DCCStackValue *__restrict self);
 
 /* Convert an array type to pointer-to-array-base, and function to pointer-to-function */
-DCCFUN void DCC_VSTACK_CALL DCCStackValue_Promote(struct DCCStackValue *__restrict self);
+DCCFUN int  DCC_VSTACK_CALL DCCStackValue_Promote(struct DCCStackValue *__restrict self);
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_PromoteFunction(struct DCCStackValue *__restrict self);
 
 /* Clamp the constant portion of the given stack value to its integral
@@ -400,14 +400,9 @@ DCCFUN void DCC_VSTACK_CALL DCCStackValue_ClampConst(struct DCCStackValue *__res
 
 /* Perform integer promotion, as required by the C standard in practically any unary/binary operation.
  * Note, that v-stack API functions normally will _NOT_ do this, leaving the
- * task of calling this function on the appropriate stack-entires to the user. */
-#if (DCC_TARGET_SIZEOF_CHAR < DCC_TARGET_SIZEOF_INT) || \
-    (DCC_TARGET_SIZEOF_SHORT < DCC_TARGET_SIZEOF_INT) || \
-    (DCC_TARGET_SIZEOF_LONG_LONG < DCC_TARGET_SIZEOF_INT)
+ * task of calling this function on the appropriate stack-entires to the user.
+ * NOTE: Regular array -> pointer / function -> pointer promotion is performed as well. */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self);
-#else
-#define DCCStackValue_PromoteInt(self) (void)0
-#endif
 
 /* Resolve all 'self->sv_ctype' lvalue-style references. */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_LoadLValue(struct DCCStackValue *__restrict self);
@@ -487,7 +482,8 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Bitfldf(DCC(sflag_t) flags);              
 #define                     DCCVStack_Bitfld(shift,size) DCCVStack_Bitfldf(DCC_SFLAG_MKBITFLD(shift,size)) /* -1, +1 */
 DCCFUN int  DCC_VSTACK_CALL DCCVStack_IsSame(int same_declaration);                        /* -2, +2 (Return non-ZERO if 'vbottom[0]' and 'vbottom[1]' contain the same value) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Subscript(struct TPPKeyword const *__restrict name); /* -1, +1 (Access the a member 'name' in the current structure) */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_PromInt2(void);                                      /* -2, +2 (Promote integer types between the top 2 stack values, conforming to STD-C conventions for binary operations) */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_PromInt2(void);                                      /* -2, +2 (Promote integer types between the top 2 stack values, conforming to STD-C conventions for binary operations.
+                                                                                            *         NOTE: Regular array -> pointer / function -> pointer promotion is performed as well) */
 
 /* Rotate 'n' stack entries left (towards to v_bottom) by 1 slots,
  * placing the previously bottom-most entry at index 'n'

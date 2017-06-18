@@ -383,7 +383,7 @@ PRIVATE void
 DCCDisp_DoMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_bytes,
                     struct DCCMemLoc const *__restrict dst, target_siz_t dst_bytes,
                     int src_unsigned) {
- rc_t temp_register; int must_pop_temp;
+ rc_t temp_register,rc; int must_pop_temp;
  struct DCCMemLoc new_dst,src_iter = *src,dst_iter = *dst;
  target_siz_t common_size,size_iter,max_block;
  unsigned int score = 5;
@@ -406,8 +406,8 @@ DCCDisp_DoMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_byt
  else if (max_block >= 2) max_block = 2;
  else if (max_block >= 1) max_block = 1;
  must_pop_temp = 0;
- temp_register = DCCVStack_GetReg(DCC_RC_FORSIZE(max_block),
-                                  2|(int)(!src_unsigned && !(common_size&1)));
+ rc            = DCC_RC_FORSIZE(max_block);
+ temp_register = DCCVStack_GetReg(rc,2|(int)(!src_unsigned && !(common_size&1)));
  if (!temp_register) {
   temp_register = DCC_ASMREG_EAX;
   while ((src_iter.ml_reg != DCC_RC_CONST && (src_iter.ml_reg&DCC_RI_MASK) == temp_register) ||
@@ -416,8 +416,8 @@ DCCDisp_DoMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_byt
    ++temp_register;
    temp_register %= 8;
   }
-  must_pop_temp = 1;
-  temp_register |= DCC_RC_PTRX;
+  must_pop_temp  = 1;
+  temp_register |= rc;
   DCCDisp_RegPush(temp_register);
  }
 

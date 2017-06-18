@@ -76,6 +76,12 @@ PRIVATE void DCC_VSTACK_CALL DCCStackValue_Dup(struct DCCStackValue *__restrict 
 PRIVATE int  DCC_VSTACK_CALL DCCStackValue_IsDuplicate(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict duplicate);
 PRIVATE int  DCC_VSTACK_CALL DCCStackValue_IsCopyDuplicate(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict duplicate);
 
+#if 1
+#define OLD_VPROM(x) (void)0
+#else
+#define OLD_VPROM(x) assert(!DCCStackValue_Promote(x))
+#endif
+
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_LodTest(struct DCCStackValue *__restrict self); /* The opposite of 'DCCStackValue_FixTest': Force 'self' to be a test. */
 
 PUBLIC tyid_t DCC_VSTACK_CALL DCC_RC_GETTYPE(rc_t rc) {
@@ -694,7 +700,7 @@ force_iat:
  DCCSym_Decref(self->sv_sym);
  self->sv_sym = iat_sym; /* Inherit reference. */
  /* Do something similar to what 'DCCStackValue_Unary(self,'*')' would do! */
- DCCStackValue_Promote(self);
+ OLD_VPROM(self);
  DCCStackValue_FixBitfield(self);
  DCCStackValue_FixTest(self);
  if (self->sv_flags&DCC_SFLAG_LVALUE) DCCStackValue_Load(self);
@@ -988,10 +994,11 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
 
  case '*':
   /* Indirection/Dereference. */
+  DCCStackValue_Promote(self);
   DCCStackValue_FixTest(self);
   DCCStackValue_FixBitfield(self);
-  DCCStackValue_Promote(self);
-  if (self->sv_flags&DCC_SFLAG_LVALUE) DCCStackValue_Load(self);
+  if (self->sv_flags&DCC_SFLAG_LVALUE)
+      DCCStackValue_Load(self);
   if (!(self->sv_ctype.t_type&DCCTYPE_POINTER))
    WARN(W_EXPECTED_POINTER_FOR_DEREF,&self->sv_ctype);
   else DCCType_MkBase(&self->sv_ctype);
@@ -1017,10 +1024,12 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
    DCCType_MkPointer(&self->sv_ctype);
   } else {
    WARN(W_EXPECTED_LVALUE_FOR_REFERENCE,&self->sv_ctype);
+   assert(0);
    /* Force an lvalue on the stack, then reference that lvalue. */
    DCCStackValue_Kill(self);
    assert(self->sv_flags&DCC_SFLAG_LVALUE);
    self->sv_flags &= ~(DCC_SFLAG_LVALUE);
+   DCCType_MkPointer(&self->sv_ctype);
   }
   return;
 
@@ -2180,8 +2189,8 @@ PRIVATE void DCC_VSTACK_CALL
 DCCStackValue_Jmp(struct DCCStackValue *__restrict self) {
  struct DCCMemLoc target_addr;
  assert(self);
+ OLD_VPROM(self);
  DCCStackValue_LoadLValue(self);
- DCCStackValue_Promote(self);
  DCCStackValue_FixBitfield(self);
  DCCStackValue_FixTest(self);
  target_addr.ml_reg = self->sv_reg;
@@ -2203,8 +2212,8 @@ DCCStackValue_Jcc(struct DCCStackValue *__restrict cond,
  assert(cond);
  assert(target);
  /* Fix condition/target states. */
+ OLD_VPROM(cond);
  DCCStackValue_LoadLValue(cond);
- DCCStackValue_Promote(cond);
  if (!(cond->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST)) &&
        cond->sv_reg == DCC_RC_CONST) {
   int cond_istrue;
@@ -2387,7 +2396,7 @@ err:
 }
 
 
-PUBLIC void DCC_VSTACK_CALL
+PUBLIC int DCC_VSTACK_CALL
 DCCStackValue_Promote(struct DCCStackValue *__restrict self) {
  assert(self);
  switch (DCCTYPE_GROUP(self->sv_ctype.t_type)) {
@@ -2430,11 +2439,13 @@ DCCStackValue_Promote(struct DCCStackValue *__restrict self) {
   } else {
    self->sv_flags &= ~(DCC_SFLAG_LVALUE/*|DCC_SFLAG_COPY*/);
   }
+  return 1;
  } break;
  case DCCTYPE_FUNCTION:
   if (!(self->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_Kill(self);
   DCCType_MkPointer(&self->sv_ctype);
   self->sv_flags &= ~(DCC_SFLAG_LVALUE/*|DCC_SFLAG_COPY*/);
+  return 1;
   break;
  {
   struct DCCType *lv_base;
@@ -2447,10 +2458,12 @@ DCCStackValue_Promote(struct DCCStackValue *__restrict self) {
    DCCType_MkBase(&self->sv_ctype);
    DCCType_MkBase(&self->sv_ctype);
    DCCType_MkPointer(&self->sv_ctype);
+   return 1;
   }
  } break;
  default: break;
  }
+ return 0;
 }
 
 PUBLIC void DCC_VSTACK_CALL
@@ -2498,14 +2511,13 @@ DCCStackValue_ClampConst(struct DCCStackValue *__restrict self, int wid) {
  }
 }
 
+PUBLIC void DCC_VSTACK_CALL
+DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
 #if (DCC_TARGET_SIZEOF_CHAR < DCC_TARGET_SIZEOF_INT) || \
     (DCC_TARGET_SIZEOF_SHORT < DCC_TARGET_SIZEOF_INT) || \
     (DCC_TARGET_SIZEOF_LONG_LONG < DCC_TARGET_SIZEOF_INT)
-PUBLIC void DCC_VSTACK_CALL
-DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
  tyid_t tid;
  assert(self);
- /* Make sure never */
  tid = self->sv_ctype.t_type;
  if (DCCTYPE_GROUP(tid) == DCCTYPE_BUILTIN) {
   assert(!self->sv_ctype.t_base);
@@ -2537,9 +2549,12 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
   default:
    break;
   }
+ } else
+#endif
+ {
+  DCCStackValue_Promote(self);
  }
 }
-#endif
 
 PUBLIC rc_t DCC_VSTACK_CALL
 DCCVStack_GetReg(rc_t rc, int allow_ptr_regs) {
@@ -2585,16 +2600,28 @@ again:
   for (; iter != end; ++iter) {
    if (iter->sv_reg&DCC_RC_I) {
     r = iter->sv_reg&DCC_RI_MASK;
-    /* Convert ah, ch, dh and bh --> al, cl, dl and bl. */
-    if (!(iter->sv_reg&(DCC_RC_I16|DCC_RC_I3264)) &&
-         (rc&(DCC_RC_I16|DCC_RC_I3264))) r &= ~4;
+    if (iter->sv_reg&(DCC_RC_I16|DCC_RC_I3264)) {
+     /* 16/32-bit register (e.g.: 'AX') is used.
+      * > Mark the high-order 8-bit registers as in-use ('AH').
+      * NOTE: The low-order one will be marked below. */
+     if (rc == DCC_RC_I8 && r < 4) in_use |= (1 << (r|4));
+    } else {
+     /* Convert ah, ch, dh and bh --> al, cl, dl and bl. */
+     if (rc&(DCC_RC_I16|DCC_RC_I3264)) r &= ~4;
+    }
     in_use |= (1 << r);
    }
    if (iter->sv_reg2&DCC_RC_I) {
     r = iter->sv_reg2&DCC_RI_MASK;
-    /* Convert ah, ch, dh and bh --> al, cl, dl and bl. */
-    if (!(iter->sv_reg2&(DCC_RC_I16|DCC_RC_I3264)) &&
-         (rc&(DCC_RC_I16|DCC_RC_I3264))) r &= ~4;
+    if (iter->sv_reg2&(DCC_RC_I16|DCC_RC_I3264)) {
+     /* 16/32-bit register (e.g.: 'AX') is used.
+      * > Mark the high-order 8-bit registers as in-use ('AH').
+      * NOTE: The low-order one will be marked below. */
+     if (rc == DCC_RC_I8 && r < 4) in_use |= (1 << (r|4));
+    } else {
+     /* Convert ah, ch, dh and bh --> al, cl, dl and bl. */
+     if (rc&(DCC_RC_I16|DCC_RC_I3264)) r &= ~4;
+    }
     in_use |= (1 << r);
    }
   }
@@ -2725,16 +2752,28 @@ again:
   for (; iter != end; ++iter) {
    if (iter->sv_reg&DCC_RC_I) {
     r = iter->sv_reg&DCC_RI_MASK;
-    /* Convert ah, ch, dh and bh --> al, cl, dl and bl. */
-    if (!(iter->sv_reg&(DCC_RC_I16|DCC_RC_I3264)) &&
-         (rc&(DCC_RC_I16|DCC_RC_I3264))) r &= ~4;
+    if (iter->sv_reg&(DCC_RC_I16|DCC_RC_I3264)) {
+     /* 16/32-bit register (e.g.: 'AX') is used.
+      * > Mark the high-order 8-bit registers as in-use ('AH').
+      * NOTE: The low-order one will be marked below. */
+     if (rc == DCC_RC_I8 && r < 4) in_use |= (1 << (r|4));
+    } else {
+     /* Convert ah, ch, dh and bh --> al, cl, dl and bl. */
+     if (rc&(DCC_RC_I16|DCC_RC_I3264)) r &= ~4;
+    }
     in_use |= (1 << r);
    }
    if (iter->sv_reg2&DCC_RC_I) {
     r = iter->sv_reg2&DCC_RI_MASK;
-    /* Convert ah, ch, dh and bh --> al, cl, dl and bl. */
-    if (!(iter->sv_reg2&(DCC_RC_I16|DCC_RC_I3264)) &&
-         (rc&(DCC_RC_I16|DCC_RC_I3264))) r &= ~4;
+    if (iter->sv_reg2&(DCC_RC_I16|DCC_RC_I3264)) {
+     /* 16/32-bit register (e.g.: 'AX') is used.
+      * > Mark the high-order 8-bit registers as in-use ('AH').
+      * NOTE: The low-order one will be marked below. */
+     if (rc == DCC_RC_I8 && r < 4) in_use |= (1 << (r|4));
+    } else {
+     /* Convert ah, ch, dh and bh --> al, cl, dl and bl. */
+     if (rc&(DCC_RC_I16|DCC_RC_I3264)) r &= ~4;
+    }
     in_use |= (1 << r);
    }
   }
@@ -3706,7 +3745,7 @@ DCCVStack_Binary(tok_t op) {
  if (!(vbottom[1].sv_flags&(DCC_SFLAG_COPY|DCC_SFLAG_RVALUE)))
        vbottom[1].sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
  /* Promote array types. */
- DCCStackValue_Promote(vbottom+1);
+ OLD_VPROM(vbottom+1);
  vprom();
  is_cmp_op = (op == '?' ||
               op == TOK_LOWER ||
@@ -4259,6 +4298,8 @@ DCCVStack_PromInt2(void) {
 #if HAVE_VLOG
  VLOG(0,("vpromi2()\n"));
 #endif
+ DCCStackValue_Promote(&vbottom[0]);
+ DCCStackValue_Promote(&vbottom[1]);
  if (DCCTYPE_GROUP(vbottom[0].sv_ctype.t_type) == DCCTYPE_BUILTIN &&
      DCCTYPE_GROUP(vbottom[1].sv_ctype.t_type) == DCCTYPE_BUILTIN &&
      /* Only perform promotions between integral types. */
@@ -4597,8 +4638,8 @@ DCCVStack_Call(size_t n_args) {
  /* Promote array types. */
  /* NOTE: 'arg_end' is also the function slot. */
  function = (arg_first = vbottom)+n_args;
+ DCCStackValue_PromoteFunction(function);
  DCCStackValue_LoadLValue(function);
- DCCStackValue_Promote(function);
  DCCStackValue_FixBitfield(function);
  DCCStackValue_FixTest(function);
  if (DCCTYPE_GROUP(function->sv_ctype.t_type) == DCCTYPE_POINTER) {
@@ -4689,7 +4730,7 @@ warn_argc:
   } else {
    --untyped;
    /* Just do regular type promotions on anything else. */
-   vprom();
+   vpromi();
   }
   /* Function arguments are used by default. */
   vbottom->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);

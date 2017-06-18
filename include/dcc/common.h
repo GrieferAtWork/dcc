@@ -362,6 +362,12 @@ DCCFUN void *DCC_Calloc(size_t s, uint32_t flush_exclude);
 DCCFUN void *DCC_Realloc(void *p, size_t s, uint32_t flush_exclude);
 DCCFUN void  DCC_Free(void *p);
 
+#if DCC_DEBUG && !defined(__INTELLISENSE__)
+DCCFUN void *DCC_dbg_realloc(void *p, size_t s, char const *f, int l);
+#undef realloc
+#define realloc(p,s) DCC_dbg_realloc(p,s,__FILE__,__LINE__)
+#endif
+
 /* Emit warnings about failed allocations
  * Depending on the warning state, a lexer error may be set. */
 DCCFUN void DCC_AllocFailed(size_t s);

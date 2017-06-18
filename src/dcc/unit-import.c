@@ -247,6 +247,9 @@ PRIVATE int DCCUNIT_IMPORTCALL
 DCCUnit_ImportWithFilename(struct DCCLibDef *__restrict def,
                            char const *__restrict filename) {
  int result; stream_t s;
+#ifdef __DCC_VERSION__
+ printf("IMPORT = '%s'\n",filename);
+#endif
  if (!strcmp(filename,"-")) {
   struct DCCLibDef newdef = *def;
   /* Don't allow anything but source files to be read from <stdin>! */
@@ -264,6 +267,9 @@ DCCUnit_ImportWithFilename(struct DCCLibDef *__restrict def,
 #endif
    return 0;
   }
+#ifdef __DCC_VERSION__
+  printf("CHECK('%s') : %p\n",filename,s);
+#endif
   result = DCCUnit_DoImportStream(def,filename,s,0);
   s_close(s);
  }

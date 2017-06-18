@@ -37,6 +37,7 @@ typedef __SIZE_TYPE__ size_t;
 
 #define NULL  __NULL__
 
+#if 0
 /* Use compiler-optimized versions for string operations.
  * NOTE: Unlike other builtins, these will generate regular function
  *       calls to if no special optimizations can be performed. */
@@ -121,4 +122,5 @@ typedef __SIZE_TYPE__ size_t;
 #ifdef _GNU_SOURCE
 #   define ffsl(x)  __builtin_ffsl((x))
 #   define ffsll(x) __builtin_ffsll((x))
+#endif
 #endif

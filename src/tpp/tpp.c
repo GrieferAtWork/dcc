@@ -1650,6 +1650,16 @@ TPPFile_NextChunk(struct TPPFile *__restrict self, int flags) {
 #else
  ssize_t read_bufsize;
 #endif
+#define DBG_INFO  \
+  ("self->f_begin                             = %p\n"\
+   "self->f_pos                               = %p\n"\
+   "self->f_end                               = %p\n"\
+   "self->f_text->s_text                      = %p\n"\
+   "self->f_text->s_size                      = %p\n"\
+   "self->f_text->s_text+self->f_text->s_size = %p\n"\
+  ,self->f_begin,self->f_pos,self->f_end \
+  ,self->f_text->s_text,self->f_text->s_size \
+  ,self->f_text->s_text+self->f_text->s_size)
  assert(self);
  assert(self->f_text);
  assert(self->f_pos   >= self->f_begin);
@@ -1683,7 +1693,20 @@ TPPFile_NextChunk(struct TPPFile *__restrict self, int flags) {
    newchunk->s_size = STREAM_BUFSIZE+prefix_size;
    assert(end_offset < newchunk->s_size);
    newchunk->s_text[end_offset] = self->f_textfile.f_prefixdel; /* Restore the previously deleted file end. */
+#ifdef __DCC_VERSION__
+   printf("self->f_begin        = %p\n",self->f_begin);
+   printf("newchunk             = %p\n",newchunk);
+   printf("newchunk->s_text     = %p\n",newchunk->s_text);
+   printf("self->f_text         = %p\n",self->f_text);
+   printf("self->f_text->s_text = %p\n",self->f_text->s_text);
+   //__builtin_breakpoint();
+   __asm__("nop\nnop\nnop\n");
+#endif
    self->f_begin = newchunk->s_text+(self->f_begin-self->f_text->s_text);
+#ifdef __DCC_VERSION__
+   __asm__("nop\nnop\nnop\n");
+   printf("self->f_begin = %p\n",self->f_begin);
+#endif
    self->f_pos   = newchunk->s_text+(self->f_pos-self->f_text->s_text);
   } else {
    /* Create a new chunk, potentially copying some small portion of data
@@ -1713,6 +1736,10 @@ TPPFile_NextChunk(struct TPPFile *__restrict self, int flags) {
    self->f_pos         = self->f_begin = newchunk->s_text;
   }
   self->f_text = newchunk;
+  assertf(self->f_begin >= self->f_text->s_text,DBG_INFO);
+  assertf(self->f_begin <= self->f_text->s_text+self->f_text->s_size,DBG_INFO);
+  assertf(self->f_pos   >= self->f_text->s_text,DBG_INFO);
+  assertf(self->f_pos   <= self->f_text->s_text+self->f_text->s_size,DBG_INFO);
 #ifdef _WIN32
   if (!ReadFile(self->f_textfile.f_stream,
                 newchunk->s_text+prefix_size,
@@ -1738,6 +1765,10 @@ TPPFile_NextChunk(struct TPPFile *__restrict self, int flags) {
    else newchunk = self->f_text;
    self->f_begin = newchunk->s_text+(self->f_begin-old_textbegin);
    self->f_pos   = newchunk->s_text+(self->f_pos-old_textbegin);
+   assertf(self->f_begin >= self->f_text->s_text,DBG_INFO);
+   assertf(self->f_begin <= self->f_text->s_text+self->f_text->s_size,DBG_INFO);
+   assertf(self->f_pos   >= self->f_text->s_text,DBG_INFO);
+   assertf(self->f_pos   <= self->f_text->s_text+self->f_text->s_size,DBG_INFO);
   }
   if (!(flags&TPPFILE_NEXTCHUNK_FLAG_BINARY) &&
       !(CURRENT.l_flags&TPPLEXER_FLAG_NO_ENCODING) &&
@@ -1755,7 +1786,7 @@ TPPFile_NextChunk(struct TPPFile *__restrict self, int flags) {
      memmove(text_start,new_text_start,read_bufsize*sizeof(char));
      newchunk->s_size -= size_diff;
      if (self->f_begin >= new_text_start) self->f_begin -= size_diff;
-     if (self->f_pos >= new_text_start) self->f_pos -= size_diff;
+     if (self->f_pos   >= new_text_start) self->f_pos -= size_diff;
     }
    }
    if (self->f_textfile.f_encoding != TPP_ENCODING_UTF8) {
@@ -1789,14 +1820,31 @@ TPPFile_NextChunk(struct TPPFile *__restrict self, int flags) {
    break;
   }
   effective_end = self->f_text->s_text+self->f_text->s_size;
+#undef DBG_INFO
+#define DBG_INFO  \
+  ("self->f_begin                             = %p\n"\
+   "self->f_pos                               = %p\n"\
+   "self->f_end                               = %p\n"\
+   "effective_end                             = %p\n"\
+   "self->f_text->s_text                      = %p\n"\
+   "self->f_text->s_size                      = %p\n"\
+   "self->f_text->s_text+self->f_text->s_size = %p\n"\
+  ,self->f_begin,self->f_pos,self->f_end,effective_end \
+  ,self->f_text->s_text,self->f_text->s_size \
+  ,self->f_text->s_text+self->f_text->s_size)
 search_suitable_end_again:
+  assertf(self->f_begin >= self->f_text->s_text,DBG_INFO);
+  assertf(self->f_begin <= self->f_text->s_text+self->f_text->s_size,DBG_INFO);
+  assertf(effective_end >= self->f_text->s_text,DBG_INFO);
+  assertf(effective_end <= self->f_text->s_text+self->f_text->s_size,DBG_INFO);
   self->f_end = string_find_suitable_end(self->f_begin,(size_t)
                                         (effective_end-self->f_begin));
   if (self->f_end) {
    char *iter,*end,ch,*last_zero_mode;
    int mode = 0,termstring_onlf;
-   assert(self->f_end >= self->f_begin);
-   assert(self->f_end <= effective_end);
+   assertf(self->f_end >= self->f_begin,DBG_INFO);
+   assertf(self->f_end <= effective_end,DBG_INFO);
+#undef DBG_INFO
    /* Special case: If we managed to read something, but
     * the suitable end didn't increase, just read some more! */
    if (end_offset == (size_t)(self->f_end-self->f_text->s_text)) goto extend_more;

@@ -33,6 +33,11 @@
 #if DCC_DEBUG && !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
 #include <dcc_winmin.h>
 #endif
+#if DCC_DEBUG
+#ifdef _MSC_VER
+#include <malloc.h>
+#endif
+#endif
 
 DCC_DECL_BEGIN
 
@@ -166,6 +171,34 @@ again:
 PUBLIC void DCC_Free(void *p) {
  free(p);
 }
+#if DCC_DEBUG
+PUBLIC void *
+DCC_dbg_realloc(void *p, size_t s, char const *f, int l) {
+ /* A debug version of realloc() that forces
+  * allocation into a different pointer. */
+#ifdef _CRTDBG_MAP_ALLOC
+ void *result = _realloc_dbg(p,s,_NORMAL_BLOCK,f,l);
+#else
+ void *result = realloc(p,s);
+#endif
+ (void)f,(void)l;
+ if (result && result == p) {
+#ifdef _CRTDBG_MAP_ALLOC
+  void *newresult = _malloc_dbg(s,_NORMAL_BLOCK,f,l);
+#else
+  void *newresult = malloc(s);
+#endif
+  if (newresult) {
+   memcpy(newresult,result,s);
+   free(result);
+   result = newresult;
+  }
+ }
+ return result;
+}
+#endif
+
+
 PUBLIC void DCC_AllocFailed(size_t s) {
  WARN(W_OUT_OF_MEMORY,s);
 }
