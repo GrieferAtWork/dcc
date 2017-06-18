@@ -47,7 +47,7 @@ PRIVATE uint8_t asm_parse_register(void) {
  uint8_t result;
  if (TOK != '%') goto exp_reg;
  YIELD();
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_HASF(F_X86_64)
  if (TOK >= KWD_ax && TOK <= KWD_rdi)
 #else
  if (TOK >= KWD_ax && TOK <= KWD_edi)
@@ -604,7 +604,14 @@ PRIVATE struct x86_opcode const *x86_opcodes[] = {
 LOCAL void
 asm_gen_modrm(int8_t reg, struct DCCAsmOperand const *op) {
  int mod,reg1,reg2,sib_reg1;
- if (op->ao_type & (DCC_ASMOP_REG|DCC_ASMOP_R_MMX|DCC_ASMOP_R_SSE)) {
+ if (op->ao_type & (DCC_ASMOP_REG
+#ifdef DCC_ASMOP_R_MMX
+  |DCC_ASMOP_R_MMX
+#endif
+#ifdef DCC_ASMOP_R_SSE
+  |DCC_ASMOP_R_SSE
+#endif
+  )) {
   /* Regular register: mod == '11'. */
   t_putb(MODRM_REGISTER(reg,op->ao_reg));
  } else if (op->ao_reg == -1 && op->ao_reg2 == -1) {
@@ -727,8 +734,14 @@ asm_gen_op(struct x86_opcode const *op,
   }
   /* Look for a register/indirection operand. */
   for (i = 0; i < argc; ++i) {
-   if (argv[i].ao_type&(DCC_ASMOP_REG|DCC_ASMOP_R_MMX|
-                        DCC_ASMOP_R_SSE|DCC_ASMOP_IND)) {
+   if (argv[i].ao_type&(DCC_ASMOP_REG
+#ifdef DCC_ASMOP_R_MMX
+                       |DCC_ASMOP_R_MMX
+#endif
+#ifdef DCC_ASMOP_R_SSE
+                       |DCC_ASMOP_R_SSE
+#endif
+                       |DCC_ASMOP_IND)) {
     modrm_op = &argv[i];
     goto got_modrm_op;
    }
@@ -740,9 +753,15 @@ got_modrm_op:
     * a register, use that register's id as group instead. */
    for (j = 0; j < argc; ++j) {
     if (j != i && 
-        argv[j].ao_type&(DCC_ASMOP_REG|DCC_ASMOP_R_MMX|DCC_ASMOP_R_SSE|
-                         DCC_ASMOP_R_CR|DCC_ASMOP_R_TR|DCC_ASMOP_R_DB|
-                         DCC_ASMOP_R_SEG)) {
+        argv[j].ao_type&(DCC_ASMOP_REG
+#ifdef DCC_ASMOP_R_MMX
+                        |DCC_ASMOP_R_MMX
+#endif
+#ifdef DCC_ASMOP_R_SSE
+                        |DCC_ASMOP_R_SSE
+#endif
+                        |DCC_ASMOP_R_CR|DCC_ASMOP_R_TR
+                        |DCC_ASMOP_R_DB|DCC_ASMOP_R_SEG)) {
      reg = argv[j].ao_reg;
      break;
     }
@@ -1262,15 +1281,17 @@ fill_data:
   YIELD();
   break;
 
-#if DCC_TARGET_IA32(0)
+
+#if DCC_TARGET_HASI(I_X86)
+#if DCC_TARGET_HASF(F_X86_64)
+ case KWD_code64: YIELD(); break;
+#else
  { /* Set the current code size. */
   if (DCC_MACRO_FALSE) { case KWD_code16: compiler.c_flags |=  (DCC_COMPILER_FLAG_CODE16); }
   if (DCC_MACRO_FALSE) { case KWD_code32: compiler.c_flags &= ~(DCC_COMPILER_FLAG_CODE16); }
   YIELD();
  } break;
 #endif
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
- case code64: YIELD(); break;
 #endif
 
  { /* '.set sym, expr'. Same as: 'sym = expr' */

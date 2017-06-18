@@ -325,7 +325,7 @@ struct DCCCompiler {
  struct DCCPackStack       c_pack;       /*< Structure packing information. */
  struct DCCVisibilityStack c_visibility; /*< Default symbol visibility information. */
 #define DCC_COMPILER_FLAG_NONE      0x00000000
-#if DCC_TARGET_IA32(386)
+#if DCC_TARGET_HASM(M_I386)
 #define DCC_COMPILER_FLAG_CODE16    0x00000001 /*< Inside a '.code16' assembler block (WARNING: Not necessary respected in code generated outside the assembler). */
 #endif
 #define DCC_COMPILER_FLAG_NOCGEN    0x00000002 /*< Don't generate code (Used for sizeof()-style expressions). */

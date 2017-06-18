@@ -400,6 +400,52 @@ DCCDisp_SignMirrorMem(struct DCCMemLoc const *__restrict dst,
  }
 }
 
+#define EFLAGS_CF  (1 << 0) /* Carry flag */
+#define EFLAGS_PF  (2 << 0) /* Parity flag */
+#define EFLAGS_AF  (4 << 0) /* Adjust flag */
+#define EFLAGS_ZF  (6 << 0) /* Zero flag */
+#define EFLAGS_SF  (7 << 0) /* Sign flag */
+#define EFLAGS_OF (11 << 0) /* Overflow flag */
+
+PUBLIC void
+DCCDisp_SetTst(test_t tst) {
+ struct DCCMemLoc flgs;
+ struct DCCSymAddr val;
+ assert(tst <= 0xf);
+ /* TODO: Special optimizations for certain cases
+  *       when unused registers are available. */
+ t_putb(0x9c); /* pushf */
+ flgs.ml_off = 0;
+ flgs.ml_reg = DCC_RR_XSP;
+ flgs.ml_sym = NULL;
+ val.sa_sym = NULL;
+ switch (tst) {
+ case DCC_TEST_O : val.sa_off =   EFLAGS_OF;  goto orf;  /* (OF=1). */
+ case DCC_TEST_NO: val.sa_off = ~(EFLAGS_OF); goto andf; /* (OF=0). */
+ case DCC_TEST_B : val.sa_off =   EFLAGS_CF;  goto orf;  /* (CF=1). */
+ case DCC_TEST_AE: val.sa_off = ~(EFLAGS_CF); goto andf; /* (CF=0). */
+ case DCC_TEST_E : val.sa_off =   EFLAGS_ZF;  goto orf;  /* (ZF=1). */
+ case DCC_TEST_NE: val.sa_off = ~(EFLAGS_ZF); goto andf; /* (ZF=0). */
+ case DCC_TEST_BE: val.sa_off =  (EFLAGS_CF|EFLAGS_ZF); goto orf;  /* (CF=1 or ZF=1). */
+ case DCC_TEST_A : val.sa_off = ~(EFLAGS_CF|EFLAGS_ZF); goto andf; /* (CF=0 and ZF=0). */
+ case DCC_TEST_S : val.sa_off =   EFLAGS_SF;  goto orf;  /* (SF=1). */
+ case DCC_TEST_NS: val.sa_off = ~(EFLAGS_SF); goto andf; /* (SF=0). */
+ case DCC_TEST_P : val.sa_off =  (EFLAGS_PF); goto orf;  /* (PF=1). */
+ case DCC_TEST_NP: val.sa_off = ~(EFLAGS_PF); goto andf; /* (PF=0). */
+ case DCC_TEST_L : val.sa_off =  (EFLAGS_SF); 
+                   DCCDisp_CstBinMem('|',&val,&flgs,4,1);
+                   val.sa_off = ~(EFLAGS_OF); goto andf; /* (SF<>OF). */
+ case DCC_TEST_GE: val.sa_off = (EFLAGS_SF|EFLAGS_OF); goto orf; /* (SF=OF). */
+ case DCC_TEST_LE: val.sa_off = (EFLAGS_ZF); goto orf; /* (ZF=1 or SF<>OF). */
+ case DCC_TEST_G :
+ default:          val.sa_off = ~(EFLAGS_ZF|EFLAGS_SF|EFLAGS_OF); goto andf; /* (ZF=0 and SF=OF). */
+ }
+ if (DCC_MACRO_FALSE) {orf:  DCCDisp_CstBinMem('|',&val,&flgs,4,1); }
+ if (DCC_MACRO_FALSE) {andf: DCCDisp_CstBinMem('&',&val,&flgs,4,1); }
+ t_putb(0x9d); /* popf */
+}
+
+
 
 /* As noted here: http://stackoverflow.com/questions/6776385/what-is-faster-jmp-or-string-of-nops */
 static uint8_t const nopseq1[1] = {0x90};

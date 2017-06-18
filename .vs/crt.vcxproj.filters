@@ -227,6 +227,9 @@
     <ClCompile Include="..\lib\src\libc\unistd.c">
       <Filter>src\libc</Filter>
     </ClCompile>
+    <ClCompile Include="..\lib\test\reachable.c">
+      <Filter>test</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\lib\src\crt\chkstk.S">

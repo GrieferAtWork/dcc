@@ -25,16 +25,39 @@
 
 DCC_DECL_BEGIN
 
+/* Known CPU instruction sets. */
+#define DCC_CPUI_UNKNOWN  0
+#define DCC_CPUI_X86      1
+#ifdef __INTELLISENSE__
+enum{I_X86,};
+#endif
+
 /* Known CPU names. */
-#define DCC_CPU_UNKNOWN  0x00000000
-#define DCC_CPU_F_INTEL  0x00000001
-#define DCC_CPU_F_AMD    0x00000002
-/*                       0x0000fffc */
-#define DCC_CPU_I386    (0x00010000|DCC_CPU_F_INTEL)
-#define DCC_CPU_I486    (0x00020000|DCC_CPU_F_INTEL)
-#define DCC_CPU_I586    (0x00030000|DCC_CPU_F_INTEL)
-#define DCC_CPU_I686    (0x00040000|DCC_CPU_F_INTEL)
-#define DCC_CPU_X86_64  (0x00050000|DCC_CPU_F_INTEL|DCC_CPU_F_AMD)
+#define DCC_CPUM_I386        1
+#define DCC_CPUM_I486        2
+#define DCC_CPUM_I586        3
+#define DCC_CPUM_PENTIUM     DCC_CPUM_I586
+#define DCC_CPUM_PENTIUM_MMX 4
+#define DCC_CPUM_K6          5
+#define DCC_CPUM_PENTIUM_PRO 6
+#define DCC_CPUM_PENTIUM_II  7
+#define DCC_CPUM_I686        8
+#ifdef __INTELLISENSE__
+enum{M_8086,M_80186,M_80286,M_I386,M_I486,M_I586,M_PENTIUM,
+     M_PENTIUM_MMX,M_K6,M_PENTIUM_PRO,M_PENTIUM_II,M_I686,};
+#endif
+
+/* Known CPU features. */
+#define DCC_CPUF_NONE     0x00000000
+#define DCC_CPUF_X86_64   0x00000001
+#define DCC_CPUF_MMX      0x00000002
+#define DCC_CPUF_SSE      0x00000004
+#define DCC_CPUF_SSE2     0x00000008
+#define DCC_CPUF_SSE3     0x00000010
+#define DCC_CPUF_MMXP     0x00000020 /* MMX+ */
+#ifdef __INTELLISENSE__
+enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
+#endif
 
 /* Known OS names. */
 #define DCC_OS_UNKNOWN         0x00000000
@@ -60,19 +83,25 @@ DCC_DECL_BEGIN
 #define DCC_BINARY_ELF     0x00020000
 
 /* DCC Master CPU target switch. */
-#ifndef DCC_TARGET_CPU
-#define DCC_TARGET_CPU     DCC_CPU_I686
-//#define DCC_TARGET_CPU     DCC_HOST_CPU
+#ifndef DCC_TARGET_CPUI
+#  define DCC_TARGET_CPUI    DCC_HOST_CPUI
+#endif
+#ifndef DCC_TARGET_CPUM
+#  define DCC_TARGET_CPUM    DCC_HOST_CPUM
+#endif
+#ifndef DCC_TARGET_CPUF
+#  define DCC_TARGET_CPUF    DCC_CPUF_NONE
+/*#define DCC_TARGET_CPUF    DCC_HOST_CPUF*/
 #endif
 
 /* DCC Master Binary target format switch. */
 #ifndef DCC_TARGET_BIN
-#define DCC_TARGET_BIN     DCC_HOST_BIN
+#  define DCC_TARGET_BIN     DCC_HOST_BIN
 #endif
 
 /* DCC Master OS target switch. */
 #ifndef DCC_TARGET_OS
-#define DCC_TARGET_OS      DCC_HOST_OS
+#  define DCC_TARGET_OS      DCC_HOST_OS
 #endif
 
 
@@ -99,46 +128,62 @@ DCC_DECL_BEGIN
 
 
 /* Figure out the host configuration. */
-#ifndef DCC_HOST_CPU
-#if defined(__amd64__) || defined(__amd64) || \
-    defined(__x86_64__) || defined(__x86_64) || \
-    defined(_M_X64) || defined(_M_AMD64)
-#   define DCC_HOST_CPU DCC_CPU_X86_64
-#elif defined(__I86__)
+#ifndef DCC_HOST_CPUM
+#if defined(__I86__)
+#   define DCC_HOST_CPUI DCC_CPUI_X86
 #if __I86__ >= 6
-#   define DCC_HOST_CPU DCC_CPU_I686
+#   define DCC_HOST_CPUM DCC_CPUM_I686
 #elif __I86__ >= 5
-#   define DCC_HOST_CPU DCC_CPU_I586
+#   define DCC_HOST_CPUM DCC_CPUM_I586
 #elif __I86__ >= 4
-#   define DCC_HOST_CPU DCC_CPU_I486
+#   define DCC_HOST_CPUM DCC_CPUM_I486
 #else
-#   define DCC_HOST_CPU DCC_CPU_I386
+#   define DCC_HOST_CPUM DCC_CPUM_I386
 #endif
 #elif defined(_M_IX86)
+#   define DCC_HOST_CPUI DCC_CPUI_X86
 #if _M_IX86 >= 600
-#   define DCC_HOST_CPU DCC_CPU_I686
+#   define DCC_HOST_CPUM DCC_CPUM_I686
 #elif _M_IX86 >= 500
-#   define DCC_HOST_CPU DCC_CPU_I586
+#   define DCC_HOST_CPUM DCC_CPUM_I586
 #elif _M_IX86 >= 400
-#   define DCC_HOST_CPU DCC_CPU_I486
+#   define DCC_HOST_CPUM DCC_CPUM_I486
 #else
-#   define DCC_HOST_CPU DCC_CPU_I386
+#   define DCC_HOST_CPUM DCC_CPUM_I386
 #endif
 #elif defined(__i686__) || defined(__i686) || defined(i686)
-#   define DCC_HOST_CPU DCC_CPU_I686
+#   define DCC_HOST_CPUI DCC_CPUI_X86
+#   define DCC_HOST_CPUM DCC_CPUM_I686
 #elif defined(__i586__) || defined(__i586) || defined(i586)
-#   define DCC_HOST_CPU DCC_CPU_I586
+#   define DCC_HOST_CPUI DCC_CPUI_X86
+#   define DCC_HOST_CPUM DCC_CPUM_I586
 #elif defined(__i486__) || defined(__i486) || defined(i486)
-#   define DCC_HOST_CPU DCC_CPU_I486
+#   define DCC_HOST_CPUI DCC_CPUI_X86
+#   define DCC_HOST_CPUM DCC_CPUM_I486
 #elif defined(__i386__) || defined(__i386) || defined(i386) || \
       defined(__X86__) || defined(_X86_) || \
       defined(__THW_INTEL__) || defined(__INTEL__)
-#   define DCC_HOST_CPU DCC_CPU_I386
+#   define DCC_HOST_CPUI DCC_CPUI_X86
+#   define DCC_HOST_CPUM DCC_CPUM_I386
 #endif
-#ifndef DCC_HOST_CPU
-#   define DCC_HOST_CPU DCC_CPU_UNKNOWN
+#ifndef DCC_HOST_CPUM
+#   define DCC_HOST_CPUM DCC_CPUI_UNKNOWN
 #endif
-#endif /* !DCC_HOST_CPU */
+#endif /* !DCC_HOST_CPUM */
+
+#if DCC_HOST_CPUI == DCC_CPUI_X86
+#if defined(__amd64__) || defined(__amd64) || \
+    defined(__x86_64__) || defined(__x86_64) || \
+    defined(_M_X64) || defined(_M_AMD64) || \
+    defined(_WIN64) || defined(WIN64) || \
+   (defined(__SIZEOF_POINTER__) && __SIZEOF_POINTER__ == 8)
+#   define DCC_HOST_CPUF_X86_64
+#   define DCC_HOST_CPUF DCC_CPUF_X86_64
+#endif
+#endif
+#ifndef DCC_HOST_CPUF
+#   define DCC_HOST_CPUF DCC_CPUF_NONE
+#endif
 
 #ifndef DCC_HOST_OS
 #if defined(_WIN16) || defined(WIN16) || \
@@ -189,39 +234,14 @@ DCC_DECL_BEGIN
 
 
 
+#define DCC_TARGET_HASI(cpui)  (DCC_TARGET_CPUI == DCC_CPU##cpui)
+#define DCC_TARGET_HASM(cpum)  (DCC_TARGET_CPUM >= DCC_CPU##cpum)
+#define DCC_TARGET_HASF(cpuf) ((DCC_TARGET_CPUF &  DCC_CPU##cpuf)!=0)
 
+#define DCC_TARGET_ASMI(cpui)  (DCC_TARGET_CPUI == DCC_CPU##cpui)
+#define DCC_TARGET_ASMM(cpum)  (DCC_TARGET_CPUM >= DCC_CPU##cpum)
+#define DCC_TARGET_ASMF(cpuf) ((DCC_TARGET_CPUF &  DCC_CPU##cpuf)!=0)
 
-
-
-
-
-
-
-
-#if DCC_TARGET_CPU == DCC_CPU_I386
-#   define DCC_TARGET_IA32_VERSION  386
-#elif DCC_TARGET_CPU == DCC_CPU_I486
-#   define DCC_TARGET_IA32_VERSION  486
-#elif DCC_TARGET_CPU == DCC_CPU_I586
-#   define DCC_TARGET_IA32_VERSION  586
-#elif DCC_TARGET_CPU == DCC_CPU_I686
-#   define DCC_TARGET_IA32_VERSION  686
-#endif
-
-#ifdef DCC_TARGET_IA32_VERSION
-#   define DCC_TARGET_IA32(v)  ((v) <= DCC_TARGET_IA32_VERSION)
-#else
-#   define DCC_TARGET_IA32(v)    0
-#endif
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
-#   define DCC_TARGET_IA64(v)    1
-#else
-#   define DCC_TARGET_IA64(v)    0
-#endif
-
-#if DCC_TARGET_IA32(0) || (DCC_TARGET_CPU == DCC_CPU_X86_64)
-#   define DCC_TARGET_X86    1
-#endif
 
 #ifndef DCC_TARGET_ELFINTERP
 /* Determine the apropriate target ELF interpreter name. */
@@ -235,7 +255,7 @@ DCC_DECL_BEGIN
 #   define DCC_TARGET_ELFINTERP "/libexec/ld-elf.so.1"
 #elif DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
 #   define DCC_TARGET_ELFINTERP "/lib/ld.so.1"
-#elif DCC_TARGET_CPU == DCC_CPU_X86_64
+#elif DCC_TARGET_HASF(F_X86_64)
 #   define DCC_TARGET_ELFINTERP "/lib64/ld-linux-x86-64.so.2"
 #else
 #   define DCC_TARGET_ELFINTERP "/lib/ld-linux.so.2"
@@ -247,7 +267,7 @@ DCC_DECL_BEGIN
 #   define DCC_TARGET_STACKDOWN            1 /* 0/1 indicating stack growth direction. */
 #   define DCC_TARGET_BYTEORDER            1234
 #   define DCC_TARGET_FLOAT_WORD_ORDER     1234
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_HASF(F_X86_64)
 #   define DCC_TARGET_SIZEOF_POINTER       8
 #else
 #   define DCC_TARGET_SIZEOF_POINTER       4
@@ -270,7 +290,7 @@ DCC_DECL_BEGIN
 #   define DCC_TARGET_SIZEOF_FLOAT         4
 #   define DCC_TARGET_ALIGNOF_FLOAT        4
 #   define DCC_TARGET_SIZEOF_DOUBLE        8
-#if DCC_TARGET_IA32(386)
+#if DCC_TARGET_HASM(M_I386)
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #   define DCC_TARGET_ALIGNOF_LONG_LONG    8
 #   define DCC_TARGET_ALIGNOF_DOUBLE       8
@@ -282,10 +302,10 @@ DCC_DECL_BEGIN
 #   define DCC_TARGET_ALIGNOF_LONG_LONG    8
 #   define DCC_TARGET_ALIGNOF_DOUBLE       8
 #endif
-#if DCC_TARGET_IA32(386)
+#if DCC_TARGET_HASM(M_I386)
 #   define DCC_TARGET_SIZEOF_LONG_DOUBLE   12
 #   define DCC_TARGET_ALIGNOF_LONG_DOUBLE  4
-#elif DCC_TARGET_CPU == DCC_CPU_X86_64
+#elif DCC_TARGET_HASF(F_X86_64)
 #   define DCC_TARGET_SIZEOF_LONG_DOUBLE   16
 #   define DCC_TARGET_ALIGNOF_LONG_DOUBLE  8
 #else
@@ -305,7 +325,7 @@ DCC_DECL_BEGIN
 #   define DCC_TARGET_SIZEOF_INT_LEAST32_T 4
 #   define DCC_TARGET_SIZEOF_INT_LEAST64_T 8
 #   define DCC_TARGET_SIZEOF_INT_FAST8_T   1
-#ifdef DCC_TARGET_X86
+#if DCC_TARGET_HASI(I_X86)
 /* Real 16-bit usually requires the D16 prefix,
  * so 32-bit is actually faster most of the time. */
 #   define DCC_TARGET_SIZEOF_INT_FAST16_T  4
@@ -393,7 +413,7 @@ DCC_DECL_BEGIN
 
 
 
-#ifdef DCC_TARGET_X86
+#if DCC_TARGET_HASI(I_X86)
 /* 6: %EBX, %EDI, %ESI, %ESP, %EBP, %EIP */
 #if DCC_TARGET_SIZEOF_POINTER == 4
 #   define DCC_TARGET_SIZEOF_JMP_BUF       32

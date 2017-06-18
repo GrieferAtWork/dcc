@@ -54,7 +54,7 @@ DCCDAT size_t const DCC_relsize[DCC_R_NUM];
 #define DCC_RELSIZE(r) ((size_t)(r) >= DCC_R_NUM ? 0 : DCC_relsize[r])
 
 PUBLIC size_t const DCC_relsize[DCC_R_NUM] = {
-#if DCC_TARGET_IA32(386)
+#if DCC_TARGET_HASM(M_I386)
  /* [R_386_NONE        ] = */0,
  /* [R_386_32          ] = */4,
  /* [R_386_PC32        ] = */4,
@@ -93,7 +93,7 @@ PUBLIC size_t const DCC_relsize[DCC_R_NUM] = {
  /* [R_386_TLS_DTPMOD32] = */4,
  /* [R_386_TLS_DTPOFF32] = */4,
  /* [R_386_TLS_TPOFF32 ] = */4,
-#elif DCC_TARGET_CPU == DCC_CPU_X86_64
+#elif DCC_TARGET_HASF(F_X86_64)
  /* [R_X86_64_NONE     ] = */0,
  /* [R_X86_64_64       ] = */8,
  /* [R_X86_64_PC32     ] = */4,
@@ -1052,11 +1052,11 @@ DCCSection_ResolveDisp(struct DCCSection *__restrict self) {
   rel_addr  = base_address+iter->r_addr;
   rel_value = symaddr.sa_off+symaddr.sa_sym->sy_addr;
   switch (iter->r_type) {
-#if DCC_TARGET_IA32(386)
+#if DCC_TARGET_HASM(M_I386)
   case R_386_PC8:     *(int8_t  *)rel_addr += (int8_t )rel_value; break;
   case R_386_PC16:    *(int16_t *)rel_addr += (int16_t)rel_value; break;
   case R_386_PC32:    *(int32_t *)rel_addr += (int32_t)rel_value; break;
-#elif DCC_TARGET_CPU == DCC_CPU_X86_64
+#elif DCC_TARGET_HASF(F_X86_64)
   case R_X86_64_PC8:  *(int8_t  *)rel_addr += (int8_t )rel_value; break;
   case R_X86_64_PC16: *(int16_t *)rel_addr += (int16_t)rel_value; break;
   case R_X86_64_PC32: *(int32_t *)rel_addr += (int32_t)rel_value; break;
@@ -1124,14 +1124,14 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
   assert(reldata <  relbase+(self->sc_text.tb_end-
                              self->sc_text.tb_begin));
   switch (iter->r_type) {
-#if DCC_TARGET_IA32(386)
+#if DCC_TARGET_HASM(M_I386)
   case R_386_8:       *(int8_t  *)reldata += (int8_t )rel_value; break;
   case R_386_16:      *(int16_t *)reldata += (int16_t)rel_value; break;
   case R_386_32:      *(int32_t *)reldata += (int32_t)rel_value; break;
   case R_386_PC8:     *(int8_t  *)reldata += (int8_t )(rel_value-base_address); break;
   case R_386_PC16:    *(int16_t *)reldata += (int16_t)(rel_value-base_address); break;
   case R_386_PC32:    *(int32_t *)reldata += (int32_t)(rel_value-base_address); break;
-#elif DCC_TARGET_CPU == DCC_CPU_X86_64
+#elif DCC_TARGET_HASF(F_X86_64)
   case R_X86_64_8:    *(int8_t  *)reldata += (int8_t )rel_value; break;
   case R_X86_64_16:   *(int16_t *)reldata += (int16_t)rel_value; break;
   case R_X86_64_32:   *(int32_t *)reldata += (int32_t)rel_value; break;
@@ -1158,7 +1158,7 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
  return result;
 }
 
-#if DCC_HOST_CPU == DCC_TARGET_CPU
+#if DCC_HOST_CPUM == DCC_TARGET_CPUM
 PUBLIC void
 DCCSection_SetBase(struct DCCSection *__restrict self) {
  void *codebase; size_t codesize;
@@ -1216,7 +1216,7 @@ DCCSection_SetBase(struct DCCSection *__restrict self) {
 seterr:
  TPPLexer_SetErr();
 }
-#endif /* DCC_HOST_CPU == DCC_TARGET_CPU */
+#endif /* DCC_HOST_CPUM == DCC_TARGET_CPUM */
 
 PUBLIC struct DCCSym *
 DCCSection_GetSym(struct DCCSection *__restrict self,

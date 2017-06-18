@@ -87,7 +87,7 @@ static PE_HEADER const pe_template = {
  /* ohdr.SizeOfUninitializedData     */0, /* Filled later? */
  /* ohdr.AddressOfEntryPoint         */0, /* Filled later. */
  /* ohdr.BaseOfCode                  */0, /* Filled later. */
-#if DCC_TARGET_CPU != DCC_CPU_X86_64
+#if DCC_TARGET_CPUM != DCC_CPU_X86_64
  /* ohdr.BaseOfData                  */0, /* Filled later. */
 #endif
  /* ohdr.ImageBase                   */0x00100000,
@@ -176,7 +176,7 @@ struct DCCPEInfo {
  DWORD                  pe_iat_size;  /*< In 'pe_thunk': import address table size in bytes (or ZERO(0) when unused). */
 };
 
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_HASF(F_X86_64)
 #define PE_STDSYM2(name,suffix)     name suffix
 #define PE_STDSYM(name,suffix)  "_" name suffix
 #else
@@ -866,7 +866,7 @@ pe_mk_writefile(stream_t fd) {
    hdr.ohdr.BaseOfCode = addr;
    hdr.ohdr.SizeOfCode = size;
    break;
-#if DCC_TARGET_CPU != DCC_CPU_X86_64
+#if DCC_TARGET_CPUM != DCC_CPU_X86_64
   case SECTY_DATA:
    hdr.ohdr.BaseOfData              = addr;
    hdr.ohdr.SizeOfInitializedData   = iter->si_msize;
@@ -1143,7 +1143,7 @@ PRIVATE void pe_mk_buildita(void) {
     *    >> }
     */
 
-#if defined(DCC_TARGET_X86)
+#if DCC_TARGET_HASI(I_X86)
    iat_addr = DCCSection_TADDR(linker.l_text);
    iat_code = (uint8_t *)DCCSection_TAlloc(linker.l_text,6);
    if unlikely(!iat_code) return;

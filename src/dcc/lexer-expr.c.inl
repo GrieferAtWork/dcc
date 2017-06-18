@@ -115,7 +115,7 @@ static rc_t const register_clases[] = {
  DCC_RC_I8,
  DCC_RC_I16|DCC_RC_I8,
  DCC_RC_I32|DCC_RC_I16|DCC_RC_I8,
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_HASF(F_X86_64)
  DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8,
 #endif
  DCC_RC_MMX,
@@ -1304,9 +1304,11 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLAnd(void) {
  if (TOK == TOK_LAND) {
   struct DCCSym *sym = DCCUnit_AllocSym();
   test_t common_test = DCC_UNITST_FIRST;
+  target_ptr_t last_text_offset;
   int found_cfalse = 0;
   if (!sym) return;
   do {
+   last_text_offset = t_addr;
    YIELD();
    if (visconst_bool()) {
     if (!vgtconst_bool()) { found_cfalse = 1; goto normal; }
@@ -1328,13 +1330,14 @@ normal:
      popf();
     } else {
      common_test = DCCVStack_UniTst(common_test);
-     DCCVStack_KillAll(1);  /* Kill all registers before doing the jump.
-                             * NOTE: This mustn't modify EFLAGS, so we're safe! */
+     DCCVStack_KillAll(1); /* Kill all registers before doing the jump.
+                            * NOTE: This mustn't modify EFLAGS, so we're safe! */
      vpushs(sym);
      vgen1('&');
-     vjcc(1);               /* Jump over the second operand(s) if first was false. */
+     vjcc(1);              /* Jump over the second operand(s) if first was false. */
      pushf();
-     DCCParse_ExprOr();     /* Parse the second operand. */
+     last_text_offset = t_addr;
+     DCCParse_ExprOr();    /* Parse the second operand. */
      common_test = DCCVStack_UniTst(common_test);
      popf();
     }
@@ -1345,7 +1348,23 @@ normal:
    vpop(1);
    vpushi(DCCTYPE_BOOL,0);
   } else if (common_test != DCC_UNITST_FIRST) {
-   vpop(1);
+   if (!(vbottom->sv_flags&DCC_SFLAG_TEST) &&
+         /* 'vbottom' must be a constant true.
+          * But since other components of the branch can
+          * only be evaluated at runtime, and since the
+          * latest branch that ended in true may have
+          * contained code that modified EFLAGS, we must
+          * somehow force those flags to mirror
+          * 'common_test' for a constant true. */
+        (assert(visconst_bool()),assert(vgtconst_bool()),
+         /* NOTE: Don't do this if the last expression didn't generate code
+          *      (which can be determined by comparing text pointer offsets) */
+         last_text_offset != t_addr)) {
+    vpop(1);
+    DCCDisp_SetTst(common_test);
+   } else {
+    vpop(1);
+   }
    DCCVStack_PushTst(common_test);
   }
   if (sym) t_defsym(sym);
@@ -1366,9 +1385,11 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
  if (TOK == TOK_LOR) {
   struct DCCSym *sym = DCCUnit_AllocSym();
   test_t common_test = DCC_UNITST_FIRST;
+  target_ptr_t last_text_offset;
   int found_ctrue = 0;
   if (!sym) return;
   do {
+   last_text_offset = t_addr;
    YIELD();
    if (visconst_bool()) {
     if (vgtconst_bool()) { found_ctrue = 1; goto normal; }
@@ -1395,9 +1416,10 @@ normal:
                             * NOTE: This mustn't modify EFLAGS, so we're safe! */
      vpushs(sym);
      vgen1('&');
-     vjcc(0);             /* Jump over the second operand(s) if first was true. */
+     vjcc(0);              /* Jump over the second operand(s) if first was true. */
      pushf();
-     DCCParse_ExprLXor(); /* Parse the second operand. */
+     last_text_offset = t_addr;
+     DCCParse_ExprLXor();  /* Parse the second operand. */
      common_test = DCCVStack_UniTst(common_test);
      popf();
     }
@@ -1408,7 +1430,23 @@ normal:
    vpop(1);
    vpushi(DCCTYPE_BOOL,1);
   } else if (common_test != DCC_UNITST_FIRST) {
-   vpop(1);
+   if (!(vbottom->sv_flags&DCC_SFLAG_TEST) &&
+         /* 'vbottom' must be a constant false.
+          * But since other components of the branch can
+          * only be evaluated at runtime, and since the
+          * latest branch that ended in false may have
+          * contained code that modified EFLAGS, we must
+          * somehow force those flags to mirror
+          * 'common_test' for a constant false. */
+        (assert(visconst_bool()),assert(!vgtconst_bool()),
+         /* NOTE: Don't do this if the last expression didn't generate code
+          *      (which can be determined by comparing text pointer offsets) */
+         last_text_offset != t_addr)) {
+    vpop(1);
+    DCCDisp_SetTst(DCC_TEST_NOT(common_test));
+   } else {
+    vpop(1);
+   }
    vpusht(common_test);
   }
   if (sym) t_defsym(sym);

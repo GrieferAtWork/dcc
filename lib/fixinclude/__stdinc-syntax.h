@@ -343,7 +343,7 @@ template<bool C, class T> struct ____INTELLISENE_enableif<false,T> {};
 #define __INTMAX_C(x)  x##i64
 #define __UINTMAX_C(x) x##ui64
 
-
+/* Stub-implement some TPP extensions. */
 
 #define __DATE_DAY__   1
 #define __DATE_WDAY__  0
@@ -353,6 +353,60 @@ template<bool C, class T> struct ____INTELLISENE_enableif<false,T> {};
 #define __TIME_HOUR__  19
 #define __TIME_MIN__   02
 #define __TIME_SEC__   13
+
+#define __TPP_COUNTER(x)   __COUNTER__
+#define __COLUMN__         0
+#define __INCLUDE_LEVEL__  0
+#define __INCLUDE_DEPTH__  0
+
+#ifndef __is_identifier
+#define __is_identifier(x)          0
+#endif
+#ifndef __is_builtin_identifier
+#define __is_builtin_identifier(x)  0
+#endif
+#ifndef __is_deprecated
+#define __is_deprecated(x)          0
+#endif
+#ifndef __has_attribute
+#define __has_attribute(x)          0
+#endif
+#ifndef __has_builtin
+#define __has_builtin(x)            0
+#endif
+#ifndef __has_tpp_builtin
+#define __has_tpp_builtin(x)        0
+#endif
+#ifndef __has_cpp_attribute
+#define __has_cpp_attribute(x)      0
+#endif
+#ifndef __has_declspec_attribute
+#define __has_declspec_attribute(x) 0
+#endif
+#ifndef __has_feature
+#define __has_feature(x)            0
+#endif
+#ifndef __has_extension
+#define __has_extension(x)          0
+#endif
+#ifndef __has_warning
+#define __has_warning(x)            0
+#endif
+#ifndef __has_known_extension
+#define __has_known_extension(x)    0
+#endif
+#ifndef __has_known_warning
+#define __has_known_warning(x)      0
+#endif
+#ifndef __has_include
+#define __has_include(x)            0
+#endif
+#ifndef __has_include_next
+#define __has_include_next(x)       0
+#endif
+#ifndef __is_deprecated
+#define __is_deprecated(x)          0
+#endif
 
 /* Builtin keywords */
 

@@ -165,6 +165,7 @@ static struct DCCLibDef default_crt_dbg[] = {
  {0,NULL,0,0,0,0,0,NULL},
 };
 
+
 static void load_chain(struct DCCLibDef *chain) {
  for (; chain->ld_name; ++chain) {
   if (chain->ld_flags&DCC_LIBDEF_FLAG_STATIC) {

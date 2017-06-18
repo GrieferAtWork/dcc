@@ -1470,7 +1470,7 @@ DCCLinker_Make(stream_t target) {
                      * ZERO(0), relying on relocations. */
   elf.elf_type = ET_DYN;
  } else {
-#ifdef DCC_TARGET_X86
+#if DCC_TARGET_HASI(I_X86)
   elf.elf_base = 0x08048000;
 #else
 #   error FIXME

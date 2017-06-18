@@ -275,7 +275,10 @@ typedef uint8_t DCC(test_t);
 #define DCC_TEST_G    0xf /* test: greater (ZF=0 and SF=OF). */
 #define DCC_TEST_NLE  0xf /* test: not less or equal (ZF=0 and SF=OF). */
 
-
+/* Set the state of a given test to 1
+ * NOTE: After this process, 'tst' will mirror 1,
+ *       but the state of any other test will be undefined. */
+DCCFUN void DCCDisp_SetTst(DCC(test_t) tst);
 
 /* Unconditionally jump to/call the given
  * register/memory-location/address-read-from-memory. */

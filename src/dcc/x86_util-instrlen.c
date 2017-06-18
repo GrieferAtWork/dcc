@@ -511,7 +511,7 @@ done_2or4:
   case 0x2e: /* ucomisd xmm2/m64, xmm1 / ucomiss xmm2/m64, xmm1 */
   case 0x15: /* unpckhpd xmm2/m128, xmm1 / unpckhps xmm2/m128, xmm1 */
   case 0x14: /* unpcklpd xmm2/m128, xmm1 / unpcklps xmm2/m128, xmm1 */
-#if DCC_TARGET_IA32(486)
+#if DCC_TARGET_HASM(M_I486)
   case 0xc0: /* xadd %r8, r/m8 */
   case 0xc1: /* xadd %r16, r/m16 / xadd %r32, r/m32 */
 #endif

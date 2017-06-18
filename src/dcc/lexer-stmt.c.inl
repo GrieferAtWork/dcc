@@ -625,6 +625,7 @@ def_break:
 
  { /* Switch integral case. */
   int double_case;
+  struct DCCSym *old_casejmp;
  case KWD_case:
   YIELD();
   if (!compiler.c_casejmp) {
@@ -660,7 +661,8 @@ ignore_case_label:
   /* Jump across the case expression (This generates no code if this is the first, dead case). */
   vpushs(label_sym),vgen1('&'),vjmp();
   /* Define the current last case jump and allocate a new one. */
-  t_defsym(compiler.c_casejmp);
+  old_casejmp = compiler.c_casejmp;
+  t_defsym(old_casejmp);
   if unlikely((compiler.c_casejmp = DCCUnit_AllocSym()) == NULL) break;
   /* Parse the case expression. */
   pushf();
@@ -698,6 +700,7 @@ ignore_case_label:
     vpop(1); /* true */
    }
   }
+  if (TOK != ':') WARN(W_EXPECTED_COLON_AFTER_CASE); else YIELD();
   /* The check above is inverted, meaning that a constant
    * true here indicates a compile-time miss-match! */
   if (visconst_bool() && vgtconst_bool()) {
@@ -707,6 +710,38 @@ ignore_case_label:
     *       would interfere with fall-through cases!
     * >> Instead, we simply inherit the dead-code
     *    configuration of previous code. */
+#if 1
+   /* This is a bit strange, but because we've already defined the compiler's case-jump
+    * as pointing to the expression that turned out to evaluate to a constant FALSE,
+    * we must now either do some hacky re-directing to point our own case-jump to ourself
+    * in order to still allow for fallthrough labeling, as well as prevent undefined local symbols
+    * from appearing in object files (essentially creating a jmp instruction that does nothing):
+    * >> switch ((int)(x == 0)) {      // cmpl $0, x; jmp <case 0>;
+    * >> case 0:  handle_not(); break; // jge <default>; call handle_not; jmp <break>;
+    * >> default: handle_def();        // call 
+    * >> // Because 'bool' (0|1) can never be equal to 2, this case is dead
+    * >> case 2:  handle_2();          // jmp <case 2> call handle_2; jmp <break>;
+    * >>          break;
+    * >> }
+    */
+   t_defsym(compiler.c_casejmp);
+   DCCSym_ClrDef(old_casejmp);
+   compiler.c_casejmp = old_casejmp;
+#else
+   /* The other possibility would be to generate an indirect jump.
+    * Technically, we'd always have to do that in case the case expression
+    * has side-effects, but we choose not to do so, as case expressions
+    * should technically always be constant.
+    * >> switch ((int)(x == 0)) {      // cmpl $0, x; jmp <case 0>;
+    * >> case 0:  handle_not(); break; // jge <case 2>; call handle_not; jmp <break>;
+    * >> default: handle_def();        // call 
+    * >> // Because 'bool' (0|1) can never be equal to 2, this case is dead
+    * >> case 2:  handle_2();          // jmp <case 2>; jmp <default>; call handle_2; jmp <break>;
+    * >>          break;
+    * >> }
+    */
+   vpushs(compiler.c_casejmp),vgen1('&'),vjmp();
+#endif
    compiler.c_flags = _old_flags;
    vpop(1);
    goto again_after_dead_label;
@@ -717,7 +752,6 @@ ignore_case_label:
     *               we must make sure that the case walks after that jump! */
    if (compiler.c_deadjmp) vpushs(label_sym),vgen1('&'),vjmp();
   }
-  if (TOK != ':') WARN(W_EXPECTED_COLON_AFTER_CASE); else YIELD();
   popf();
   /* Continue parsing afterwards. */
   if (compiler.c_flags&DCC_COMPILER_FLAG_SDEAD)

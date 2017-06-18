@@ -65,7 +65,7 @@ DCC_DECL_BEGIN
 struct DCCSym;
 struct TPPString;
 
-#ifdef DCC_TARGET_X86
+#if DCC_TARGET_HASI(I_X86)
 /* Register classes (or'd together with 'DCC_ASMREG_*' constants from "assembler.h")
  * NOTE: The RC_F* classes are or'd together to express overlapp.
  * e.g.: the first 4 16-bit register have 2 associated 8-bit registers.
@@ -75,7 +75,7 @@ struct TPPString;
 #   define DCC_RC_I8     0x0008 /*< 8-bit register: AL, CL, DL, BL, AH, CH, DH, BH. */
 #   define DCC_RC_I16    0x0010 /*< 16-bit register: AX, CX, DX, BX, SI, DI. */
 #   define DCC_RC_I32    0x0020 /*< 32-bit register: EAX, ECX, EDX, EBX, ESI, EDI. */
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_HASF(F_X86_64)
 #   define DCC_RC_I64    0x0040 /*< 64-bit register: RAX, RCX, RDX, RBX, RSI, RDI. */
 #   define DCC_RC_I3264 (DCC_RC_I32|DCC_RC_I64)
 #   define DCC_RC_PTR    DCC_RC_I64
@@ -186,9 +186,9 @@ struct TPPString;
  *    >> popf();
  */
 
-#ifdef DCC_TARGET_X86
+#if DCC_TARGET_HASI(I_X86)
 /* Register descriptor + class for base address of local variables. */
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_HASF(F_X86_64)
 #define DCC_RR_XAX  (DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_RAX)
 #define DCC_RR_XCX  (DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_RCX)
 #define DCC_RR_XDX  (DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8|DCC_ASMREG_RDX)

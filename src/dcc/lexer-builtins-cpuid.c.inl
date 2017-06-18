@@ -30,7 +30,7 @@
 
 DCC_DECL_BEGIN
 
-#if defined(DCC_TARGET_X86)
+#if DCC_TARGET_HASI(I_X86)
 
 /* Additional support for feature detection. */
 #define EXT_INTEL_CPU     1

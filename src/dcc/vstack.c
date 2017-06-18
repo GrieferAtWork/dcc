@@ -130,7 +130,7 @@ DCC_RC_FORTYPE(struct DCCType const *__restrict t) {
  switch (DCCType_Sizeof(t,NULL,1)) {
  case 1: result = DCC_RC_I8;  break;
  case 2: result = DCC_RC_I16|DCC_RC_I8; break;
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_HASF(F_X86_64)
  case 4: result = DCC_RC_I32|DCC_RC_I16|DCC_RC_I8; break;
  default: result = DCC_RC_I64|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8; break;
 #else
@@ -1610,6 +1610,10 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
   target->sv_reg      = DCC_RC_CONST;
   target->sv_reg2     = DCC_RC_CONST;
   target->sv_const.it = 0;
+  if (target->sv_sym) {
+   DCCSym_Decref(target->sv_sym);
+   target->sv_sym = NULL;
+  }
 end_cmp:
   DCCType_Quit(&target->sv_ctype);
   /* Compare operations always return a boolean. */

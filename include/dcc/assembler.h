@@ -30,6 +30,7 @@ DCC_DECL_BEGIN
 
 struct DCCSymAddr;
 
+#if DCC_TARGET_ASMI(I_X86)
 /* DCC_ASMOP_R_8: 8-bit registers. */
 #define DCC_ASMREG_AL     (0 << 0)
 #define DCC_ASMREG_CL     (1 << 0)
@@ -66,7 +67,7 @@ struct DCCSymAddr;
 #define DCC_ASMREG_ESI  6 /*< Source pointer. */
 #define DCC_ASMREG_EDI  7 /*< Destination pointer. */
 
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_HASF(F_X86_64)
 /* DCC_ASMOP_R_64: 64-bit registers. */
 #define DCC_ASMREG_RAX  0 /*< Accumulator. */
 #define DCC_ASMREG_RCX  1 /*< Counter register. */
@@ -76,8 +77,9 @@ struct DCCSymAddr;
 #define DCC_ASMREG_RBP  5 /*< Stack base pointer. */
 #define DCC_ASMREG_RSI  6 /*< Source pointer. */
 #define DCC_ASMREG_RDI  7 /*< Destination pointer. */
-#endif
+#endif /* F_X86_64 */
 
+#if DCC_TARGET_ASMF(F_MMX)
 /* DCC_ASMOP_R_MMX: MMX registers. */
 #define DCC_ASMREG_MM0  0
 #define DCC_ASMREG_MM1  1
@@ -87,7 +89,9 @@ struct DCCSymAddr;
 #define DCC_ASMREG_MM5  5
 #define DCC_ASMREG_MM6  6
 #define DCC_ASMREG_MM7  7
+#endif /* F_MMX */
 
+#if DCC_TARGET_ASMF(F_SSE)
 /* DCC_ASMOP_R_SSE: SSE registers. */
 #define DCC_ASMREG_XMM0 0
 #define DCC_ASMREG_XMM1 1
@@ -97,6 +101,7 @@ struct DCCSymAddr;
 #define DCC_ASMREG_XMM5 5
 #define DCC_ASMREG_XMM6 6
 #define DCC_ASMREG_XMM7 7
+#endif /* F_SSE */
 
 /* DCC_ASMOP_R_CR: Control registers. */
 #define DCC_ASMREG_CR0  0
@@ -148,9 +153,13 @@ struct DCCSymAddr;
 
 /* DCC_ASMOP_R_ST: Floating point st(i) registers. */
 #define DCC_ASMREG_ST(i) ((i)&DCC_BITS(3))
+#else /* I_X86 */
+/* ... */
+#endif /* !I_X86 */
 
 
 /* Opcode encoding flags. */
+#if DCC_TARGET_ASMI(I_X86)
 #define DCC_ASMOPC_REG         0x0001 /*< May only be used if at least one operand is a register:
                                        *  Add the index of the first operand's register to the opcode. */
 #define DCC_ASMOPC_MODRM       0x0002 /*< "r/m(8|16|32)":  Use mod/rm opcode encoding. */
@@ -167,32 +176,47 @@ struct DCCSymAddr;
 #define DCC_ASMOPC_DISP        0x0200 /*< Immediate arguments are generated as displacements to the next instruction. */
 #define DCC_ASMOPC_PREFIX      0x0400 /*< The instruction can be written in-line with the next one (NOTE: Only checked for the first overload). */
 #define DCC_ASMOPC_SIZE(bits) \
- ((bits) == 8   ? 0x2000 : \
-  (bits) == 16  ? 0x4000 : \
-  (bits) == 32  ? 0x6000 : \
-  (bits) == 64  ? 0x8000 : \
+ ((bits) == 8 ? 0x2000 : \
+  (bits) == 16 ? 0x4000 : \
+  (bits) == 32 ? 0x6000 : \
+  (bits) == 64 ? 0x8000 : \
   (bits) == 128 ? 0xa000 : \
   (bits) == 256 ? 0xc000 : \
   (bits) == 512 ? 0xe000 : 0)
 #define DCC_ASMOPC_SIZESHIFT   13     /*< Shift for explicit operand size. */
 #define DCC_ASMOPC_SIZEMASK    0xe000 /*< Mask for explicit operand size. */
+#else /* I_X86 */
+/* ... */
+#endif /* !I_X86 */
 
+#if DCC_TARGET_ASMI(I_X86)
 /* Operand types (for use in 'asm.inl' operand types) */
 /* NOTE: These registers must be ordered to those in 'keywords.def'. */
 #define DCC_ASMOPT_R_8    0x0000 /*< 8-bit register. */
 #define DCC_ASMOPT_R_16   0x0001 /*< 16-bit register. */
 #define DCC_ASMOPT_R_32   0x0002 /*< 32-bit register. */
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_HASF(F_X86_64)
 #define DCC_ASMOPT_R_64   0x0003 /*< 64-bit register. */
-#define DCC_ASMOPT_R_MMX  0x0004 /*< MMX register. */
-#else
-#define DCC_ASMOPT_R_MMX  0x0003 /*< MMX register. */
-#endif
-#define DCC_ASMOPT_R_SSE  (DCC_ASMOPT_R_MMX+1) /*< SSE register. */
-#define DCC_ASMOPT_R_CR   (DCC_ASMOPT_R_MMX+2) /*< CR* register. */
-#define DCC_ASMOPT_R_TR   (DCC_ASMOPT_R_MMX+3) /*< TR* register. */
-#define DCC_ASMOPT_R_DB   (DCC_ASMOPT_R_MMX+4) /*< DB* register. */
-#define DCC_ASMOPT_R_DR   (DCC_ASMOPT_R_MMX+5) /*< DR* register. */
+#define DCC_PRIVATE_ASMOPT_R_NEXT1 0x0004 /*< MMX register. */
+#else /* F_X86_64 */
+#define DCC_PRIVATE_ASMOPT_R_NEXT1 0x0003 /*< MMX register. */
+#endif /* !F_X86_64 */
+#if DCC_TARGET_ASMF(F_MMX)
+#define DCC_ASMOPT_R_MMX  DCC_PRIVATE_ASMOPT_R_NEXT1 /*< MMX register. */
+#define DCC_PRIVATE_ASMOPT_R_NEXT2 DCC_PRIVATE_ASMOPT_R_NEXT1+1
+#else /* F_MMX */
+#define DCC_PRIVATE_ASMOPT_R_NEXT2 DCC_PRIVATE_ASMOPT_R_NEXT1
+#endif /* !F_MMX */
+#if DCC_TARGET_ASMF(F_SSE)
+#define DCC_ASMOPT_R_SSE  (DCC_PRIVATE_ASMOPT_R_NEXT2+1) /*< SSE register. */
+#define DCC_PRIVATE_ASMOPT_R_NEXT3 DCC_PRIVATE_ASMOPT_R_NEXT2+1
+#else /* F_SSE */
+#define DCC_PRIVATE_ASMOPT_R_NEXT3 DCC_PRIVATE_ASMOPT_R_NEXT2
+#endif /* !F_SSE */
+#define DCC_ASMOPT_R_CR   (DCC_PRIVATE_ASMOPT_R_NEXT3+0) /*< CR* register. */
+#define DCC_ASMOPT_R_TR   (DCC_PRIVATE_ASMOPT_R_NEXT3+1) /*< TR* register. */
+#define DCC_ASMOPT_R_DB   (DCC_PRIVATE_ASMOPT_R_NEXT3+2) /*< DB* register. */
+#define DCC_ASMOPT_R_DR   (DCC_PRIVATE_ASMOPT_R_NEXT3+3) /*< DR* register. */
 
 #define DCC_ASMOPT_R_SEG  0x000a /*< Segment register. */
 #define DCC_ASMOPT_R_ST   0x000b /*< st(i) register. */
@@ -200,9 +224,9 @@ struct DCCSymAddr;
 #define DCC_ASMOPT_IMM_8  0x000d /*< 8-bit, unsigned immediate value. */
 #define DCC_ASMOPT_IMM_16 0x000e /*< 16-bit, unsigned immediate value. */
 #define DCC_ASMOPT_IMM_32 0x000f /*< 32-bit, unsigned immediate value. */
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_HASF(F_X86_64)
 #define DCC_ASMOPT_IMM_64 0x0010 /*< 64-bit, unsigned immediate value. */
-#endif
+#endif /* F_X86_64 */
 #define DCC_ASMOPT_ADDR   0x0011 /*< An absolute memory location. */
 /* Special register flags. */
 #define DCC_ASMOPT_EAX    0x0100 /*< Any accumulator register ('%al', '%ax', '%eax' or '%rax'). */
@@ -223,9 +247,9 @@ struct DCCSymAddr;
 #define DCC_ASMOPT_A8     0x0000 /*< Used with 'DCC_ASMOPT_ADDR': 8-bit address/disp. */
 #define DCC_ASMOPT_A16    0x4000 /*< Used with 'DCC_ASMOPT_ADDR': 16-bit address/disp. */
 #define DCC_ASMOPT_A32    0x8000 /*< Used with 'DCC_ASMOPT_ADDR': 32-bit address/disp. */
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_HASF(F_X86_64)
 #define DCC_ASMOPT_A64    0xc000 /*< Used with 'DCC_ASMOPT_ADDR': 64-bit address/disp. */
-#endif
+#endif /* F_X86_64 */
 #define DCC_ASMOPT_ASHIFT 14
 #define DCC_ASMOPT_AMASK  0xc000
 #define DCC_ASMOPT_ASIZ(t) (1 << (((t)&DCC_ASMOPT_AMASK) >> DCC_ASMOPT_ASHIFT))
@@ -234,11 +258,15 @@ struct DCCSymAddr;
 #define DCC_ASMOP_R_8    (1 << DCC_ASMOPT_R_8)    /*< 8-bit general-purpose register. */
 #define DCC_ASMOP_R_16   (1 << DCC_ASMOPT_R_16)   /*< 16-bit general-purpose register. */
 #define DCC_ASMOP_R_32   (1 << DCC_ASMOPT_R_32)   /*< 32-bit general-purpose register. */
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#ifdef DCC_ASMOPT_R_64
 #define DCC_ASMOP_R_64   (1 << DCC_ASMOPT_R_64)   /*< [x86_64] 64-bit general-purpose register. */
 #endif
+#ifdef DCC_ASMOPT_R_MMX
 #define DCC_ASMOP_R_MMX  (1 << DCC_ASMOPT_R_MMX)  /*< MMX register. */
+#endif
+#ifdef DCC_ASMOPT_R_SSE
 #define DCC_ASMOP_R_SSE  (1 << DCC_ASMOPT_R_SSE)  /*< SSE register. */
+#endif
 #define DCC_ASMOP_R_CR   (1 << DCC_ASMOPT_R_CR)   /*< CR* register. */
 #define DCC_ASMOP_R_TR   (1 << DCC_ASMOPT_R_TR)   /*< TR* register. */
 #define DCC_ASMOP_R_DB   (1 << DCC_ASMOPT_R_DB)   /*< DB* register. */
@@ -249,7 +277,7 @@ struct DCCSymAddr;
 #define DCC_ASMOP_IMM_8  (1 << DCC_ASMOPT_IMM_8)  /*< 8-bit, unsigned immediate value. */
 #define DCC_ASMOP_IMM_16 (1 << DCC_ASMOPT_IMM_16) /*< 16-bit, unsigned immediate value. */
 #define DCC_ASMOP_IMM_32 (1 << DCC_ASMOPT_IMM_32) /*< 32-bit, unsigned immediate value. */
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#ifdef DCC_ASMOPT_IMM_64
 #define DCC_ASMOP_IMM_64 (1 << DCC_ASMOPT_IMM_64) /*< [x86_64] 64-bit, unsigned immediate value. */
 #endif
 #define DCC_ASMOP_ADDR   (1 << DCC_ASMOPT_ADDR)   /*< An absolute memory location. */
@@ -266,23 +294,32 @@ struct DCCSymAddr;
 #define DCC_ASMOP_ONE    (DCC_ASMOPT_ONE  << 16)  /*< Any immediate value equal to 1 (NOTE: Will prevent the value from being emit). */
 #define DCC_ASMOP_IND    (DCC_ASMOPT_IND  << 16)  /*< The operand is an indirection (e.g.: '*%eax') */
 #define DCC_ASMOP_EA     (DCC_ASMOPT_EA   << 16)  /*< A memory location potentially offset from a register. */
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#ifdef DCC_ASMOP_R_64
 #define DCC_ASMOP_REG    (DCC_ASMOP_R_8|DCC_ASMOP_R_16|DCC_ASMOP_R_32|DCC_ASMOP_R_64)
-#define DCC_ASMOP_IMM    (DCC_ASMOP_IMM_8S|DCC_ASMOP_IMM_8|DCC_ASMOP_IMM_16|DCC_ASMOP_IMM_32|DCC_ASMOP_IMM_64)
 #else
 #define DCC_ASMOP_REG    (DCC_ASMOP_R_8|DCC_ASMOP_R_16|DCC_ASMOP_R_32)
+#endif
+#ifdef DCC_ASMOP_IMM_64
+#define DCC_ASMOP_IMM    (DCC_ASMOP_IMM_8S|DCC_ASMOP_IMM_8|DCC_ASMOP_IMM_16|DCC_ASMOP_IMM_32|DCC_ASMOP_IMM_64)
+#else
 #define DCC_ASMOP_IMM    (DCC_ASMOP_IMM_8S|DCC_ASMOP_IMM_8|DCC_ASMOP_IMM_16|DCC_ASMOP_IMM_32)
 #endif
+#else /* I_X86 */
+/* ... */
+#endif /* !I_X86 */
 
-#define DCC_ASMOP_FROMTYPE(t) ((1 << (t)&0x1f)|(((t)&0x3f00) << 16))
 
 struct DCCAsmOperand {
+#if DCC_TARGET_ASMI(I_X86)
  uint32_t          ao_type;    /*< Set of 'DCC_ASMOP_*'. */
  int8_t            ao_reg;     /*< Register id or -1 if not used. (depends on 'ao_type'). */
  int8_t            ao_reg2;    /*< Second register id or -1 if not used. (depends on 'ao_type'). */
  uint8_t           ao_shift;   /*< Register shift. */
  uint8_t           ao_padding; /*< Padding... */
  struct DCCSymAddr ao_val;     /*< Immediate value, offset, or symbol. */
+#else /* I_X86 */
+/* ... */
+#endif /* !I_X86 */
 };
 
 

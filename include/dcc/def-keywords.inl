@@ -495,32 +495,55 @@ PREDEFINED_MACRO_IF(__KOS__,HAS(EXT_SYSTEM_MACROS),"1")
 #endif
 
 /* Predefined macros. */
-#if DCC_TARGET_IA32(386)
+#if DCC_TARGET_HASM(M_I386)
 ARCH_MACRO3(i386)
 #endif
-#if DCC_TARGET_IA32(486)
+#if DCC_TARGET_HASM(M_I486)
 ARCH_MACRO3(i486)
 #endif
-#if DCC_TARGET_IA32(586)
+#if DCC_TARGET_HASM(M_I586)
 ARCH_MACRO3(i586)
-#endif
-#if DCC_TARGET_IA32(686)
+#endif /* M_I586 */
+#if DCC_TARGET_HASM(M_PENTIUM)
+ARCH_MACRO3(pentium)
+#endif /* M_PENTIUM */
+#if DCC_TARGET_HASM(M_PENTIUM_MMX)
+ARCH_MACRO3(pentium_mmx)
+#endif /* M_PENTIUM_MMX */
+#if DCC_TARGET_HASM(M_K6)
+ARCH_MACRO3(amdk6)
+#endif /* M_K6 */
+#if DCC_TARGET_HASM(M_PENTIUM_PRO)
+ARCH_MACRO3(pentiumpro)
+#endif /* M_PENTIUM_PRO */
+#if DCC_TARGET_HASM(M_PENTIUM_II)
+ARCH_MACRO3(pentium2)
+#endif /* M_PENTIUM_II */
+#if DCC_TARGET_HASM(M_I686)
 ARCH_MACRO3(i686)
-#endif
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
-PREDEFINED_MACRO_IF(__x86_64__,HAS(EXT_CPU_MACROS),"1")
-#endif
-#ifdef DCC_TARGET_X86
+#endif /* M_I686 */
+#if DCC_TARGET_HASF(F_X86_64)
+ARCH_MACRO3(x86_64)
+#endif /* F_X86_64 */
+#undef ARCH_MACRO3
+#if DCC_TARGET_HASI(I_X86)
 PREDEFINED_MACRO_IF(_X86_,HAS(EXT_CPU_MACROS),"1")
 #endif
 
 #if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
-#ifdef DCC_TARGET_IA32_VERSION
-PREDEFINED_MACRO_IF(_M_IX86,HAS(EXT_CPU_MACROS),DCC_PP_STR(DCC_TARGET_IA32_VERSION))
-#endif /* DCC_TARGET_IA32_VERSION */
+#if DCC_TARGET_HASI(I_X86)
+#if DCC_TARGET_HASM(M_I686)
+PREDEFINED_MACRO_IF(_M_IX86,HAS(EXT_CPU_MACROS),"600")
+#elif DCC_TARGET_HASM(M_I586)
+PREDEFINED_MACRO_IF(_M_IX86,HAS(EXT_CPU_MACROS),"500")
+#elif DCC_TARGET_HASM(M_I486)
+PREDEFINED_MACRO_IF(_M_IX86,HAS(EXT_CPU_MACROS),"400")
+#else
+PREDEFINED_MACRO_IF(_M_IX86,HAS(EXT_CPU_MACROS),"300")
+#endif
+#endif /* X86 */
 PREDEFINED_MACRO_IF(_INTEGRAL_MAX_BITS,HAS(EXT_UTILITY_MACROS),"64")
 #endif /* DCC_TARGET_OS&DCC_OS_F_WINDOWS */
-#undef ARCH_MACRO3
 
 #if DCC_TARGET_SIZEOF_POINTER == 8 && \
     DCC_TARGET_SIZEOF_LONG == 8
@@ -729,6 +752,7 @@ PREDEFINED_MACRO_IF(__NULL__,       HAS(EXT_UTILITY_MACROS),"0")
 PREDEFINED_MACRO_IF(__CHAR_UNSIGNED__,HAS(EXT_UTILITY_MACROS) && (TPPLexer_Current->l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED),"1")
 PREDEFINED_MACRO_IF(__WCHAR_UNSIGNED__,HAS(EXT_UTILITY_MACROS),"1")
 
+#if DCC_TARGET_ASMI(I_X86)
 
 /* 8-bit registers. */
 DEF_K(al) DEF_K(cl) DEF_K(dl) DEF_K(bl)
@@ -742,19 +766,23 @@ DEF_K(sp) DEF_K(bp) DEF_K(si) DEF_K(di)
 DEF_K(eax) DEF_K(ecx) DEF_K(edx) DEF_K(ebx)
 DEF_K(esp) DEF_K(ebp) DEF_K(esi) DEF_K(edi)
 
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
+#if DCC_TARGET_ASMF(F_X86_64)
 /* 64-bit registers. */
 DEF_K(rax) DEF_K(rcx) DEF_K(rdx) DEF_K(rbx)
 DEF_K(rsp) DEF_K(rbp) DEF_K(rsi) DEF_K(rdi)
-#endif
+#endif /* F_X86_64 */
 
+#if DCC_TARGET_ASMF(F_MMX)
 /* MMX registers. */
 DEF_K(mm0) DEF_K(mm1) DEF_K(mm2) DEF_K(mm3)
 DEF_K(mm4) DEF_K(mm5) DEF_K(mm6) DEF_K(mm7)
+#endif /* F_MMX */
 
+#if DCC_TARGET_ASMF(F_SSE)
 /* SSE registers. */
 DEF_K(xmm0) DEF_K(xmm1) DEF_K(xmm2) DEF_K(xmm3)
 DEF_K(xmm4) DEF_K(xmm5) DEF_K(xmm6) DEF_K(xmm7)
+#endif /* F_SSE */
 
 /* Control registers. */
 DEF_K(cr0) DEF_K(cr1) DEF_K(cr2) DEF_K(cr3)
@@ -782,6 +810,9 @@ DEF_K(st)
 #define DEF_OPCODE(name,...)	 KWD(KWD_##name,#name)
 #include "def-asm.inl"
 #undef DEF_OPCODE
+#else /* I_X86 */
+/* ... */
+#endif /* !I_X86 */
 
 /* Keywords for assembly directives. */
 /* DEF_K(align) */
@@ -816,17 +847,18 @@ DEF_K(size)
 DEF_K(type)
 /* DEF_K(section) // Already an __attribute__ */
 DEF_K(previous)
-#if DCC_TARGET_IA32(0)
-DEF_K(code16)
-DEF_K(code32)
-#endif
-#if DCC_TARGET_CPU == DCC_CPU_X86_64
-DEF_K(code64)
-#endif
 DEF_K(set)
 DEF_K(incbin)
 DEF_K(lflags)
 DEF_K(ln)
+#if DCC_TARGET_HASI(I_X86)
+#if DCC_TARGET_HASF(F_X86_64)
+DEF_K(code64)
+#else
+DEF_K(code16)
+DEF_K(code32)
+#endif
+#endif
 
 
 EXTENSION(EXT_CPU_MACROS,    "define-cpu-macros",    1)
@@ -978,7 +1010,7 @@ DEF_WARNING(W_ASM_DIRECTIVE_PREV_NO_PREVIOUS_SECTION,(WG_ASM,WG_VALUE),WSTATE_WA
 DEF_WARNING(W_ASM_DIRECTIVE_SET_EXPECTED_KEYWORD,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after " Q(".set") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_ASM_DIRECTIVE_INCLUDE_EXPECTED_STRING,(WG_ASM,WG_SYNTAX),WSTATE_WARN,WARNF("Expected string after " Q(".include") ", but got " TOK_S,TOK_A))
 DEF_WARNING(W_ASM_CONSTEXPR_INVALID_OPERATION,(WG_SYNTAX),WSTATE_WARN,WARNF("Invalid operation in constant expression"))
-#if DCC_TARGET_IA32(386)
+#if DCC_TARGET_HASM(M_I386)
 DEF_WARNING(W_ASM_386_RM_SHIFT_IN_CODE16,(WG_SYNTAX),WSTATE_WARN,WARNF("Register shifts are not supported in .code16 regions"))
 #endif
 

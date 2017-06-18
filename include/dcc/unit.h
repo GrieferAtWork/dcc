@@ -135,7 +135,7 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 #define DCC_SYMFLAG_SEC_FIXED    0x20000000 /*< The section must be loaded to a fixed address already specified by 'sy_addr'.
                                              *  When multiple sections overlap at the same virtual address, it is the linker's job to solve such problems. */
 #define DCC_SYMFLAG_SEC_NOALLOC  0x40000000 /*< The runtime linker is not required to allocate this section. */
-#if DCC_HOST_CPU == DCC_TARGET_CPU
+#if DCC_HOST_CPUM == DCC_TARGET_CPUM
 #define DCC_SYMFLAG_SEC_OWNSBASE 0x80000000 /*< The base address is allocated through system-functions and must be freed. */
 #endif
 
@@ -401,7 +401,7 @@ DCCFUN int DCCSym_Contains(struct DCCSym const *__restrict v, DCC(target_siz_t) 
 typedef uint32_t DCC(rel_t); /* One of 'DCC_R_*', or CPU-specific ELF relocation. */
 
 /* ELF relocation types. */
-#if DCC_TARGET_IA32(386)
+#if DCC_TARGET_HASM(M_I386)
 #   define DCC_R_NONE      R_386_NONE /* Empty relocation (used for symbol dependency) */
 #   define DCC_R_DATA_8    R_386_8
 #   define DCC_R_DATA_16   R_386_16
@@ -414,7 +414,7 @@ typedef uint32_t DCC(rel_t); /* One of 'DCC_R_*', or CPU-specific ELF relocation
 #   define DCC_R_COPY      R_386_COPY
 #   define DCC_R_RELATIVE  R_386_RELATIVE
 #   define DCC_R_NUM       R_386_NUM
-#elif DCC_TARGET_CPU == DCC_CPU_X86_64
+#elif DCC_TARGET_HASF(F_X86_64)
 #   define DCC_R_NONE      R_X86_64_NONE
 #   define DCC_R_DATA_8    R_X86_64_8
 #   define DCC_R_DATA_16   R_X86_64_16
@@ -810,13 +810,13 @@ DCCFUN size_t DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_w
  * @requires: !DCCSection_ISIMPORT(self) */
 DCCFUN void DCCSection_SetBaseTo(struct DCCSection *__restrict self, DCC(target_ptr_t) address);
 
-#if DCC_HOST_CPU == DCC_TARGET_CPU
+#if DCC_HOST_CPUM == DCC_TARGET_CPUM
 /* Allocate a base address for the given section.
  * This function is required for execution of code after it has been generated.
  * NOTE: Upon failure, a lexer error is set.
  * @requires: !DCCSection_ISIMPORT(self) */
 DCCFUN void DCCSection_SetBase(struct DCCSection *__restrict self);
-#endif /* DCC_HOST_CPU == DCC_TARGET_CPU */
+#endif /* DCC_HOST_CPUM == DCC_TARGET_CPUM */
 
 /* Returns a symbol 'name' apart of the given section 'self'
  * WARNING: If the section contains multiple symbols named 'name', which symbol

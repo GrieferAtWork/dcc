@@ -83,6 +83,7 @@
     <ClCompile Include="..\lib\test\constant_arithmetic.c" />
     <ClCompile Include="..\lib\test\int64.c" />
     <ClCompile Include="..\lib\test\intprom.c" />
+    <ClCompile Include="..\lib\test\reachable.c" />
     <ClCompile Include="..\lib\test\sizeof.c" />
   </ItemGroup>
   <ItemGroup>

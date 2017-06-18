@@ -100,9 +100,15 @@ PUBLIC void DCCDisp_Fence(tok_t kind) {
   /* Setup the flags to mirror the dead/unreachable state. */
   compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|DCC_COMPILER_FLAG_DEAD);
   break;
+#if DCC_TARGET_HASF(F_SSE2)
  case DCC_FENCE_SFENCE: t_putb(0x0f),t_putb(0xae),asm_modreg(7,0); break; /* sfence */
  case DCC_FENCE_LFENCE: t_putb(0x0f),t_putb(0xae),asm_modreg(5,0); break; /* lfence */
  case DCC_FENCE_MFENCE: t_putb(0x0f),t_putb(0xae),asm_modreg(6,0); break; /* mfence */
+#else
+ case DCC_FENCE_SFENCE: break;
+ case DCC_FENCE_LFENCE: break;
+ case DCC_FENCE_MFENCE: break;
+#endif
  default: break;
  }
 }
@@ -531,7 +537,7 @@ DCCDisp_AtomicRegBinMem(tok_t op, int fetch_mode, rc_t src,
   DCCDisp_RegBinMem(op,src,dst,1);
   return;
  }
-#if DCC_TARGET_IA32(486)
+#if DCC_TARGET_HASM(M_I486)
  if (op == '+') {
   /* Optimizations for '+': use 'lock xadd' */
   if (fetch_mode == DCCDISP_ATOMICBIN_FETCHAFTER) {
