@@ -8139,7 +8139,7 @@ PUBLIC int TPP_Atoi(int_t *__restrict pint) {
   else break;
   if unlikely(more >= numsys) break;
   new_intval = intval*numsys+more;
-  if unlikely((uint64_t)new_intval < (uint64_t)intval) {
+  if unlikely((uintmax_t)new_intval < (uintmax_t)intval) {
    /* Warn about overflow: */
    if unlikely(!WARN(W_INTEGRAL_OVERFLOW,intval,new_intval)) goto err;
   }
@@ -8189,6 +8189,7 @@ wrong_suffix:
                ) goto err;
   }
  }
+#if 0
  /* Clamp 'intval' with the determined type. */
  switch (result&TPP_ATOI_TYPE_MASK) {
 #define T_MASK(T) (int_t)(~(T)0)
@@ -8209,6 +8210,7 @@ wrong_suffix:
   if unlikely(!WARN(W_INTEGRAL_CLAMPED,intval,new_intval)) goto err;
  }
  intval = new_intval;
+#endif
 done: *pint = intval;
 end:   return result;
 err:   result = TPP_ATOI_ERR; goto end;

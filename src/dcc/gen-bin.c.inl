@@ -656,6 +656,23 @@ DCCDisp_RegsBinRegs(tok_t op, rc_t src, rc_t src2,
   DCCDisp_LargeRegsBinRegs(op,src,src2,dst,dst2,src_unsigned);
   return;
  }
+ if (op == '=' && dst2 != DCC_RC_CONST && src2 != DCC_RC_CONST) {
+  if (src == dst) { DCCDisp_RegMovReg(src2,dst2,src_unsigned); return; }
+  if (src2 == dst2) { DCCDisp_RegMovReg(src,dst,src_unsigned); return; }
+  /* Special handling for criss-cross assignment. */
+  if ((src&DCC_RI_MASK) == (dst2&DCC_RI_MASK) &&
+      (src2&DCC_RI_MASK) == (dst&DCC_RI_MASK)) {
+   rc_t common_rc = (src&DCC_RC_MASK)|(src2&DCC_RC_MASK);
+   src  = DCCVStack_CastReg(src,src_unsigned,common_rc);
+   src2 = DCCVStack_CastReg(src2,src_unsigned,common_rc);
+   assert((src&DCC_RC_MASK)  == common_rc);
+   assert((src2&DCC_RC_MASK) == common_rc);
+   DCCDisp_RegXchReg(src,src2);
+   DCCDisp_RegMovReg(src2,dst,src_unsigned);
+   DCCDisp_RegMovReg(src,dst2,src_unsigned);
+   return;
+  }
+ }
  DCCDisp_RegBinReg(op,src,dst,src_unsigned);
  if (dst2 != DCC_RC_CONST) {
   struct DCCSym *jsym = NULL;

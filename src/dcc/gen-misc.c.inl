@@ -29,10 +29,6 @@
 
 DCC_DECL_BEGIN
 
-//* xchg %r8, r/m8   */OVERLOAD_2(0x86,8, 'r',DCC_ASMOPC_MODRM,               DCC_ASMOPT_R_8,DCC_ASMOPT_R_8|DCC_ASMOPT_EA)
-//* xchg %r16, r/m16 */OVERLOAD_2(0x87,16,'r',DCC_ASMOPC_MODRM|DCC_ASMOPC_D16,DCC_ASMOPT_R_16,DCC_ASMOPT_R_16|DCC_ASMOPT_EA)
-//* xchg %r32, r/m32 */OVERLOAD_2(0x87,32,'r',DCC_ASMOPC_MODRM,               DCC_ASMOPT_R_32,DCC_ASMOPT_R_32|DCC_ASMOPT_EA)
-
 PUBLIC void
 DCCDisp_RegXchReg(rc_t a, rc_t b) {
  rc_t temp;
