@@ -176,22 +176,38 @@ PUBLIC void *
 DCC_dbg_realloc(void *p, size_t s, char const *f, int l) {
  /* A debug version of realloc() that forces
   * allocation into a different pointer. */
-#ifdef _CRTDBG_MAP_ALLOC
- void *result = _realloc_dbg(p,s,_NORMAL_BLOCK,f,l);
-#else
- void *result = realloc(p,s);
-#endif
+ void *result; size_t old_size = (size_t)-1;
  (void)f,(void)l;
- if (result && result == p) {
+#ifdef _MSC_VER
+ if (p) {
 #ifdef _CRTDBG_MAP_ALLOC
-  void *newresult = _malloc_dbg(s,_NORMAL_BLOCK,f,l);
+  old_size = _msize_dbg(p,_NORMAL_BLOCK);
 #else
-  void *newresult = malloc(s);
+  old_size = _msize(p);
 #endif
-  if (newresult) {
-   memcpy(newresult,result,s);
-   free(result);
-   result = newresult;
+ }
+#endif
+#ifdef _CRTDBG_MAP_ALLOC
+ result = _realloc_dbg(p,s,_NORMAL_BLOCK,f,l);
+#else
+ result = realloc(p,s);
+#endif
+ if (result) {
+  if (result == p) {
+#ifdef _CRTDBG_MAP_ALLOC
+   void *newresult = _malloc_dbg(s,_NORMAL_BLOCK,f,l);
+#else
+   void *newresult = malloc(s);
+#endif
+   if (newresult) {
+    memcpy(newresult,result,s);
+    free(result);
+    result = newresult;
+   }
+  }
+  if (s > old_size) {
+   memset((void *)((uintptr_t)result+old_size),
+           0xac,s-old_size);
   }
  }
  return result;

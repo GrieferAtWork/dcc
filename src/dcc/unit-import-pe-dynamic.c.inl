@@ -126,22 +126,10 @@ DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def,
   hdr.ohdr.DataDirectory[id].Size)
 #define GET_DIR(id)  hdr.ohdr.DataDirectory[id]
  read_error = s_read(fd,&hdr,sizeof(hdr));
-#ifdef __DCC_VERSION__
- printf("#1\n");
-#endif
  if (read_error < 0) goto end;
-#ifdef __DCC_VERSION__
- printf("#2\n");
-#endif
  hdr_size = (size_t)read_error;
  if (!HAS_FIELD(fhdr)) goto end;
-#ifdef __DCC_VERSION__
- printf("#3\n");
-#endif
  if (hdr.ntsg != IMAGE_NT_SIGNATURE) goto end;
-#ifdef __DCC_VERSION__
- printf("#4\n");
-#endif
  if (hdr.fhdr.Machine != DCC_PE_TARGET_MACHINE) {
   WARN(W_LIB_PE_INVALID_MACHINE,
       (unsigned int)DCC_PE_TARGET_MACHINE,
@@ -158,9 +146,6 @@ DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def,
   * But besides that, we know that the library is OK to use at this point! */
  /* Make sure that the binary has relocations, because
   * otherwise it would be impossible to safely link against it. */
-#ifdef __DCC_VERSION__
- printf("#5\n");
-#endif
  if (hdr.fhdr.Characteristics&IMAGE_FILE_RELOCS_STRIPPED) { WARN(W_LIB_PE_NO_RELOCATIONS,file); if (!OK) goto end; }
  if (!(hdr.fhdr.Characteristics&IMAGE_FILE_DLL)) { WARN(W_LIB_PE_NO_DLL,file); if (!OK) goto end; }
  if (HAS_FIELD(ohdr.Magic) && hdr.ohdr.Magic !=
@@ -183,20 +168,11 @@ no_export_table:
   * to find the associated section and know here it exists within the file. */
  sections = (PIMAGE_SECTION_HEADER)DCC_Malloc(section_header_count*
                                               sizeof(IMAGE_SECTION_HEADER),0);
-#ifdef __DCC_VERSION__
- printf("#5.5\n");
-#endif
  if unlikely(!sections) goto end;
  s_seek(fd,section_header_offset,SEEK_SET);
  read_error = s_read(fd,sections,section_header_count*
                      sizeof(IMAGE_SECTION_HEADER));
-#ifdef __DCC_VERSION__
- printf("#6\n");
-#endif
  if (read_error < 0) goto end;
-#ifdef __DCC_VERSION__
- printf("#7\n");
-#endif
  section_header_count = read_error/sizeof(IMAGE_SECTION_HEADER);
  if (!section_header_count) { WARN(W_LIB_PE_NO_SECTIONS,file); goto end; }
  sec_end = (sec = sections)+section_header_count;

@@ -1693,20 +1693,7 @@ TPPFile_NextChunk(struct TPPFile *__restrict self, int flags) {
    newchunk->s_size = STREAM_BUFSIZE+prefix_size;
    assert(end_offset < newchunk->s_size);
    newchunk->s_text[end_offset] = self->f_textfile.f_prefixdel; /* Restore the previously deleted file end. */
-#ifdef __DCC_VERSION__
-   printf("self->f_begin        = %p\n",self->f_begin);
-   printf("newchunk             = %p\n",newchunk);
-   printf("newchunk->s_text     = %p\n",newchunk->s_text);
-   printf("self->f_text         = %p\n",self->f_text);
-   printf("self->f_text->s_text = %p\n",self->f_text->s_text);
-   //__builtin_breakpoint();
-   __asm__("nop\nnop\nnop\n");
-#endif
    self->f_begin = newchunk->s_text+(self->f_begin-self->f_text->s_text);
-#ifdef __DCC_VERSION__
-   __asm__("nop\nnop\nnop\n");
-   printf("self->f_begin = %p\n",self->f_begin);
-#endif
    self->f_pos   = newchunk->s_text+(self->f_pos-self->f_text->s_text);
   } else {
    /* Create a new chunk, potentially copying some small portion of data

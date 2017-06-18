@@ -468,18 +468,20 @@ DCCDisp_DoMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_byt
 }
 
 LOCAL void
-DCCDisp_TextMovMem(struct DCCCompilerText const *__restrict text,
-                               void const *__restrict src, target_siz_t src_bytes,
+DCCDisp_TextMovMem(struct DCCCompilerText const *__restrict text, target_siz_t src_bytes,
                    struct DCCMemLoc const *__restrict dst, target_siz_t dst_bytes,
                    int src_unsigned){
  target_ptr_t src_addr; size_t i,rel_end;
  struct DCCSection *src_sec;
  struct DCCMemLoc dst_iter;
+ struct DCCTextBuf *src_txt;
+ uint8_t *src_data;
  assert(text);
  src_sec = text->ct_sec;
  assert(src_sec);
- assert(src);
  assert(dst);
+ src_txt = src_sec == unit.u_curr ? &unit.u_tbuf : &src_sec->sc_text;
+
  /* Move text w/ relocations. */
  src_addr = text->ct_base;
  dst_iter = *dst;
@@ -494,8 +496,21 @@ DCCDisp_TextMovMem(struct DCCCompilerText const *__restrict text,
          rel->r_addr <  src_addr+src_bytes);
   jump           = (target_ptr_t)(rel->r_addr-src_addr);
   symaddr.sa_sym = rel->r_sym;
+  src_data       = src_txt->tb_begin+src_addr;
+  if (jump) {
+   assert(src_data+jump <= src_txt->tb_end);
+   /* Copy data from before the relocation. */
+   DCCDisp_VecMovMem(src_data,jump,&dst_iter,jump,1);
+   dst_iter.ml_off += jump;
+   src_addr        += jump;
+   src_bytes       -= jump;
+   dst_bytes       -= jump;
+   /* Reload 'src_data' in case VecMovMem relocated the source section. */
+   src_data = src_txt->tb_begin+src_addr;
+  }
+  assert(src_data <= src_txt->tb_end);
   switch (rel->r_type) {
-#define SRC(T)       (target_off_t)(*(T *)((uintptr_t)src+jump))
+#define SRC(T)       (assert(src_data+sizeof(T) <= src_txt->tb_end),(target_off_t)(*(T *)src_data))
   case DCC_R_DATA_8:  relw = 1,symaddr.sa_off = SRC(int8_t); break;
   case DCC_R_DATA_16: relw = 2,symaddr.sa_off = SRC(int16_t); break;
   case DCC_R_DATA_32: relw = 4,symaddr.sa_off = SRC(int32_t); break;
@@ -505,22 +520,12 @@ DCCDisp_TextMovMem(struct DCCCompilerText const *__restrict text,
 #undef SRC
   default: continue; /* ??? */
   }
-  if (jump) {
-   /* Copy data from before the relocation. */
-   DCCDisp_VecMovMem(src,jump,&dst_iter,jump,1);
-   dst_iter.ml_off    += jump;
-   src_addr           += jump;
-   *(uintptr_t *)&src += jump;
-   src_bytes          -= jump;
-   dst_bytes          -= jump;
-  }
   /* Write a constant symbol-based value to the target. */
   DCCDisp_CstMovMem(&symaddr,&dst_iter,relw);
-  dst_iter.ml_off    += relw;
-  src_addr           += relw;
-  *(uintptr_t *)&src += relw;
-  src_bytes          -= relw;
-  dst_bytes          -= relw;
+  dst_iter.ml_off += relw;
+  src_addr        += relw;
+  src_bytes       -= relw;
+  dst_bytes       -= relw;
  }
  /* TODO: Handle case: last bytes of 'src' are described by a relocation,
   *       but 'dst_bytes' is non-ZERO and 'src_unsigned' is FALSE(0).
@@ -528,7 +533,9 @@ DCCDisp_TextMovMem(struct DCCCompilerText const *__restrict text,
   *       generate runtime code to take the sign-bit and extend it once
   *       the runtime linker has assigned addresses. */
  /* Move the remainder. */
- DCCDisp_VecMovMem(src,src_bytes,&dst_iter,dst_bytes,src_unsigned);
+ src_data = src_txt->tb_begin+src_addr;
+ assert(src_data+src_bytes <= src_txt->tb_end);
+ DCCDisp_VecMovMem(src_data,src_bytes,&dst_iter,dst_bytes,src_unsigned);
 }
 
 PUBLIC void
@@ -536,7 +543,6 @@ DCCDisp_MemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_bytes
                   struct DCCMemLoc const *__restrict dst, target_siz_t dst_bytes,
                   int src_unsigned) {
  struct DCCCompilerText text;
- void const *csrc;
  target_siz_t common_size;
  assert(src);
  assert(dst);
@@ -551,8 +557,8 @@ DCCDisp_MemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_bytes
  if (!dst_bytes) return; /* Do nothing for empty destination. */
  common_size = dst_bytes < src_bytes ? dst_bytes : src_bytes;
  /* Special case: Source is known at compile-time in this context. */
- if ((csrc = DCCMemLoc_CompilerText(src,&text,src_bytes)) != NULL) {
-  DCCDisp_TextMovMem(&text,csrc,src_bytes,dst,dst_bytes,src_unsigned);
+ if (DCCMemLoc_CompilerText(src,&text,src_bytes)) {
+  DCCDisp_TextMovMem(&text,src_bytes,dst,dst_bytes,src_unsigned);
   return;
  }
  /* Fallback. */
