@@ -688,6 +688,12 @@ next:
      else if (mod == 'q') val.sv_reg |= DCC_RC_I3264|DCC_RC_I16|DCC_RC_I8;
 #endif
      else                 val.sv_reg |= DCC_RC_I32|DCC_RC_I16|DCC_RC_I8;
+     if (!(operand->ao_flags&ASMIOP_FLAG_LLOCAL)) {
+      /* Fix explicit register operands. */
+      val.sv_const.it = 0;
+      val.sv_sym      = NULL;
+      val.sv_flags   &= ~(DCC_SFLAG_LVALUE);
+     }
     }
 #if 0
     if (operand->ao_reg2 >= 0) {
