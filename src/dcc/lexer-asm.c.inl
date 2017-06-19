@@ -361,14 +361,15 @@ ralloc:
    alloc_regs[reg] |= mask;
    break;
 
-  case 'q':
-   /* Allocate one of eax, ebx, ecx or edx */
+  case 'q': /* Any register addressible as 'Rh' */
+  case 'Q': /* Any register addressible as 'Rl' */
    /* TODO: Prefer registers from 'iter->ao_value'. */
    for (reg = 0; reg < 4; ++reg) {
     if (!(alloc_regs[reg]&mask)) goto ralloc;
    }
    goto cnext;
   case 'r':
+  case 'R':
    /* Any general purpose register. */
    /* TODO: Prefer registers from 'iter->ao_value'. */
    for (reg = 0; reg < 8; ++reg) {
@@ -377,16 +378,35 @@ ralloc:
    goto cnext;
 
   case 'i':
+#if !DCC_TARGET_ASMF(F_X86_64)
+  case 'Z': /* uint32_t */
+#endif /* F_X86_64 */
    /* Check for constant (xval) values. */
    if (!DCCSTACKVALUE_ISCONST_XVAL(iter->ao_value))
         goto cnext;
    break;
-  case 'I':
-  case 'N':
-  case 'M':
+  {
+   int_t valmin,valmax;
+#define RANGE(c,mi,ma) if (DCC_MACRO_FALSE) { case c: valmin = mi,valmax = ma; }
+   RANGE('I',0,31);
+   RANGE('J',0,63);
+   RANGE('K',INT8_MIN,INT8_MAX);
+   RANGE('M',0,3);
+   RANGE('N',0x00,0xff);
+#undef RANGE
    /* Check for constant (int) values. */
    if (!DCCSTACKVALUE_ISCONST_INT(iter->ao_value))
         goto cnext;
+   /* Check the valid range. */
+   if (iter->ao_value->sv_const.it < valmin ||
+       iter->ao_value->sv_const.it > valmax) goto cnext;
+  } break;
+  case 'L': /* 0xff or 0xffff */
+   if (!DCCSTACKVALUE_ISCONST_INT(iter->ao_value))
+        goto cnext;
+   if (iter->ao_value->sv_const.it != 0xff ||
+       iter->ao_value->sv_const.it != 0xffff)
+       goto cnext;
    break;
 
   case 'g':
@@ -945,8 +965,10 @@ DCCIAsmOps_Load(struct DCCIAsmOps *__restrict self) {
     register_target.sv_sym = NULL;
     DCCStackValue_Store(sval,&register_target,1);
    }
-  } else if (iter >= self->ao_opv+self->ao_out &&
-           !(iter->ao_flags&ASMIOP_FLAG_RW)) {
+  }
+#if 0 /* Turns out this isn't something GCC actually does... */
+  else if (iter >= self->ao_opv+self->ao_out &&
+         !(iter->ao_flags&ASMIOP_FLAG_RW)) {
    /* Make sure to copy input-only l-value operands.
     * NOTE: If assembly code made use of vstack operations
     *       it would be sufficient to only mark the stack-value
@@ -963,6 +985,7 @@ DCCIAsmOps_Load(struct DCCIAsmOps *__restrict self) {
     DCCStackValue_Cow(sval);
    }
   }
+#endif
  }
 }
 LEXPRIV void
@@ -976,19 +999,36 @@ DCCIAsmOps_Store(struct DCCIAsmOps *__restrict self) {
    if (sval->sv_flags&DCC_SFLAG_LVALUE) {
     if (!(iter->ao_flags&ASMIOP_FLAG_LLOCAL)) {
      struct DCCType *type_iter = &sval->sv_ctype;
-     struct DCCMemLoc ml;
-     ml.ml_off = sval->sv_const.offset;
-     ml.ml_reg = sval->sv_reg;
-     ml.ml_sym = sval->sv_sym;
-     while (DCCTYPE_GROUP(type_iter->t_type) == DCCTYPE_LVALUE) {
-      assert(type_iter->t_base);
-      DCCDisp_MemMovReg(&ml,iter->ao_reg|DCC_RC_PTRX);
-      type_iter = &type_iter->t_base->d_type;
-      ml.ml_off = 0;
-      ml.ml_reg = iter->ao_reg;
-      ml.ml_sym = NULL;
+     struct DCCMemLoc ml; size_t type_size;
+     type_size = DCCType_Sizeof(type_iter,NULL,1);
+     if (type_size) {
+      ml.ml_off = sval->sv_const.offset;
+      ml.ml_reg = sval->sv_reg;
+      ml.ml_sym = sval->sv_sym;
+      while (DCCTYPE_GROUP(type_iter->t_type) == DCCTYPE_LVALUE) {
+       assert(type_iter->t_base);
+       DCCDisp_MemMovReg(&ml,iter->ao_reg|DCC_RC_PTRX);
+       type_iter = &type_iter->t_base->d_type;
+       ml.ml_off = 0;
+       ml.ml_reg = iter->ao_reg;
+       ml.ml_sym = NULL;
+      }
+           if (type_size == 1) DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_I8,&ml);
+      else if (type_size == 2) DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_I16,&ml);
+      else if (type_size == 4) DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_I32,&ml);
+#ifdef DCC_RC_I64
+      else if (type_size == 8) DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_I64,&ml);
+#endif
+      else if (iter->ao_reg2 >= 0) {
+       DCCDisp_RegsBinMems('=',
+                           iter->ao_reg|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8,
+                           iter->ao_reg2|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8,
+                           &ml,type_size,1);
+      } else {
+       DCCDisp_RegMovMems(iter->ao_reg|DCC_RC_FORSIZE(type_size),
+                          &ml,type_size,1);
+      }
      }
-     DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_FORTYPE(type_iter),&ml);
     }
    } else if (iter >= self->ao_opv+self->ao_out ||
              (iter->ao_flags&ASMIOP_FLAG_RW)) {
@@ -1009,7 +1049,6 @@ DCCIAsmOps_Store(struct DCCIAsmOps *__restrict self) {
   } else if (iter->ao_flags&ASMIOP_FLAG_TEST) {
    /* Store the result of a test. */
    struct DCCStackValue test_value;
-   /* Load register value. */
    test_value.sv_ctype.t_base = NULL;
    test_value.sv_ctype.t_type = DCCTYPE_BOOL;
    test_value.sv_flags        = DCC_SFLAG_MKTEST(ASMIOP_GT_TEST(iter->ao_flags));
