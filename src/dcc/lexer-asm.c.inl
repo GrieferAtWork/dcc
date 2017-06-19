@@ -535,7 +535,7 @@ DCCIAsmOps_PushSave(struct DCCIAsmOps *__restrict self) {
  rc_t rc; uint8_t ri; rcset_t save; assert(self);
  save = DCC_RCSET_COM(self->ao_alloc,DCC_IASM_RCSET_SAVE);
  rc = DCC_RC_I16;
- if (compiler.c_flags&DCC_COMPILER_FLAG_CODE16) rc |= DCC_RC_I32;
+ if (!(compiler.c_flags&DCC_COMPILER_FLAG_CODE16)) rc |= DCC_RC_I32;
  DCC_RCSET_FOREACH(save,ri) DCCDisp_RegPush(rc|ri);
 }
 LEXPRIV void
@@ -543,7 +543,7 @@ DCCIAsmOps_PopSave(struct DCCIAsmOps *__restrict self) {
  rc_t rc; uint8_t ri; rcset_t save; assert(self);
  save = DCC_RCSET_COM(self->ao_alloc,DCC_IASM_RCSET_SAVE);
  rc = DCC_RC_I16;
- if (compiler.c_flags&DCC_COMPILER_FLAG_CODE16) rc |= DCC_RC_I32;
+ if (!(compiler.c_flags&DCC_COMPILER_FLAG_CODE16)) rc |= DCC_RC_I32;
  DCC_RCSET_RFOREACH(save,ri) DCCDisp_PopReg(rc|ri);
 }
 #endif
