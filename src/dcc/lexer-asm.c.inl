@@ -664,11 +664,14 @@ done:
 }
 
 
+
+
 LEXPRIV /*ref*/struct TPPString *
 DCCIAsmOps_Format(struct DCCIAsmOps *__restrict self,
                   struct TPPString *__restrict str) {
  struct stringwriter writer; char mod;
  char const *iter,*end,*flush_start;
+ unsigned int dialect_depth = 0;
  assert(self);
  assert(str);
  /* Start out with a buffer that is very likely to already be sufficient. */
@@ -692,6 +695,42 @@ next:
   if (iter-1 != end) goto next;
   --iter;
   break;
+
+ case '{':
+  ++dialect_depth;
+ case '|':
+ case '}':
+  /* Begin a new dialect block.
+   * NOTE: Since DCC implements AT&T syntax, we
+   *       always parse only the first dialect block. */
+  if (flush_start != iter-1) {
+   stringwriter_write(&writer,flush_start,
+                     (size_t)((iter-1)-flush_start));
+   flush_start = iter;
+  }
+  if (iter[-1] == '{') goto next;
+  if (dialect_depth) {
+   if (iter[-1] == '|') {
+    unsigned int recursion = 0;
+    /* Scan until the next '|' or '}', recursively resolving '{' ... '}' pairs */
+    for (;;) {
+     char ch = *iter++;
+          if (ch == '{') ++recursion;
+     else if (ch == '}') { if (!recursion) { --dialect_depth; break; } --recursion; }
+     else if (ch == '|') { if (!recursion) { break; } }
+     else if (!ch && iter-1 == end) goto done;
+    }
+    flush_start = iter;
+    goto next;
+   } else {
+    --dialect_depth;
+   }
+  } else {
+   WARN(W_IASM_UNESCAPED_SPECIAL_CHARACTER,(int)iter[-1]);
+  }
+  goto next;
+
+
  case '%':
   /* */
   if (flush_start != iter-1) {
@@ -835,7 +874,11 @@ done_special:
   goto next;
  default: goto next;
  }
+done:
  assert(iter == end);
+ /* Cleanup the dialect options stack. */
+ if (dialect_depth) WARN(W_IASM_UNCLOSED_DIALECT_STACK_BRACE);
+
  /* Flush any remainder. */
  if (flush_start != iter) {
   stringwriter_write(&writer,flush_start,

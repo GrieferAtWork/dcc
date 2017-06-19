@@ -1033,6 +1033,8 @@ DEF_WARNING(W_IASM_MODIFIER_ONLY_VALID_FOR_OUTPUT_OPERANDS,(WG_SYNTAX),WSTATE_WA
 DEF_WARNING(W_IASM_MISSING_RELOAD_REGISTER,(WG_SYNTAX),WSTATE_WARN,WARNF("Failed to allocated output register for reloading"))
 DEF_WARNING(W_IASM_UNKNOWN_CLOBBER,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown clobber name " Q("%s"),ARG(char *)))
 DEF_WARNING(W_IASM_INVALID_TEST,(WG_SYNTAX),WSTATE_WARN,WARNF("Invalid test name after " Q("=@cc") " in inline assembly operand constraints"))
+DEF_WARNING(W_IASM_UNESCAPED_SPECIAL_CHARACTER,(WG_SYNTAX),WSTATE_WARN,{ char c = (char)ARG(int); WARNF("Special character " Q("%c") " must be escaped using " Q("%%%c") " in extended inline assembly",c,c); })
+DEF_WARNING(W_IASM_UNCLOSED_DIALECT_STACK_BRACE,(WG_SYNTAX),WSTATE_WARN,WARNF("Unclosed dialect options brace " Q("{") " is missing its accompanying " Q("}")))
 
 WARNING_NAMESPACE(WN_PRAGMA,1200)
 DEF_WARNING(W_PRAGMA_UNKNOWN,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Unknown pragma " TOK_S,TOK_A))
