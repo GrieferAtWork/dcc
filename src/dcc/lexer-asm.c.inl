@@ -290,6 +290,10 @@ DCCIAsmOps_Prepare(struct DCCIAsmOps *__restrict self) {
   }
 cnext:
   switch (*ctext++) {
+  case '=':
+   /* TODO: Don't output operands require either '=' or '+' in their constraints?
+    *       Shouldn't we warn if they don't? */
+   goto cnext;
   case '+':
    iter->ao_flags |= ASMIOP_FLAG_RW;
   case '&':
@@ -378,7 +382,7 @@ found_llocal:
    break;
   default:
    WARN(W_IASM_INVALID_CONSTRAINT_MODIFIER,(int)ctext[-1]);
-  case '=': goto cnext;
+   goto cnext;
   }
   /* Duplicate reference operators. */
   if (iter->ao_input) {
@@ -800,6 +804,23 @@ DCCIAsmOps_Load(struct DCCIAsmOps *__restrict self) {
     register_target.sv_sym = NULL;
     DCCStackValue_Store(sval,&register_target,1);
    }
+  } else if (iter >= self->ao_opv+self->ao_out &&
+           !(iter->ao_flags&ASMIOP_FLAG_RW)) {
+   /* Make sure to copy input-only l-value operands.
+    * NOTE: If assembly code made use of vstack operations
+    *       it would be sufficient to only mark the stack-value
+    *       for copy, knowing that it will only be copied for
+    *       real upon its first use. - But that can't be done here.
+    * NOTE: We could theoretically scan the assembly text and
+    *       try to figure out where, and how this operand is used
+    *      (if it is used at all), and only copy it when it is
+    *       used as the target operator of a modifying operation, 
+    *       meaning that it may be changed.
+    */
+   if (sval->sv_flags&DCC_SFLAG_LVALUE) {
+    sval->sv_flags |= DCC_SFLAG_COPY;
+    DCCStackValue_Cow(sval);
+   }
   }
  }
 }
@@ -853,7 +874,7 @@ DCCIAsmOps_Store(struct DCCIAsmOps *__restrict self) {
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_AsmWithConstraints(/*ref*/struct TPPString *asmtext, int has_paren) {
  struct TPPString *new_asmtext;
-#define HAS_OP() (has_paren ? TOK != ')' : (TOK == TOK_STRING || TOK == '['))
+#define HAS_OP() (TOK != ':' && (has_paren ? TOK != ')' : (TOK == TOK_STRING || TOK == '[')))
  struct DCCIAsmOps ops;
  size_t n_values;
  DCCIAsmOps_Init(&ops);
