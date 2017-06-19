@@ -431,6 +431,10 @@ PREDEFINED_MACRO_IF(__STRICT_ANSI__,!HAS(EXT_SHORT_EXT_KEYWORDS),"1")
 /* Predefined macro: '__ASSEMBLER__' (Only defined while parsing assembler code) */
 PREDEFINED_MACRO_IF(__ASSEMBLER__,(compiler.c_flags&DCC_COMPILER_FLAG_INASM),"1")
 
+#if DCC_TARGET_HASI(I_X86)
+PREDEFINED_MACRO(__GCC_ASM_FLAG_OUTPUTS__,"1")
+#endif /* I_X86 */
+
 
 PREDEFINED_MACRO_IF(__pic__,HAS(EXT_SYSTEM_MACROS) && (linker.l_flags&DCC_LINKER_FLAG_PIC),"1")
 PREDEFINED_MACRO_IF(__PIC__,HAS(EXT_SYSTEM_MACROS) && (linker.l_flags&DCC_LINKER_FLAG_PIC),"1")
@@ -1014,6 +1018,22 @@ DEF_WARNING(W_ASM_CONSTEXPR_INVALID_OPERATION,(WG_SYNTAX),WSTATE_WARN,WARNF("Inv
 DEF_WARNING(W_ASM_386_RM_SHIFT_IN_CODE16,(WG_SYNTAX),WSTATE_WARN,WARNF("Register shifts are not supported in .code16 regions"))
 #endif
 
+WARNING_NAMESPACE(WN_IASM,1100)
+DEF_WARNING(W_IASM_EXPECTED_KEYWORD_FOR_NAMED_OPERAND,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword for named assembly operand, but got " TOK_S,TOK_A))
+DEF_WARNING(W_IASM_EXPECTED_STRING_FOR_CONSTRAINTS,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string for assembly constraints, but got " TOK_S,TOK_A))
+DEF_WARNING(W_IASM_EXPECTED_LVALUE_FOR_OUTPUT,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected an l-value as output operator"))
+DEF_WARNING(W_IASM_EXPECTED_STRING_FOR_CLOBBER,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string for assembly clobber, but got " TOK_S,TOK_A))
+DEF_WARNING(W_IASM_INVALID_OPERAND_REFERENCE,(WG_SYNTAX),WSTATE_WARN,{ char *s = ARG(char *); WARNF("Invalid operand reference " Q("%.*s") " in constraint",(int)ARG(size_t),s); })
+DEF_WARNING(W_IASM_DOUBLE_OPERAND_REFERENCE,(WG_SYNTAX),WSTATE_WARN,{ char *s = ARG(char *); WARNF("Operand reference " Q("%.*s") " is already in use",(int)ARG(size_t),s); })
+DEF_WARNING(W_IASM_UNKNOWN_OPERAND,(WG_SYNTAX),WSTATE_WARN,{ char *s = ARG(char *); WARNF("Unknown operand " Q("%.*s") " in inline assembly",(int)ARG(size_t),s); })
+DEF_WARNING(W_IASM_NO_HIGH_REGISTER,(WG_SYNTAX),WSTATE_WARN,WARNF("Cannot reference non-existant high-order register using " Q("h") " for " Q("%s"),ARG(char *)))
+DEF_WARNING(W_IASM_INVALID_CONSTRAINT_MODIFIER,(WG_SYNTAX),WSTATE_WARN,WARNF("Invalid constraint modifier " Q("%c"),(char)ARG(int)))
+DEF_WARNING(W_IASM_UNFULFILLED_CONTRAINT,(WG_SYNTAX),WSTATE_WARN,WARNF("Assembly constraint " Q("%s") " could not be fulfilled",ARG(char *)))
+DEF_WARNING(W_IASM_MODIFIER_ONLY_VALID_FOR_OUTPUT_OPERANDS,(WG_SYNTAX),WSTATE_WARN,WARNF("Assembly constraint " Q("%c") " is only valid for output operands",(char)ARG(int)))
+DEF_WARNING(W_IASM_MISSING_RELOAD_REGISTER,(WG_SYNTAX),WSTATE_WARN,WARNF("Failed to allocated output register for reloading"))
+DEF_WARNING(W_IASM_UNKNOWN_CLOBBER,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown clobber name " Q("%s"),ARG(char *)))
+DEF_WARNING(W_IASM_INVALID_TEST,(WG_SYNTAX),WSTATE_WARN,WARNF("Invalid test name after " Q("=@cc") " in inline assembly operand constraints"))
+
 WARNING_NAMESPACE(WN_PRAGMA,1200)
 DEF_WARNING(W_PRAGMA_UNKNOWN,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Unknown pragma " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_COMMENT_EXPECTED_KEYWORD,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after #pragma comment group, but got " TOK_S,TOK_A))
@@ -1042,22 +1062,6 @@ DEF_WARNING(W_EXPECTED_SEMICOLON,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q(";"
 DEF_WARNING(W_SIZEOF_WITHOUT_PARENTHESIS,(WG_QUALITY),WSTATE_WARN,WARNF("Encountered " Q("%s") " without parenthesis",KWDNAME()))
 DEF_WARNING(W_STATIC_ASSERT_FAILED,(WG_USER),WSTATE_ERROR,WARNF("Static assertion failure: " Q("%s"),ARG(char *)))
 DEF_WARNING(W_STATIC_ASSERT_EXPECTED_STRING,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string after " Q("_Static_assert") ", but got " TOK_S,TOK_A))
-DEF_WARNING(W_IASM_EXPECTED_KEYWORD_FOR_NAMED_OPERAND,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword for named assembly operand, but got " TOK_S,TOK_A))
-DEF_WARNING(W_IASM_EXPECTED_STRING_FOR_CONSTRAINTS,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string for assembly constraints, but got " TOK_S,TOK_A))
-DEF_WARNING(W_IASM_EXPECTED_LVALUE_FOR_OUTPUT,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected an l-value as output operator"))
-DEF_WARNING(W_IASM_EXPECTED_STRING_FOR_CLOBBER,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string for assembly clobber, but got " TOK_S,TOK_A))
-DEF_WARNING(W_IASM_INVALID_OPERAND_REFERENCE,(WG_SYNTAX),WSTATE_WARN,{ char *s = ARG(char *); WARNF("Invalid operand reference " Q("%.*s") " in constraint",(int)ARG(size_t),s); })
-DEF_WARNING(W_IASM_DOUBLE_OPERAND_REFERENCE,(WG_SYNTAX),WSTATE_WARN,{ char *s = ARG(char *); WARNF("Operand reference " Q("%.*s") " is already in use",(int)ARG(size_t),s); })
-DEF_WARNING(W_IASM_UNKNOWN_OPERAND,(WG_SYNTAX),WSTATE_WARN,{ char *s = ARG(char *); WARNF("Unknown operand " Q("%.*s") " in inline assembly",(int)ARG(size_t),s); })
-DEF_WARNING(W_IASM_NO_HIGH_REGISTER,(WG_SYNTAX),WSTATE_WARN,WARNF("Cannot reference non-existant high-order register using " Q("h") " for " Q("%s"),ARG(char *)))
-DEF_WARNING(W_IASM_INVALID_CONSTRAINT_MODIFIER,(WG_SYNTAX),WSTATE_WARN,WARNF("Invalid constraint modifier " Q("%c"),(char)ARG(int)))
-DEF_WARNING(W_IASM_UNFULFILLED_CONTRAINT,(WG_SYNTAX),WSTATE_WARN,WARNF("Assembly constraint " Q("%s") " could not be fulfilled",ARG(char *)))
-DEF_WARNING(W_IASM_MODIFIER_ONLY_VALID_FOR_OUTPUT_OPERANDS,(WG_SYNTAX),WSTATE_WARN,WARNF("Assembly constraint " Q("%c") " is only valid for output operands",(char)ARG(int)))
-DEF_WARNING(W_IASM_MISSING_RELOAD_REGISTER,(WG_SYNTAX),WSTATE_WARN,WARNF("Failed to allocated output register for reloading"))
-DEF_WARNING(W_IASM_UNKNOWN_CLOBBER,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown clobber name " Q("%s"),ARG(char *)))
-DEF_WARNING(W_IASM_UNKNOWN_CONSTRAINT,(WG_SYNTAX),WSTATE_WARN,WARNF("Unknown assembly constraint " Q("%c")))
-DEF_WARNING(W_IASM_CONSTRAINT_NOT_FULFILLED,(WG_SYNTAX),WSTATE_WARN,WARNF("Assembly constraint " Q("%s") " was not fulfilled"))
-DEF_WARNING(W_IASM_OUTPUT_CONSTRAINT_IN_INPUT_LIST,(WG_SYNTAX),WSTATE_WARN,WARNF("Output assembly constraint in input list"))
 
 WARNING_NAMESPACE(WN_DCC,1500)
 

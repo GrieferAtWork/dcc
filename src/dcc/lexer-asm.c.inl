@@ -74,6 +74,11 @@ struct DCCIAsmOperand {
  struct TPPKeyword        *ao_name;        /*< [0..1] Optional operand name. */
 #define ASMIOP_FLAG_RW     0x00000001      /*< read/write operand. */
 #define ASMIOP_FLAG_LLOCAL 0x00000002      /*< The associated stack-value requires additional indirection, for which ':ao_reg' shall be used. */
+#define ASMIOP_FLAG_TEST   0x00000004      /*< Used for output operands to return the value of a test as 0/1. */
+#define ASMIOP_MASK_TEST   0xf0000000      /*< Mask for what kind of test should be returned. */
+#define ASMIOP_SHFT_TEST   28              /*< Shift for the test kind, used to convert the value into a 'test_t'. */
+#define ASMIOP_MK_TEST(t) (((t) << ASMIOP_SHFT_TEST)|ASMIOP_FLAG_TEST)
+#define ASMIOP_GT_TEST(f) ((f) >> ASMIOP_SHFT_TEST)
  uint32_t                  ao_flags;       /*< Set of 'ASMIOP_FLAG_*'. */
  uint8_t                   ao_priority;    /*< Operand priority (Lower priority means execute-before). */
  uint8_t                   ao_padding;     /*< Padding data. */
@@ -205,16 +210,33 @@ LOCAL uint8_t c_priority(const char *str) {
   case 'N': case 'M': case 'I':
   case 'i': case 'm':
   case 'g': new_result = 4; break;
-  default:
-   WARN(W_IASM_INVALID_CONSTRAINT_MODIFIER,str[-1]);
-   new_result = 0;
-   break;
+  default: new_result = 0; break;
   }
   /* Use the greatest priority. */
   if (result < new_result)
       result = new_result;
  }
 done:
+ return result;
+}
+
+LOCAL test_t parse_test(char const **__restrict pctext) {
+ test_t result;
+ char const *iter = *pctext;
+ switch (*iter++) {
+ case 'a': result = DCC_TEST_A; if (*iter == 'e') ++iter,result = DCC_TEST_AE; break;
+ case 'b': result = DCC_TEST_B; if (*iter == 'e') ++iter,result = DCC_TEST_BE; break;
+ case 'c': result = DCC_TEST_C; break;
+ case 'e': result = DCC_TEST_E; break;
+ case 'z': result = DCC_TEST_Z; break;
+ case 'g': result = DCC_TEST_G; if (*iter == 'e') ++iter,result = DCC_TEST_GE; break;
+ case 'l': result = DCC_TEST_L; if (*iter == 'e') ++iter,result = DCC_TEST_LE; break;
+ case 'o': result = DCC_TEST_O; break;
+ case 'p': result = DCC_TEST_P; break;
+ case 's': result = DCC_TEST_S; break;
+ default: --iter; WARN(W_IASM_INVALID_TEST); result = DCC_TEST_E; break;
+ }
+ *pctext = iter;
  return result;
 }
 
@@ -297,6 +319,15 @@ cnext:
   case '=':
    /* TODO: Don't output operands require either '=' or '+' in their constraints?
     *       Shouldn't we warn if they don't? */
+   if (ctext[0] == '@' && ctext[1] == 'c' && ctext[2] == 'c') {
+    test_t test = 0;
+    ctext += 3; /* Test-output operand. */
+    while (*ctext == 'n') ++ctext,test ^= DCC_TEST_NBIT;
+    test ^= parse_test(&ctext);
+    iter->ao_flags |= ASMIOP_MK_TEST(test);
+    mask = (REGMASK_OUT);
+    break;
+   }
    goto cnext;
   case '+':
    iter->ao_flags |= ASMIOP_FLAG_RW;
@@ -434,7 +465,17 @@ DCCAsmOperand_Parse(struct DCCIAsmOperand *__restrict self, int is_output) {
  self->ao_reg  = -1;
  self->ao_reg2 = -1;
  if (TOK == '[') {
-  YIELD(); /* Named operand value. */
+  /* Named operand value. */
+#if 1
+  /* Don't allow macros for the assembly name.
+   * While not really standard-conforming (if there even is one for a GCC feature),
+   * it does make it much easier to choose any name without having to worry about
+   * a macro with the same name, especially when considering that no macro expansion
+   * happens within the assembly string (Not even once it'll finally get compiled). */
+  TPPLexer_YieldPP();
+#else
+  YIELD();
+#endif
   if (!TPP_ISKEYWORD(TOK)) WARN(W_IASM_EXPECTED_KEYWORD_FOR_NAMED_OPERAND);
   else { self->ao_name = TOKEN.t_kwd; YIELD(); }
   if (TOK != ']') WARN(W_EXPECTED_RBRACKET); else YIELD();
@@ -922,6 +963,18 @@ DCCIAsmOps_Store(struct DCCIAsmOps *__restrict self) {
     register_target.sv_sym = NULL;
     DCCStackValue_Store(&register_target,sval,0);
    }
+  } else if (iter->ao_flags&ASMIOP_FLAG_TEST) {
+   /* Store the result of a test. */
+   struct DCCStackValue test_value;
+   /* Load register value. */
+   test_value.sv_ctype.t_base = NULL;
+   test_value.sv_ctype.t_type = DCCTYPE_BOOL;
+   test_value.sv_flags        = DCC_SFLAG_MKTEST(ASMIOP_GT_TEST(iter->ao_flags));
+   test_value.sv_const.it     = 0;
+   test_value.sv_reg          = DCC_RC_CONST;
+   test_value.sv_reg2         = DCC_RC_CONST;
+   test_value.sv_sym          = NULL;
+   DCCStackValue_Store(&test_value,iter->ao_value,0);
   }
  }
 }
