@@ -378,6 +378,7 @@ ralloc:
    goto cnext;
 
   case 'i':
+  case 'n':
 #if !DCC_TARGET_ASMF(F_X86_64)
   case 'Z': /* uint32_t */
 #endif /* F_X86_64 */
@@ -412,6 +413,7 @@ ralloc:
   case 'g':
    if (iter < self->ao_opv+self->ao_out) {
   case 'm':
+  case 'o':
     /* And l-value to l-value case. */
     if ((iter->ao_value->sv_flags&DCC_SFLAG_LVALUE) &&
         DCCTYPE_GROUP(iter->ao_value->sv_ctype.t_type) == DCCTYPE_LVALUE) {
@@ -430,12 +432,15 @@ found_llocal:
     }
    }
    break;
+  case 'X': break;
+
 
   case '\0':
    WARN(W_IASM_UNFULFILLED_CONTRAINT,
         iter->ao_constraints->s_text);
    break;
   default:
+   if (tpp_isspace(ctext[-1])) goto cnext;
    WARN(W_IASM_INVALID_CONSTRAINT_MODIFIER,(int)ctext[-1]);
    goto cnext;
   }
