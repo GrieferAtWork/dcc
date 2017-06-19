@@ -831,6 +831,7 @@ DCCParse_CTypePrefix(struct DCCType *__restrict self,
 #define F_INLINE  0x10 /* 'inline' */
 #define F_AUTO    0x20 /* 'auto' (NOTE: Only used for automatic detection of 'auto' as storage/type) */
 #define F_MISC    0x40 /* Everything else (e.g.: '_Atomic', 'const', 'volatile') */
+#define F_EXT     0x80 /* Don't warn about use of extensions. */
 #define FIX_AUTO() \
 do{ if (flags&F_AUTO) {\
      WARN(W_TYPE_AUTO_STORAGE_ALREADY_BY_DEFAULT);\
@@ -850,6 +851,16 @@ again:
 #if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
  case KWD___w64: goto next;
 #endif
+
+ case KWD___extension__:
+  if (!flags) {
+   /* If the next token is a '(', don't parse
+    * this keyword as part of a type name. */
+   if (*peek_next_token(NULL) == '(') break;
+  }
+  flags |= F_EXT;
+  YIELD();
+  goto again;
 
  { /* Parse const/volatile qualifiers. */
   tyid_t qual;
@@ -898,6 +909,7 @@ again:
   if (flags&F_WIDTH) {
    /* Extended long modifiers. */
    if ((self->t_type&(DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))) == DCCTYPE_LONG) {
+    if (!(flags&F_EXT)) WARN(W_BUILTIN_TYPE_LONG_LONG_C99);
     self->t_type &= ~((DCCTYPE_BASICMASK&~(DCCTYPE_UNSIGNED))|DCCTYPE_ALTMASK);
     self->t_type |=   DCCTYPE_LLONG;
     goto next;
@@ -924,7 +936,7 @@ again:
 #ifdef DCCTYPE_INT64
     if (DCC_MACRO_FALSE) { case KWD___int64: newwidth = DCCTYPE_INT64; }
 #endif
-    if (!HAS(EXT_FIXED_LENGTH_INTEGER_TYPES)) break;
+    if (!(flags&F_EXT)) WARN(W_EXT_FIXED_LENGTH_INTEGER_TYPES);
   }
   if (flags&F_WIDTH) WARN(W_TYPE_WIDTH_MODIFIER_ALREADY_IN_USE);
   self->t_type |= newwidth;
@@ -937,9 +949,9 @@ again:
   /* Letting DCC chew through the windows headers, I came across a ~very~ strange construct:
    * >> #define WTF_BOOL /##/
    * >> typedef WTF_BOOL bool;
-   * Now while DCC doesn't perform concatenation in that case, it appears that '//' was
+   * Now while DCC doesn't perform concatenation in that case, it appears as though '//' was
    * hacked into visual C as a token representing what C99 would later define as '_Bool'.
-   * The code below tries to detect this _really_ weird construct, translating to to '_Bool'.
+   * The code below tries to detect this _really_ weird construct, and translate it to '_Bool'.
    */
  {
   char *next_tok;
@@ -961,9 +973,9 @@ again:
  { /* Special builtin types. */
   tyid_t newflags;
 #if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
-  if (DCC_MACRO_FALSE) { case KWD__Bool: WARN(W_BUILTIN_TYPE_BOOL_C99); w32_bool: newflags = DCCTYPE_BOOL; }
+  if (DCC_MACRO_FALSE) { case KWD__Bool: if (!(flags&F_EXT)) WARN(W_BUILTIN_TYPE_BOOL_C99); w32_bool: newflags = DCCTYPE_BOOL; }
 #else
-  if (DCC_MACRO_FALSE) { case KWD__Bool: WARN(W_BUILTIN_TYPE_BOOL_C99);           newflags = DCCTYPE_BOOL; }
+  if (DCC_MACRO_FALSE) { case KWD__Bool: if (!(flags&F_EXT)) WARN(W_BUILTIN_TYPE_BOOL_C99);           newflags = DCCTYPE_BOOL; }
 #endif
   if (DCC_MACRO_FALSE) { case KWD_void:  newflags = DCCTYPE_VOID; }
   if (DCC_MACRO_FALSE) { case KWD_float: newflags = DCCTYPE_FLOAT; }
@@ -997,8 +1009,7 @@ again:
  { /* Storage modifiers. */
   tyid_t new_storage;
  case KWD_auto: /* Automatic storage / auto-type. */
-  if (HAS(EXT_AUTO_FOR_AUTOTYPE) &&
-    !(flags&(F_INT|F_SIGN|F_WIDTH))) {
+  if (!(flags&(F_INT|F_SIGN|F_WIDTH))) {
    self->t_type |= DCCTYPE_AUTO;
    flags        |= F_AUTO;
   }
@@ -1043,7 +1054,7 @@ again:
 
  { /* Type flag: Atomic accessor. */
  case KWD__Atomic:
-  WARN(W_TYPE_MODIFIER_ATOMIC_C11);
+   if (!(flags&F_EXT)) WARN(W_TYPE_MODIFIER_ATOMIC_C11);
   if (self->t_type&DCCTYPE_ATOMIC)
       WARN(W_TYPE_MODIFIER_ATOMIC_ALREADY_DEFINED);
   self->t_type |= DCCTYPE_ATOMIC;
@@ -1207,6 +1218,8 @@ again:
   }
   break;
  }
+ if ((flags&(F_AUTO|F_EXT)) == F_AUTO)
+      WARN(W_EXT_AUTO_USED_AS_TYPE);
  return flags != 0;
 next:         YIELD();
 next_noyield: flags |= F_MISC;

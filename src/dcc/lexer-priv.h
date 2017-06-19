@@ -37,6 +37,7 @@ LEXDECL struct TPPKeyword *DCC_PARSE_CALL tok_without_underscores(void);
 /* Peek the first character of what will likely be the next token. */
 LEXDECL char *DCC_PARSE_CALL peek_next_token(struct TPPFile **tok_file);
 LEXDECL char *DCC_PARSE_CALL peek_next_advance(char *p, struct TPPFile *__restrict *tok_file);
+LEXDECL struct TPPKeyword *DCC_PARSE_CALL peek_next_keyword(int create_missing);
 
 /* Using data retrieved by calling 'peek_next_token', return the keyword
  * associated with the given token text, or NULL if allocation/lookup failed,

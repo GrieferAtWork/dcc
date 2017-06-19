@@ -94,10 +94,9 @@ DEF_K(volatile) DEF_K(__volatile) DEF_K(__volatile__)
 DEF_K(asm) DEF_K(__asm) DEF_K(__asm__)
 DEF_K(__label__)
 
-/* Predefine with empty text to simply ignore it everywhere...
- * TODO: Now that DCC's starting to get more and more extension
- *       warnings, we might want to start using this... */
-PREDEFINED_MACRO(__extension__,"")
+
+/* Prefix before intended use of extensions to prevent compliance warnings. */
+DEF_K(__extension__)
 
 
 /* Extension expression keywords. */
@@ -869,9 +868,6 @@ EXTENSION(EXT_CPU_MACROS,    "define-cpu-macros",    1)
 EXTENSION(EXT_SYSTEM_MACROS, "define-system-macros", 1)
 EXTENSION(EXT_UTILITY_MACROS,"define-utility-macros",1)
 
-/* Use AT&T-style assembly syntax. */
-EXTENSION(EXT_ASM_ATT,"asm-atnt",1)
-
 /* Allow additional fixed-length instruction suffixes:
  * >> 8   --> b
  * >> 16  --> w
@@ -901,20 +897,14 @@ EXTENSION(EXT_ASM_CASE_INSENSITIVE,"asm-case-insensitive",1) /* Case-insensitive
  */
 EXTENSION(EXT_ASM_IMM_STRINGS,"asm-imm-strings",1)
 
-EXTENSION(EXT_GCC_EXPRSTMT,"expression-statements",1)                    /*< int x = ({ int y = 42; y*2; }) */
-EXTENSION(EXT_GCC_LABEL_EXPR,"label-expressions",1)                      /*< goto *(p + 42); */
 EXTENSION(EXT_GCC_LOCAL_LABEL,"local-labels",1)                          /*< __label__ foo; */
 EXTENSION(EXT_GCC_ATTRIBUTE,"gcc-attributes",1)                          /*< __attribute__((__noreturn__)) */
 EXTENSION(EXT_MSVC_ATTRIBUTE,"msvc-attributes",1)                        /*< __declspec(noreturn) */
 EXTENSION(EXT_CXX11_ATTRIBUTE,"cxx-11-attributes",1)                     /*< [[__noreturn__]] */
 EXTENSION(EXT_ATTRIBUTE_CONDITION,"attribute-conditions",1)              /*< __attribute__((__noreturn__(x == 42))) */
 EXTENSION(EXT_CALLING_CONVENTION_ATTR,"calling-convention-attributes",1) /*< __cdecl, __stdcall, ... */
-EXTENSION(EXT_FIXED_LENGTH_INTEGER_TYPES,"fixed-length-integer-types",1) /*< __int(8|16|32|64) */
-EXTENSION(EXT_ASM_REGISTERS,"asm-registers-in-expressions",1)            /*< int x = %eax; */
-EXTENSION(EXT_ASM_ADDRESS,"asm-address-in-expressions",1)                /*< void *here = .; */
 EXTENSION(EXT_VOID_ARITHMETIC,"void-arithmetic",1)                       /*< Allow pointer arithmetic on void/function types, faking their size as '1'. */
 EXTENSION(EXT_STRUCT_COMPATIBLE,"struct-compatible",1)                   /*< Allow structures with the same contents and layout to be compatible with each other. */
-EXTENSION(EXT_AUTO_FOR_AUTOTYPE,"auto-in-type-expressions",1)            /*< Allow 'auto' to refer to '__auto_type' in type expressions, as well as describe automatic storage. */
 EXTENSION(EXT_VARIABLE_LENGTH_ARRAYS,"variable-length-arrays",1)         /*< Allow VLA-style arrays. */
 EXTENSION(EXT_FUNCTION_STRING_LITERALS,"function-string-literals",1)     /*< Treat '__FUNCTION__' and '__PRETTY_FUNCTION__' as string literals during language-level string-concatation. */
 EXTENSION(EXT_CANONICAL_LIB_PATHS,"canonical-lib-paths",1)               /*< Fix library paths before using them (e.g.: Remove whitespace, fix slashes, etc.). */
@@ -923,21 +913,32 @@ EXTENSION(EXT_OLD_VARIABLE_INIT,"old-variable-init",1)                   /*< Rec
 EXTENSION(EXT_SHORT_EXT_KEYWORDS,"asm",1)                                /*< Recognize 'asm', 'typeof' and 'inline' as keywords aliasing '__asm__', '__typeof__' and '__inline__'.
                                                                           *  NOTE: The name was chosen for compatibility with GCC's commandline flag '-fno-asm' that does the same.
                                                                           *  NOTE: This extension also control if '__STRICT_ANSI__' is defined as a predefined macro, meaning this is the central '-ansi' flag */
+
+/* Extension warnings. */
+WGROUP(WG_EXTENSIONS,"extensions",WSTATE_DISABLED)                       /*< Enable/disable extension warnings (Those things that are really sweet syntactically, but you sadly can't use for standard-compliance).
+                                                                          *  NOTE: This warning group is enabled when any 'std' other than 'dcc' is selected as compliance target. */
+WGROUP(WG_FIXED_LENGTH_INTEGER_TYPES,"fixed-length-integer-types",WSTATE_ERROR) /*< Warn about use of __int(8|16|32|64) */
+WGROUP(WG_AUTO_IN_TYPE_EXPRESSIONS,"auto-in-type-expressions",WSTATE_ERROR) /*< Warn about use of 'auto' to refer to '__auto_type' in type expressions, besides describing automatic storage. */
+WGROUP(WG_ASM_REGISTERS_IN_EXPRESSIONS,"asm-registers-in-expressions",WSTATE_ERROR) /*< Warn about use of 'int x = %eax;' */
+WGROUP(WG_ASM_ADDRESS_IN_EXPRESSIONS,"asm-address-in-expressions",WSTATE_ERROR) /*< Warn about use of 'void *here = .;' */
+WGROUP(WG_EXPRESSION_STATEMENTS,"expression-statements",WSTATE_ERROR)    /*< Warn about use of 'int x = ({ int y = 42; y*2; });' */
+WGROUP(WG_LABEL_EXPRESSIONS,"label-expressions",WSTATE_ERROR)            /*< Warn about use of 'goto *(p + 42);' */
 WGROUP(WG_CONSTANT_CASE,"constant-case-expressions",WSTATE_ERROR)        /*< Warn about non-constant case expressions. */
-WGROUP(WG_EXTENSIONS,"extensions",WSTATE_ERROR)                          /*< Enable/disable extension warnings (Those things that are really sweet syntactically, but you sadly can't use for standard-compliance). */
 WGROUP(WG_CASE_RANGES,"case-ranges",WSTATE_ERROR)                        /*< Warn about using case-ranges. */
 WGROUP(WG_DECL_IN_IF,"declaration-in-if",WSTATE_ERROR)                   /*< Warn about variable declarations in if-conditions. */
 WGROUP(WG_DECL_IN_FOR,"declaration-in-for",WSTATE_ERROR)                 /*< Warn about variable declarations in for-initializers. */
 WGROUP(WG_ZERO_TYPED_ARRAY,"zero-sized-arrays",WSTATE_ERROR)             /*< Warn about zero-sized array types. */
 WGROUP(WG_NESTED_FUNCTIONS,"nested-functions",WSTATE_ERROR)              /*< Warn about nested functions. */
 WGROUP(WG_EMPTY_STRUCTURES,"empty-structures",WSTATE_ERROR)              /*< Warn about empty structures. */
-WGROUP(WG_OLD_STORAGE_CLASS,"old-storage-class",WSTATE_ERROR)            /*< Warn about old-style use of 'auto' as storage class. */
-WGROUP(WG_OLD_FUNCTION_DECL,"old-function-decl",WSTATE_ERROR)            /*< Warn about old-style function declarations. */
-WGROUP(WG_OLD_VARIABLE_INIT,"old-variable-init",WSTATE_ERROR)            /*< Warn about old-style variable initialization. */
 WGROUP(WG_MIXED_DECLARATIONS,"declaration-after-statement",WSTATE_ERROR) /*< Warn about declarations mixed with statements. */
 WGROUP(WG_TYPE_IN_EXPRESSION,"type-in-expression",WSTATE_ERROR)          /*< Warn if c++-style calls to types are used in expressions. */
 WGROUP(WG_ASSIGN_INITIALIZER,"assign-initializer",WSTATE_ERROR)          /*< Warn if brace-initializer are used during assignment. */
 WGROUP(WG_ASSIGN_VOID_VOID,"assign-void",WSTATE_DISABLED)                /*< Warn about assigning void-to-void (Also warned when returning a void-expression in a void-function). */
+
+/* Other warnings. */
+WGROUP(WG_OLD_STORAGE_CLASS,"old-storage-class",WSTATE_ERROR)            /*< Warn about old-style use of 'auto' as storage class. */
+WGROUP(WG_OLD_FUNCTION_DECL,"old-function-decl",WSTATE_ERROR)            /*< Warn about old-style function declarations. */
+WGROUP(WG_OLD_VARIABLE_INIT,"old-variable-init",WSTATE_ERROR)            /*< Warn about old-style variable initialization. */
 WGROUP(WG_POINTER_ARITHMETIC,"pointer-arithmetic",WSTATE_ERROR)          /*< Warn about illegal pointer arithmetic. */
 WGROUP(WG_INTEGRAL_TRUNC,"integral-trunc",WSTATE_ERROR)                  /*< Warn about truncation of integral constants. */
 
@@ -1064,6 +1065,7 @@ DEF_WARNING(W_EXPECTED_SEMICOLON,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q(";"
 DEF_WARNING(W_SIZEOF_WITHOUT_PARENTHESIS,(WG_QUALITY),WSTATE_WARN,WARNF("Encountered " Q("%s") " without parenthesis",KWDNAME()))
 DEF_WARNING(W_STATIC_ASSERT_FAILED,(WG_USER),WSTATE_ERROR,WARNF("Static assertion failure: " Q("%s"),ARG(char *)))
 DEF_WARNING(W_STATIC_ASSERT_EXPECTED_STRING,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string after " Q("_Static_assert") ", but got " TOK_S,TOK_A))
+DEF_WARNING(W_UNKNOWN_KEYWORD_IN_TYPE,(WG_SYNTAX,WG_TYPE),WSTATE_WARN,WARNF("Assuming " Q("int") " for unknown type keyword " TOK_S,TOK_A))
 
 WARNING_NAMESPACE(WN_DCC,1500)
 
@@ -1376,12 +1378,20 @@ DEF_WARNING(W_OLD_STYLE_FUNCTION_VARARGS,(WG_SYNTAX),WSTATE_WARN,WARNF("varargs 
 DEF_WARNING(W_OLD_STYLE_FUNCTION_VARARGS_ALREADY,(WG_REDEFINE,WG_SYNTAX),WSTATE_WARN,WARNF("A varargs argument " Q("va_dcl") " was already specified"))
 DEF_WARNING(W_OLD_STYLE_FUNCTION_UNNAMED_ARGUMENT,(WG_SYNTAX),WSTATE_WARN,WARNF("Unnamed argument in old-style function parameter list"))
 DEF_WARNING(W_OLD_STYLE_FUNCTION_EXPECTED_ARGUMENT_KEYWORD,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword in old-style argument list, but got " TOK_S,TOK_A))
-DEF_WARNING(W_OLD_STYLE_INITIALIZER_ASSIGNMENT,(WG_OLD_VARIABLE_INIT),WSTATE_WARN,WARNF("Old-style variable initialization is used. Consider placing " Q("=") " before the initial value."))
-DEF_WARNING(W_UNKNOWN_KEYWORD_IN_TYPE,(WG_SYNTAX,WG_TYPE),WSTATE_WARN,WARNF("Assuming " Q("int") " for unknown type keyword " TOK_S,TOK_A))
+DEF_WARNING(W_OLD_STYLE_INITIALIZER_ASSIGNMENT,(WG_OLD_VARIABLE_INIT),WSTATE_WARN,WARNF("Old-style variable initialization is used; consider placing " Q("=") " before the initial value"))
+DEF_WARNING(W_EXT_ASM_REGISTERS_IN_EXPRESSIONS,(WG_ASM_REGISTERS_IN_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using assembly registers in expressions is a dcc extension (prepend " Q("__extension__") ")"))
+DEF_WARNING(W_EXT_ASM_ADDRESS_IN_EXPRESSIONS,(WG_ASM_ADDRESS_IN_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using " Q(".") " in expressions is a dcc extension (prepend " Q("__extension__") ")"))
+DEF_WARNING(W_EXT_GOTO_EXPRESSIONS,(WG_LABEL_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using expressions after " Q("goto") " is a gcc extension (prepend " Q("__extension__") ")"))
+DEF_WARNING(W_EXT_LABEL_EXPRESSIONS,(WG_LABEL_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using labels in expressions is a gcc extension (prepend " Q("__extension__") ")"))
+DEF_WARNING(W_EXT_EXPRESSION_STATEMENTS,(WG_EXPRESSION_STATEMENTS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Hiding statements in expressions is a gcc extension (prepend " Q("__extension__") ")"))
+DEF_WARNING(W_EXT_FIXED_LENGTH_INTEGER_TYPES,(WG_FIXED_LENGTH_INTEGER_TYPES,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using " TOK_S " fixed-length integer types is a vc extension (prepend " Q("__extension__") ")"))
+DEF_WARNING(W_EXT_AUTO_USED_AS_TYPE,(WG_AUTO_IN_TYPE_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using " Q("auto") " for automatic typing in C is a dcc extension (prepend " Q("__extension__") ")"))
 DEF_WARNING(W_MIXED_DECLARATIONS,(WG_MIXED_DECLARATIONS,WG_C99,WG_EXTENSIONS),WSTATE_WARN,
-            WARNF("Mixing statements with declarations requires a C99-compliant compiler"))
+            WARNF("Mixing statements with declarations is only recognized since C99"))
 DEF_WARNING(W_BUILTIN_TYPE_BOOL_C99,(WG_C99,WG_EXTENSIONS),WSTATE_WARN,
-            WARNF("Built-in type " Q("_Bool") " is only accepted by C99-compliant compilers"))
+            WARNF("Built-in type " Q("_Bool") " is only recognized since C99"))
+DEF_WARNING(W_BUILTIN_TYPE_LONG_LONG_C99,(WG_C99,WG_EXTENSIONS),WSTATE_WARN,
+            WARNF("Built-in type " Q("long long") " is only recognized since C99"))
 DEF_WARNING(W_ARRAY_SIZE_ZERO,(WG_ZERO_TYPED_ARRAY,WG_EXTENSIONS),WSTATE_WARN,{
  struct TPPString *tyrepr = DCCType_ToTPPString(ARG(struct DCCType *),NULL);
  WARNF("Zero-sized array type " Q("%s"),tyrepr->s_text);

@@ -63,16 +63,13 @@ PUBLIC void DCCCompiler_SetStd(int std) {
  if (std == DCC_COMPILER_STD_DCC) return;
  
  /* Disable extensions that may interfere with STD symtax. */
- TPPLexer_DisableExtension(EXT_CXX11_ATTRIBUTE);
- TPPLexer_DisableExtension(EXT_ASM_REGISTERS);
- TPPLexer_DisableExtension(EXT_ASM_ADDRESS);
+ /*TPPLexer_DisableExtension(EXT_CXX11_ATTRIBUTE);*/
  TPPLexer_DisableExtension(EXT_VOID_ARITHMETIC);
  TPPLexer_DisableExtension(EXT_STRUCT_COMPATIBLE);
- TPPLexer_DisableExtension(EXT_AUTO_FOR_AUTOTYPE);
  TPPLexer_DisableExtension(EXT_SHORT_EXT_KEYWORDS);
- //TPPLexer_DisableExtension(EXT_GCC_EXPRSTMT); /* TODO: usercode should be able to override this with '__extension__' */
- //TPPLexer_DisableExtension(EXT_GCC_LABEL_EXPR); /* TODO: usercode should be able to override this with '__extension__' */
- 
+ /* Enable warnings about extensions. */
+ TPPLexer_SetWarningGroup(WG_EXTENSIONS,WSTATE_ERROR);
+
  switch (std) {
  case DCC_COMPILER_STD_KR:
   /* Enable traditional macros & tokens, and disable old-style warnings. */

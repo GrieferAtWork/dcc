@@ -440,11 +440,30 @@ again:
   goto dead_pushv_semi;
  } break;
 
- { /* Jump to another label. */
- case KWD_goto:
+ {
+  int suppress_goto_warnings;
+  struct TPPKeyword *next_keyword;
+  /* Special handling to allow '__extension__ goto *get_addr();' */
+ case KWD___extension__:
+  next_keyword = peek_next_keyword(0);
+  if (!next_keyword ||
+       next_keyword->k_id != KWD_goto ||
+       next_keyword->k_macro) goto default_kwd;
+  suppress_goto_warnings = 1;
   YIELD();
-parse_goto:
-  if (TOK == '*' && HAS(EXT_GCC_LABEL_EXPR)) {
+  if unlikely(TOK != KWD_goto) goto default_case;
+
+  /* Jump to another label. */
+  if (DCC_MACRO_FALSE) { case KWD_goto: suppress_goto_warnings = 0; }
+  YIELD();
+  if (DCC_MACRO_FALSE) { parse_goto: suppress_goto_warnings = 0; }
+  if (TOK == KWD___extension__)
+      suppress_goto_warnings = 1,
+      YIELD();
+  if (TOK == '*') {
+   if (!suppress_goto_warnings)
+        WARN(W_EXT_GOTO_EXPRESSIONS);
+
    /* GCC extension: label-expressions. */
    YIELD();
    DCCParse_Expr();
@@ -787,7 +806,8 @@ pushv_semi:
   goto pushv_semi;
 
  default:
-  if (TPP_ISKEYWORD(TOK)) {
+default_case:
+  if (TPP_ISKEYWORD(TOK)) default_kwd: {
    /* WARNING: Due to how this is implemented, a label name may
     *          not be separated from its associated ':' by anything other than
     *          comments (this includes macros, preprocessor directives, or other files)!

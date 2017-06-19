@@ -732,8 +732,15 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprIf(void) {
 }
 
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
+ int force_extensions = 0;
+again:
  DCCUnit_MkDebugLC(DCCUNIT_DEBUGLC_EXPR);
  switch (TOK) {
+
+ case KWD___extension__:
+  force_extensions = 1;
+  YIELD();
+  goto again;
 
  { /* Push an immediate, constant integral. */
   int_t intval,intmask;
@@ -841,7 +848,7 @@ parse_string:
    */
   struct DCCStackValue sval;
  case '%':
-  if (!HAS(EXT_ASM_REGISTERS)) goto default_case;
+  if (!force_extensions) WARN(W_EXT_ASM_REGISTERS_IN_EXPRESSIONS);
   /* Push an explicitly defined register stack value. */
   sval.sv_reg          = DCCVStack_KillXNon(DCCParse_Register());
   sval.sv_reg2         = DCC_RC_CONST;
@@ -885,7 +892,7 @@ parse_string:
 
  { /* GCC-style label addressing. */
  case TOK_LAND:
-  if (!HAS(EXT_GCC_LABEL_EXPR)) goto default_case;
+  if (!force_extensions) WARN(W_EXT_LABEL_EXPRESSIONS);
   YIELD();
   if (TPP_ISKEYWORD(TOK)) {
    struct DCCDecl *label_decl = DCCCompiler_NewLabel(TOKEN.t_kwd);
@@ -901,7 +908,8 @@ parse_string:
 
  {
  case '.':
-  if (!HAS(EXT_ASM_ADDRESS)) goto default_case;
+  if (!force_extensions)
+       WARN(W_EXT_ASM_ADDRESS_IN_EXPRESSIONS);
   YIELD();
   /* Push the current text address. */
 #if 1 /* Use an anonymous symbol to allow for relocation. */
@@ -947,7 +955,23 @@ parse_string:
   struct TPPKeyword *cast_name;
   tok_t t = TOK;
   YIELD();
-  if (TOK == '{' && HAS(EXT_GCC_EXPRSTMT)) {
+  if (TOK == KWD___extension__ && *peek_next_token(NULL) == '(') {
+   /* Explicitly allow 'int x = (__extension__({ 42; }))'
+    * Without this exception, the '__extension__' above
+    * would be parsed as part of an otherwise missing type. */
+   YIELD();
+   if (TOK == '(') {
+    YIELD();
+    if (TOK == '{')
+         DCCParse_Scope(DCC_PFLAG_USED);
+    else DCCParse_Expr();
+    if (TOK != ')') WARN(W_EXPECTED_RPAREN);
+    else YIELD();
+    goto check_rparen_break;
+   }
+  }
+  if (TOK == '{') {
+   if (!force_extensions) WARN(W_EXT_EXPRESSION_STATEMENTS);
    /* GCC statement expressions. */
    DCCParse_Scope(DCC_PFLAG_USED);
    goto check_rparen_break;
@@ -998,7 +1022,7 @@ check_rparen_break:
  { /* Expand to the string representation of the current function. */
   char const *name; size_t size;
  case KWD___FUNCTION__:
-  if (HAS(EXT_FUNCTION_STRING_LITERALS)) goto parse_string;
+  if (HAS(EXT_FUNCTION_STRING_LITERALS) || force_extensions) goto parse_string;
  case KWD___func__:
   if (!compiler.c_fun) {
 outside_function:
@@ -1020,7 +1044,7 @@ outside_function:
  { /* Push the name + prototype of the current function as string. */
   struct TPPString *proto;
  case KWD___PRETTY_FUNCTION__:
-  if (HAS(EXT_FUNCTION_STRING_LITERALS)) goto parse_string;
+  if (HAS(EXT_FUNCTION_STRING_LITERALS) || force_extensions) goto parse_string;
   if unlikely(!compiler.c_fun) goto outside_function;
   proto = DCCType_ToTPPString(&compiler.c_fun->d_type,
                                compiler.c_fun->d_name);
@@ -1742,10 +1766,8 @@ DCCParse_ExprDiscard(void) {
 DCCFUN int DCC_PARSE_CALL
 DCCParse_IsExpr(void) {
  switch (TOK) {
- if (DCC_MACRO_FALSE) { case '%':      if (!HAS(EXT_ASM_REGISTERS))  break; }
- if (DCC_MACRO_FALSE) { case TOK_LAND: if (!HAS(EXT_GCC_LABEL_EXPR)) break; }
- if (DCC_MACRO_FALSE) { case '.':      if (!HAS(EXT_ASM_ADDRESS))    break; }
- if (DCC_MACRO_FALSE) { case KWD_if:   if (!HAS(EXT_IFELSE_IN_EXPR)) break; }
+ if (DCC_MACRO_FALSE) { case KWD_if: if (!HAS(EXT_IFELSE_IN_EXPR)) break; }
+ case '%': case TOK_LAND: case '.': case KWD___extension__:
  case TOK_INT: case TOK_CHAR: case TOK_FLOAT: case TOK_STRING:
  case '+': case '-': case '*': case '&': case '~': case '!':
  case '(': case TOK_INC: case TOK_DEC: goto yes;

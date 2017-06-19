@@ -434,7 +434,6 @@ found_llocal:
    break;
   case 'X': break;
 
-
   case '\0':
    WARN(W_IASM_UNFULFILLED_CONTRAINT,
         iter->ao_constraints->s_text);

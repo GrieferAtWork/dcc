@@ -198,7 +198,7 @@ peek_keyword(struct TPPFile *__restrict tok_file,
       return NULL; /* Not-a-keyword. */
  /* All non-first characters are allowed to be digits as well. */
  chflags |= CH_ISDIGIT;
- ++iter,++name_size;
+ ++iter;
  /* keyword: scan until a non-alnum character is found. */
  if (HAS(EXT_DOLLAR_IS_ALPHA)) for (;;) {
   while (SKIP_WRAPLF(iter,end));
@@ -217,6 +217,13 @@ peek_keyword(struct TPPFile *__restrict tok_file,
   kwd_entry = lookup_escaped_keyword(tok_begin,name_escapesize,name_size,create_missing);
  }
  return kwd_entry;
+}
+
+LEXPRIV struct TPPKeyword *DCC_PARSE_CALL
+peek_next_keyword(int create_missing) {
+ struct TPPFile *tok_file;
+ char *tok_begin = peek_next_token(&tok_file);
+ return peek_keyword(tok_file,tok_begin,create_missing);
 }
 
 
