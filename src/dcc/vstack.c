@@ -60,7 +60,7 @@ INTDEF void dcc_outf(char const *fmt, ...);
 #endif
 
 /* Internal generator functions. */
-PRIVATE void DCC_VSTACK_CALL DCCStackValue_Store(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict target, int initial_store); /* mov self, target */
+INTDEF  void DCC_VSTACK_CALL DCCStackValue_Store(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict target, int initial_store); /* mov self, target */
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_BinMem(struct DCCStackValue *__restrict self, tok_t op, struct DCCMemLoc const *__restrict target, size_t n);  /* *op self, target */
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_BinReg(struct DCCStackValue *__restrict self, tok_t op, rc_t dst, rc_t dst2);                             /* *op self, %dst; mov self, %dst2 */
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op);
@@ -372,7 +372,7 @@ DCCStackValue_LoadExplicit(struct DCCStackValue *__restrict self, rc_t rcr) {
  memcpy(self,&local_target,sizeof(struct DCCStackValue));
 }
 
-PRIVATE void DCC_VSTACK_CALL
+INTERN void DCC_VSTACK_CALL
 DCCStackValue_Store(struct DCCStackValue *__restrict self,
                     struct DCCStackValue *__restrict target,
                     int initial_store) {

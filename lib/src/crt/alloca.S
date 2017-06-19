@@ -69,6 +69,9 @@ __pe_alloca_eax:
 2:	subl     %eax,    %esp
 #endif
 	jmpl    *%edx
+#ifdef NDEBUG
+	nop
+#endif
 .size __pe_alloca_eax, . - __pe_alloca_eax
 .size __pe_alloca, . - __pe_alloca
 

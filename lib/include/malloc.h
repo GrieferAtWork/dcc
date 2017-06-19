@@ -60,7 +60,7 @@ struct __CRT_UNSUPPORTED_MSVC mallinfo {
 	int fordblks; /* total free space */
 	int keepcost; /* top-most, releasable (via malloc_trim) space */
 };
-__IMP __CRT_UNSUPPORTED_MSVC __WUNUSED struct mallinfo mallinfo(void);
+__IMP __CRT_UNSUPPORTED_MSVC __WUNUSED struct mallinfo (mallinfo)(void);
 
 #ifndef M_MXFAST
 #define M_MXFAST  1    /* maximum request size for "fastbins" */

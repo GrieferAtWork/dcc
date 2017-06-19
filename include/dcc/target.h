@@ -627,6 +627,27 @@ typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_IMM_MAX),    _t) DCC(target_
  * One of 'DCC_RC_*', potentially or'd together with one of 'DCC_ASMREG_*'. */
 typedef uint16_t DCC(rc_t);
 
+/* Set sufficient to describe any combination of registers
+ * within any one class that is not stored as part of the set. */
+typedef uint8_t DCC(rcset_t); /* TODO: Use this in more places! */
+
+#define DCC_RCSET_EMPTY   0
+#define DCC_RCSET_FULL    0xff
+#define DCC_RCSET_COM(x,y)   ((x)&(y)) /* common */
+#define DCC_RCSET_SUM(x,y)   ((x)|(y)) /* sum */
+#define DCC_RCSET_ADD(x,ri)  ((x)|(1 << (ri)))
+#define DCC_RCSET_SUB(x,ri)  ((x)&~(1 << (ri)))
+#define DCC_RCSET_HAS(x,ri)  ((x)&(1 << (ri)))
+#define DCC_RCSET(ri)        (1 << (ri))
+
+
+#define DCC_RCSET_FOREACH(x,ri) \
+ for ((ri) = 0; (ri) < 8; ++(ri)) \
+  if (DCC_RCSET_HAS(x,ri))
+#define DCC_RCSET_RFOREACH(x,ri) \
+ for ((ri) = 8; (ri) != 0;) \
+  if ((--(ri),DCC_RCSET_HAS(x,ri)))
+
 
 
 DCC_DECL_END

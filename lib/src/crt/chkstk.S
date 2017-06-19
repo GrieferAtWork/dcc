@@ -143,6 +143,9 @@ __chkstk:
 #else /* CRTDBG_INIT_CHKSTK */
 	jmpl *-4(%ebp)          /* Now simply jump to 'SETUP_RETURN_ADDRESS' */
 #endif /* !CRTDBG_INIT_CHKSTK */
+#ifdef NDEBUG
+	nop
+#endif
 .size __chkstk, . - __chkstk
 
 #else
