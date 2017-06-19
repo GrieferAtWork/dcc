@@ -658,12 +658,28 @@ next:
                      (size_t)((iter-1)-flush_start));
   }
   mod = *iter; /* Parse operand reference. */
-  if (mod != '%') {
+  /* Special, escaped characters. */
+  if (mod == '%' || mod == '{' ||
+      mod == '|' || mod == '}') {
+   /* Same-character escape. */
+   flush_start = iter++;
+   goto next;
+  }
+  if (mod == '=') {
+   /* Expand to a unique integer. */
+   stringwriter_writeint(&writer,compiler.c_iasm_unique);
+   ++compiler.c_iasm_unique;
+   goto done_special;
+  }
+
+
+  {
    char const *new_iter;
    struct DCCIAsmOperand *operand;
    if (mod == 'c' || mod == 'n' ||
        mod == 'b' || mod == 'w' ||
-       mod == 'h'
+       mod == 'h' || mod == 'k' ||
+       mod == 'z'
 #if DCC_TARGET_ASMF(DCC_CPUF_X86_64)
     || mod == 'q'
 #endif
@@ -677,23 +693,51 @@ next:
    if (operand) {
     struct DCCStackValue val;
     val = *operand->ao_value;
+    if (mod == 'z') {
+     /* Special case: write the opcode suffix associated with
+      *               the register class of the current value. */
+     val.sv_reg &= DCC_RC_MASK;
+     if (val.sv_reg == DCC_RC_CONST)
+         val.sv_reg = DCC_RC_FORTYPE(&val.sv_ctype);
+#ifdef DCC_RC_I64
+     if (val.sv_reg&DCC_RC_I64) mod = 'q';
+     else
+#endif
+          if (val.sv_reg&DCC_RC_I32) mod = 'l';
+     else if (val.sv_reg&DCC_RC_I16) mod = 'w';
+     else                            mod = 'b';
+     stringwriter_write(&writer,&mod,1);
+     goto done_op;
+    }
     if (operand->ao_reg >= 0) {
      val.sv_reg = operand->ao_reg;
-          if (mod == 'b') val.sv_reg |= DCC_RC_I8;
-     else if (mod == 'w') {
+     if (mod == 'b')
+      val.sv_reg |= DCC_RC_I8;
+     else if (mod == 'h') {
+      if (val.sv_reg&4) {
+       static char const *const high_names[4] = {"esp","ebp","esi","edi"};
+       WARN(W_IASM_NO_HIGH_REGISTER,high_names[val.sv_reg&3]);
+      }
+      val.sv_reg |= 4|DCC_RC_I8;
+     } else if (mod == 'w') {
       if (val.sv_reg < 4) val.sv_reg |= DCC_RC_I8;
       val.sv_reg |= DCC_RC_I16;
      }
 #if DCC_TARGET_ASMF(DCC_CPUF_X86_64)
-     else if (mod == 'q') val.sv_reg |= DCC_RC_I3264|DCC_RC_I16|DCC_RC_I8;
+     else if (mod == 'q')
+      val.sv_reg |= DCC_RC_I3264|DCC_RC_I16|DCC_RC_I8;
 #endif
-     else                 val.sv_reg |= DCC_RC_I32|DCC_RC_I16|DCC_RC_I8;
+     else val.sv_reg |= DCC_RC_I32|DCC_RC_I16|DCC_RC_I8;
+
      if (!(operand->ao_flags&ASMIOP_FLAG_LLOCAL)) {
       /* Fix explicit register operands. */
       val.sv_const.it = 0;
       val.sv_sym      = NULL;
       val.sv_flags   &= ~(DCC_SFLAG_LVALUE);
      }
+    } else if (mod == 'h') {
+     /* Really hacky; don't look: Increase offset. */
+     ++val.sv_const.it;
     }
 #if 0
     if (operand->ao_reg2 >= 0) {
@@ -745,6 +789,7 @@ register_indirection:
 done_op:
    iter = new_iter;
   }
+done_special:
   flush_start = iter;
   goto next;
  default: goto next;
@@ -908,6 +953,7 @@ DCCParse_AsmWithConstraints(/*ref*/struct TPPString *asmtext, int has_paren) {
  /* Kill vstack entries according to constraints. */
  if (ops.ao_flags&DCCIASMOPS_FLAG_CLOBBER_EFLAGS) DCCVStack_KillTst();
  if (ops.ao_flags&DCCIASMOPS_FLAG_CLOBBER_MEMORY) DCCVStack_KillAll(0);
+ else if (ops.ao_alloc) DCCVStack_KillInt(ops.ao_alloc); /* Always kill used registers. */
  DCCIAsmOps_PushSave(&ops);
  DCCIAsmOps_Load(&ops);
  /* Format input assembly text */

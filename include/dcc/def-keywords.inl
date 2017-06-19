@@ -1049,6 +1049,7 @@ DEF_WARNING(W_IASM_EXPECTED_STRING_FOR_CLOBBER,(WG_SYNTAX),WSTATE_WARN,WARNF("Ex
 DEF_WARNING(W_IASM_INVALID_OPERAND_REFERENCE,(WG_SYNTAX),WSTATE_WARN,{ char *s = ARG(char *); WARNF("Invalid operand reference " Q("%.*s") " in constraint",(int)ARG(size_t),s); })
 DEF_WARNING(W_IASM_DOUBLE_OPERAND_REFERENCE,(WG_SYNTAX),WSTATE_WARN,{ char *s = ARG(char *); WARNF("Operand reference " Q("%.*s") " is already in use",(int)ARG(size_t),s); })
 DEF_WARNING(W_IASM_UNKNOWN_OPERAND,(WG_SYNTAX),WSTATE_WARN,{ char *s = ARG(char *); WARNF("Unknown operand " Q("%.*s") " in inline assembly",(int)ARG(size_t),s); })
+DEF_WARNING(W_IASM_NO_HIGH_REGISTER,(WG_SYNTAX),WSTATE_WARN,WARNF("Cannot reference non-existant high-order register using " Q("h") " for " Q("%s"),ARG(char *)))
 DEF_WARNING(W_IASM_INVALID_CONSTRAINT_MODIFIER,(WG_SYNTAX),WSTATE_WARN,WARNF("Invalid constraint modifier " Q("%c"),(char)ARG(int)))
 DEF_WARNING(W_IASM_UNFULFILLED_CONTRAINT,(WG_SYNTAX),WSTATE_WARN,WARNF("Assembly constraint " Q("%s") " could not be fulfilled",ARG(char *)))
 DEF_WARNING(W_IASM_MODIFIER_ONLY_VALID_FOR_OUTPUT_OPERANDS,(WG_SYNTAX),WSTATE_WARN,WARNF("Assembly constraint " Q("%c") " is only valid for output operands",(char)ARG(int)))

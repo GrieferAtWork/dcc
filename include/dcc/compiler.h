@@ -347,7 +347,8 @@ struct DCCCompiler {
 #define DCC_COMPILER_FLAG_NOFUNNOP  0x20000000 /*< Don't place NOPs at the end of functions. */
 #define DCC_COMPILER_FLAG_NOSHARED  0x40000000 /*< Don't share stack memory between variables not visible to each other. */
 #define DCC_COMPILER_FLAG_NOUNREACH 0x80000000 /*< Unless set, generate traps for __builtin_unreachable(), as well as other unreachable code locations. */
- uint32_t                  c_flags;   /*< Current c-related code flags (Set of 'DCC_COMPILER_FLAG_*'). */
+ uint32_t                  c_flags;      /*< Current c-related code flags (Set of 'DCC_COMPILER_FLAG_*'). */
+ int_t                     c_iasm_unique;/*< A unique number used to implement '%=' in inline assembly. */
 };
 
 /* Global object: The current compiler. */
