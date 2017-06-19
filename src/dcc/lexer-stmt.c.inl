@@ -443,9 +443,16 @@ again:
  {
   int suppress_goto_warnings;
   struct TPPKeyword *next_keyword;
+  struct TPPFile *tok_file; char *tok_begin;
   /* Special handling to allow '__extension__ goto *get_addr();' */
  case KWD___extension__:
-  next_keyword = peek_next_keyword(0);
+  tok_begin = peek_next_token(&tok_file);
+  if (*tok_begin == '(') {
+   /* Handle special case: '__extension__({ foo(); });' */
+   DCCParse_Expr();
+   break;
+  }
+  next_keyword = peek_keyword(tok_file,tok_begin,0);
   if (!next_keyword ||
        next_keyword->k_id != KWD_goto ||
        next_keyword->k_macro) goto default_kwd;

@@ -853,11 +853,6 @@ again:
 #endif
 
  case KWD___extension__:
-  if (!flags) {
-   /* If the next token is a '(', don't parse
-    * this keyword as part of a type name. */
-   if (*peek_next_token(NULL) == '(') break;
-  }
   flags |= F_EXT;
   YIELD();
   goto again;
@@ -1220,7 +1215,7 @@ again:
  }
  if ((flags&(F_AUTO|F_EXT)) == F_AUTO)
       WARN(W_EXT_AUTO_USED_AS_TYPE);
- return flags != 0;
+ return (flags&~(F_EXT)) != 0;
 next:         YIELD();
 next_noyield: flags |= F_MISC;
  if ((self->t_type&DCCTYPE_ATOMIC) &&

@@ -35,16 +35,16 @@ typedef __SIZE_TYPE__ size_t;
 
 #undef fpos_t
 #if defined(__CRT_MSVC)
-typedef __int64 fpos_t;
+typedef __INT64_TYPE__ fpos_t;
 typedef struct {
-	char   *__msvcrt_ptr;
-	__int32 __msvcrt_cnt;
-	char   *__msvcrt_base;
-	__int32 __msvcrt_flag;
-	__int32 __msvcrt_file;
-	__int32 __msvcrt_charbuf;
-	__int32 __msvcrt_bufsiz;
-	char   *__msvcrt_tmpfname;
+	char          *__msvcrt_ptr;
+	__INT32_TYPE__ __msvcrt_cnt;
+	char          *__msvcrt_base;
+	__INT32_TYPE__ __msvcrt_flag;
+	__INT32_TYPE__ __msvcrt_file;
+	__INT32_TYPE__ __msvcrt_charbuf;
+	__INT32_TYPE__ __msvcrt_bufsiz;
+	char          *__msvcrt_tmpfname;
 } FILE;
 
 #define BUFSIZ  512

@@ -6617,7 +6617,7 @@ create_int_file:
      int recursion = 1;
      while (TOK > 0) {
            if (TOK == '(') ++recursion;
-      else if (TOK == ')' && !--recursion) break;
+      else if (TOK == ')' && !--recursion) { TPPLexer_Yield(); break; }
       TPPLexer_Yield();
      }
      if (TOK == ')') TPPLexer_Yield();

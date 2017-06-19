@@ -1384,7 +1384,7 @@ DEF_WARNING(W_EXT_ASM_ADDRESS_IN_EXPRESSIONS,(WG_ASM_ADDRESS_IN_EXPRESSIONS,WG_E
 DEF_WARNING(W_EXT_GOTO_EXPRESSIONS,(WG_LABEL_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using expressions after " Q("goto") " is a gcc extension (prepend " Q("__extension__") ")"))
 DEF_WARNING(W_EXT_LABEL_EXPRESSIONS,(WG_LABEL_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using labels in expressions is a gcc extension (prepend " Q("__extension__") ")"))
 DEF_WARNING(W_EXT_EXPRESSION_STATEMENTS,(WG_EXPRESSION_STATEMENTS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Hiding statements in expressions is a gcc extension (prepend " Q("__extension__") ")"))
-DEF_WARNING(W_EXT_FIXED_LENGTH_INTEGER_TYPES,(WG_FIXED_LENGTH_INTEGER_TYPES,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using " TOK_S " fixed-length integer types is a vc extension (prepend " Q("__extension__") ")"))
+DEF_WARNING(W_EXT_FIXED_LENGTH_INTEGER_TYPES,(WG_FIXED_LENGTH_INTEGER_TYPES,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using " TOK_S " fixed-length integer types is a vc extension (prepend " Q("__extension__") ")",TOK_A))
 DEF_WARNING(W_EXT_AUTO_USED_AS_TYPE,(WG_AUTO_IN_TYPE_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using " Q("auto") " for automatic typing in C is a dcc extension (prepend " Q("__extension__") ")"))
 DEF_WARNING(W_MIXED_DECLARATIONS,(WG_MIXED_DECLARATIONS,WG_C99,WG_EXTENSIONS),WSTATE_WARN,
             WARNF("Mixing statements with declarations is only recognized since C99"))
