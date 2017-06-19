@@ -99,6 +99,10 @@ struct DCCIAsmOps {
  size_t                 ao_opa;   /*< Allocated amount of operands. */
  struct DCCIAsmOperand *ao_first; /*< [0..1] Operand with the lowest priority of all. */
  struct DCCIAsmOperand *ao_opv;   /*< [0..ao_opc] Vector of operands. */
+#define DCCIASMOPS_FLAG_NONE           0x00000000
+#define DCCIASMOPS_FLAG_CLOBBER_MEMORY 0x00000001 /*< All active registers must be killed beforehand. */
+#define DCCIASMOPS_FLAG_CLOBBER_EFLAGS 0x00000002 /*< All tests must be killed beforehand. */
+ uint32_t               ao_flags; /*< Assembly flags (Set of 'DCCIASMOPS_FLAG_*'). */
  rcset_t                ao_clob;  /*< ASM clobber registers. */
  rcset_t                ao_alloc; /*< Registers that are allocated by the assembly. */
  int8_t                 ao_rin;   /*< Temporary register used for input indirection, or -1 when unused. */
@@ -497,7 +501,8 @@ DCCIAsmOps_ParseClobber(struct DCCIAsmOps *__restrict self) {
        (clobber->s_size == DCC_COMPILER_STRLEN(x) && \
        !memcmp(clobber->s_text,x,sizeof(x)-sizeof(char)))
   if (clobber) {
-   if (CLOBBER("memory") || CLOBBER("cc"));
+        if (CLOBBER("memory")) self->ao_flags |= DCCIASMOPS_FLAG_CLOBBER_MEMORY;
+   else if (CLOBBER("cc"))     self->ao_flags |= DCCIASMOPS_FLAG_CLOBBER_EFLAGS;
    else {
     /* Handle register clobber. */
     struct TPPKeyword *register_clobber;
@@ -522,6 +527,7 @@ DCCIAsmOps_ParseClobber(struct DCCIAsmOps *__restrict self) {
      WARN(W_IASM_UNKNOWN_CLOBBER,clobber->s_text);
     }
    }
+#undef CLOBBER
    TPPString_Decref(clobber);
   }
   if (TOK != ',') break;
@@ -893,6 +899,9 @@ DCCParse_AsmWithConstraints(/*ref*/struct TPPString *asmtext, int has_paren) {
   }
  }
  DCCIAsmOps_Prepare(&ops);
+ /* Kill vstack entries according to constraints. */
+ if (ops.ao_flags&DCCIASMOPS_FLAG_CLOBBER_EFLAGS) DCCVStack_KillTst();
+ if (ops.ao_flags&DCCIASMOPS_FLAG_CLOBBER_MEMORY) DCCVStack_KillAll(0);
  DCCIAsmOps_PushSave(&ops);
  DCCIAsmOps_Load(&ops);
  /* Format input assembly text */
