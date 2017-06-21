@@ -96,14 +96,13 @@ struct TPPString;
 #   define DCC_RC_ST     0x0f00 /*< ST(i) registers. */
 
 /* Only used for registers in memory locations, such as in 'struct DCCMemLoc'.
- * NOTE: The following functions that accept this modifier for 'rc_t' arguments are:
- *    >> DCCDisp_RegJcc(...)
- *    >> DCCDisp_RegJmp(...)
- *    >> DCCDisp_UnaryReg('(',...) // Only for 'op == '('' (call operation)
- * NOTE: The following functions don't accept this modifier for 'struct DCCMemLoc' arguments:
- *    >> DCCDisp_LeaMem(...) // Still accepted for the target argument; only ignored by the source argument.
- *    >> DCCDisp_LeaReg(...)
- */
+ * NOTE: The following functions that accept this modifier for 'rc_t' operands are:
+ *    >> DCCDisp_RegJcc(...);
+ *    >> DCCDisp_RegJmp(...);
+ *    >> DCCDisp_UnaryReg('(',...); // Only for 'op == '('' (call operation)
+ * NOTE: The following functions don't accept this modifier in 'struct DCCMemLoc' operands:
+ *    >> DCCDisp_LeaMem(...); // Still accepted for the target operand; only ignored by the source operand.
+ *    >> DCCDisp_LeaReg(...); */
 #   define DCC_RC_MASK_SEGP     0xe000 /*< Mask for segment prefixes. */
 #   define DCC_RC_SHFT_SEGP     13     /*< Shift for segment prefixes (for converting 'DCC_ASMREG_ES' <--> rc masks). */
 #   define DCC_RC_SEGP(s)      (((s)+1) << DCC_RC_SHFT_SEGP)

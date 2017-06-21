@@ -605,16 +605,15 @@ DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
 #ifdef HAVE_SELF_POINTER
 #undef HAVE_SELF_POINTER
   if (DCC_MACRO_FALSE) {
-   rc_t segment_addr;
 load_self_pointer:
-   segment_addr = DCCVStack_GetReg(DCC_RC_PTRX,1);
-   /* Load the self pointer into a register. */
-   DCCDisp_MemMovReg(&self_pointer,segment_addr);
-   /* Add the segment base to the existing register,
-    * or re-use the segment base register. */
-   if (!DCC_RC_ISCONST(self->sv_reg))
-        DCCDisp_RegBinReg('+',segment_addr,self->sv_reg,1);
-   else self->sv_reg = segment_addr;
+   if (DCC_RC_ISCONST(self->sv_reg)) {
+    /* Load the self pointer into a register. */
+    self->sv_reg = DCCVStack_GetReg(DCC_RC_PTRX,1);
+    DCCDisp_MemMovReg(&self_pointer,self->sv_reg);
+   } else {
+    /* Add the segment base to the existing register. */
+    DCCDisp_MemBinReg('+',&self_pointer,self->sv_reg,1);
+   }
   } else
 #endif
   {
