@@ -17,5 +17,5 @@ run_test() {
 
 run_test *.c
 
-rm "$EXE_TEMP"
+rm -f "$EXE_TEMP"
 

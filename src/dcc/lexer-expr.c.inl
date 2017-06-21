@@ -92,21 +92,7 @@ function_call:
   if (TOK != ')') WARN(W_EXPECTED_RPAREN); else YIELD();
 gen_call:
   DCCUnit_MkDebugLC(DCCUNIT_DEBUGLC_EXPR);
-  {
-   int is_noreturn = 0;
-   struct DCCType *function_type;
-   function_type = &vbottom[n_args].sv_ctype;
-   if (DCCTYPE_GROUP(function_type->t_type) == DCCTYPE_FUNCTION &&
-      (assert(function_type->t_base),function_type->t_base->d_attr) &&
-      (function_type->t_base->d_attr->a_specs&DCC_ATTRSPEC_NORETURN)
-       ) is_noreturn = 1; /* Calling a function marked as __attribute__((noreturn)) */
-   DCCVStack_Call(n_args);
-   if (is_noreturn) {
-    /* Mark the current branch as dead if this function call doesn't return. */
-    compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
-                             DCC_COMPILER_FLAG_DEAD);
-   }
-  }
+  DCCVStack_Call(n_args);
   goto again;
  } break;
 
@@ -1337,20 +1323,26 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLAnd(void) {
   struct DCCSym *sym = DCCUnit_AllocSym();
   test_t common_test = DCC_UNITST_FIRST;
   target_ptr_t last_text_offset;
-  int found_cfalse = 0;
+#define F_CFALSE 0x01 /* Found a constant-false operand (meaning that all following are unreachable). */
+#define F_RTEVAL 0x02 /* Found an operand that can only be evaluated at runtime. */
+#define F_NORET  0x04 /* Found an operand that doesn't return (meaning that all following are unreachable). */
+#define F_ANORET 0x08 /* Set when a noreturn operand is encountered when neither 'F_RTEVAL' nor 'F_CFALSE' are set. (With this set, the land doesn't return, either) */
+  int flags = 0;
+  if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD)
+      flags |= (F_NORET|F_ANORET);
   if (!sym) return;
   do {
    last_text_offset = t_addr;
    vprom();
    YIELD();
    if (visconst_bool()) {
-    if (!vgtconst_bool()) { found_cfalse = 1; goto normal; }
+    if (!vgtconst_bool()) { flags |= F_CFALSE; goto normal; }
     vpop(1);
     DCCParse_ExprOr();
     common_test = DCCVStack_UniTst(common_test);
    } else {
 normal:
-    if (found_cfalse) {
+    if (flags&(F_CFALSE|F_NORET)) {
      pushf();
      if (!compiler.c_deadjmp) compiler.c_deadjmp = sym;
      compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
@@ -1369,13 +1361,20 @@ normal:
      last_text_offset = t_addr;
      DCCParse_ExprOr();    /* Parse the second operand. */
      common_test = DCCVStack_UniTst(common_test);
+     if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD) {
+      flags |= F_NORET;
+      if (!(flags&(F_CFALSE|F_RTEVAL)))
+            flags |= F_ANORET;
+     }
+     flags |= F_RTEVAL;
      popf();
     }
    }
   } while (TOK == TOK_LAND);
   vprom();
-  if (visconst_bool() && !vgtconst_bool()) found_cfalse = 1;
-  if (found_cfalse) {
+  if (flags&F_ANORET) compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|DCC_COMPILER_FLAG_DEAD);
+  if (visconst_bool() && !vgtconst_bool()) flags |= F_CFALSE;
+  if (flags&F_CFALSE) {
    vpop(1);
    vpushi(DCCTYPE_BOOL,0);
   } else if (common_test != DCC_UNITST_FIRST) {
@@ -1399,6 +1398,10 @@ normal:
    DCCVStack_PushTst(common_test);
   }
   if (sym) t_defsym(sym);
+#undef F_ANORET
+#undef F_NORET
+#undef F_RTEVAL
+#undef F_CFALSE
  }
 }
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLXor(void) {
@@ -1418,21 +1421,27 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
   struct DCCSym *sym = DCCUnit_AllocSym();
   test_t common_test = DCC_UNITST_FIRST;
   target_ptr_t last_text_offset;
-  int found_ctrue = 0;
+#define F_CTRUE  0x01 /* Found a constant-true operand (meaning that all following are unreachable). */
+#define F_RTEVAL 0x02 /* Found an operand that can only be evaluated at runtime. */
+#define F_NORET  0x04 /* Found an operand that doesn't return (meaning that all following are unreachable). */
+#define F_ANORET 0x08 /* Set when a noreturn operand is encountered when neither 'F_RTEVAL' nor 'F_CFALSE' are set. (With this set, the land doesn't return, either) */
+  int flags = 0;
+  if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD)
+      flags |= (F_NORET|F_ANORET);
   if (!sym) return;
   do {
    last_text_offset = t_addr;
    vprom();
    YIELD();
    if (visconst_bool()) {
-    if (vgtconst_bool()) { found_ctrue = 1; goto normal; }
+    if (vgtconst_bool()) { flags |= F_CTRUE; goto normal; }
     /* Constant false. */
     vpop(1);
     DCCParse_ExprLXor();
     common_test = DCCVStack_UniTst(common_test);
    } else {
 normal:
-    if (found_ctrue) {
+    if (flags&(F_CTRUE|F_NORET)) {
      pushf();
      if (!compiler.c_deadjmp) compiler.c_deadjmp = sym;
      compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
@@ -1451,13 +1460,20 @@ normal:
      last_text_offset = t_addr;
      DCCParse_ExprLXor();  /* Parse the second operand. */
      common_test = DCCVStack_UniTst(common_test);
+     if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD) {
+      flags |= F_NORET;
+      if (!(flags&(F_CTRUE|F_RTEVAL)))
+            flags |= F_ANORET;
+     }
+     flags |= F_RTEVAL;
      popf();
     }
    }
   } while (TOK == TOK_LOR);
   vprom();
-  if (visconst_bool() && vgtconst_bool()) found_ctrue = 1;
-  if (found_ctrue) {
+  if (flags&F_ANORET) compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|DCC_COMPILER_FLAG_DEAD);
+  if (visconst_bool() && vgtconst_bool()) flags |= F_CTRUE;
+  if (flags&F_CTRUE) {
    vpop(1);
    vpushi(DCCTYPE_BOOL,1);
   } else if (common_test != DCC_UNITST_FIRST) {

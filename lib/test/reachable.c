@@ -45,8 +45,41 @@ volatile int zero = 0;
 #define B  if (zero)
 #define Q  zero
 
+
+int dead_val(int x) {
+ int result = 0;
+ switch (x) {
+ case 7:
+  result += 42;
+  if (0) {
+   if (0) { case 0: result += 7; }
+   if (0) { case 1: result += 3; }
+   if (0) { case 2: result += 4; }
+   if (0) { case 3: result += 9; }
+   result *= 3;
+  }
+  result <<= 1;
+ default:
+  result -= 5;
+  break;
+ }
+ return result;
+}
+
+
 int main(int argc, char *argv[]) {
  int x,y,z;
+
+ /* make sure that dead jumps work correctly. */
+ assert(dead_val(0) == 37);
+ assert(dead_val(1) == 13);
+ assert(dead_val(2) == 19);
+ assert(dead_val(3) == 49);
+ assert(dead_val(4) == -5);
+ assert(dead_val(5) == -5);
+ assert(dead_val(6) == -5);
+ assert(dead_val(7) == 79);
+ assert(dead_val(8) == -5);
 
  /* Check linear reachability. */
  B { yyy(); nrt_(); nnn(); }

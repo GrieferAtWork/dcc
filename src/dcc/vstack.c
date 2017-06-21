@@ -564,10 +564,12 @@ DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
     }
    } else {
     DCCVStack_KillTst(); /* Maybe try not to do this? */
-    if (temp.sa_off < 0)
-     temp.sa_off = -temp.sa_off,
+    if (temp.sa_off >= 0)
+     DCCDisp_CstBinReg('+',&temp,self->sv_reg,0);
+    else {
+     temp.sa_off = -temp.sa_off;
      DCCDisp_CstBinReg('-',&temp,self->sv_reg,0);
-    else DCCDisp_CstBinReg('+',&temp,self->sv_reg,0);
+    }
     temp.sa_off = (target_off_t)(self->sv_const.it >> 32);
     if (temp.sa_off < 0)
      /* NOTE: This must be '~' instead of '-' because of the carry-extension.
@@ -1057,7 +1059,8 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
 
  /* Kill all tests. */
  DCCVStack_KillTst();
- assert(!(self->sv_flags&DCC_SFLAG_TEST));
+ assert(!(self->sv_flags&DCC_SFLAG_TEST) ||
+         (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN));
  /* Check for special case: LValue indirection. */
  DCCStackValue_LoadLValue(self);
  /* Invoke copy-on-write semantics. 
@@ -1591,8 +1594,8 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
    * >> assert((a == b) == (c == d));
    */
   DCCVStack_KillTst();
-  assert(!(lhs->sv_flags&DCC_SFLAG_TEST));
-  assert(!(rhs->sv_flags&DCC_SFLAG_TEST));
+  assert(!(lhs->sv_flags&DCC_SFLAG_TEST) || (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN));
+  assert(!(rhs->sv_flags&DCC_SFLAG_TEST) || (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN));
   /* Generate a compare operation. */
   DCCStackValue_Binary(self,target,'?');
   {
@@ -1933,8 +1936,8 @@ default_binary:
 
  /* Kill all tests. */
  DCCVStack_KillTst();
- assert(!(self->sv_flags&DCC_SFLAG_TEST));
- assert(!(target->sv_flags&DCC_SFLAG_TEST));
+ assert(!(self->sv_flags&DCC_SFLAG_TEST)   || (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN));
+ assert(!(target->sv_flags&DCC_SFLAG_TEST) || (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN));
 
  /* Invoke copy-on-write for the target. */
  if (op != '?') DCCStackValue_Cow(target);
@@ -2850,6 +2853,7 @@ DCCVStack_KillXNon(rc_t rcr) {
 #endif
  if (rcr&DCC_RC_I32) rcr |= DCC_RC_I16;
  if (rcr&DCC_RC_I16 && !(rcr&4)) rcr |= DCC_RC_I8;
+ if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return rcr;
 again:
  iter = compiler.c_vstack.v_bottom;
  end  = compiler.c_vstack.v_end;
@@ -2882,6 +2886,7 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_KillAll(size_t n_skip) {
  struct DCCStackValue *iter,*end;
  assert(n_skip <= vsize);
+ if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  end  = compiler.c_vstack.v_end;
  iter = compiler.c_vstack.v_bottom+n_skip;
  for (; iter != end; ++iter) {
@@ -2896,6 +2901,7 @@ DCCVStack_KillAll(size_t n_skip) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_KillInt(uint8_t mask) {
  struct DCCStackValue *iter,*end;
+ if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  end   = compiler.c_vstack.v_end;
  iter  = compiler.c_vstack.v_bottom;
  mask &= ~((1 << DCC_ASMREG_EBP)
@@ -2919,6 +2925,7 @@ DCCVStack_KillInt(uint8_t mask) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_KillTst(void) {
  struct DCCStackValue *iter,*end;
+ if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  iter = compiler.c_vstack.v_bottom;
  end  = compiler.c_vstack.v_end;
  for (; iter != end; ++iter) {
@@ -4746,6 +4753,10 @@ warn_argc:
 
  DCCStackValue_Call(function); /* Generate the call instructions. */
  vpop(1); /* Pop the function. */
+
+ /* If the function doesn't return, update compiler flags accordingly. */
+ if (funty_attr && (funty_attr->a_specs&DCC_ATTRSPEC_NORETURN))
+     compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|DCC_COMPILER_FLAG_DEAD);
 
 
  if (arg_size && cc != DCC_ATTRFLAG_CC_STDCALL) {
