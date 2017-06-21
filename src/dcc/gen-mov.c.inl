@@ -35,6 +35,7 @@ PUBLIC void
 DCCDisp_MemMovReg(struct DCCMemLoc const *__restrict src,
                   rc_t dst) {
  /* mov !src, %dst */
+ DCCDisp_X86Segp(src->ml_reg);
  if ((dst&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
  if (dst&DCC_RC_I16) t_putb(0x8b);
  else                t_putb(0x8a);
@@ -45,6 +46,7 @@ PUBLIC void
 DCCDisp_RegMovMem(rc_t src,
                   struct DCCMemLoc const *__restrict dst) {
  /* mov %src, offset(%dst) */
+ DCCDisp_X86Segp(dst->ml_reg);
  if ((src&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
  if (src&DCC_RC_I16) t_putb(0x89);
  else                t_putb(0x88);
@@ -60,6 +62,7 @@ DCCDisp_MemsMovReg(struct DCCMemLoc const *__restrict src,
  if (src_bytes >= dst_siz) { DCCDisp_MemMovReg(src,dst); return; } /* Simply copy from src. */
  assert(src_bytes < DCC_TARGET_SIZEOF_GP_REGISTER);
  /* use movsx/movzx to extend the source memory location into 'dst'. */
+ DCCDisp_X86Segp(src->ml_reg);
  if ((dst&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) {
   assert(src_bytes == 1); /* movsx/movzx m8, r16 */
   t_putb(0x66);
@@ -410,8 +413,8 @@ DCCDisp_DoMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_byt
  temp_register = DCCVStack_GetReg(rc,2|(int)(!src_unsigned && !(common_size&1)));
  if (!temp_register) {
   temp_register = DCC_ASMREG_EAX;
-  while ((src_iter.ml_reg != DCC_RC_CONST && (src_iter.ml_reg&DCC_RI_MASK) == temp_register) ||
-         (dst_iter.ml_reg != DCC_RC_CONST && (dst_iter.ml_reg&DCC_RI_MASK) == temp_register) ||
+  while ((!DCC_RC_ISCONST(src_iter.ml_reg) && (src_iter.ml_reg&DCC_RI_MASK) == temp_register) ||
+         (!DCC_RC_ISCONST(dst_iter.ml_reg) && (dst_iter.ml_reg&DCC_RI_MASK) == temp_register) ||
           DCC_ASMREG_ISSPTR(temp_register)) {
    ++temp_register;
    temp_register %= 8;
@@ -572,6 +575,7 @@ DCCDisp_DoCstMovMem(struct DCCSymAddr const *__restrict val,
                     width_t width) {
  /* mov $symaddr, offset(%reg) */
  assert(CHECK_WIDTH(width));
+ DCCDisp_X86Segp(dst->ml_reg);
  if (width == 2) t_putb(0x66);
  if (width == 1) t_putb(0xc6);
  else            t_putb(0xc7);
@@ -883,7 +887,7 @@ modreg:
 PUBLIC void
 DCCDisp_LocMovReg(struct DCCMemLoc const *__restrict val, rc_t dst) {
  assert(val);
- if (val->ml_reg == DCC_RC_CONST) {
+ if (DCC_RC_ISCONST(val->ml_reg)) {
   DCCDisp_CstMovReg(&val->ml_sad,dst);
  } else {
   DCCDisp_RegMovReg(val->ml_reg,dst,1);
@@ -1035,6 +1039,7 @@ DCCDisp_MemPush(struct DCCMemLoc const *__restrict src,
   return;
  }
  if (n_bytes == 2 || n_bytes == 4) {
+  DCCDisp_X86Segp(src->ml_reg);
   if (n_bytes == 2) t_putb(0x66);
   t_putb(0xff);
   asm_modmem(6,src);
@@ -1080,6 +1085,7 @@ DCCDisp_MemRevPush(struct DCCMemLoc const *__restrict src,
   return;
  }
  if (n_bytes == 2 || n_bytes == 4) {
+  DCCDisp_X86Segp(src->ml_reg);
   if (n_bytes == 2) t_putb(0x66);
   t_putb(0xff);
   asm_modmem(6,src);
@@ -1254,6 +1260,7 @@ DCCDisp_PopMem(struct DCCMemLoc const *__restrict dst,
   DCCDisp_UnaryReg('+',DCC_RR_XSP);
   return;
  }
+ DCCDisp_X86Segp(dst->ml_reg);
  if (width == 2) t_putb(0x66);
  t_putb(0x8f);
  asm_modmem(0,dst);
@@ -1315,6 +1322,7 @@ DCCDisp_MemCMovReg(test_t t, struct DCCMemLoc const *__restrict src,
   return;
  }
  /* cmovcc !src, %dst */
+ DCCDisp_X86Segp(src->ml_reg);
  if (!(dst&DCC_RC_I32)) t_putb(0x66);
  t_putb(0x0f);
  t_putb(0x40+t);

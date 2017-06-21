@@ -832,8 +832,8 @@ parse_string:
  case '%':
   if (!force_extensions) WARN(W_EXT_ASM_REGISTERS_IN_EXPRESSIONS);
   /* Push an explicitly defined register stack value. */
-  sval.sv_reg          = DCCVStack_KillXNon(DCCParse_Register());
-  sval.sv_reg2         = DCC_RC_CONST;
+  sval.sv_reg  = DCCVStack_KillXNon(DCCParse_Register());
+  sval.sv_reg2 = DCC_RC_CONST;
   /* Setting the explicit register flag here forces
    * a register copy in a situation like the following:
    * >> int x = 10,y;
@@ -851,24 +851,63 @@ parse_string:
   sval.sv_sym          = NULL;
   sval.sv_ctype.t_base = NULL;
   sval.sv_ctype.t_type = DCC_RC_GETTYPE(sval.sv_reg);
-  if (TOK == ':' && *peek_next_token(NULL) == '%') {
-   /* Parse a register pair.
-    * NOTE: Here, both the first & second register must be 32-bit wide. */
-   YIELD();
-   if (TOK != '%') WARN(W_EXPECTED_PERCENT_BEFORE_REGISTER_NAME);
-   else {
-    sval.sv_reg2 = DCCParse_Register();
-    if ((sval.sv_reg&DCC_RC_I3264) != DCC_RC_I32 ||
-        (sval.sv_reg2&DCC_RC_I3264) != DCC_RC_I32) {
-     WARN(W_INVALID_REGISTER_PAIR);
-     sval.sv_reg2 = DCC_RC_CONST;
-     /* Don't allow invalid register pairs. */
-    } else {
-     sval.sv_reg2 = DCCVStack_KillXNon(sval.sv_reg2);
-     sval.sv_ctype.t_type = DCCTYPE_INT64|DCCTYPE_UNSIGNED;
+  if (TOK == ':') {
+   char const *next_token = peek_next_token(NULL);
+   if ((sval.sv_reg&DCC_RC_MASK) == DCC_RC_SEG) {
+    /* Segment register prefix. */
+    if (*next_token != ')' &&
+        *next_token != ']' &&
+        *next_token != '}' &&
+        *next_token != ',' &&
+        *next_token != ';') {
+     YIELD();
+     sval.sv_reg = DCC_RC_SEGP(sval.sv_reg&DCC_RI_MASK);
+     if (!DCCParse_IsExpr()) goto parse_second_register;
+     /* Parse a pointer expression */
+     DCCParse_ExprUnary();
+     /* Make sure to load l-value operands now, as
+      * any register/offset indirection pairs must
+      * be dereferenced with the general-purpose
+      * segment, instead of the explicitly selected
+      * segment. */
+     DCCStackValue_LoadLValue(vbottom);
+     if ((vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
+         /* When both stack-values make use of the same base segment,
+          * no need to dereference the operand beforehand. */
+         (DCC_RC_SEGPOF(vbottom->sv_reg) != DCC_RC_GET_SEGP(sval.sv_reg)))
+         DCCStackValue_Load(vbottom);
+     vused();
+     DCCType_InitCopy(&sval.sv_ctype,&vbottom->sv_ctype);
+     sval.sv_const.it = vbottom->sv_const.it;
+     sval.sv_sym      = vbottom->sv_sym;
+     sval.sv_reg     |= vbottom->sv_reg;
+     sval.sv_reg2     = vbottom->sv_reg2;
+     vpop(1);
+     goto pushval;
+    }
+   }
+   if (*next_token == '%') {
+    /* Parse a register pair.
+     * NOTE: Here, both the first & second register must be 32-bit wide. */
+    YIELD();
+parse_second_register:
+    if (TOK != '%')
+        WARN(W_EXPECTED_PERCENT_BEFORE_REGISTER_NAME);
+    else {
+     sval.sv_reg2 = DCCParse_Register();
+     if ((sval.sv_reg&DCC_RC_I3264) != DCC_RC_I32 ||
+         (sval.sv_reg2&DCC_RC_I3264) != DCC_RC_I32) {
+      WARN(W_INVALID_REGISTER_PAIR);
+      sval.sv_reg2 = DCC_RC_CONST;
+      /* Don't allow invalid register pairs. */
+     } else {
+      sval.sv_reg2 = DCCVStack_KillXNon(sval.sv_reg2);
+      sval.sv_ctype.t_type = DCCTYPE_INT64|DCCTYPE_UNSIGNED;
+     }
     }
    }
   }
+pushval:
   vpush(&sval);
  } break;
 
@@ -1791,15 +1830,12 @@ DCCParse_CExpr2(int one, struct DCCSymExpr *__restrict result) {
  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
  one ? DCCParse_Expr1() : DCCParse_Expr();
  vused();
- popf();
  result->e_int = vbottom->sv_const.it;
  result->e_sym = vbottom->sv_sym;
  /* TODO: Check 'vbottom' C type. */
- if (vbottom->sv_reg != DCC_RC_CONST ||
-     vbottom->sv_flags&DCC_SFLAG_LVALUE) {
-  WARN(W_EXPECTED_CONSTANT_EXPRESSION);
- }
+ if (!visconst_xval()) WARN(W_EXPECTED_CONSTANT_EXPRESSION);
  vpop(1);
+ popf();
 }
 PUBLIC int_t DCC_PARSE_CALL DCCParse_CExpr(int one) {
  struct DCCSymExpr result; DCCParse_CExpr2(one,&result);

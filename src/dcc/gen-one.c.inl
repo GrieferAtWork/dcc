@@ -55,9 +55,12 @@ DCCDisp_UnaryReg(tok_t op, rc_t dst) {
   }
   break;
  case '(':
-  if (!(dst&(DCC_RC_I3264|DCC_RC_I16)))
-   dst = DCCVStack_CastReg(dst,1,DCC_RC_I16);
+  if (!(dst&(DCC_RC_I3264|DCC_RC_I16))) {
+   dst = DCCVStack_CastReg(dst,1,DCC_RC_I16)|
+                          (dst&DCC_RC_MASK_SEGP);
+  }
   /* call *%dst */
+  DCCDisp_X86Segp(dst);
   if (!(dst&DCC_RC_I32)) t_putb(0x66);
   t_putb(0xff);
   asm_modreg(2,dst&DCC_RI_MASK);
@@ -70,16 +73,22 @@ PRIVATE void
 DCCDisp_UnaryMemWidth(tok_t op, struct DCCMemLoc const *__restrict dst,
                       width_t width) {
  assert(CHECK_WIDTH(width));
- if (width == 2) t_putb(0x66);
  switch (op) {
  case '-':
  case '~':
+  DCCDisp_X86Segp(dst->ml_reg);
+  if (width == 2) t_putb(0x66);
   if (width == 4) t_putb(0xf7);
   else            t_putb(0xf6);
   asm_modmem(op == '-' ? 3 : 2,dst);
   break;
- case TOK_INC: t_putb((0xfe)+(width != 1)); asm_modmem(0,dst); break;
- case TOK_DEC: t_putb((0xfe)+(width != 1)); asm_modmem(1,dst); break;
+ case TOK_INC:
+ case TOK_DEC:
+  DCCDisp_X86Segp(dst->ml_reg);
+  if (width == 2) t_putb(0x66);
+  t_putb((0xfe)+(width != 1));
+  asm_modmem(op == TOK_DEC ? 1 : 0,dst);
+  break;
  case '(':
   if (width == 1) {
    /* 8-bit call. */
@@ -90,6 +99,7 @@ DCCDisp_UnaryMemWidth(tok_t op, struct DCCMemLoc const *__restrict dst,
    DCCDisp_UnaryReg(op,temp);
   } else {
    /* call *offset(%dst) */
+   DCCDisp_X86Segp(dst->ml_reg);
    if (width == 2) t_putb(0x66);
    t_putb(0xff);
    asm_modmem(2,dst);

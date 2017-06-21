@@ -151,6 +151,14 @@ struct DCCSymAddr;
 #define DCC_ASMREG_FS   4
 #define DCC_ASMREG_GS   5
 
+#define DCC_SEGPREFIX_DEFAULT 0x00 /* Special value: Not emit into binary. */
+#define DCC_SEGPREFIX_ES      0x26
+#define DCC_SEGPREFIX_CS      0x2e
+#define DCC_SEGPREFIX_SS      0x36
+#define DCC_SEGPREFIX_DS      0x3e
+#define DCC_SEGPREFIX_FS      0x64
+#define DCC_SEGPREFIX_GS      0x65
+
 /* DCC_ASMOP_R_ST: Floating point st(i) registers. */
 #define DCC_ASMREG_ST(i) ((i)&DCC_BITS(3))
 #else /* I_X86 */
@@ -315,7 +323,7 @@ struct DCCAsmOperand {
  int8_t            ao_reg;     /*< Register id or -1 if not used. (depends on 'ao_type'). */
  int8_t            ao_reg2;    /*< Second register id or -1 if not used. (depends on 'ao_type'). */
  uint8_t           ao_shift;   /*< Register shift. */
- uint8_t           ao_padding; /*< Padding... */
+ uint8_t           ao_segment; /*< Segment prefix (One of 'DCC_SEGPREFIX_*', or 'DCC_SEGPREFIX_DEFAULT' when unused) */
  struct DCCSymAddr ao_val;     /*< Immediate value, offset, or symbol. */
 #else /* I_X86 */
 /* ... */

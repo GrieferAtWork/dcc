@@ -160,6 +160,17 @@ DCCMemLoc_CompilerText(struct DCCMemLoc const *__restrict l,
  return NULL;
 }
 
+#if DCC_TARGET_HASI(I_X86)
+PUBLIC uint8_t const DCCDisp_X86_SegmentPrefix[6] = {
+ /* [DCC_ASMREG_ES] = */DCC_SEGPREFIX_ES,
+ /* [DCC_ASMREG_CS] = */DCC_SEGPREFIX_CS,
+ /* [DCC_ASMREG_SS] = */DCC_SEGPREFIX_SS,
+ /* [DCC_ASMREG_DS] = */DCC_SEGPREFIX_DS,
+ /* [DCC_ASMREG_FS] = */DCC_SEGPREFIX_FS,
+ /* [DCC_ASMREG_GS] = */DCC_SEGPREFIX_GS,
+};
+#endif /* I_X86 */
+
 
 LOCAL target_ptr_t reg_max(rc_t reg) {
  target_ptr_t result;
@@ -381,6 +392,7 @@ DCCDisp_SignMirrorMem(struct DCCMemLoc const *__restrict dst,
  /* Special case: Small memory area. */
  if (CHECK_WIDTH(n_bytes)) {
   uint8_t shift;
+  DCCDisp_X86Segp(dst->ml_reg);
   if (n_bytes == 2) t_putb(0x66);
   if (n_bytes >= 2) t_putb(0xc1),shift = (n_bytes == 4) ? 31 : 15;
   else              t_putb(0xc0),shift = 7;

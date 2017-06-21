@@ -624,7 +624,7 @@ typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_IMM_MAX),    _t) DCC(target_
 
 
 /* Register class/descriptor:
- * One of 'DCC_RC_*', potentially or'd together with one of 'DCC_ASMREG_*'. */
+ * Certain combinations of 'DCC_RC_*', potentially or'd together with one of 'DCC_ASMREG_*'. */
 typedef uint16_t DCC(rc_t);
 
 /* Set sufficient to describe any combination of registers

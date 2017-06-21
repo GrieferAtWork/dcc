@@ -191,7 +191,7 @@ DCCStackValue_IsUnsignedReg(struct DCCStackValue const *__restrict self) {
  /* Special case: A lower-order register apart of a signed larger type is considered unsigned:
   *            >> int x = (int)%al; // Even though 'al' is typed as 'int', don't sign-extend it! */
  if (!(self->sv_flags&DCC_SFLAG_LVALUE) &&
-       self->sv_reg != DCC_RC_CONST) {
+      !DCC_RC_ISCONST(self->sv_reg)) {
   rc_t ty_rc = DCC_RC_FORTYPE(&self->sv_ctype);
   if (DCC_RC_SIZE(self->sv_reg) < DCC_RC_SIZE(ty_rc)) return 1;
  }
@@ -402,15 +402,15 @@ DCCStackValue_Store(struct DCCStackValue *__restrict self,
   val.sv_const.it     = (((int_t)1 << siz)-1) << off;
   if (self->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST)) {
    DCCStackValue_Load(self);
-  } else if (self->sv_reg == DCC_RC_CONST) {
+  } else if (DCC_RC_ISCONST(self->sv_reg)) {
    int_t full_mask;
    /* Special case: the source var is constant. */
    if (self->sv_sym) goto gen_binary_self;
-   if (target->sv_reg == DCC_RC_CONST &&
+   if (DCC_RC_ISCONST(target->sv_reg) &&
       (target->sv_flags&DCC_SFLAG_LVALUE)) {
     /* Operate on compile-time memory (such as during static initialization) */
     struct DCCMemLoc ml; uint8_t *cdata; size_t cbytes;
-    ml.ml_reg  = DCC_RC_CONST;
+    ml.ml_reg  = DCC_RC_CONSTOF(target->sv_reg);
     ml.ml_off  = target->sv_const.offset;
     ml.ml_sym  = target->sv_sym;
     ml.ml_off += off/DCC_TARGET_BITPERBYTE;
@@ -482,7 +482,8 @@ apply_masks:
  assert(DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_LVALUE);
 
  target_reg = target->sv_reg;
- if ((target->sv_flags&DCC_SFLAG_LVALUE) || target_reg == DCC_RC_CONST) {
+ if ((target->sv_flags&DCC_SFLAG_LVALUE) ||
+      DCC_RC_ISCONST(target_reg)) {
   struct DCCMemLoc dest;
   if (!(target->sv_flags&DCC_SFLAG_LVALUE))
    WARN(W_EXPECTED_LVALUE_IN_STORE,&target->sv_ctype);
@@ -500,7 +501,7 @@ apply_masks:
   /* Store in regular, old register. */
   if (self->sv_flags&DCC_SFLAG_TEST) {
    DCCDisp_SccReg((test_t)DCC_SFLAG_GTTEST(self->sv_flags),target_reg);
-   if (target->sv_reg2 != DCC_RC_CONST) DCCDisp_IntMovReg(0,target->sv_reg2);
+   if (!DCC_RC_ISCONST(target->sv_reg2)) DCCDisp_IntMovReg(0,target->sv_reg2);
   } else {
    DCCStackValue_BinReg(self,'=',target->sv_reg,target->sv_reg2);
   }
@@ -547,7 +548,7 @@ DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
    struct DCCSymAddr temp;
    temp.sa_off = (target_off_t)self->sv_const.it;
    temp.sa_sym = self->sv_sym;
-   if (self->sv_reg2 == DCC_RC_CONST) {
+   if (DCC_RC_ISCONST(self->sv_reg2)) {
     /* Must use 'lea' instead of 'add' when the v-stack includes tests. */
     if (DCCVStack_HasTst()) {
      struct DCCMemLoc mloc;
@@ -606,7 +607,7 @@ PRIVATE void DCC_VSTACK_CALL
 DCCStackValue_LodTest(struct DCCStackValue *__restrict self) {
  if (!(self->sv_flags&DCC_SFLAG_TEST)) {
   if ((self->sv_flags&DCC_SFLAG_LVALUE) ||
-      (self->sv_reg == DCC_RC_CONST)
+      (DCC_RC_ISCONST(self->sv_reg))
       ) DCCStackValue_Load(self);
   assert(!(self->sv_flags&DCC_SFLAG_LVALUE));
   DCCStackValue_FixRegOffset(self);
@@ -634,7 +635,7 @@ DCCStackValue_FixBitfield(struct DCCStackValue *__restrict self) {
   if (self->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST)) {
 load_reg: /* Make sure we're operating on a register. */
    DCCStackValue_Load(self);
-  } else if (self->sv_reg != DCC_RC_CONST) {
+  } else if (!DCC_RC_ISCONST(self->sv_reg)) {
    /* Fix potential register offsets. */
    DCCStackValue_FixRegOffset(self);
   } else {
@@ -646,7 +647,7 @@ load_reg: /* Make sure we're operating on a register. */
   }
 
   assert(!(self->sv_flags&DCC_SFLAG_LVALUE));
-  assert(self->sv_reg != DCC_RC_CONST);
+  assert(!DCC_RC_ISCONST(self->sv_reg));
   if (!siz) {
    /* Special case: Empty byte-mask. */
    DCCStackValue_Binary(self,self,'^');
@@ -681,7 +682,7 @@ DCCLinker_PEIndImport(struct DCCStackValue *__restrict self) {
  struct DCCSection *symsec;
  assert(self);
  //if (!(self->sv_flags&DCC_SFLAG_LVALUE)) return;
- if (self->sv_reg != DCC_RC_CONST) return;
+ if (!DCC_RC_ISCONST(self->sv_reg)) return;
  if ((pesym = self->sv_sym) == NULL) return;
  /* Force ITA indirection on symbols declared as '__attribute__((dllimport))' */
  if (pesym->sy_flags&DCC_SYMFLAG_DLLIMPORT) goto force_iat;
@@ -730,7 +731,7 @@ DCCStackValue_LoadLValue(struct DCCStackValue *__restrict self) {
    addr.ml_off = self->sv_const.offset;
    addr.ml_sym = self->sv_sym;
    self->sv_const.it = 0;
-   if (new_register == DCC_RC_CONST ||
+   if (DCC_RC_ISCONST(new_register) ||
      !(self->sv_reg&DCC_RC_PTR) ||
      ((self->sv_flags&DCC_SFLAG_COPY) || /* Must copy protected registers ESP/EBP. */
     (!(self->sv_flags&DCC_SFLAG_XREGISTER) &&
@@ -773,8 +774,8 @@ DCCStackValue_Dup(struct DCCStackValue *__restrict self) {
        !DCCStackValue_HasDuplicate(self)) ||
       /* No need to duplicate constant expressions. */
      (!(self->sv_flags&DCC_SFLAG_LVALUE) &&
-        self->sv_reg == DCC_RC_CONST &&
-        self->sv_reg2 == DCC_RC_CONST)) {
+        DCC_RC_ISCONST(self->sv_reg) &&
+        DCC_RC_ISCONST(self->sv_reg2))) {
   /* The caller expects this flag to be gone by the time we return. */
   self->sv_flags &= ~(DCC_SFLAG_COPY);
   /* Simply a constant expression (no need for special handling). */
@@ -883,7 +884,7 @@ PRIVATE int DCC_VSTACK_CALL
 DCCStackValue_ConstUnary(struct DCCStackValue *__restrict self, tok_t op) {
  int_t iv;
  assert(self);
- assert(self->sv_reg == DCC_RC_CONST);
+ assert(DCC_RC_ISCONST(self->sv_reg));
  iv = self->sv_const.it;
  switch (op) {
  case '!':
@@ -957,13 +958,13 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
 
   /* Generate a test. */
   if (self->sv_flags&DCC_SFLAG_LVALUE) DCCStackValue_Load(self);
-  else if (self->sv_reg == DCC_RC_CONST) {
+  else if (DCC_RC_ISCONST(self->sv_reg)) {
    /* Constant expression case. */
    self->sv_const.it = !self->sv_const.it;
    goto end_exclaim;
   }
   assert(!(self->sv_flags&DCC_SFLAG_LVALUE));
-  assert(self->sv_reg != DCC_RC_CONST);
+  assert(!DCC_RC_ISCONST(self->sv_reg));
   DCCStackValue_FixRegOffset(self);
   assert(!self->sv_const.it);
   assert(!self->sv_sym);
@@ -1077,14 +1078,14 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
  }
 
  /* Check for special case: constant stack entry. */
- if (self->sv_reg == DCC_RC_CONST) {
+ if (DCC_RC_ISCONST(self->sv_reg)) {
   if (DCCStackValue_ConstUnary(self,op)) return;
   DCCStackValue_Load(self);
  }
 
  /* Regular register-operation. */
  DCCStackValue_FixRegOffset(self);
- if (self->sv_reg2 == DCC_RC_CONST) {
+ if (DCC_RC_ISCONST(self->sv_reg2)) {
   DCCDisp_UnaryReg(op,self->sv_reg);
  } else if (op == '~') {
   DCCDisp_UnaryReg(op,self->sv_reg);
@@ -1130,7 +1131,7 @@ DCCStackValue_BinMem(struct DCCStackValue *__restrict self, tok_t op,
   return;
  }
 
- if (self->sv_reg == DCC_RC_CONST) {
+ if (DCC_RC_ISCONST(self->sv_reg)) {
   /* Store a regular constant in 'target'. */
   temp.sa_sym = self->sv_sym;
   switch (n) {
@@ -1167,7 +1168,7 @@ DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
   src.ml_off = self->sv_const.offset;
   DCCDisp_MemsBinRegs(op,&src,DCCType_Sizeof(&self->sv_ctype,NULL,1),
                       dst,dst2,DCCStackValue_IsUnsignedOrPtr(self));
- } else if (source_reg == DCC_RC_CONST) {
+ } else if (DCC_RC_ISCONST(source_reg)) {
 #if DCC_TARGET_SIZEOF_ARITH_MAX < 8
   struct DCCSymExpr temp;
   temp.e_int = self->sv_const.it;
@@ -1179,7 +1180,7 @@ DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
   temp.sa_off = self->sv_const.it;
   temp.sa_sym = self->sv_sym;
   DCCDisp_CstBinReg(op,&temp,dst,DCCStackValue_IsUnsignedOrPtr(self));
-  if (dst2 != DCC_RC_CONST) DCCDisp_IntMovReg(0,dst2);
+  if (!DCC_RC_ISCONST(dst2)) DCCDisp_IntMovReg(0,dst2);
 #endif
  } else {
   /* *op %source_reg, target */
@@ -1207,8 +1208,8 @@ DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op,
  int_t iv,rhsv;
  assert(self);
  assert(other);
- assert(self->sv_reg == DCC_RC_CONST);
- assert(self->sv_reg2 == DCC_RC_CONST);
+ assert(DCC_RC_ISCONST(self->sv_reg));
+ assert(DCC_RC_ISCONST(self->sv_reg2));
  assert(!(self->sv_flags&DCC_SFLAG_LVALUE));
  assert(exprval);
  assert(DCCTYPE_GROUP(self->sv_ctype.t_type) != DCCTYPE_LVALUE);
@@ -1472,7 +1473,7 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
 #define lhs  target
 #define rhs  self
   if (!(lhs->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST)) &&
-       (lhs->sv_reg == DCC_RC_CONST)) {
+       DCC_RC_ISCONST(lhs->sv_reg)) {
    struct cmppair const *iter = compare_pairs;
    /* Lhs is a constant operand.
     * >> Swap the arguments to simply stuff further below! */
@@ -1483,7 +1484,7 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
   }
   if (!(lhs->sv_flags&DCC_SFLAG_LVALUE) &&
       !(rhs->sv_flags&DCC_SFLAG_LVALUE)) {
-   if (rhs->sv_reg == DCC_RC_CONST) {
+   if (DCC_RC_ISCONST(rhs->sv_reg)) {
     if ((lhs->sv_flags&DCC_SFLAG_TEST) &&
         !lhs->sv_sym && !lhs->sv_const.it) {
      /* The lhs operand is a test, and the rhs operand is a constant.
@@ -1550,7 +1551,7 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
 #undef A_KEEP
 #undef A_TT
 #undef A_FF
-    } else if (lhs->sv_reg == DCC_RC_CONST) {
+    } else if (DCC_RC_ISCONST(lhs->sv_reg)) {
      struct DCCSymExpr temp;
      /* Constant expression on both sides. */
      assert(!(lhs->sv_flags&DCC_SFLAG_LVALUE));
@@ -1656,12 +1657,12 @@ end_cmp:
  }
  DCCStackValue_FixBitfield(self);
 
- if (target->sv_reg == DCC_RC_CONST &&
+ if (DCC_RC_ISCONST(target->sv_reg) &&
      /* Make sure the caller doesn't expect to modify 'target' itself. */
     (target->sv_flags&DCC_SFLAG_COPY) &&
    !(target->sv_flags&DCC_SFLAG_LVALUE)) {
   /* NOTE: two-sided constant binary is handled later. */
-  if (self->sv_reg == DCC_RC_CONST &&
+  if (DCC_RC_ISCONST(self->sv_reg) &&
     !(self->sv_flags&DCC_SFLAG_LVALUE)) goto default_binary;
   if ((op == '+' || op == '*' || op == '&' ||
        op == '|' || op == '^'/* || op == '?'*/) &&
@@ -1674,7 +1675,7 @@ end_cmp:
 #define offsetof(s,m) (size_t)&((s *)0)->m
 #endif
    target_siz_t reg_siz = DCC_RC_SIZE(self->sv_reg);
-   if (self->sv_reg2 != DCC_RC_CONST) reg_siz += DCC_RC_SIZE(self->sv_reg);
+   if (!DCC_RC_ISCONST(self->sv_reg2)) reg_siz += DCC_RC_SIZE(self->sv_reg);
    /* We must not allow the operands to be swapped
     * if it would cause one of them to be truncated. */
    if (reg_siz >= DCCType_Sizeof(&target->sv_ctype,NULL,1)) {
@@ -1741,11 +1742,11 @@ end_cmp:
   }
   DCCStackValue_Load(target);
  }
- if (self->sv_reg == DCC_RC_CONST) {
+ if (DCC_RC_ISCONST(self->sv_reg)) {
 constant_rhs:
   if (!(self->sv_sym) &&
       !(self->sv_flags&(DCC_SFLAG_TEST|DCC_SFLAG_LVALUE))) {
-   assert(self->sv_reg == DCC_RC_CONST);
+   assert(DCC_RC_ISCONST(self->sv_reg));
    switch (op) {
 
    case '+':
@@ -1885,7 +1886,7 @@ default_binary:
        *       as the code below is only capable of _ADDING_ one symbol, but not
        *       subtracting it! */
      (op == '-' && !self->sv_sym)) &&
-     (self->sv_reg == DCC_RC_CONST) &&
+     (DCC_RC_ISCONST(self->sv_reg)) &&
     (!(self->sv_flags&(DCC_SFLAG_TEST|DCC_SFLAG_LVALUE))) &&
     (!(target->sv_flags&DCC_SFLAG_TEST)) &&
      /* Don't use register offsets for non-copyable lvalues
@@ -1904,7 +1905,7 @@ default_binary:
     (!target->sv_sym || !self->sv_sym)) {
   int_t old_val;
   sflag_t target_flags = target->sv_flags;
-  assert(self->sv_reg2 == DCC_RC_CONST);
+  assert(DCC_RC_ISCONST(self->sv_reg2));
   /* Make sure to load l-value stack values. */
   if (target_flags&DCC_SFLAG_LVALUE)
       DCCStackValue_Load(target);
@@ -1944,14 +1945,14 @@ default_binary:
 
 exec_mem_or_reg:
  if ((target->sv_flags&DCC_SFLAG_LVALUE) ||
-      target->sv_reg == DCC_RC_CONST) {
+      DCC_RC_ISCONST(target->sv_reg)) {
   struct DCCMemLoc dest;
   if (!(target->sv_flags&DCC_SFLAG_LVALUE)) {
    /* Propagate the no-sign warnings flag. */
    target->sv_flags |= (self->sv_flags&DCC_SFLAG_NO_WSIGN);
-   if (target->sv_reg == DCC_RC_CONST) {
-    if (self->sv_reg == DCC_RC_CONST &&
-        self->sv_reg2 == DCC_RC_CONST &&
+   if (DCC_RC_ISCONST(target->sv_reg)) {
+    if (DCC_RC_ISCONST(self->sv_reg) &&
+        DCC_RC_ISCONST(self->sv_reg2) &&
       !(self->sv_flags&DCC_SFLAG_LVALUE)) {
      struct DCCSymExpr temp;
      /* Binary operation on constant expression. */
@@ -1965,7 +1966,7 @@ exec_mem_or_reg:
    } else if (op != '?') {
     WARN(W_EXPECTED_LVALUE_FOR_BINARY_OP,&target->sv_ctype);
    }
-   assert(target->sv_reg != DCC_RC_CONST);
+   assert(!DCC_RC_ISCONST(target->sv_reg));
    goto exec_mem_or_reg;
   }
   /* Memory location. */
@@ -2103,7 +2104,7 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
    if (cls_size[tn] <= cls_size[to]) goto done;
    DCCStackValue_Load(self); /* Load the value if the size increases. */
   }
-  if (self->sv_reg == DCC_RC_CONST) {
+  if (DCC_RC_ISCONST(self->sv_reg)) {
    int_t mask = (((int_t)1 << cls_size[tn]*DCC_TARGET_BITPERBYTE)-1);
    /* Cast a constant operand. */
    /* Check the sign-bit and sign-extend if necessary. */
@@ -2126,7 +2127,7 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
   /* Move the old register into the new one.
    * NOTE: 'DCCDisp_RegMovReg' will automatically determine if a mov is really required. */
   DCCDisp_RegMovReg(self->sv_reg,new_class,was_unsigned);
-  self->sv_reg  = new_class;
+  self->sv_reg  = new_class|DCC_RC_CONSTOF(self->sv_reg);
   self->sv_reg2 = DCC_RC_CONST;
 #ifndef DCC_RC_I64
   if (tn == DCCTYPE_INT64) {
@@ -2200,7 +2201,7 @@ DCCStackValue_Jmp(struct DCCStackValue *__restrict self) {
  target_addr.ml_off = self->sv_const.offset;
  target_addr.ml_sym = self->sv_sym;
  if (self->sv_flags&DCC_SFLAG_LVALUE) {
-  if (self->sv_reg2 != DCC_RC_CONST) WARN(W_JMP_TARGET_TRUNCATED);
+  if (!DCC_RC_ISCONST(self->sv_reg2)) WARN(W_JMP_TARGET_TRUNCATED);
   DCCDisp_MemJmp(&target_addr,DCCType_Sizeof(&self->sv_ctype,NULL,1));
  } else {
   DCCDisp_LocJmp(&target_addr);
@@ -2218,10 +2219,10 @@ DCCStackValue_Jcc(struct DCCStackValue *__restrict cond,
  OLD_VPROM(cond);
  DCCStackValue_LoadLValue(cond);
  if (!(cond->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST)) &&
-       cond->sv_reg == DCC_RC_CONST) {
+       DCC_RC_ISCONST(cond->sv_reg)) {
   int cond_istrue;
   /* Special case: The condition is know at compile-time. */
-  assert(cond->sv_reg2 == DCC_RC_CONST);
+  assert(DCC_RC_ISCONST(cond->sv_reg2));
   cond_istrue = cond->sv_sym || cond->sv_const.it;
   cond_istrue ^= invert;
   if (cond_istrue) DCCStackValue_Jmp(target);
@@ -2231,8 +2232,8 @@ DCCStackValue_Jcc(struct DCCStackValue *__restrict cond,
  DCCStackValue_LodTest(cond);
  assert(!(cond->sv_flags&DCC_SFLAG_LVALUE));
  assert(cond->sv_flags&DCC_SFLAG_TEST);
- assert(cond->sv_reg == DCC_RC_CONST);
- assert(cond->sv_reg2 == DCC_RC_CONST);
+ assert(DCC_RC_ISCONST(cond->sv_reg));
+ assert(DCC_RC_ISCONST(cond->sv_reg2));
  gen_test = DCC_SFLAG_GTTEST(cond->sv_flags);
  if (invert) gen_test ^= DCC_TEST_NBIT;
  assertf(gen_test <= 0xf,"gen_test = %x",gen_test);
@@ -2383,7 +2384,7 @@ DCCStackValue_Subscript(struct DCCStackValue *__restrict self,
   assert(!(self->sv_flags&DCC_SFLAG_TEST));
   /* Quickly fix constant bitfields. */
   if (!(self->sv_flags&DCC_SFLAG_LVALUE) &&
-       (self->sv_reg == DCC_RC_CONST)
+       (DCC_RC_ISCONST(self->sv_reg))
        ) DCCStackValue_FixBitfield(self);
  }
  return;
@@ -2508,7 +2509,7 @@ DCCStackValue_ClampConst(struct DCCStackValue *__restrict self, int wid) {
  if (!is_unsigned && self->sv_const.it&((mask+1)>>1)) self->sv_const.it |= ~(mask);
  else if (self->sv_const.it&~mask) {
   /* Don't emit a warning if the stack-value depends on a symbol or register. */
-  if (wid && self->sv_reg == DCC_RC_CONST && !self->sv_sym)
+  if (wid && DCC_RC_ISCONST(self->sv_reg) && !self->sv_sym)
       WARN(wid,self->sv_const.it);
   self->sv_const.it &= mask;
  }
@@ -2810,14 +2811,14 @@ again:
         ((end->sv_reg2&DCC_RC_MASK) == rc))) {
     /* Make sure to skip pointer registers if those aren't allowed. */
     if (!(wanted_set&(1 << (end->sv_reg&7))) &&
-        (end->sv_reg2 == DCC_RC_CONST ||
+        (DCC_RC_ISCONST(end->sv_reg2) ||
         !(wanted_set&(1 << (end->sv_reg2&7)))))
         continue;
     /* Kill the stack value. */
     DCCStackValue_Kill(end);
     assert(end->sv_flags&DCC_SFLAG_LVALUE);
     assert(end->sv_reg == DCC_RR_XBP);
-    assert(end->sv_reg2 == DCC_RC_CONST);
+    assert(DCC_RC_ISCONST(end->sv_reg2));
     /* Start over.
      * NOTE: Must search again for a case like 'al'+'ah' were
      *       both in use, but we only killed one of them. */
@@ -3083,7 +3084,7 @@ DCCVStack_PushDecl(struct DCCDecl *__restrict decl) {
   vpushi(DCCTYPE_VOID,0);
   return;
  }
- if (decl->d_mdecl.md_loc.ml_reg != DCC_RC_CONST) {
+ if (!DCC_RC_ISCONST(decl->d_mdecl.md_loc.ml_reg)) {
   DCCStackValue_SetMemDecl(&slot,&decl->d_mdecl);
  } else {
   struct DCCSym *sym = decl->d_mdecl.md_loc.ml_sym;
@@ -3177,6 +3178,7 @@ DCCVStack_PushReg(rc_t reg) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_PushRegs(rc_t reg, rc_t reg2) {
  struct DCCStackValue slot;
+ assert(DCC_RC_CONSTOF(reg2) == DCC_RC_CONST);
  if (reg2 != DCC_RC_CONST) {
   slot.sv_ctype.t_type = DCCTYPE_INT64;
  } else {
@@ -3303,7 +3305,7 @@ DCCVStack_Push(struct DCCStackValue const *__restrict sval) {
    }
    goto vlog_cst;
   }
-  if (sval->sv_reg == DCC_RC_CONST && sval->sv_sym) {
+  if (DCC_RC_ISCONST(sval->sv_reg) && sval->sv_sym) {
    if (sval->sv_flags&DCC_SFLAG_LVALUE) {
     if (DCCTYPE_ISARRAY(sval->sv_ctype.t_type)) {
      assert(sval->sv_ctype.t_base);
@@ -3337,7 +3339,7 @@ DCCVStack_Push(struct DCCStackValue const *__restrict sval) {
     goto vlog_sym;
    }
   }
-  if (sval->sv_reg != DCC_RC_CONST &&
+  if (!DCC_RC_ISCONST(sval->sv_reg) &&
      !sval->sv_ctype.t_base &&
       sval->sv_ctype.t_type == DCC_RC_GETTYPE(sval->sv_reg)) {
    VLOG(1,("vpushr("));
@@ -3382,11 +3384,11 @@ default_vlog:
            (int)DCC_SFLAG_GTBITSIZ(sval->sv_flags));
   }
   if (sval->sv_flags&DCC_SFLAG_LVALUE) dcc_outf("*(");
-  if (sval->sv_reg != DCC_RC_CONST) {
+  if (!DCC_RC_ISCONST(sval->sv_reg)) {
 vlog_reg:
    dcc_outf("%%");
    vlog_regnam(sval->sv_reg);
-   if (sval->sv_reg2 != DCC_RC_CONST) {
+   if (!DCC_RC_ISCONST(sval->sv_reg2)) {
     dcc_outf(":%%");
     vlog_regnam(sval->sv_reg2);
    }
@@ -3414,7 +3416,7 @@ vlog_sym:
    if (sval->sv_const.it) dcc_outf("+");
   }
   if (sval->sv_const.it ||
-     (!sval->sv_sym && sval->sv_reg == DCC_RC_CONST)) {
+     (!sval->sv_sym && DCC_RC_ISCONST(sval->sv_reg))) {
 vlog_cst:
    if (sval->sv_const.it&15) {
 #if TPP_HAVE_LONGLONG
@@ -3552,13 +3554,13 @@ PUBLIC void DCC_VSTACK_CALL DCCVStack_Pop(int del) {
       WARN(W_UNUSED_VALUE,&vbottom->sv_ctype);
  if (/* Only perform destruction if we're supposed to. */
     (vbottom->sv_flags&(DCC_SFLAG_XOFFSET|DCC_SFLAG_LVALUE|DCC_SFLAG_COPY)) == DCC_SFLAG_XOFFSET &&
-    (vbottom->sv_reg != DCC_RC_CONST) && (vbottom->sv_const.it != 0)) {
+    (!DCC_RC_ISCONST(vbottom->sv_reg)) && (vbottom->sv_const.it != 0)) {
   struct DCCSymAddr rhs_val;
   rhs_val.sa_sym = vbottom->sv_sym;
   rhs_val.sa_off = (target_off_t)vbottom->sv_const.offset;
   /* Need to add the offset, as it was explicitly stated!
    * This can happen if the user wrote something like '%eax += 42;' */
-  if (vbottom->sv_reg2 != DCC_RC_CONST) {
+  if (!DCC_RC_ISCONST(vbottom->sv_reg2)) {
    /* Always to use 'add', as 'inc' don't set the carry flag. */
    DCCDisp_CstBinReg('+',&rhs_val,vbottom->sv_reg,0);
    /* Add more data to the second operand (NOTE: with carry). */
@@ -3716,8 +3718,8 @@ DCCVStack_Bitfldf(sflag_t flags) {
  assert(!(vbottom->sv_flags&DCC_SFLAG_TEST));
  /* Quickly fix constant bitfields. */
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
-      (vbottom->sv_reg == DCC_RC_CONST)
-      ) DCCStackValue_FixBitfield(vbottom);
+       DCC_RC_ISCONST(vbottom->sv_reg))
+     DCCStackValue_FixBitfield(vbottom);
 }
 
 
@@ -3975,7 +3977,7 @@ DCCVStack_StoreCC(int invert_test,
   struct DCCSym *skip_jmp;
   /* Make sure that the target can be modified at runtime. */
   if (!(vbottom[2].sv_flags&DCC_SFLAG_LVALUE) &&
-       (vbottom[2].sv_reg == DCC_RC_CONST))
+        DCC_RC_ISCONST(vbottom[2].sv_reg))
         DCCStackValue_Load(&vbottom[2]);
   else  DCCStackValue_Cow(&vbottom[2]);
   vbottom[2].sv_flags &= ~(DCC_SFLAG_RVALUE);
@@ -4043,7 +4045,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
  vtyp = DCCType_Effective(&value->sv_ctype);
  if (DCCType_IsCompatible(vtyp,type,1))
   return 0;
- is_const = value->sv_reg == DCC_RC_CONST &&
+ is_const = DCC_RC_ISCONST(value->sv_reg) &&
           !(value->sv_flags&DCC_SFLAG_LVALUE) &&
           !(value->sv_sym);
  tid = type->t_type&~(DCCTYPE_QUAL);
@@ -4446,7 +4448,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
   DCCDisp_MemPush(&symaddr,result);
   DCCDisp_NdfPush(filler);
 #endif
- } else if (self->sv_reg == DCC_RC_CONST) {
+ } else if (DCC_RC_ISCONST(self->sv_reg)) {
   int          sign_byte = 0;
   target_siz_t sign_size = 0;
   target_siz_t curr_size;
@@ -4505,7 +4507,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
 #if !DCC_TARGET_STACKDOWN
   DCCDisp_NdfPush(filler);
 #endif
- } else if (self->sv_reg != DCC_RC_CONST) {
+ } else if (!DCC_RC_ISCONST(self->sv_reg)) {
   target_siz_t register_memory,sign_memory;
   rc_t r1,r2;
   /* TODO: Floating-point registers? */
@@ -4513,7 +4515,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
   DCCStackValue_FixRegOffset(self);
   r1 = self->sv_reg,r2 = self->sv_reg2;
   register_memory = DCC_RC_SIZE(r1);
-  if (r2 != DCC_RC_CONST) register_memory += DCC_RC_SIZE(r2);
+  if (DCC_RC_ISCONST(r2)) register_memory += DCC_RC_SIZE(r2);
   assert(register_memory <= DCC_TARGET_SIZEOF_GP_REGISTER*2);
   sign_memory = 0;
   if (register_memory > result) {
@@ -4569,7 +4571,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
   if (!(result&(result-1))) {
    /* Likely case: When the type-size is one of 1,2,4 or 8,
     *              we can push the register(s) directly! */
-   if (r2 != DCC_RC_CONST) DCCDisp_RegPush(r2);
+   if (DCC_RC_ISCONST(r2)) DCCDisp_RegPush(r2);
    DCCDisp_RegPush(r1);
   } else {
    /* Difficult case: Must manually handle special type sizes. */

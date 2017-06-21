@@ -94,6 +94,34 @@ struct TPPString;
 #   define DCC_RC_DR     0x0d00 /*< DR* register: DR(0-7)*/
 #   define DCC_RC_SEG    0x0e00 /*< Segment registers. */
 #   define DCC_RC_ST     0x0f00 /*< ST(i) registers. */
+
+/* Only used for registers in memory locations, such as in 'struct DCCMemLoc'.
+ * NOTE: The following functions that accept this modifier for 'rc_t' arguments are:
+ *    >> DCCDisp_RegJcc(...)
+ *    >> DCCDisp_RegJmp(...)
+ *    >> DCCDisp_UnaryReg('(',...) // Only for 'op == '('' (call operation)
+ * NOTE: The following functions don't accept this modifier for 'struct DCCMemLoc' arguments:
+ *    >> DCCDisp_LeaMem(...) // Still accepted for the target argument; only ignored by the source argument.
+ *    >> DCCDisp_LeaReg(...)
+ */
+#   define DCC_RC_MASK_SEGP     0xe000 /*< Mask for segment prefixes. */
+#   define DCC_RC_SHFT_SEGP     13     /*< Shift for segment prefixes (for converting 'DCC_ASMREG_ES' <--> rc masks). */
+#   define DCC_RC_SEGP(s)      (((s)+1) << DCC_RC_SHFT_SEGP)
+#   define DCC_RC_HAS_SEGP(rc) ((rc)&DCC_RC_MASK_SEGP)
+#   define DCC_RC_GET_SEGP(rc) (((rc) >> DCC_RC_SHFT_SEGP)-1)
+#   define DCC_RC_SEGP_ES        DCC_RC_SEGP(DCC_ASMREG_ES)
+#   define DCC_RC_SEGP_CS        DCC_RC_SEGP(DCC_ASMREG_CS)
+#   define DCC_RC_SEGP_SS        DCC_RC_SEGP(DCC_ASMREG_SS)
+#   define DCC_RC_SEGP_DS        DCC_RC_SEGP(DCC_ASMREG_DS)
+#   define DCC_RC_SEGP_FS        DCC_RC_SEGP(DCC_ASMREG_FS)
+#   define DCC_RC_SEGP_GS        DCC_RC_SEGP(DCC_ASMREG_GS)
+/* Return the effective segment for a given register,
+ * taking explicit segment overrides, as well as default
+ * segments DS/SS into account. */
+#   define DCC_RC_SEGPOF(rc)    (DCC_RC_HAS_SEGP(rc) ? DCC_RC_GET_SEGP(rc) : \
+                                (((rc)&(DCC_RC_I16|DCC_RC_I3264) && \
+                                 ((rc)&DCC_RI_MASK) == DCC_ASMREG_BP) \
+                                 ? DCC_ASMREG_SS : DCC_ASMREG_DS))
 #else
 #   error FIXME
 #endif
@@ -108,10 +136,17 @@ struct TPPString;
 #define DCC_RC_IN(bytes) DCC_PRIVATE_RC_IN(bytes)
 
 #define DCC_RI_MASK 0x0007 /*< Mask for the register id (One of 'DCC_ASMREG_*'). */
-#define DCC_RC_MASK 0xfff8 /*< Mask for the register class (See above). */
+#define DCC_RC_MASK 0x0ff8 /*< Mask for the register class (See above). */
 
 /* Special register classes that describe things different than registers. */
-#define DCC_RC_CONST 0x0000 /*< Constant value. ('sv_const' contains its value, or offset when 'sv_sym' is non-NULL). */
+#define DCC_RC_CONST          0x0000 /*< Constant value. ('sv_const' contains its value, or offset when 'sv_sym' is non-NULL). */
+#ifdef DCC_RC_MASK_SEGP
+#define DCC_RC_ISCONST(x) (!((x)&DCC_RC_MASK))
+#define DCC_RC_CONSTOF(x)   ((x)&DCC_RC_MASK_SEGP)
+#else
+#define DCC_RC_ISCONST(x)   ((x) == DCC_RC_CONST)
+#define DCC_RC_CONSTOF(x)           DCC_RC_CONST
+#endif
 
 /* NOTE: Local variables are implemented as follow:
  *    >> int x = 42;

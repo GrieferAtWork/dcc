@@ -62,8 +62,8 @@ union{struct{
 #pragma warning(pop)
 #endif
 
-#define DCCMEMLOC_ISREGOFF(self)   ((self)->ml_reg != DCC_RC_CONST)
-#define DCCMEMLOC_ISMEMOFF(self)   ((self)->ml_reg == DCC_RC_CONST)
+#define DCCMEMLOC_ISREGOFF(self)   (!DCC_RC_ISCONST((self)->ml_reg))
+#define DCCMEMLOC_ISMEMOFF(self)     DCC_RC_ISCONST((self)->ml_reg)
 #define DCCMEMLOC_ISREGOFF_S(self) (DCCMEMLOC_ISREGOFF(self) && (self)->ml_sym)
 #define DCCMEMLOC_ISMEMOFF_S(self) (DCCMEMLOC_ISMEMOFF(self) && (self)->ml_sym)
 

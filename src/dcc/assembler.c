@@ -79,13 +79,32 @@ PRIVATE uint8_t DCCParse_AsmShift(void) {
  return result;
 }
 
+PRIVATE uint8_t const segment_prefix[] = {
+ /* [DCC_ASMREG_ES] = */DCC_SEGPREFIX_ES,
+ /* [DCC_ASMREG_CS] = */DCC_SEGPREFIX_CS,
+ /* [DCC_ASMREG_SS] = */DCC_SEGPREFIX_SS,
+ /* [DCC_ASMREG_DS] = */DCC_SEGPREFIX_DS,
+ /* [DCC_ASMREG_FS] = */DCC_SEGPREFIX_FS,
+ /* [DCC_ASMREG_GS] = */DCC_SEGPREFIX_GS,
+};
+PRIVATE uint32_t const segment_mask[] = {
+ /* [DCC_ASMREG_ES] = */DCC_ASMOP_ES,
+ /* [DCC_ASMREG_CS] = */DCC_ASMOP_CS,
+ /* [DCC_ASMREG_SS] = */DCC_ASMOP_SS,
+ /* [DCC_ASMREG_DS] = */DCC_ASMOP_DS,
+ /* [DCC_ASMREG_FS] = */DCC_ASMOP_FS,
+ /* [DCC_ASMREG_GS] = */DCC_ASMOP_GS,
+};
+
 PUBLIC void
 DCCParse_AsmOperand(struct DCCAsmOperand *op) {
  op->ao_type       = 0;
  op->ao_reg        = -1;
  op->ao_reg2       = -1;
  op->ao_val.sa_sym = NULL;
+ op->ao_segment    = DCC_SEGPREFIX_DEFAULT;
  if (TOK == '*') YIELD(),op->ao_type |= DCC_ASMOP_IND;
+again:
  if (TOK == '%') {
   /* Register name. */
   YIELD();
@@ -101,19 +120,22 @@ DCCParse_AsmOperand(struct DCCAsmOperand *op) {
        (op->ao_reg == 0)) op->ao_type |= DCC_ASMOP_EAX;
    else if (op->ao_type == DCC_ASMOP_R_8 && op->ao_reg == DCC_ASMREG_CL) op->ao_type |= DCC_ASMOP_CL;
    else if (op->ao_type == DCC_ASMOP_R_16 && op->ao_reg == DCC_ASMREG_DX) op->ao_type |= DCC_ASMOP_DX;
+   YIELD();
   } else if (TOK >= KWD_es && TOK <= KWD_gs) {
-   op->ao_type |= DCC_ASMOP_R_SEG;
-   op->ao_reg   = (uint8_t)(TOK-KWD_es);
-   switch (op->ao_reg) {
-   /* push/pop have special overloads for each of these (except for 'pop %cs') */
-   case DCC_ASMREG_ES: op->ao_type |= DCC_ASMOP_ES; break;
-   case DCC_ASMREG_DS: op->ao_type |= DCC_ASMOP_DS; break;
-   case DCC_ASMREG_FS: op->ao_type |= DCC_ASMOP_FS; break;
-   case DCC_ASMREG_GS: op->ao_type |= DCC_ASMOP_GS; break;
-   case DCC_ASMREG_CS: op->ao_type |= DCC_ASMOP_CS; break;
-   case DCC_ASMREG_SS: op->ao_type |= DCC_ASMOP_SS; break;
-   default: break;
+   op->ao_reg = (uint8_t)(TOK-KWD_es);
+   YIELD();
+   if (TOK == ':') {
+    /* Special case: Segment override. */
+    if (op->ao_segment != DCC_SEGPREFIX_DEFAULT)
+        WARN(W_ASM_SEGMENT_PREFIX_ALREADY_GIVEN);
+    op->ao_segment = segment_prefix[op->ao_reg];
+    op->ao_reg     = -1;
+    YIELD();
+    goto again;
    }
+   op->ao_type |= DCC_ASMOP_R_SEG;
+   /* push/pop have special overloads for each of these (except for 'pop %cs') */
+   op->ao_type |= segment_mask[op->ao_reg];
   } else if (TOK == KWD_st) {
    YIELD();
    op->ao_type |= DCC_ASMOP_R_ST;
@@ -135,7 +157,6 @@ DCCParse_AsmOperand(struct DCCAsmOperand *op) {
    WARN(W_ASM_EXPECTED_REGISTER_NAME);
    goto fallback;
   }
-  YIELD();
 done_register:;
  } else if (TOK == '$') {
   YIELD();
@@ -695,6 +716,14 @@ asm_gen_op(struct x86_opcode const *op,
  assert(argv);
  opcode = op->o_code;
  argc = (uint8_t)((op->o_flags&DCC_ASMOPC_ARGCMASK) >> DCC_ASMOPC_ARGCSHIFT);
+ for (i = 0; i < argc; ++i) {
+  if (argv[i].ao_segment != DCC_SEGPREFIX_DEFAULT) {
+   /* Emit a segment prefix. */
+   t_putb(argv[i].ao_segment);
+   break;
+  }
+ }
+
  /* Opcodes that require special handling. */
  if (opcode == 0xcd) { /* int $imm8 */
   assert(argc == 1);

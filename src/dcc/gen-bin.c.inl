@@ -226,6 +226,7 @@ DCCDisp_MemBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
   case '*':
    if (dst&(DCC_RC_I32|DCC_RC_I16)) {
     /* 16/32-bit mul. */
+    DCCDisp_X86Segp(src->ml_reg);
     if (!(dst&DCC_RC_I32)) t_putb(0x66);
     t_putb(0x0f);
     t_putb(0xaf);
@@ -236,6 +237,7 @@ DCCDisp_MemBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
    assertf(temp&DCC_RC_I8,"Must always be the case for non-pointer classes.");
    DCCDisp_RegMovReg(dst,temp,1);
    /* imul offset(%src), %temp */
+   DCCDisp_X86Segp(src->ml_reg);
    t_putb(0x0f);
    t_putb(0xaf);
    asm_modmem(temp&DCC_RI_MASK,src);
@@ -287,6 +289,7 @@ DCCDisp_MemBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
    DCCDisp_RegMovReg(dst,eax,1);
    DCCDisp_IntMovReg(0,edx);
    /* Generate the div/idiv instruction. */
+   DCCDisp_X86Segp(src->ml_reg);
    if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    t_putb(0xf6+!!(dst&DCC_RC_I16));
    asm_modmem(src_unsigned ? 6 : 7,src);
@@ -315,6 +318,7 @@ DCCDisp_MemBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
 
   { /* test */
   case 't':
+   DCCDisp_X86Segp(src->ml_reg);
    if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    t_putb(0x84+!!(dst&DCC_RC_I16));
    asm_modmem(dst&DCC_RI_MASK,src);
@@ -325,6 +329,7 @@ DCCDisp_MemBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
   return;
  }
  /* *op !src, %dst */
+ DCCDisp_X86Segp(src->ml_reg);
  if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
  t_putb(bin_op->bo_r_rm8+2+!!(dst&DCC_RC_I16));
 modrm:
@@ -390,7 +395,8 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
    used_dst = *dst;
    if ((used_dst.ml_reg != DCC_RC_CONST) &&
        (used_dst.ml_reg&DCC_RI_MASK) == DCC_ASMREG_CL) {
-    used_dst.ml_reg = DCCVStack_GetReg(DCC_RC_PTR,1);
+    used_dst.ml_reg  =  DCCVStack_GetReg(DCC_RC_PTR,1);
+    used_dst.ml_reg |= (dst->ml_reg&DCC_RC_MASK_SEGP);
     DCCDisp_RegMovReg(dst->ml_reg,used_dst.ml_reg,1);
    }
    if ((src&DCC_RI_MASK) != DCC_ASMREG_CL) {
@@ -398,6 +404,7 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
     DCCDisp_RegMovReg(src,cl,src_unsigned);
    }
    /* Generate the shift instruction. */
+   DCCDisp_X86Segp(used_dst.ml_reg);
    if ((src&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    t_putb(0xd2+!!(src&DCC_RC_I16));
    asm_modmem(get_shift_group(op),&used_dst);
@@ -413,6 +420,7 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
   return;
  }
  /* *op %src, !dst */
+ DCCDisp_X86Segp(dst->ml_reg);
  if ((src&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
  t_putb(bin_op->bo_r_rm8+!!(src&DCC_RC_I16));
  asm_modmem(src&DCC_RI_MASK,dst);
@@ -843,6 +851,7 @@ DCCDisp_CstBinMem(tok_t op,
     temp &= ~(DCC_RC_I16);
    } else {
     /* imulw/l $imm8/16/32, offset(%dst), %temp */
+    DCCDisp_X86Segp(dst->ml_reg);
     if (width == 2) t_putb(0x66);
     if (!val->sa_sym && val->sa_off == (int8_t)val->sa_off) t_putb(0x6b),width = 1;
     else                                                    t_putb(0x69);
@@ -892,6 +901,7 @@ DCCDisp_CstBinMem(tok_t op,
   case TOK_SHR:
   case TOK_RANGLE3:
    /* Generate the shift instruction. */
+   DCCDisp_X86Segp(dst->ml_reg);
    if (width == 2) t_putb(0x66);
    if (!val->sa_sym && val->sa_off == 1) {
     /* Shift by 1. */
@@ -906,6 +916,7 @@ DCCDisp_CstBinMem(tok_t op,
 
   { /* test */
   case 't':
+   DCCDisp_X86Segp(dst->ml_reg);
    if (width == 2) t_putb(0x66);
    t_putb(0xf6+(width >= 2));
    asm_modmem(0,dst);
@@ -917,6 +928,7 @@ DCCDisp_CstBinMem(tok_t op,
   return;
  }
  /* *op symaddr, offset(%dst) */
+ DCCDisp_X86Segp(dst->ml_reg);
  if (width == 2) t_putb(0x66);
  if (width == 1) {
   /* 8-bit immediate value. */
@@ -1750,6 +1762,7 @@ DCCDisp_LeaReg(struct DCCMemLoc const *__restrict addr,
   DCCDisp_RegMovReg(addr->ml_reg,dst,1);
   DCCDisp_AddReg(&addr->ml_sad,dst);
  } else {
+  /*DCCDisp_X86Segp(addr->ml_reg);*/
   if (!(dst&DCC_RC_I3264)) t_putb(0x66);
   t_putb(0x8d);
   asm_modmem(dst&DCC_RI_MASK,addr);

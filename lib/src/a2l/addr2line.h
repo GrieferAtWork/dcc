@@ -153,7 +153,6 @@ union{struct{
 /*                       0x20 */
 /*                       .... */
 /*                       0x3d */
-#define A2L_O_SET_L      0x30 /* A2lState_SETF(s); */
 #define A2L_O_RESET      0x3e /* A2lState_RESET(s); */
 #define A2L_O_NOP        0x3f /* no-op */
 

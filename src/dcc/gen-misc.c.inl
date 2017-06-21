@@ -45,6 +45,7 @@ DCCDisp_RegXchReg(rc_t a, rc_t b) {
 
 PUBLIC void
 DCCDisp_RegXchMem(rc_t a, struct DCCMemLoc const *__restrict b) {
+ DCCDisp_X86Segp(b->ml_reg);
  if ((a&(DCC_RC_I3264|DCC_RC_I16)) == DCC_RC_I16) t_putb(0x66);
  t_putb(0x86+!!(a&DCC_RC_I16));
  asm_modmem(a&7,b);
@@ -195,9 +196,12 @@ LOCAL void DCCDisp_BsfMem(int reverse, struct DCCMemLoc const *__restrict src,
   rc_t used_dst = dst;
   if (width == 2) {
    /* Use an intermediate register for non-overlapping 16/32->8 bit scan. */
-   if (!(dst&(DCC_RC_I16|DCC_RC_I3264))
-       ) used_dst = DCCVStack_GetReg(width == 2 ? DCC_RC_I16 : DCC_RC_I32,0);
+   if (!(dst&(DCC_RC_I16|DCC_RC_I3264)))
+         used_dst = DCCVStack_GetReg(width == 2 ? DCC_RC_I16 : DCC_RC_I32,0);
+   DCCDisp_X86Segp(src->ml_reg);
    t_putb(0x66);
+  } else {
+   DCCDisp_X86Segp(src->ml_reg);
   }
   t_putb(0x0f);
   t_putb(0xbc+!!reverse);
@@ -427,6 +431,7 @@ DCCDisp_AtomicRegCmpXchMemAX(rc_t src, struct DCCMemLoc const *__restrict dst) {
  assert(dst);
  /* lock cmpxchg %src, !dst */
  t_putb(0xf0);
+ DCCDisp_X86Segp(dst->ml_reg);
  if ((src&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
  t_putb(0x0f);
  t_putb(0xb0+!!(src&DCC_RC_I16));
@@ -518,6 +523,7 @@ DCCDisp_AtomicRegBinMem(tok_t op, int fetch_mode, rc_t src,
   }
   /* lock xchg !dst, %src */
   t_putb(0xf0);
+  DCCDisp_X86Segp(dst->ml_reg);
   if ((src&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
   t_putb(0x86+!!(src&DCC_RC_I16));
   asm_modmem(src&7,dst);
@@ -542,6 +548,7 @@ DCCDisp_AtomicRegBinMem(tok_t op, int fetch_mode, rc_t src,
   }
   /* lock xadd !dst, %src */
   t_putb(0xf0);
+  DCCDisp_X86Segp(dst->ml_reg);
   if ((src&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
   t_putb(0x0f);
   t_putb(0xc0+!!(src&DCC_RC_I16));
