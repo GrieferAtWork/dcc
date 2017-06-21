@@ -416,7 +416,12 @@ DCCFUN void DCC_VSTACK_CALL DCCStackValue_LoadExplicit(struct DCCStackValue *__r
 /* Load the value of a bitfield, either into a register, or onto the stack. */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_FixBitfield(struct DCCStackValue *__restrict self);
 
-/* Flush a potential register offset in the given stack-value.. */
+/* Flush a potential register offset in the given stack-value.
+ * NOTE: On X86, segment register offsets are attempted to be resolved as well,
+ *       meaning that in the worst case, this function will load the sum of
+ *       'segment_base + register + constant_offset + symbol' into a single register.
+ * WARNING: It is not possible to always take the base address of a segment register,
+ *          and a compiler warning will be emit when doing so could not be achieved. */
 DCCFUN void DCC_VSTACK_CALL DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self);
 
 /* Load the boolean result of a test, either into a register, or onto the stack. */

@@ -581,7 +581,7 @@ DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
   {
    /* On windows, FS is used for the TIB (https://en.wikipedia.org/wiki/Win32_Thread_Information_Block)
     * Long story short: A self-pointer can be found at offset '%fs:0x18' */
-   self_pointer.ml_reg = self->sv_reg;
+   self_pointer.ml_reg = self->sv_reg&DCC_RC_MASK_SEGP;
    self_pointer.ml_off = 0x18;
    self_pointer.ml_sym = NULL;
    goto load_self_pointer;
@@ -605,21 +605,16 @@ DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
 #ifdef HAVE_SELF_POINTER
 #undef HAVE_SELF_POINTER
   if (DCC_MACRO_FALSE) {
-   rc_t fixed_register;
+   rc_t segment_addr;
 load_self_pointer:
-   if (DCC_RC_ISCONST(self->sv_reg)) {
-    fixed_register = DCCVStack_GetReg(DCC_RC_PTRX,1);
-   } else {
-    fixed_register = self->sv_reg&~(DCC_RC_MASK_SEGP);
-    if (!(fixed_register&DCC_RC_PTR)) {
-     fixed_register = DCCVStack_CastReg(fixed_register,
-                                        DCCStackValue_IsUnsignedOrPtr(self),
-                                        DCC_RC_PTRX);
-    }
-   }
+   segment_addr = DCCVStack_GetReg(DCC_RC_PTRX,1);
    /* Load the self pointer into a register. */
-   DCCDisp_MemMovReg(&self_pointer,fixed_register);
-   self->sv_reg = fixed_register;
+   DCCDisp_MemMovReg(&self_pointer,segment_addr);
+   /* Add the segment base to the existing register,
+    * or re-use the segment base register. */
+   if (!DCC_RC_ISCONST(self->sv_reg))
+        DCCDisp_RegBinReg('+',segment_addr,self->sv_reg,1);
+   else self->sv_reg = segment_addr;
   } else
 #endif
   {
@@ -720,7 +715,7 @@ DCCStackValue_FixBitfield(struct DCCStackValue *__restrict self) {
   if (self->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST)) {
 load_reg: /* Make sure we're operating on a register. */
    DCCStackValue_Load(self);
-  } else if (!DCC_RC_ISCONST(self->sv_reg)) {
+  } else if (self->sv_reg != DCC_RC_CONST) {
    /* Fix potential register offsets. */
    DCCStackValue_FixRegOffset(self);
   } else {
@@ -1163,7 +1158,7 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
  }
 
  /* Check for special case: constant stack entry. */
- if (DCC_RC_ISCONST(self->sv_reg)) {
+ if (self->sv_reg == DCC_RC_CONST) {
   if (DCCStackValue_ConstUnary(self,op)) return;
   DCCStackValue_Load(self);
  }
@@ -1253,7 +1248,7 @@ DCCStackValue_BinReg(struct DCCStackValue *__restrict self,
   src.ml_off = self->sv_const.offset;
   DCCDisp_MemsBinRegs(op,&src,DCCType_Sizeof(&self->sv_ctype,NULL,1),
                       dst,dst2,DCCStackValue_IsUnsignedOrPtr(self));
- } else if (DCC_RC_ISCONST(source_reg)) {
+ } else if (source_reg == DCC_RC_CONST) {
 #if DCC_TARGET_SIZEOF_ARITH_MAX < 8
   struct DCCSymExpr temp;
   temp.e_int = self->sv_const.it;
@@ -1827,11 +1822,10 @@ end_cmp:
   }
   DCCStackValue_Load(target);
  }
- if (DCC_RC_ISCONST(self->sv_reg)) {
 constant_rhs:
+ if (self->sv_reg == DCC_RC_CONST) {
   if (!(self->sv_sym) &&
       !(self->sv_flags&(DCC_SFLAG_TEST|DCC_SFLAG_LVALUE))) {
-   assert(DCC_RC_ISCONST(self->sv_reg));
    switch (op) {
 
    case '+':
@@ -1995,6 +1989,15 @@ default_binary:
   if (target_flags&DCC_SFLAG_LVALUE)
       DCCStackValue_Load(target);
   assert(!(target->sv_flags&DCC_SFLAG_LVALUE));
+#ifdef DCC_RC_MASK_SEGP
+  if (self->sv_reg&DCC_RC_MASK_SEGP) {
+   /* Transfer a segment register offset. */
+   if (target->sv_reg&DCC_RC_MASK_SEGP)
+       DCCStackValue_FixRegOffset(target);
+   assert(!(target->sv_reg&DCC_RC_MASK_SEGP));
+   target->sv_reg |= self->sv_reg&DCC_RC_MASK_SEGP;
+  }
+#endif
 
   /* Special case: Add/Sub offset. */
   if (self->sv_sym) assert(!target->sv_sym),
@@ -2030,7 +2033,7 @@ default_binary:
 
 exec_mem_or_reg:
  if ((target->sv_flags&DCC_SFLAG_LVALUE) ||
-      DCC_RC_ISCONST(target->sv_reg)) {
+      target->sv_reg == DCC_RC_CONST) {
   struct DCCMemLoc dest;
   if (!(target->sv_flags&DCC_SFLAG_LVALUE)) {
    /* Propagate the no-sign warnings flag. */
@@ -2463,7 +2466,8 @@ DCCStackValue_Subscript(struct DCCStackValue *__restrict self,
  /* Check for a bitfield modifier. */
  if (field->sf_bitfld) {
   DCCStackValue_FixTest(self);
-  if (!(self->sv_flags&DCC_SFLAG_LVALUE)) DCCStackValue_FixRegOffset(self);
+  if (!(self->sv_flags&DCC_SFLAG_LVALUE))
+        DCCStackValue_FixRegOffset(self);
   DCCStackValue_FixBitfield(self);
   self->sv_flags |= field->sf_bitfld;
   assert(!(self->sv_flags&DCC_SFLAG_TEST));
@@ -3797,7 +3801,7 @@ DCCVStack_Bitfldf(sflag_t flags) {
  assert(vsize >= 1);
  DCCStackValue_FixTest(vbottom);
  if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE))
-  DCCStackValue_FixRegOffset(vbottom);
+       DCCStackValue_FixRegOffset(vbottom);
  DCCStackValue_FixBitfield(vbottom);
  vbottom->sv_flags |= flags;
  assert(!(vbottom->sv_flags&DCC_SFLAG_TEST));
