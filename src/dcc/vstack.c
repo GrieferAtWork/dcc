@@ -542,6 +542,91 @@ DCCStackValue_FixRegister(struct DCCStackValue *__restrict self) {
 PUBLIC void DCC_VSTACK_CALL
 DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
  assert(!(self->sv_flags&DCC_SFLAG_LVALUE));
+#ifdef DCC_RC_MASK_SEGP
+ assert(!(self->sv_reg2&DCC_RC_MASK_SEGP));
+#endif
+#if DCC_TARGET_HASI(I_X86)
+ if (self->sv_reg&DCC_RC_MASK_SEGP) {
+  uint8_t segment = DCC_RC_GET_SEGP(self->sv_reg);
+  static char const *const segment_names[] = {
+   /* [DCC_ASMREG_ES] = */"es",
+   /* [DCC_ASMREG_CS] = */"cs",
+   /* [DCC_ASMREG_SS] = */"ss",
+   /* [DCC_ASMREG_DS] = */"ds",
+   /* [DCC_ASMREG_FS] = */"fs",
+   /* [DCC_ASMREG_GS] = */"gs",
+  };
+  /* Flush segment address.
+   * NOTE: This is actually something that cannot be done (with
+   *       some exception for certain segments relying on OS support).
+   * Segments behave completely independent from addresses,
+   * meaning that though one may think to try this...
+   * >> leal %fs:0, %eax // DOESN'T WORK! - Load base address of 'FS' into 'EAX'
+   * ... There is no way to take the base address of a segment.
+   * Though since the default states of segments are often
+   * preinitialized by the OS, knowing what DCC is targeting,
+   * we can make use of so-called self-pointers often stored
+   * within the data structures pointed to by certain segments.
+   */
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+#ifndef HAVE_SELF_POINTER
+#define HAVE_SELF_POINTER
+  struct DCCMemLoc self_pointer;
+#endif
+#if DCC_TARGET_HASF(F_X86_64)
+  if (segment == DCC_ASMREG_GS)
+#else
+  if (segment == DCC_ASMREG_FS)
+#endif
+  {
+   /* On windows, FS is used for the TIB (https://en.wikipedia.org/wiki/Win32_Thread_Information_Block)
+    * Long story short: A self-pointer can be found at offset '%fs:0x18' */
+   self_pointer.ml_reg = self->sv_reg;
+   self_pointer.ml_off = 0x18;
+   self_pointer.ml_sym = NULL;
+   goto load_self_pointer;
+  }
+#endif
+#if !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
+#ifndef HAVE_SELF_POINTER
+#define HAVE_SELF_POINTER
+  struct DCCMemLoc self_pointer;
+#endif
+  if (segment == DCC_ASMREG_FS) {
+   /* ELF-style TLS header (a self pointer is located at offset ZERO) */
+   self_pointer.ml_reg = self->sv_reg;
+   self_pointer.ml_off = 0;
+   self_pointer.ml_sym = NULL;
+   goto load_self_pointer;
+  }
+#endif
+
+  WARN(W_X86_SEGMENT_ADDRESS_CANNOT_BE_TAKEN,segment_names[segment]);
+#ifdef HAVE_SELF_POINTER
+#undef HAVE_SELF_POINTER
+  if (DCC_MACRO_FALSE) {
+   rc_t fixed_register;
+load_self_pointer:
+   if (DCC_RC_ISCONST(self->sv_reg)) {
+    fixed_register = DCCVStack_GetReg(DCC_RC_PTRX,1);
+   } else {
+    fixed_register = self->sv_reg&~(DCC_RC_MASK_SEGP);
+    if (!(fixed_register&DCC_RC_PTR)) {
+     fixed_register = DCCVStack_CastReg(fixed_register,
+                                        DCCStackValue_IsUnsignedOrPtr(self),
+                                        DCC_RC_PTRX);
+    }
+   }
+   /* Load the self pointer into a register. */
+   DCCDisp_MemMovReg(&self_pointer,fixed_register);
+   self->sv_reg = fixed_register;
+  } else
+#endif
+  {
+   self->sv_reg &= ~(DCC_RC_MASK_SEGP);
+  }
+ }
+#endif /* I_X86 */
  if (self->sv_const.it || self->sv_sym) {
   DCCStackValue_FixRegister(self);
   if (self->sv_const.it || self->sv_sym) {

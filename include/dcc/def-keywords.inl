@@ -1565,7 +1565,13 @@ DEF_WARNING(W_CALL_TO_FEW_ARGUMENTS,(WG_TYPE),WSTATE_WARN,{
 }
 #endif
 
-WARNING_NAMESPACE(WN_CMD,1900)
+WARNING_NAMESPACE(WN_TARGET,2000)
+#if DCC_TARGET_HASI(I_X86)
+DEF_WARNING(W_X86_SEGMENT_ADDRESS_CANNOT_BE_TAKEN,(WG_VALUE),WSTATE_WARN,
+            WARNF("Cannot take address of segment register " Q("%%%s"),ARG(char *)))
+#endif /* I_X86 */
+
+WARNING_NAMESPACE(WN_CMD,2400)
 DEF_WARNING(W_CMD_UNKNOWN,(WG_CMD),WSTATE_ERROR,WARNF("Unknown option: " Q("%s"),ARG(char *)))
 DEF_WARNING(W_CMD_ILLEGAL,(WG_CMD),WSTATE_ERROR,WARNF("This command is only legal on the commandline"))
 DEF_WARNING(W_CMD_A_EXPECTED_VALUE,(WG_CMD),WSTATE_ERROR,WARNF("Expected assertion value after " Q("-A")))
@@ -1575,7 +1581,7 @@ DEF_WARNING(W_CMD_MESSAGE_FORMAT_UNKNOWN,(WG_CMD,WG_VALUE),WSTATE_WARN,WARNF("Un
 DEF_WARNING(W_CMD_STD_UNKNOWN,(WG_CMD,WG_VALUE),WSTATE_WARN,{ char *s = ARG(char *); WARNF("Unknown standard in " Q("-std=%s") " (did you mean " Q("-std=%s") ")",s,ARG(char *)); })
 
 /* Switch to the Linker warning namespace. */
-WARNING_NAMESPACE(WN_LINKER,2000)
+WARNING_NAMESPACE(WN_LINKER,2500)
 DEF_WARNING(W_OUT_OF_MEMORY,(WG_LINKER),WSTATE_ERROR,WARNF("Out of memory when allocating " Q("%lu") " bytes",(unsigned long)ARG(size_t)))
 DEF_WARNING(W_LINKER_NO_INPUT_FILES,(WG_USAGE,WG_LINKER),WSTATE_ERROR,WARNF("No input files specified"))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMPLUSSYM,(WG_LINKER,WG_SYMBOL),WSTATE_WARN,WARNF("Symbol+Symbol expression cannot be relocated"))

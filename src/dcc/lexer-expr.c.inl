@@ -865,17 +865,16 @@ parse_string:
      if (!DCCParse_IsExpr()) goto parse_second_register;
      /* Parse a pointer expression */
      DCCParse_ExprUnary();
-     /* Make sure to load l-value operands now, as
-      * any register/offset indirection pairs must
-      * be dereferenced with the general-purpose
-      * segment, instead of the explicitly selected
-      * segment. */
+     /* Make sure to load l-value operands now, as any
+      * register/offset indirection pairs must be
+      * dereferenced with the general-purpose segment,
+      * instead of the explicitly selected segment. */
      DCCStackValue_LoadLValue(vbottom);
      if ((vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
          /* When both stack-values make use of the same base segment,
           * no need to dereference the operand beforehand. */
          (DCC_RC_SEGPOF(vbottom->sv_reg) != DCC_RC_GET_SEGP(sval.sv_reg)))
-         DCCStackValue_Load(vbottom);
+          DCCStackValue_Load(vbottom);
      vused();
      DCCType_InitCopy(&sval.sv_ctype,&vbottom->sv_ctype);
      sval.sv_const.it = vbottom->sv_const.it;
