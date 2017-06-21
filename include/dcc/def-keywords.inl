@@ -1285,7 +1285,12 @@ DEF_WARNING(W_DECL_TYPEDEF_WITH_INITIALIZER,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,{
  WARNF("Found initializer for typedef " Q("%s") "\n",DECL_NAME());
  DECL_PRINT(NULL);
 })
-
+DEF_WARNING(W_TYPE_NAME_ALREADY_USED_FOR_TYPE,(WG_TYPE),WSTATE_WARN,{
+ DECL_LOAD();
+ WARNF("Declaration name " Q("%s") " was already used as typedef\n",DECL_NAME());
+ DECL_PRINT("See reference to previous declaration");
+})
+DEF_WARNING(W_TYPE_NAME_ALREADY_USED_FOR_BUILTIN_TYPE,(WG_TYPE),WSTATE_WARN,WARNF("Declaration name " Q("%s") " is used for builtin types",KWDNAME()))
 DEF_WARNING(W_STMT_ASM_EXPECTED_STRING,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected string after __asm__, but got " TOK_S,TOK_A))
 DEF_WARNING(W_CONSTANT_EXPR_DEPENDS_ON_SYMBOL,(WG_SYNTAX,WG_VALUE,WG_SYMBOL),WSTATE_WARN,{ WARNF("A constant expression here can't depend on a symbol " Q("%s"),KWDNAME()); })
 DEF_WARNING(W_EXPECTED_CONSTANT_EXPRESSION,(WG_SYNTAX,WG_VALUE),WSTATE_WARN,WARNF("Expected a constant expression"))

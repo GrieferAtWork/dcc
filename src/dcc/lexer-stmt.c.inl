@@ -223,12 +223,9 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_WhileStmt(void) {
 
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_DeadStmt(struct DCCSym *dead_jmp) {
- struct DCCSym *old_deadjmp;
- old_deadjmp = compiler.c_deadjmp;
  compiler.c_flags |= (DCC_COMPILER_FLAG_DEAD|DCC_COMPILER_FLAG_NOCGEN);
- compiler.c_deadjmp = dead_jmp;
+ if (!compiler.c_deadjmp) compiler.c_deadjmp = dead_jmp;
  DCCParse_Stmt(DCC_PFLAG_NONE);
- compiler.c_deadjmp = old_deadjmp;
 }
 
 

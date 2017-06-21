@@ -583,6 +583,21 @@ oldstyle_arglist:
  }
 }
 
+PRIVATE void
+DCCParse_WarnTypenameIsType(struct TPPKeyword *__restrict kwd,
+                            struct DCCType *__restrict type) {
+ struct DCCDecl *decl;
+ assert(kwd);
+ assert(kwd != &TPPKeyword_Empty);
+ /* Warn if 'kwd' is a local type definition, or builtin type keyword. */
+ if (DCC_ISTYPEKWD(kwd->k_id))
+     WARN(W_TYPE_NAME_ALREADY_USED_FOR_BUILTIN_TYPE,kwd);
+ else if ((type->t_type&DCCTYPE_STOREBASE) != DCCTYPE_TYPEDEF) {
+  decl = DCCCompiler_GetDecl(kwd,DCC_NS_LOCALS);
+  if (decl && (decl->d_kind&DCC_DECLKIND_TYPE))
+      WARN(W_TYPE_NAME_ALREADY_USED_FOR_TYPE,decl);
+ }
+}
 
 
 PUBLIC struct TPPKeyword *DCC_PARSE_CALL
@@ -656,7 +671,7 @@ parse_leading:
    *     >> int (x);                           // Technically ambigous (may be an unnamed old-style function w/ 1 int-argument 'x'), but is parsed as variable type 'int x;'
    * #3: >> int (foo) int foo; { return foo; } // Old-style function arguments for unnamed type.
    *     >> int (x,y) int x,y; { return x+y; } // Multiple old-style function arguments.
-   *     >> int (,y) int y; { return y; }      // Old-style function with unnamed first argument.
+   *     >> int (,y) int y; { return y; }      // Old-style function with unnamed int-typed first argument.
    *     >> int ();                            // Unnamed old-style function with empty argument list.
    */
   YIELD();
@@ -722,6 +737,7 @@ oldstyle_arglist:
      DCCParse_CTypeOldArgumentList(oldfun_decl,result,&paren_attr);
      is_old_funimpl = 1;
     }
+    result = &TPPKeyword_Empty;
     goto inner_endparen;
    }
    if (TOK == ')') {
@@ -747,6 +763,7 @@ oldstyle_arglist:
     } else {
      /* The r-paren isn't followed by a type, meaning this isn't an old-style argument list. */
      DCCAttrDecl_Merge(attr,&paren_attr);
+     DCCParse_WarnTypenameIsType(result,self);
     }
     goto inner_end;
    }
@@ -779,6 +796,7 @@ inner_end:
  } else if (TPP_ISKEYWORD(TOK)) {
   /* Simple named type: 'int x;' */
   result = TOKEN.t_kwd;
+  DCCParse_WarnTypenameIsType(result,self);
   YIELD();
  } else {
   /* Unnamed type case. */
@@ -824,6 +842,13 @@ next_leading: YIELD(); goto parse_leading;
 PUBLIC int DCC_PARSE_CALL
 DCCParse_CTypePrefix(struct DCCType *__restrict self,
                      struct DCCAttrDecl *__restrict attr) {
+ /* TODO:
+  * In traditional C, you can combine long, etc., with a typedef name, as shown here:
+  * >> typedef int foo;
+  * >> typedef long foo bar;
+  * aka: k&r didn't require an empty type modifier
+  *      set when looking for local type definitions.
+  */
 #define F_INT     0x01 /* 'int' */
 #define F_SIGN    0x02 /* 'signed', 'unsigned' */
 #define F_WIDTH   0x04 /* 'char', 'short', 'long' */

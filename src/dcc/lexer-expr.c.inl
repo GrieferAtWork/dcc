@@ -612,7 +612,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprGeneric(void) {
 }
 
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprIf(void) {
- struct DCCSym *tt_label,*old_deadjmp;
+ struct DCCSym *tt_label;
  int is_true,is_dead = 0;
  /* TODO: This probably doesn't work anymore... */
  assert(TOK == KWD_if);
@@ -630,11 +630,9 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprIf(void) {
  pushf();
  if (is_true == 0) {
   compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
-                           DCC_COMPILER_FLAG_DEAD);
-  old_deadjmp = compiler.c_deadjmp;
-  compiler.c_deadjmp = tt_label;
+                       DCC_COMPILER_FLAG_DEAD);
+  if (!compiler.c_deadjmp) compiler.c_deadjmp = tt_label;
   DCCParse_Expr1();     /* Generate the true-branch. */
-  compiler.c_deadjmp = old_deadjmp;
  } else {
   DCCParse_Expr1();     /* Generate the true-branch. */
  }
@@ -704,10 +702,8 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprIf(void) {
   pushf();
   YIELD();
   if (is_true == 1) {
-   old_deadjmp = compiler.c_deadjmp;
-   compiler.c_deadjmp = ff_label;
+   if (!compiler.c_deadjmp) compiler.c_deadjmp = ff_label;
    DCCParse_Expr1();
-   compiler.c_deadjmp = old_deadjmp;
   } else {
    if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD) is_dead |= 2;
   }
@@ -1355,15 +1351,12 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLAnd(void) {
    } else {
 normal:
     if (found_cfalse) {
-     struct DCCSym *old_deadjmp;
      pushf();
-     old_deadjmp = compiler.c_deadjmp;
-     compiler.c_deadjmp = sym;
+     if (!compiler.c_deadjmp) compiler.c_deadjmp = sym;
      compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
                           DCC_COMPILER_FLAG_DEAD);
      DCCParse_ExprOr();
      vpop(1);
-     compiler.c_deadjmp = old_deadjmp;
      popf();
     } else {
      common_test = DCCVStack_UniTst(common_test);
@@ -1440,15 +1433,12 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
    } else {
 normal:
     if (found_ctrue) {
-     struct DCCSym *old_deadjmp;
      pushf();
-     old_deadjmp = compiler.c_deadjmp;
-     compiler.c_deadjmp = sym;
+     if (!compiler.c_deadjmp) compiler.c_deadjmp = sym;
      compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
                           DCC_COMPILER_FLAG_DEAD);
      DCCParse_ExprLXor();
      vpop(1);
-     compiler.c_deadjmp = old_deadjmp;
      popf();
     } else {
      common_test = DCCVStack_UniTst(common_test);
@@ -1501,7 +1491,6 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
 #if 1 /* Special optimization for handling constants. */
   if (visconst_bool()) {
    tyid_t tt_type;
-   struct DCCSym *old_deadjmp;
    struct DCCSym *jmp_sym = NULL,*jmp_sym2 = NULL;
    int is_true = vgtconst_bool();
    /* The condition is a constant boolean. */
@@ -1514,12 +1503,10 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
      pushf();
      jmp_sym = DCCUnit_AllocSym();
      if unlikely(!jmp_sym) return;
-     old_deadjmp = compiler.c_deadjmp;
-     compiler.c_deadjmp = jmp_sym;
+     if (!compiler.c_deadjmp) compiler.c_deadjmp = jmp_sym;
      compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
                               DCC_COMPILER_FLAG_DEAD);
      DCCParse_Expr();
-     compiler.c_deadjmp = old_deadjmp;
      /* If the true branch contained a label,
       * we must generate a jump across false. */
      if (!(compiler.c_flags&DCC_COMPILER_FLAG_DEAD)) {
@@ -1548,12 +1535,10 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
       jmp_sym2 = DCCUnit_AllocSym();
       if unlikely(!jmp_sym2) return;
      }
-     old_deadjmp = compiler.c_deadjmp;
-     compiler.c_deadjmp = jmp_sym2;
+     if (!compiler.c_deadjmp) compiler.c_deadjmp = jmp_sym2;
      compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN|
                               DCC_COMPILER_FLAG_DEAD);
      DCCParse_ExprCond();
-     compiler.c_deadjmp = old_deadjmp;
      popf();
     } else {
      DCCParse_ExprCond();
