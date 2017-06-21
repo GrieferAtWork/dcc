@@ -148,7 +148,15 @@ struct DCCSymAddr {
 
 
 #define DCC_ATTRFLAG_NONE            0x00000000
-/*      DCC_ATTRFLAG_MASK_???        0x0000ffff */
+/*      DCC_ATTRFLAG_MASK_???        0x00001fff */
+
+#if DCC_TARGET_HASI(I_X86)
+#define DCC_ATTRFLAG_MASK_86SEG      0x0000e000 /*< Used for types/variables: Offset instances from %fs. */
+#define DCC_ATTRFLAG_SHFT_86SEG      13         /*< Shift for segment address space. */
+#define DCC_ATTRFLAG_HAS_86SEG(f)   ((f)&DCC_ATTRFLAG_MASK_86SEG)
+#define DCC_ATTRFLAG_GET_86SEG(f)   ((((f)&DCC_ATTRFLAG_MASK_86SEG) >> DCC_ATTRFLAG_SHFT_86SEG)-1)
+#define DCC_ATTRFLAG_SET_86SEG(s)   (((s)+1) << DCC_ATTRFLAG_SHFT_86SEG)
+#endif /* !I_X86 */
 
 #define DCC_ATTRFLAG_MASK_MODE       0x000f0000 /*< Mask for type mode. */
 #define DCC_ATTRFLAG_MODE_NONE       0x00000000
@@ -212,6 +220,7 @@ union{
 #define DCCATTRDECL_HASIMPORT(self)            (DCCATTRDECL_HASSECTION_OR_IMPORT(self) && DCCSection_ISIMPORT((self)->a_section))
 #define DCCATTRDECL_GETSECTION_OR_IMPORT(self) (((self)->a_specs&DCC_ATTRSPEC_SECTION) ? (self)->a_section : NULL)
 
+#define DCCAttrDecl_Init(self) memset(self,0,sizeof(struct DCCAttrDecl))
 DCCFUN void DCCAttrDecl_Quit(struct DCCAttrDecl *__restrict self);
 DCCFUN void DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
                               struct DCCAttrDecl const *__restrict rhs);

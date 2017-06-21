@@ -734,11 +734,13 @@ DCCType_PutPrefix(char *buf, size_t buflen,
  { /* Pointer/L-Value types. */
   char tychar;
   struct DCCType *base_type;
+  struct DCCAttrDecl *attr;
   if (DCC_MACRO_FALSE) { case DCCTYPE_POINTER: tychar = '*'; }
   if (DCC_MACRO_FALSE) { case DCCTYPE_LVALUE:  tychar = '&'; }
   assert(self->t_base);
   assert(self->t_base->d_kind&DCC_DECLKIND_TYPE);
   base_type = &self->t_base->d_type;
+  attr = self->t_base->d_attr;
   if (DCCTYPE_GROUP(base_type->t_type) == DCCTYPE_BUILTIN) {
    iter += DCCType_PutPrefix(buf,buflen,base_type,0);
    if (iter < end) *iter = ' ';
@@ -748,6 +750,18 @@ DCCType_PutPrefix(char *buf, size_t buflen,
    iter += DCCType_PutPrefix(buf,buflen,base_type,1);
   } else {
    iter += DCCType_PutPrefix(buf,buflen,base_type,0);
+  }
+  if (attr) {
+#ifdef DCC_ATTRFLAG_MASK_86SEG
+   if (DCC_ATTRFLAG_HAS_86SEG(attr->a_flags)) {
+    WRITE("__seg",5);
+    WRITE(DCCAsmReg_86SegNames[DCC_ATTRFLAG_GET_86SEG(attr->a_flags)],2);
+    WRITE(" ",1);
+   }
+#endif
+   //WRITE("__attribute__((",15);
+   /* TODO: Add support for other types. */
+   //WRITE("))",2);
   }
   if (iter < end) *iter = tychar;
   ++iter;

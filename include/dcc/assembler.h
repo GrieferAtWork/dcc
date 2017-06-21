@@ -150,6 +150,8 @@ struct DCCSymAddr;
 #define DCC_ASMREG_DS   3
 #define DCC_ASMREG_FS   4
 #define DCC_ASMREG_GS   5
+DCCDAT char    const DCCAsmReg_86SegNames[6][3];
+DCCDAT uint8_t const DCCAsmReg_86SegPrefix[6];
 
 #define DCC_SEGPREFIX_DEFAULT 0x00 /* Special value: Not emit into binary. */
 #define DCC_SEGPREFIX_ES      0x26

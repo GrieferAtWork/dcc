@@ -46,7 +46,7 @@ LOCAL void DCCDisp_TargetJmp(struct jmpop const *__restrict op,
 PUBLIC void DCCDisp_RegJcc(test_t t, rc_t reg) {
  if (!(reg&(DCC_RC_I16|DCC_RC_I3264))) {
   /* Need at least 16-bit register. */
-  reg = DCCVStack_CastReg(reg,1,DCC_RC_I16)|(reg&DCC_RC_MASK_SEGP);
+  reg = DCCVStack_CastReg(reg,1,DCC_RC_I16)|(reg&DCC_RC_MASK_86SEGP);
  }
  DCCDisp_X86Segp(reg);
  /* inverted, conditional jump with 8-bit disposition. */
@@ -170,7 +170,7 @@ def_minbytes:
 PUBLIC void DCCDisp_RegJmp(rc_t reg) {
  if (!(reg&(DCC_RC_I16|DCC_RC_I3264))) {
   /* Need at least 16-bit register. */
-  reg = DCCVStack_CastReg(reg,1,DCC_RC_I16)|(reg&DCC_RC_MASK_SEGP);
+  reg = DCCVStack_CastReg(reg,1,DCC_RC_I16)|(reg&DCC_RC_MASK_86SEGP);
  }
  DCCDisp_X86Segp(reg);
  if (!(reg&DCC_RC_I3264)) t_putb(0x66);
@@ -252,7 +252,7 @@ PUBLIC void
 DCCDisp_LocCll(struct DCCMemLoc const *__restrict addr) {
  if (addr->ml_reg) {
   rc_t preg = DCCDisp_AddProtReg(&addr->ml_sad,addr->ml_reg)|
-                                (addr->ml_reg&DCC_RC_MASK_SEGP);
+                                (addr->ml_reg&DCC_RC_MASK_86SEGP);
   DCCDisp_UnaryReg('(',preg);
  } else {
   /* call symaddr */

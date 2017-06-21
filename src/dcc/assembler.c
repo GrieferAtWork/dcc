@@ -79,7 +79,15 @@ PRIVATE uint8_t DCCParse_AsmShift(void) {
  return result;
 }
 
-PRIVATE uint8_t const segment_prefix[] = {
+PUBLIC char const DCCAsmReg_86SegNames[6][3] = {
+ /* [DCC_ASMREG_ES] = */"es",
+ /* [DCC_ASMREG_CS] = */"cs",
+ /* [DCC_ASMREG_SS] = */"ss",
+ /* [DCC_ASMREG_DS] = */"ds",
+ /* [DCC_ASMREG_FS] = */"fs",
+ /* [DCC_ASMREG_GS] = */"gs",
+};
+PUBLIC uint8_t const DCCAsmReg_86SegPrefix[6] = {
  /* [DCC_ASMREG_ES] = */DCC_SEGPREFIX_ES,
  /* [DCC_ASMREG_CS] = */DCC_SEGPREFIX_CS,
  /* [DCC_ASMREG_SS] = */DCC_SEGPREFIX_SS,
@@ -128,7 +136,7 @@ again:
     /* Special case: Segment override. */
     if (op->ao_segment != DCC_SEGPREFIX_DEFAULT)
         WARN(W_ASM_SEGMENT_PREFIX_ALREADY_GIVEN);
-    op->ao_segment = segment_prefix[op->ao_reg];
+    op->ao_segment = DCCAsmReg_86SegPrefix[op->ao_reg];
     op->ao_reg     = -1;
     YIELD();
     goto again;

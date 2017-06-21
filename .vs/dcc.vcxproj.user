@@ -1,12 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommandArguments>-std=c99 -g input.c</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-g -I../include -DDCC_PRIVATE_API -DDCC_PRIVATE_API -D_VA_LIST_DEFINED -D__SSE2__ -ID:/cygwin32/usr/include/w32api -MMD -MF ../build/ddc/assembler.c.d -c -o ../build/ddc/assembler.c.o ../src/dcc/assembler.c</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerWorkingDirectory>$(ProjectDir)..\bin\</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LocalDebuggerCommandArguments>-std=c99 -g input.c</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-g -I../include -DDCC_PRIVATE_API -DDCC_PRIVATE_API -D_VA_LIST_DEFINED -D__SSE2__ -ID:/cygwin32/usr/include/w32api -MMD -MF ../build/ddc/assembler.c.d -c -o ../build/ddc/assembler.c.o ../src/dcc/assembler.c</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerWorkingDirectory>$(ProjectDir)..\bin\</LocalDebuggerWorkingDirectory>
   </PropertyGroup>

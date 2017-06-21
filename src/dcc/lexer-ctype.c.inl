@@ -831,7 +831,11 @@ inner_end:
   attr->a_flags &= ~(DCC_ATTRFLAG_MASK_MODE);
  }
  /* Apply late attributes. */
- if (self->t_base) DCCDecl_SetAttr(self->t_base,attr);
+ if (self->t_base &&
+    !DCCAttrDecl_IsEmpty(attr)) {
+  DCCType_ForceDynamic(self);
+  DCCDecl_SetAttr(self->t_base,attr);
+ }
  return result;
 next_leading: YIELD(); goto parse_leading;
 }
@@ -1185,6 +1189,7 @@ again:
     DCCDecl_CalculateStructureOffsets(tydecl);
    }
   }
+  if (tydecl->d_attr) DCCAttrDecl_Merge(attr,tydecl->d_attr);
   if (decl_flag == DCC_DECLKIND_STRUCT ||
       decl_flag == DCC_DECLKIND_UNION) {
    self->t_base  = tydecl; /* Inherit reference. */

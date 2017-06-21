@@ -57,7 +57,7 @@ DCCDisp_UnaryReg(tok_t op, rc_t dst) {
  case '(':
   if (!(dst&(DCC_RC_I3264|DCC_RC_I16))) {
    dst = DCCVStack_CastReg(dst,1,DCC_RC_I16)|
-                          (dst&DCC_RC_MASK_SEGP);
+                          (dst&DCC_RC_MASK_86SEGP);
   }
   /* call *%dst */
   DCCDisp_X86Segp(dst);

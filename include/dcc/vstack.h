@@ -103,24 +103,24 @@ struct TPPString;
  * NOTE: The following functions don't accept this modifier in 'struct DCCMemLoc' operands:
  *    >> DCCDisp_LeaMem(...); // Still accepted for the target operand; only ignored by the source operand.
  *    >> DCCDisp_LeaReg(...); */
-#   define DCC_RC_MASK_SEGP     0xe000 /*< Mask for segment prefixes. */
-#   define DCC_RC_SHFT_SEGP     13     /*< Shift for segment prefixes (for converting 'DCC_ASMREG_ES' <--> rc masks). */
-#   define DCC_RC_SEGP(s)      (((s)+1) << DCC_RC_SHFT_SEGP)
-#   define DCC_RC_HAS_SEGP(rc) ((rc)&DCC_RC_MASK_SEGP)
-#   define DCC_RC_GET_SEGP(rc) (((rc) >> DCC_RC_SHFT_SEGP)-1)
-#   define DCC_RC_SEGP_ES        DCC_RC_SEGP(DCC_ASMREG_ES)
-#   define DCC_RC_SEGP_CS        DCC_RC_SEGP(DCC_ASMREG_CS)
-#   define DCC_RC_SEGP_SS        DCC_RC_SEGP(DCC_ASMREG_SS)
-#   define DCC_RC_SEGP_DS        DCC_RC_SEGP(DCC_ASMREG_DS)
-#   define DCC_RC_SEGP_FS        DCC_RC_SEGP(DCC_ASMREG_FS)
-#   define DCC_RC_SEGP_GS        DCC_RC_SEGP(DCC_ASMREG_GS)
+#   define DCC_RC_MASK_86SEGP     0xe000 /*< Mask for segment prefixes. */
+#   define DCC_RC_SHFT_86SEGP     13     /*< Shift for segment prefixes (for converting 'DCC_ASMREG_ES' <--> rc masks). */
+#   define DCC_RC_86SEGP(s)      (((s)+1) << DCC_RC_SHFT_86SEGP)
+#   define DCC_RC_HAS_86SEGP(rc) ((rc)&DCC_RC_MASK_86SEGP)
+#   define DCC_RC_GET_86SEGP(rc) (((rc) >> DCC_RC_SHFT_86SEGP)-1)
+#   define DCC_RC_86SEGP_ES        DCC_RC_86SEGP(DCC_ASMREG_ES)
+#   define DCC_RC_86SEGP_CS        DCC_RC_86SEGP(DCC_ASMREG_CS)
+#   define DCC_RC_86SEGP_SS        DCC_RC_86SEGP(DCC_ASMREG_SS)
+#   define DCC_RC_86SEGP_DS        DCC_RC_86SEGP(DCC_ASMREG_DS)
+#   define DCC_RC_86SEGP_FS        DCC_RC_86SEGP(DCC_ASMREG_FS)
+#   define DCC_RC_86SEGP_GS        DCC_RC_86SEGP(DCC_ASMREG_GS)
 /* Return the effective segment for a given register,
  * taking explicit segment overrides, as well as default
  * segments DS/SS into account. */
-#   define DCC_RC_SEGPOF(rc)    (DCC_RC_HAS_SEGP(rc) ? DCC_RC_GET_SEGP(rc) : \
-                                (((rc)&(DCC_RC_I16|DCC_RC_I3264) && \
-                                 ((rc)&DCC_RI_MASK) == DCC_ASMREG_BP) \
-                                 ? DCC_ASMREG_SS : DCC_ASMREG_DS))
+#   define DCC_RC_86SEGPOF(rc)    (DCC_RC_HAS_86SEGP(rc) ? DCC_RC_GET_86SEGP(rc) : \
+                                  (((rc)&(DCC_RC_I16|DCC_RC_I3264) && \
+                                   ((rc)&DCC_RI_MASK) == DCC_ASMREG_BP) \
+                                   ? DCC_ASMREG_SS : DCC_ASMREG_DS))
 #else
 #   error FIXME
 #endif
@@ -139,9 +139,9 @@ struct TPPString;
 
 /* Special register classes that describe things different than registers. */
 #define DCC_RC_CONST          0x0000 /*< Constant value. ('sv_const' contains its value, or offset when 'sv_sym' is non-NULL). */
-#ifdef DCC_RC_MASK_SEGP
+#ifdef DCC_RC_MASK_86SEGP
 #define DCC_RC_ISCONST(x) (!((x)&DCC_RC_MASK))
-#define DCC_RC_CONSTOF(x)   ((x)&DCC_RC_MASK_SEGP)
+#define DCC_RC_CONSTOF(x)   ((x)&DCC_RC_MASK_86SEGP)
 #else
 #define DCC_RC_ISCONST(x)   ((x) == DCC_RC_CONST)
 #define DCC_RC_CONSTOF(x)           DCC_RC_CONST

@@ -542,20 +542,12 @@ DCCStackValue_FixRegister(struct DCCStackValue *__restrict self) {
 PUBLIC void DCC_VSTACK_CALL
 DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
  assert(!(self->sv_flags&DCC_SFLAG_LVALUE));
-#ifdef DCC_RC_MASK_SEGP
- assert(!(self->sv_reg2&DCC_RC_MASK_SEGP));
+#ifdef DCC_RC_MASK_86SEGP
+ assert(!(self->sv_reg2&DCC_RC_MASK_86SEGP));
 #endif
 #if DCC_TARGET_HASI(I_X86)
- if (self->sv_reg&DCC_RC_MASK_SEGP) {
-  uint8_t segment = DCC_RC_GET_SEGP(self->sv_reg);
-  static char const *const segment_names[] = {
-   /* [DCC_ASMREG_ES] = */"es",
-   /* [DCC_ASMREG_CS] = */"cs",
-   /* [DCC_ASMREG_SS] = */"ss",
-   /* [DCC_ASMREG_DS] = */"ds",
-   /* [DCC_ASMREG_FS] = */"fs",
-   /* [DCC_ASMREG_GS] = */"gs",
-  };
+ if (self->sv_reg&DCC_RC_MASK_86SEGP) {
+  uint8_t segment = DCC_RC_GET_86SEGP(self->sv_reg);
   /* Flush segment address.
    * NOTE: This is actually something that cannot be done (with
    *       some exception for certain segments relying on OS support).
@@ -581,7 +573,7 @@ DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
   {
    /* On windows, FS is used for the TIB (https://en.wikipedia.org/wiki/Win32_Thread_Information_Block)
     * Long story short: A self-pointer can be found at offset '%fs:0x18' */
-   self_pointer.ml_reg = self->sv_reg&DCC_RC_MASK_SEGP;
+   self_pointer.ml_reg = self->sv_reg&DCC_RC_MASK_86SEGP;
    self_pointer.ml_off = 0x18;
    self_pointer.ml_sym = NULL;
    goto load_self_pointer;
@@ -601,7 +593,8 @@ DCCStackValue_FixRegOffset(struct DCCStackValue *__restrict self) {
   }
 #endif
 
-  WARN(W_X86_SEGMENT_ADDRESS_CANNOT_BE_TAKEN,segment_names[segment]);
+  WARN(W_X86_SEGMENT_ADDRESS_CANNOT_BE_TAKEN,
+       DCCAsmReg_86SegNames[segment]);
 #ifdef HAVE_SELF_POINTER
 #undef HAVE_SELF_POINTER
   if (DCC_MACRO_FALSE) {
@@ -617,7 +610,7 @@ load_self_pointer:
   } else
 #endif
   {
-   self->sv_reg &= ~(DCC_RC_MASK_SEGP);
+   self->sv_reg &= ~(DCC_RC_MASK_86SEGP);
   }
  }
 #endif /* I_X86 */
@@ -1083,7 +1076,26 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
       DCCStackValue_Load(self);
   if (!(self->sv_ctype.t_type&DCCTYPE_POINTER))
    WARN(W_EXPECTED_POINTER_FOR_DEREF,&self->sv_ctype);
-  else DCCType_MkBase(&self->sv_ctype);
+  else {
+#if DCC_TARGET_HASI(I_X86)
+   /* Check for segment attributes. */
+   if (self->sv_ctype.t_base &&
+       self->sv_ctype.t_base->d_attr &&
+     !(self->sv_reg&DCC_RC_MASK_86SEGP)) {
+    uint32_t f = self->sv_ctype.t_base->d_attr->a_flags;
+    if (f&DCC_ATTRFLAG_MASK_86SEG) {
+#if DCC_ATTRFLAG_SHFT_86SEG == DCC_RC_SHFT_86SEGP
+     self->sv_reg |= (rc_t)(f&DCC_ATTRFLAG_MASK_86SEG);
+#elif DCC_ATTRFLAG_SHFT_86SEG > DCC_RC_SHFT_86SEGP
+     self->sv_reg |= (rc_t)((f&DCC_ATTRFLAG_MASK_86SEG) >> (DCC_ATTRFLAG_SHFT_86SEG-DCC_RC_SHFT_86SEGP));
+#else
+     self->sv_reg |= (rc_t)((f&DCC_ATTRFLAG_MASK_86SEG) << (DCC_RC_SHFT_86SEGP-DCC_ATTRFLAG_SHFT_86SEG));
+#endif
+    }
+   }
+#endif /* I_X86 */
+   DCCType_MkBase(&self->sv_ctype);
+  }
   self->sv_flags |=   DCC_SFLAG_LVALUE;
   /* Make sure to delete the COW flag, as it was
    * only meant for the underlying pointer value. */
@@ -1988,13 +2000,13 @@ default_binary:
   if (target_flags&DCC_SFLAG_LVALUE)
       DCCStackValue_Load(target);
   assert(!(target->sv_flags&DCC_SFLAG_LVALUE));
-#ifdef DCC_RC_MASK_SEGP
-  if (self->sv_reg&DCC_RC_MASK_SEGP) {
+#ifdef DCC_RC_MASK_86SEGP
+  if (self->sv_reg&DCC_RC_MASK_86SEGP) {
    /* Transfer a segment register offset. */
-   if (target->sv_reg&DCC_RC_MASK_SEGP)
+   if (target->sv_reg&DCC_RC_MASK_86SEGP)
        DCCStackValue_FixRegOffset(target);
-   assert(!(target->sv_reg&DCC_RC_MASK_SEGP));
-   target->sv_reg |= self->sv_reg&DCC_RC_MASK_SEGP;
+   assert(!(target->sv_reg&DCC_RC_MASK_86SEGP));
+   target->sv_reg |= self->sv_reg&DCC_RC_MASK_86SEGP;
   }
 #endif
 
@@ -4131,8 +4143,6 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
  /* Most generic case: If the types are compatible,
   *                    we're allowed to cast as-is. */
  vtyp = DCCType_Effective(&value->sv_ctype);
- if (DCCType_IsCompatible(vtyp,type,1))
-  return 0;
  is_const = DCC_RC_ISCONST(value->sv_reg) &&
           !(value->sv_flags&DCC_SFLAG_LVALUE) &&
           !(value->sv_sym);
@@ -4178,7 +4188,8 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
     /*req_bits += is_signed;*/
     /* If more bits are required that available, emit a warning. */
     if (req_bits > tweight) return W_CAST_INTEGRAL_OVERFLOW;
-    if ((tid&DCCTYPE_UNSIGNED) && is_signed &&
+    if (req_bits < tweight &&
+       (tid&DCCTYPE_UNSIGNED) && is_signed && 
          /* NOTE: Don't emit this warning if the sign-bit is set intentionally. */
        !(value->sv_flags&DCC_SFLAG_NO_WSIGN))
          return W_CAST_INTEGRAL_SIGNLOSS;
@@ -4236,9 +4247,22 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
    int is_void;
    assert(type->t_base);
    assert(vtyp->t_base);
-   if (explicit_cast) return 0; /* Always OK for explicit casts. */
+#ifdef DCC_ATTRFLAG_MASK_86SEG
+   {
+    struct DCCDecl *tbase = type->t_base;
+    struct DCCDecl *vbase = vtyp->t_base;
+    if ((tbase->d_attr ? tbase->d_attr->a_flags&DCC_ATTRFLAG_MASK_86SEG : 0) !=
+        (vbase->d_attr ? vbase->d_attr->a_flags&DCC_ATTRFLAG_MASK_86SEG : 0))
+         return explicit_cast ? W_X86_CAST_INCOMPATIBLE_ADDRESS_SPACE_EXPLICIT
+                              : W_X86_CAST_INCOMPATIBLE_ADDRESS_SPACE;
+    type = &tbase->d_type;
+    vtyp = &vbase->d_type;
+   }
+#else
    type = &type->t_base->d_type;
    vtyp = &vtyp->t_base->d_type;
+#endif
+   if (explicit_cast) return 0; /* Always OK for explicit casts. */
    /* Check the pointer base types for compatibility. */
    is_void = 0;
    if (!DCCType_IsCompatible(type,vtyp,1)) {
@@ -4277,26 +4301,32 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
    * NOTE: r-values are converted to l-values. */
   if (explicit_cast) return 0;
   if (!(value->sv_flags&DCC_SFLAG_LVALUE) &&
-       (DCCTYPE_GROUP(value->sv_ctype.t_type) != DCCTYPE_LVALUE)
-        ) return W_CAST_RVALUE_TO_LVALUE;
+       (DCCTYPE_GROUP(value->sv_ctype.t_type) != DCCTYPE_LVALUE))
+        return W_CAST_RVALUE_TO_LVALUE;
   assert(type->t_base);
   type = &type->t_base->d_type;
   if (!DCCType_IsCompatible(vtyp,type,1) &&
       !DCCType_IsUnionCompatible(vtyp,type,explicit_cast) &&
-      !DCCType_IsUnionCompatible(type,vtyp,explicit_cast)
-      ) return W_CAST_INCOMPATIBLE_LVALUE;
+      !DCCType_IsUnionCompatible(type,vtyp,explicit_cast))
+       return W_CAST_INCOMPATIBLE_LVALUE;
   return 0;
  } break;
 
  case DCCTYPE_FUNCTION:
+  if (DCCType_IsCompatible(vtyp,type,1)) return 0;
   return W_CAST_TO_FUNCTION;
+
  case DCCTYPE_ARRAY:
+  if (DCCType_IsCompatible(vtyp,type,1)) return 0;
   return W_CAST_TO_ARRAY;
+
  case DCCTYPE_VARRAY:
+  if (DCCType_IsCompatible(vtyp,type,1)) return 0;
   return W_CAST_TO_VARRAY;
 
  case DCCTYPE_STRUCTURE:
   assert(type->t_base);
+  if (DCCType_IsCompatible(vtyp,type,1)) return 0;
   if (DCCType_IsUnionCompatible(type,&value->sv_ctype,explicit_cast)) return 0;
   if (type->t_base->d_attr &&
      (type->t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC)) {
@@ -4595,7 +4625,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
 #if !DCC_TARGET_STACKDOWN
   DCCDisp_NdfPush(filler);
 #endif
- } else if (!DCC_RC_ISCONST(self->sv_reg)) {
+ } else /*if (!DCC_RC_ISCONST(self->sv_reg))*/ {
   target_siz_t register_memory,sign_memory;
   rc_t r1,r2;
   /* TODO: Floating-point registers? */
@@ -4603,7 +4633,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
   DCCStackValue_FixRegOffset(self);
   r1 = self->sv_reg,r2 = self->sv_reg2;
   register_memory = DCC_RC_SIZE(r1);
-  if (DCC_RC_ISCONST(r2)) register_memory += DCC_RC_SIZE(r2);
+  if (!DCC_RC_ISCONST(r2)) register_memory += DCC_RC_SIZE(r2);
   assert(register_memory <= DCC_TARGET_SIZEOF_GP_REGISTER*2);
   sign_memory = 0;
   if (register_memory > result) {
@@ -4659,7 +4689,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
   if (!(result&(result-1))) {
    /* Likely case: When the type-size is one of 1,2,4 or 8,
     *              we can push the register(s) directly! */
-   if (DCC_RC_ISCONST(r2)) DCCDisp_RegPush(r2);
+   if (!DCC_RC_ISCONST(r2)) DCCDisp_RegPush(r2);
    DCCDisp_RegPush(r1);
   } else {
    /* Difficult case: Must manually handle special type sizes. */

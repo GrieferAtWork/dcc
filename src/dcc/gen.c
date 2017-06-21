@@ -161,32 +161,24 @@ DCCMemLoc_CompilerText(struct DCCMemLoc const *__restrict l,
 }
 
 #if DCC_TARGET_HASI(I_X86)
-PRIVATE uint8_t const DCCDisp_X86_SegmentPrefix[] = {
- /* [DCC_ASMREG_ES] = */DCC_SEGPREFIX_ES,
- /* [DCC_ASMREG_CS] = */DCC_SEGPREFIX_CS,
- /* [DCC_ASMREG_SS] = */DCC_SEGPREFIX_SS,
- /* [DCC_ASMREG_DS] = */DCC_SEGPREFIX_DS,
- /* [DCC_ASMREG_FS] = */DCC_SEGPREFIX_FS,
- /* [DCC_ASMREG_GS] = */DCC_SEGPREFIX_GS,
-};
 PUBLIC void
 DCCDisp_X86PutSegmentPrefix(rc_t memrc) {
  uint8_t segid;
- assert(DCC_RC_HAS_SEGP(memrc));
- segid = memrc >> DCC_RC_SHFT_SEGP;
+ assert(DCC_RC_HAS_86SEGP(memrc));
+ segid = memrc >> DCC_RC_SHFT_86SEGP;
  if (memrc&DCC_RC_I) {
   /* Check for special segment/register combinations that don't require a prefix. */
   if ((memrc&DCC_RI_MASK) == DCC_ASMREG_BP) {
    /* The 'BP' family of registers defaults to using
     * the 'SS' segment when none is specified. */
-   if (segid == DCC_RC_SEGP_SS+1) return;
+   if (segid == DCC_RC_86SEGP_SS+1) return;
   } else {
    /* All other registers default to using 'DS' */
-   if (segid == DCC_RC_SEGP_DS+1) return;
+   if (segid == DCC_RC_86SEGP_DS+1) return;
   }
  }
  /* Fallback: Actually write the prefix. */
- t_putb((DCCDisp_X86_SegmentPrefix-1)[segid]);
+ t_putb((DCCAsmReg_86SegPrefix-1)[segid]);
 }
 #endif /* I_X86 */
 

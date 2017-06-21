@@ -861,7 +861,7 @@ parse_string:
         *next_token != ',' &&
         *next_token != ';') {
      YIELD();
-     sval.sv_reg = DCC_RC_SEGP(sval.sv_reg&DCC_RI_MASK);
+     sval.sv_reg = DCC_RC_86SEGP(sval.sv_reg&DCC_RI_MASK);
      if (!DCCParse_IsExpr()) goto parse_second_register;
      /* Parse a pointer expression */
      DCCParse_ExprUnary();
@@ -873,7 +873,7 @@ parse_string:
      if ((vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
          /* When both stack-values make use of the same base segment,
           * no need to dereference the operand beforehand. */
-         (DCC_RC_SEGPOF(vbottom->sv_reg) != DCC_RC_GET_SEGP(sval.sv_reg)))
+         (DCC_RC_86SEGPOF(vbottom->sv_reg) != DCC_RC_GET_86SEGP(sval.sv_reg)))
           DCCStackValue_Load(vbottom);
      vused();
      DCCType_InitCopy(&sval.sv_ctype,&vbottom->sv_ctype);

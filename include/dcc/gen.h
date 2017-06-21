@@ -36,7 +36,7 @@ struct DCCMemLoc;
 #if DCC_TARGET_HASI(I_X86)
 /* Emit the x86 segment prefix required by 'memrc', if it contains one. */
 #define DCCDisp_X86Segp(memrc) \
- (DCC_RC_HAS_SEGP(memrc) ? DCCDisp_X86PutSegmentPrefix(memrc) : (void)0)
+ (DCC_RC_HAS_86SEGP(memrc) ? DCCDisp_X86PutSegmentPrefix(memrc) : (void)0)
 DCCDAT void DCCDisp_X86PutSegmentPrefix(rc_t memrc);
 #endif /* I_X86 */
 

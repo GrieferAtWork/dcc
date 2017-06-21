@@ -411,6 +411,19 @@ DEF_K(__thiscall)
 DEF_K(_Noreturn)
 DEF_K(_Alignas)
 
+#if DCC_TARGET_HASI(I_X86)
+/* In addition to GCC's __seg_fs/__seg_gs, in 32-bit mode,
+ * DCC adds more address spaces for all other segments. */
+#if !DCC_TARGET_HASF(F_X86_64)
+/* NOTE: X86-64 only has doesn't have these anymore... */
+DEF_K(__seg_es) DEF_K(__seg_cs) DEF_K(__seg_ss) DEF_K(__seg_ds)
+DEF_M(__SEG_ES) DEF_M(__SEG_CS) DEF_M(__SEG_SS) DEF_M(__SEG_DS)
+#endif /* !F_X86_64 */
+DEF_K(__seg_fs) DEF_K(__seg_gs)
+DEF_M(__SEG_FS) DEF_M(__SEG_GS)
+#endif /* I_X86 */
+
+
 /* STD-C conforming compiler/preprocessor! */
 PREDEFINED_MACRO(__STDC__,"1")
 
@@ -1531,10 +1544,6 @@ DEF_WARNING(W_INCOMPATIBLE_TYPES_FOR_VARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TY
 DEF_WARNING(W_EXPECTED_ARRAY_FOR_VARRAY_INITIALIZER,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Expected an array type for the initializer of variadic-array-type " Q("%s") ", but got " Q("%s")))
 DEF_WARNING(W_ASSIGN_VOID,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Can't assign non-void-type " Q("%s") " to void-type " Q("%s")))
 DEF_WARNING(W_ASSIGN_VOID_VOID,(WG_ASSIGN_VOID_VOID,WG_EXTENSIONS,WG_TYPE),WSTATE_WARN,TYPE_WARNING("Assigning void-type " Q("%s") " to void-type " Q("%s")))
-#undef TYPE_WARNING
-#ifdef DECLARE_WARNING_MESSAGES
-}
-#endif
 
 #ifdef DECLARE_WARNING_MESSAGES
 {
@@ -1569,7 +1578,21 @@ WARNING_NAMESPACE(WN_TARGET,2000)
 #if DCC_TARGET_HASI(I_X86)
 DEF_WARNING(W_X86_SEGMENT_ADDRESS_CANNOT_BE_TAKEN,(WG_VALUE),WSTATE_WARN,
             WARNF("Cannot take address of segment register " Q("%%%s"),ARG(char *)))
+DEF_WARNING(W_X86_SEGMENT_ATTRIBUTE_ALREADY_USED,(WG_ATTRIBUTE),WSTATE_WARN,
+            WARNF("A segment attribute other than " TOK_S " was already used",TOK_A))
+DEF_WARNING(W_X86_ATTRIBUTE_MERGE_SEGMENT,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,
+            WARNF("New segment prefix is incompatible with old prefix"))
+DEF_WARNING(W_X86_CAST_INCOMPATIBLE_ADDRESS_SPACE,(WG_CAST),WSTATE_WARN,
+            TYPE_WARNING("Implicit cast between pointers from incompatible address-spaces " Q("%s") " and " Q("%s")))
+DEF_WARNING(W_X86_CAST_INCOMPATIBLE_ADDRESS_SPACE_EXPLICIT,(WG_CAST),WSTATE_WARN,
+            TYPE_WARNING("Direct cast between pointers from incompatible address-spaces " Q("%s") " and " Q("%s")))
 #endif /* I_X86 */
+
+#undef TYPE_WARNING
+#ifdef DECLARE_WARNING_MESSAGES
+}
+#endif
+
 
 WARNING_NAMESPACE(WN_CMD,2400)
 DEF_WARNING(W_CMD_UNKNOWN,(WG_CMD),WSTATE_ERROR,WARNF("Unknown option: " Q("%s"),ARG(char *)))

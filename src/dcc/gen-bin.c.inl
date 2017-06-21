@@ -396,7 +396,7 @@ DCCDisp_RegBinMem(tok_t op, rc_t src, struct DCCMemLoc const *__restrict dst, in
    if ((used_dst.ml_reg != DCC_RC_CONST) &&
        (used_dst.ml_reg&DCC_RI_MASK) == DCC_ASMREG_CL) {
     used_dst.ml_reg  =  DCCVStack_GetReg(DCC_RC_PTR,1);
-    used_dst.ml_reg |= (dst->ml_reg&DCC_RC_MASK_SEGP);
+    used_dst.ml_reg |= (dst->ml_reg&DCC_RC_MASK_86SEGP);
     DCCDisp_RegMovReg(dst->ml_reg,used_dst.ml_reg,1);
    }
    if ((src&DCC_RI_MASK) != DCC_ASMREG_CL) {

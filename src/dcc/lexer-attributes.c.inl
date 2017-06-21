@@ -69,12 +69,29 @@ DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
  assert(rhs);
  assert(self != rhs);
  self->a_specs |= rhs->a_specs;
+ if (rhs->a_alias && self->a_alias != rhs->a_alias) {
+  if (self->a_alias) {
+   /* TODO: Warning. */
+   DCCSym_Decref(self->a_alias);
+  }
+  self->a_alias = rhs->a_alias;
+  DCCSym_Incref(self->a_alias);
+ }
  /* If no alignment was set, inherit that from the right. */
  if (!(self->a_specs&DCC_ATTRSPEC_FIXEDALIGN) &&
      !(self->a_alias)) self->a_align = rhs->a_align;
  /* TODO: Do more strict checking when comparing old against new attributes. */
  self->a_flags |= rhs->a_flags&(DCC_ATTRFLAG_MASK_MODE|
                                 DCC_ATTRFLAG_MASK_REACHABLE);
+#ifdef DCC_ATTRFLAG_MASK_86SEG
+ if (rhs->a_flags&DCC_ATTRFLAG_MASK_86SEG) {
+  if (self->a_flags&DCC_ATTRFLAG_MASK_86SEG) {
+   WARN(W_X86_ATTRIBUTE_MERGE_SEGMENT);
+   self->a_flags &= ~(DCC_ATTRFLAG_MASK_86SEG);
+  }
+  self->a_flags |= rhs->a_flags&DCC_ATTRFLAG_MASK_86SEG;
+ }
+#endif
  if ((rhs->a_flags&DCC_ATTRFLAG_MASK_CALLCONV) &&
      (rhs->a_flags&DCC_ATTRFLAG_MASK_CALLCONV) !=
      (self->a_flags&DCC_ATTRFLAG_MASK_CALLCONV)) {
@@ -103,7 +120,7 @@ DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
  if (rhs->a_reach) {
   if (!self->a_reach) {
    self->a_reach = rhs->a_reach;
-   TPPString_Decref(self->a_reach);
+   TPPString_Incref(self->a_reach);
   } else if (self->a_reach != rhs->a_reach &&
             (self->a_reach->s_size != rhs->a_reach->s_size ||
              memcmp(self->a_reach->s_text,rhs->a_reach->s_text,
@@ -518,6 +535,28 @@ DCCParse_Attr(struct DCCAttrDecl *__restrict self) {
  assert(self);
 again:
  switch (TOK) {
+
+#if DCC_TARGET_HASI(I_X86)
+ {
+  uint32_t flag;
+#if !DCC_TARGET_HASF(F_X86_64)
+  if (DCC_MACRO_FALSE) { case KWD___seg_es: flag = DCC_ATTRFLAG_SET_86SEG(DCC_ASMREG_ES); }
+  if (DCC_MACRO_FALSE) { case KWD___seg_cs: flag = DCC_ATTRFLAG_SET_86SEG(DCC_ASMREG_CS); }
+  if (DCC_MACRO_FALSE) { case KWD___seg_ss: flag = DCC_ATTRFLAG_SET_86SEG(DCC_ASMREG_SS); }
+  if (DCC_MACRO_FALSE) { case KWD___seg_ds: flag = DCC_ATTRFLAG_SET_86SEG(DCC_ASMREG_DS); }
+#endif /* !F_X86_64 */
+  if (DCC_MACRO_FALSE) { case KWD___seg_fs: flag = DCC_ATTRFLAG_SET_86SEG(DCC_ASMREG_FS); }
+  if (DCC_MACRO_FALSE) { case KWD___seg_gs: flag = DCC_ATTRFLAG_SET_86SEG(DCC_ASMREG_GS); }
+  if ((self->a_flags&DCC_ATTRFLAG_MASK_86SEG) &&
+      (self->a_flags&DCC_ATTRFLAG_MASK_86SEG) != flag) {
+   WARN(W_X86_SEGMENT_ATTRIBUTE_ALREADY_USED);
+   self->a_flags &= ~(DCC_ATTRFLAG_MASK_86SEG);
+  }
+  self->a_flags |= flag;
+  goto yield_again;
+ }
+#endif /* I_X86 */
+
  case KWD_attribute:
   if (!HAS(EXT_SHORT_EXT_KEYWORDS) ||
       /* NOTE: Also keep the next token for being a '(',

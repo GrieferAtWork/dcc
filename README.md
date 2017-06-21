@@ -67,6 +67,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Support for old (pre-STDC: K&R-C) function declarations/implementations.
   - Support for new (post-STDC: C90+) function declarations/implementations.
   - Support for floating-point types (Assembly generator is not implemented yet).
+  - Support for GCC x86 segment address space (<code>\_\_seg_fs</code>/<code>\_\_seg_gs</code>)
   - Inherited from assembly: Named register identifiers.
     - <code>int x = %eax;</code> (CPU-specific, on i386 compiles to <code>mov %eax, x</code>).
   - Inherited from assembly: Get current text address.
@@ -114,6 +115,27 @@ Note that DCC is still fairly early in its development, meaning that anything ca
       - Requires: <code>sizeof(T) == \_\_SIZEOF\_JMP\_BUF\_\_</code>
       - Compile-time best-result code generation for register save to 'buf'
       - Optimizations for 'sig' known to never be '0'
+    - <code>void *\_\_builtin\_malloc(size\_t s);</code>
+    - <code>void *\_\_builtin\_calloc(size\_t c, size_t s);</code>
+    - <code>void *\_\_builtin\_realloc(void *p, size\_t c, size\_t s);</code>
+    - <code>void \_\_builtin\_free(void *p);</code>
+    - <code>void \_\_builtin\_cfree(void *p);</code>
+    - <code>void *\_\_builtin\_return\_address(unsigned int level);</code>
+    - <code>void *\_\_builtin\_frame\_address(unsigned int level);</code>
+    - <code>void *\_\_builtin\_extract\_return\_addr(void *p);</code>
+    - <code>void *\_\_builtin\_frob\_return\_address(void *p);</code>
+    - <code>void *\_\_builtin\_isxxx(void *p);</code>
+      - ctype-style builtin functions
+    - <code>void *\_\_builtin\_memchr(void *p, int c, size\_t s);</code>
+    - <code>void *\_\_builtin\_memrchr(void *p, int c, size\_t s);</code>
+      - Additional functions are available for <code>mem(r)len</code>/<code>mem(r)end</code>/<code>rawmem(r)chr</code>/<code>rawmem(r)len</code>
+    - <code>T \_\_builtin\_min(T args...);</code>
+    - <code>T \_\_builtin\_max(T args...);</code>
+    - <code>void \_\_builtin\_cpu\_init(void);</code>
+    - <code>int \_\_builtin\_cpu\_is(char const *cpuname);</code>
+    - <code>int \_\_builtin\_cpu\_supports(char const *feature);</code>
+    - <code>char const (&\_\_builtin\_cpu\_vendor(void))[N];</code>
+      - Returns a target-specific string describing the vendor name of the host CPU. The length of the returned string is always constant and known at compile-time, and when not possible to determine at runtime, filled with NUL-characters.
     - <code>uint16\_t \_\_builtin\_bswap16(uint16\_t x);</code>
     - <code>uint32\_t \_\_builtin\_bswap32(uint32\_t x);</code>
     - <code>uint64\_t \_\_builtin\_bswap64(uint64\_t x);</code>
