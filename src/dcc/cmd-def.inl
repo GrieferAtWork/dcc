@@ -108,6 +108,9 @@ GROUP_BEGIN(grp_main) /* Main options group */
    OPTION_O(OPT_help,   OPTION_FLAG_VALUE,NULL,"help",   NULL) /* --help [subject] */
    OPTION_O(OPT_version,OPTION_FLAG_NONE, NULL,"version",NULL) /* --version */
    OPTION_O(OPT_message_format,OPTION_FLAG_EQUAL,NULL,"message-format",NULL) /* --message-format={msvc|gcc} */
+#if DCC_CONFIG_HAVE_DRT
+   OPTION_O(OPT_d,OPTION_FLAG_NONE,"d",NULL,NULL) /* -d */
+#endif
 
    OPTION_O(OPT_P,OPTION_FLAG_NONE,"P",NULL,NULL) /* -P */
    OPTION_O(OPT_MMD,OPTION_FLAG_NONE,"MMD",NULL,NULL) /* -MMD */

@@ -457,6 +457,11 @@ PREDEFINED_MACRO_IF(__PIE__,HAS(EXT_SYSTEM_MACROS) && (linker.l_flags&DCC_LINKER
  * >> Got'a identify this compiler somehow! */
 PREDEFINED_MACRO(__DCC_VERSION__,DCC_PP_STR(DCC_COMPILER_VERSION))
 
+#if DCC_CONFIG_HAVE_DRT
+/* Define a preprocessor symbol '__DRT__' when compiling in direct mode. */
+PREDEFINED_MACRO_IF(__DRT__,DRT_ENABLED(),"1")
+#endif /* DCC_CONFIG_HAVE_DRT */
+
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
 PREDEFINED_MACRO_IF(__ELF__,HAS(EXT_SYSTEM_MACROS),"1")
 #elif DCC_TARGET_BIN == DCC_BINARY_PE
@@ -964,6 +969,7 @@ WGROUP(WG_ATTRIBUTE,"attribute",WSTATE_ERROR)
 WGROUP(WG_TYPE,"type",WSTATE_ERROR)
 WGROUP(WG_CAST,"cast",WSTATE_ERROR)
 WGROUP(WG_LINKER,"linker",WSTATE_ERROR)
+WGROUP(WG_COMPILER_DRIVER,"compiler-driver",WSTATE_ERROR)
 WGROUP(WG_LIBLOAD,"libload",WSTATE_ERROR)
 WGROUP(WG_UNDEFINED,"undefined",WSTATE_ERROR)
 WGROUP(WG_REDEFINE,"redefine",WSTATE_ERROR)
@@ -1605,7 +1611,7 @@ DEF_WARNING(W_CMD_STD_UNKNOWN,(WG_CMD,WG_VALUE),WSTATE_WARN,{ char *s = ARG(char
 
 /* Switch to the Linker warning namespace. */
 WARNING_NAMESPACE(WN_LINKER,2500)
-DEF_WARNING(W_OUT_OF_MEMORY,(WG_LINKER),WSTATE_ERROR,WARNF("Out of memory when allocating " Q("%lu") " bytes",(unsigned long)ARG(size_t)))
+DEF_WARNING(W_OUT_OF_MEMORY,(WG_COMPILER_DRIVER),WSTATE_ERROR,WARNF("Out of memory when allocating " Q("%lu") " bytes",(unsigned long)ARG(size_t)))
 DEF_WARNING(W_LINKER_NO_INPUT_FILES,(WG_USAGE,WG_LINKER),WSTATE_ERROR,WARNF("No input files specified"))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMPLUSSYM,(WG_LINKER,WG_SYMBOL),WSTATE_WARN,WARNF("Symbol+Symbol expression cannot be relocated"))
 DEF_WARNING(W_LINKER_CANNOT_RELOCATE_SYMMINUSSYM,(WG_LINKER,WG_SYMBOL),WSTATE_WARN,WARNF("Symbol-Symbol expressions can only be relocated when both symbols are declared and exist in the same section"))
@@ -1718,6 +1724,20 @@ DEF_WARNING(W_LINKER_PE_WEAKSYM_EXPORTED_AS_NORMAL,(WG_LINKER,WG_SYMBOL),WSTATE_
 DEF_WARNING(W_LINKER_PE_CANT_EXPORT_EMPTY_SECTION,(WG_LINKER),WSTATE_WARN,
             WARNF("Can't export empty section " Q("%s") " marked with dllexport on PE targets",KWDNAME()))
 #endif
+
+#if DCC_CONFIG_HAVE_DRT
+/* DRT Runtime warnings. */
+WARNING_NAMESPACE(WN_DRT,2800)
+#if TPP_HAVE_LONGLONG
+DEF_WARNING(W_DRT_SECTION_TOO_LARGE,(WG_COMPILER_DRIVER),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Section " Q("%s") " has grown larger than the limit of " Q("%#llx") " bytes",n,(unsigned long long)ARG(size_t)); })
+#else
+DEF_WARNING(W_DRT_SECTION_TOO_LARGE,(WG_COMPILER_DRIVER),WSTATE_WARN,{ char *n = ARG(char *); WARNF("Section " Q("%s") " has grown larger than the limit of " Q("%#lx") " bytes",n,(unsigned long)ARG(size_t)); })
+#endif
+DEF_WARNING(W_DRT_VMALL_FAILED_ALLOC,(WG_COMPILER_DRIVER),WSTATE_ERROR,{ char *n = ARG(char *); void *a = ARG(void *); void *b = ARG(void *); WARNF("Failed to allocate section " Q("%s") " virtual memory %p...%p (error %#x)",n,a,b,ARG(int)); })
+DEF_WARNING(W_DRT_VPROT_FAILED_WRITABLE,(WG_COMPILER_DRIVER),WSTATE_ERROR,{ char *n = ARG(char *); void *a = ARG(void *); void *b = ARG(void *); WARNF("Failed to make section " Q("%s") " virtual memory %p...%p writable (error %#x)",n,a,b,ARG(int)); })
+DEF_WARNING(W_DRT_VPROT_FAILED_READONLY,(WG_COMPILER_DRIVER),WSTATE_WARN,{ char *n = ARG(char *); void *a = ARG(void *); void *b = ARG(void *); WARNF("Failed to make section " Q("%s") " virtual memory %p...%p readonly (error %#x)",n,a,b,ARG(int)); })
+#endif /* DCC_CONFIG_HAVE_DRT */
+
 
 /* Switch to the lib-loader warning namespace. */
 WARNING_NAMESPACE(WN_LIBLOADER,3000)

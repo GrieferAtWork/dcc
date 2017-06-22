@@ -172,6 +172,22 @@ end:
  compiler = old_compiler;
 }
 
+PRIVATE int DCCUNIT_IMPORTCALL
+staloader_exec(p_libloader fun,
+               struct DCCLibDef *__restrict def,
+               char const *__restrict file,
+               stream_t fd, soff_t start) {
+ int result;
+ if (def->ld_flags&DCC_LIBDEF_FLAG_AUTOMERGE) {
+  DCCUnit_Push();
+  result = (*fun)(def,file,fd,start);
+  DCCUnit_Pop(result && OK); /* Merge if successfully loaded & OK */
+ } else {
+  result = (*fun)(def,file,fd,start);
+ }
+ return result;
+}
+
 
 PRIVATE int DCCUNIT_IMPORTCALL
 DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
@@ -181,10 +197,10 @@ DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
  uint32_t reqflags;
  assert(def);
  /* Do some initial assertions about the unit state during static import. */
- assert(!(def->ld_flags&DCC_LIBDEF_FLAG_STATIC) || !unit.u_symc);
- assert(!(def->ld_flags&DCC_LIBDEF_FLAG_STATIC) || !unit.u_nsymc);
- assert(!(def->ld_flags&DCC_LIBDEF_FLAG_STATIC) || !unit.u_secc);
- assert(!(def->ld_flags&DCC_LIBDEF_FLAG_STATIC) || !unit.u_impc);
+ assert(!(def->ld_flags&DCC_LIBDEF_FLAG_STATIC) || (def->ld_flags&DCC_LIBDEF_FLAG_AUTOMERGE) || !unit.u_symc);
+ assert(!(def->ld_flags&DCC_LIBDEF_FLAG_STATIC) || (def->ld_flags&DCC_LIBDEF_FLAG_AUTOMERGE) || !unit.u_nsymc);
+ assert(!(def->ld_flags&DCC_LIBDEF_FLAG_STATIC) || (def->ld_flags&DCC_LIBDEF_FLAG_AUTOMERGE) || !unit.u_secc);
+ assert(!(def->ld_flags&DCC_LIBDEF_FLAG_STATIC) || (def->ld_flags&DCC_LIBDEF_FLAG_AUTOMERGE) || !unit.u_impc);
  reqflags = (def->ld_flags&DCC_LIBDEF_FLAG_STATIC)
   ? (LIBLOADER_FLAG_DYN|LIBLOADER_FLAG_STA)
   : (LIBLOADER_FLAG_DYN);
@@ -204,7 +220,7 @@ DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
        !memcmp(iter->lld_magic,magic,
               (iter->lld_flags&LIBLOADER_MASK_MSIZE))) {
     /* Got a magic match. */
-    result = (*iter->lld_func)(def,filename,fd,start);
+    result = staloader_exec(iter->lld_func,def,filename,fd,start);
     if (result || !OK) goto done;
    }
   }
@@ -212,7 +228,7 @@ DCCUnit_DoImportStream(struct DCCLibDef *__restrict def,
   for (iter = dcc_libloaders; iter->lld_func; ++iter) {
    if ((iter->lld_flags&reqflags) &&
       !(iter->lld_flags&LIBLOADER_MASK_MSIZE)) {
-    result = (*iter->lld_func)(def,filename,fd,start);
+    result = staloader_exec(iter->lld_func,def,filename,fd,start);
     if (result || !OK) goto done;
    }
   }

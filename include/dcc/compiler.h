@@ -532,8 +532,8 @@ DCCDAT struct DCCCompiler compiler;
 #endif
 
 /* push/pop the current unit c-flags. */
-#define pushf      DCCCompiler_Pushf
-#define popf       DCCCompiler_Popf
+#define pushf()    DCCCompiler_Pushf()
+#define popf()     DCCCompiler_Popf()
 #define setf(f)   (void)(compiler.c_flags|= (f))
 #define unsetf(f) (void)(compiler.c_flags&=~(f))
 

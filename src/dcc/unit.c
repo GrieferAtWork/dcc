@@ -27,6 +27,7 @@
 #include <dcc/compiler.h>
 #include <dcc/target.h>
 #include <dcc/vstack.h>
+#include <drt/drt.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -133,6 +134,10 @@ INTDEF void DCCUnit_InsSym(/*ref*/struct DCCSym *__restrict sym);
 LOCAL void DCCUnit_CheckRehash(void);
 LOCAL void DCCUnit_RehashSymbols(size_t newsize);
 LOCAL void DCCUnit_RehashSymbols2(struct DCCUnit *__restrict self, size_t newsize);
+#if DCC_CONFIG_HAVE_DRT
+/* Fail if the symbol might be used in relocations. */
+#define DCCSym_CanClear(self) (!DRT_STARTED() || (self)->sy_refcnt == 1 || DCCSym_ISFORWARD(self))
+#endif
 LOCAL void DCCSym_ClearDef(struct DCCSym *__restrict self, int warn);
 
 /* When non-zero, unused symbols don't delete their data.
@@ -300,6 +305,7 @@ DCCSection_Destroy(struct DCCSection *__restrict self) {
   assert(!self->sc_pself);
   assert(!self->sc_next);
  }
+
  /* Delete section symbols. */
  { struct DCCSym **biter,**bend,*iter,*next;
    bend = (biter = self->sc_symv)+self->sc_syma;
@@ -316,6 +322,9 @@ DCCSection_Destroy(struct DCCSection *__restrict self) {
  }
 
  if (!DCCSection_ISIMPORT(self)) {
+  /* Delete RT information. */
+  DCCSection_RTQuit(self);
+
   /* Delete the text buffer. */
   free(self->sc_text.tb_begin);
 #if DCC_DEBUG
@@ -534,6 +543,9 @@ DCCSym_ClearDef(struct DCCSym *__restrict self, int warn) {
          self->sy_sec->sc_start.sy_name->k_name);
    }
   }
+#ifdef DCCSym_CanClear
+  if unlikely(!DCCSym_CanClear(self)) return;
+#endif
   old_sec        = self->sy_sec; /* Inherit reference. */
   old_alias      = self->sy_alias; /* Inherit reference. */
   self->sy_sec   = NULL;
@@ -559,11 +571,21 @@ DCCSym_ClearDef(struct DCCSym *__restrict self, int warn) {
   DCCSym_XDecref(old_alias);
  }
 }
-PUBLIC void
+#ifdef DCCSym_CanClear
+PUBLIC int
 DCCSym_ClrDef(struct DCCSym *__restrict self) {
+ DCCSym_ASSERT(self);
+ if unlikely(!DCCSym_CanClear(self)) return 0;
+ DCCSym_ClearDef(self,0);
+ return 1;
+}
+#else
+PUBLIC void
+DCCSym_ClrDef_(struct DCCSym *__restrict self) {
  DCCSym_ASSERT(self);
  DCCSym_ClearDef(self,0);
 }
+#endif
 PUBLIC void
 DCCSym_Define(struct DCCSym *__restrict self,
               struct DCCSection *__restrict section,
@@ -600,6 +622,12 @@ DCCSym_Define(struct DCCSym *__restrict self,
  if (!DCCSection_ISIMPORT(section))
       DCCSection_DIncref(section,addr,size);
  DCCSym_ClearDef(self,1);
+#ifdef DCCSym_CanClear
+ if unlikely(!DCCSym_CanClear(self)) {
+  DCCSection_DDecref(section,addr,size);
+  return;
+ }
+#endif
  self->sy_addr  = addr;
  self->sy_size  = size;
  self->sy_align = align;
@@ -630,6 +658,12 @@ DCCSym_Redefine(struct DCCSym *__restrict self,
  if (!DCCSection_ISIMPORT(section))
       DCCSection_DIncref(section,addr,size);
  DCCSym_ClearDef(self,0);
+#ifdef DCCSym_CanClear
+ if unlikely(!DCCSym_CanClear(self)) {
+  DCCSection_DDecref(section,addr,size);
+  return;
+ }
+#endif
  self->sy_addr  = addr;
  self->sy_size  = size;
  self->sy_align = align;
@@ -643,6 +677,9 @@ DCCSym_SetSize(struct DCCSym *__restrict self,
  target_siz_t old_size;
  DCCSym_ASSERT(self);
  old_size = self->sy_size;
+#ifdef DCCSym_CanClear
+ if unlikely(!DCCSym_CanClear(self)) return;
+#endif
  self->sy_size = size;
  if (self->sy_sec && !DCCSection_ISIMPORT(self->sy_sec)) {
   /* Must update section data reference counters. */
@@ -675,6 +712,9 @@ DCCSym_Alias(struct DCCSym *__restrict self,
    alias_iter = alias_iter->sy_alias;
   }
  }
+#ifdef DCCSym_CanClear
+ if unlikely(!DCCSym_CanClear(self)) return;
+#endif
  DCCSym_ClearDef(self,1);
  DCCSym_Incref(alias_sym);
  self->sy_alias = alias_sym; /* Inherit reference. */
@@ -812,6 +852,7 @@ DCCSection_New(struct TPPKeyword const *__restrict name,
  } else {
   result = (struct DCCSection *)calloc(1,sizeof(struct DCCSection));
   if unlikely(!result) goto seterr;
+  DCCSection_RTInit(result);
  }
  result->sc_start.sy_align  = 1;
  result->sc_start.sy_refcnt = 1;
@@ -956,7 +997,7 @@ DCCSection_Hasrel(struct DCCSection *__restrict self,
 }
 
 PUBLIC struct DCCRel *
-DCCSection_Getrel(struct DCCSection *__restrict self,
+DCCSection_GetRel(struct DCCSection *__restrict self,
                   target_ptr_t addr, target_siz_t size,
                   size_t *__restrict relc) {
  struct DCCRel *rel_end,*rel_begin,*begin;
@@ -979,7 +1020,7 @@ DCCSection_Movrel(struct DCCSection *__restrict self,
  struct DCCRel *relv,*temp; size_t relc,mov;
  assert(self),DCCSECTION_ASSERT_NOTANIMPORT(self);
  if unlikely(old_addr == new_addr || !n_bytes) return 0;
- relv = DCCSection_Getrel(self,old_addr,n_bytes,&relc);
+ relv = DCCSection_GetRel(self,old_addr,n_bytes,&relc);
  if (relc) {
   struct DCCRel *iter,*end;
   target_off_t addr_off = (target_off_t)(new_addr-old_addr);
@@ -1466,7 +1507,7 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
   struct DCCRel *relv; size_t relc;
   struct DCCRel *new_relv; size_t new_relc;
   uint8_t *addr_data,*search_iter,*search_end;
-  relv = DCCSection_Getrel(self,addr,size,&relc);
+  relv = DCCSection_GetRel(self,addr,size,&relc);
   search_end = self->sc_text.tb_end;
   if (search_end > self->sc_text.tb_max)
       search_end = self->sc_text.tb_max;
@@ -1483,7 +1524,7 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
     if (DCCFreeData_Has(&self->sc_free,new_result,size)) goto next;
     /* Make sure that the relocations in the
      * new area match those from the old. */
-    new_relv = DCCSection_Getrel(self,new_result,size,&new_relc);
+    new_relv = DCCSection_GetRel(self,new_result,size,&new_relc);
     if (new_relc != relc) goto next;
     if (relc && new_relv != relv) {
      struct DCCRel *rel_iter,*rel_end;

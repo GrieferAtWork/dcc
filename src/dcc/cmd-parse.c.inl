@@ -27,6 +27,9 @@
 #include <dcc/unit.h>
 #include <dcc/linker.h>
 #include <dcc/preprocessor.h>
+#if DCC_CONFIG_HAVE_DRT
+#include <drt/drt.h>
+#endif
 
 #include "cmd.h"
 
@@ -448,6 +451,11 @@ check_depfile: if (preproc.p_depfd == TPP_STREAM_INVALID) preproc.p_depfd = DCC_
   else if (!strcmp(v,"gcc"))  CURRENT.l_flags &= ~(TPPLEXER_FLAG_MSVC_MESSAGEFORMAT);
   else WARN(W_CMD_MESSAGE_FORMAT_UNKNOWN,v);
   break;
+
+#if DCC_CONFIG_HAVE_DRT
+ case OPT_d: DRT_Enable(); break;
+#endif
+
 
  case OPT_ansi:
   DCCCompiler_SetStd(DCC_COMPILER_STD_ANSI);

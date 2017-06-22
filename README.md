@@ -2,6 +2,8 @@
 
 A <b>C99 compliant</b> C compiler with extensions implementing many extensions and features, as well as arbirary-length integer arithmetic.
 
+The main feature that differentiates this compiler from others, is its ability to directly read, preprocess, tokenize, parse, assemble and link c source code, all at the same time, in a way allowing you to execute C code in an environment similar to that of an interactive commandline. If you are interested in how this is achieved, take a look at <code>/include/drt/drt.h</code>
+
 Currently only able to target <b>I386 and above</b>, support for x86-64 is planned and already partially implemented.
 
 Supported output formats are <b>ELF</b>, windows <b>PE</b>, as well as <b>direct execution</b> of generated code.

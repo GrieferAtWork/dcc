@@ -33,6 +33,7 @@
     <ClCompile Include="..\src\dcc\vstack-ext.c" />
     <ClCompile Include="..\src\dcc\vstack.c" />
     <ClCompile Include="..\src\dcc\x86_util-instrlen.c" />
+    <ClCompile Include="..\src\drt\drt.c" />
     <ClCompile Include="..\src\main.c" />
     <ClCompile Include="..\src\tpp\tpp.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -56,6 +57,7 @@
     <ClInclude Include="..\include\dcc\unit.h" />
     <ClInclude Include="..\include\dcc\vstack.h" />
     <ClInclude Include="..\include\dcc_winmin.h" />
+    <ClInclude Include="..\include\drt\drt.h" />
     <ClInclude Include="..\lib\src\a2l\addr2line.h" />
     <ClInclude Include="..\src\dcc\cmd.h" />
     <ClInclude Include="..\src\dcc\lexer-priv.h" />
@@ -64,6 +66,7 @@
     <ClInclude Include="..\src\dcc\unit-export.h" />
     <ClInclude Include="..\src\dcc\unit-import.h" />
     <ClInclude Include="..\src\dcc\x86_util.h" />
+    <ClInclude Include="..\src\drt\drt.h" />
     <ClInclude Include="..\src\tpp\tpp-backwards-compatibility.h" />
     <ClInclude Include="..\src\tpp\tpp.h" />
   </ItemGroup>
@@ -104,6 +107,9 @@
     <None Include="..\src\dcc\unit-import-source.c.inl" />
     <None Include="..\src\dcc\unit-seccoll.c.inl" />
     <None Include="..\src\dcc\unit-secmem.c.inl" />
+    <None Include="..\src\drt\drt-sync.c.inl" />
+    <None Include="..\src\drt\drt-thread.c.inl" />
+    <None Include="..\src\drt\drt-user.c.inl" />
     <None Include="..\src\tpp\tpp-defs.inl" />
     <None Include="..\src\tpp\tpp-gcc-defs.inl" />
   </ItemGroup>

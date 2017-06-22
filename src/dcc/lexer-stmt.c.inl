@@ -747,24 +747,26 @@ ignore_case_label:
     * >>          break;
     * >> }
     */
-   t_defsym(compiler.c_casejmp);
-   DCCSym_ClrDef(old_casejmp);
-   compiler.c_casejmp = old_casejmp;
-#else
-   /* The other possibility would be to generate an indirect jump.
-    * Technically, we'd always have to do that in case the case expression
-    * has side-effects, but we choose not to do so, as case expressions
-    * should technically always be constant.
-    * >> switch ((int)(x == 0)) {      // cmpl $0, x; jmp <case 0>;
-    * >> case 0:  handle_not(); break; // jge <case 2>; call handle_not; jmp <break>;
-    * >> default: handle_def();        // call 
-    * >> // Because 'bool' (0|1) can never be equal to 2, this case is dead
-    * >> case 2:  handle_2();          // jmp <case 2>; jmp <default>; call handle_2; jmp <break>;
-    * >>          break;
-    * >> }
-    */
-   vpushs(compiler.c_casejmp),vgen1('&'),vjmp();
+   if (DCCSym_ClrDef(old_casejmp)) {
+    t_defsym(compiler.c_casejmp);
+    compiler.c_casejmp = old_casejmp;
+   } else
 #endif
+   {
+    /* The other possibility would be to generate an indirect jump.
+     * Technically, we'd always have to do that in case the case expression
+     * has side-effects, but we choose not to do so, as case expressions
+     * should technically always be constant.
+     * >> switch ((int)(x == 0)) {      // cmpl $0, x; jmp <case 0>;
+     * >> case 0:  handle_not(); break; // jge <case 2>; call handle_not; jmp <break>;
+     * >> default: handle_def();        // call 
+     * >> // Because 'bool' (0|1) can never be equal to 2, this case is dead
+     * >> case 2:  handle_2();          // jmp <case 2>; jmp <default>; call handle_2; jmp <break>;
+     * >>          break;
+     * >> }
+     */
+    vpushs(compiler.c_casejmp),vgen1('&'),vjmp();
+   }
    compiler.c_flags = _old_flags;
    vpop(1);
    goto again_after_dead_label;

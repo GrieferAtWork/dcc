@@ -377,8 +377,19 @@ DCCFUN void DCCSym_SetSize(struct DCCSym *__restrict self,
 DCCFUN void DCCSym_DefAddr(struct DCCSym *__restrict self,
                            struct DCCSymAddr const *__restrict symaddr);
 
-/* Clear the current definition of 'self' */
-DCCFUN void DCCSym_ClrDef(struct DCCSym *__restrict self);
+/* Clear the current definition of 'self'
+ * NOTE: In direct execution mode, it is impossible to safely
+ *       clear the definition of a previously defined symbol
+ *       once that symbol has been used for relocations,
+ *       in which case this function will fail and return ZERO(0).
+ * @return: 0: Failed to clear the symbol definition.
+ * @return: 1: Successfully cleared the definition. */
+#if DCC_CONFIG_HAVE_DRT
+DCCFUN int DCCSym_ClrDef(struct DCCSym *__restrict self);
+#else
+DCCFUN void DCCSym_ClrDef_(struct DCCSym *__restrict self);
+#define DCCSym_ClrDef(self) (DCCSym_ClrDef_(self),1)
+#endif
 
 /* Explicitly import a given symbol from a specific 'import_sec' */
 #define DCCSym_Import(self,import_sec,hint) \
@@ -484,6 +495,9 @@ DCCFreeData_AcquireAt(struct DCCFreeData *__restrict self,
 DCCFUN void
 DCCFreeData_Release(struct DCCFreeData *__restrict self,
                     DCC(target_ptr_t) addr, DCC(target_siz_t) size);
+DCCFUN void
+DCCFreeData_ReleaseMerge(struct DCCFreeData *__restrict self,
+                         DCC(target_ptr_t) addr, DCC(target_siz_t) size);
 
 /* Check if a given address range is part of the free data.
  * @return: 0 : No address within the range is marked as free.
@@ -507,13 +521,104 @@ struct DCCAllocRange {
 };
 
 
+#if DCC_CONFIG_HAVE_DRT
+struct DCCRTSection {
+ /* Memory is copied into RT sections using copy-on-access, that is initially,
+  * all RT sections are empty, and memory is only cloned once it is accessed. */
+#ifdef __INTELLISENSE__
+ uint8_t           *rs_vaddr;      /*< DRT section base address (Same access permissions as the associated section). */
+#else
+ uint8_t DRT_USER  *rs_vaddr;      /*< DRT section base address (Same access permissions as the associated section). */
+#endif
+ size_t             rs_allocpagea; /*< Amount of bytes allocated for the 'rs_allocpagev' vector. */
+ uint8_t           *rs_allocpagev; /*< [1..1|alloc(rs_allocpagea)][owned] Bitset of pages already allocated for this section. */
+ struct DCCFreeData rs_mirror;     /*< Descriptor for data that has already been mirrored (~free~ data is mirrored data) */
+};
+
+
+/* Returns the effective user-address of a given section pointer (aka. target pointer).
+ * WARNING: The returned address may not be allocated yet. */
+#define DCCRTSection_ADDR(self,ptr)       ((self)->rs_vaddr+(ptr))
+/* Similar to 'DCCRTSection_ADDR', but return the user-address of a specific page. */
+#define DCCRTSection_PAGEADDR(self,pagei) ((self)->rs_vaddr+(pagei)*DCC_TARGET_PAGESIZE)
+/* Return the max amount of pages that are currently tracked. */
+#if (DCC_TARGET_PAGESIZE % DCC_TARGET_BITPERBYTE) == 0
+#define DCCRTSection_PAGECOUNT(self)      ((self)->rs_allocpagea/(DCC_TARGET_PAGESIZE/DCC_TARGET_BITPERBYTE))
+#else
+#define DCCRTSection_PAGECOUNT(self)      (((self)->rs_allocpagea*DCC_TARGET_BITPERBYTE)/DCC_TARGET_PAGESIZE)
+#endif
+/* Return non-zero if the given page 'pagei' is currently allocated. */
+#define DCCRTSection_ISALLOCATED(self,pagei) \
+      ((pagei) < DCCRTSection_PAGECOUNT(self) && DCCRTSection_ISALLOCATED_(self,pagei))
+#define DCCRTSection_ISALLOCATED_(self,pagei) \
+      ((self)->rs_allocpagev[(pagei)/DCC_TARGET_BITPERBYTE]&\
+                      (1 << ((pagei)%DCC_TARGET_BITPERBYTE)))
+#define DCCRTSection_SETALLOCATED_(self,pagei) \
+      ((self)->rs_allocpagev[(pagei)/DCC_TARGET_BITPERBYTE] |= \
+                      (1 << ((pagei)%DCC_TARGET_BITPERBYTE)))
+
+/* Enumerate all allocated address ranges. */
+#define DCCRTSECTION_FOREACH_BEGIN(self,addr,n_bytes) \
+ do{ size_t rts_i = 0,rts_count = DCCRTSection_PAGECOUNT(self); \
+     for (; rts_i != rts_count; ++rts_i) \
+     if (DCCRTSection_ISALLOCATED_(self,rts_i)) { \
+      size_t rts_end_page = rts_i; \
+      *(void DRT_USER **)&(addr) = (void DRT_USER *)DCCRTSection_PAGEADDR(self,rts_end_page); \
+      do ++rts_end_page; while (rts_end_page != rts_count && DCCRTSection_ISALLOCATED_(self,rts_end_page)); \
+      (n_bytes) = (size_t)(rts_end_page-rts_i)*DCC_TARGET_PAGESIZE,rts_i = rts_end_page; \
+
+#define DCCRTSECTION_FOREACH_END \
+   } \
+ }while(DCC_MACRO_FALSE)
+    
+/* Initialize/Finalize the RT data associated with the given section. */
+DCCFUN void DCCSection_RTInit(struct DCCSection *__restrict self);
+DCCFUN void DCCSection_RTQuit(struct DCCSection *__restrict self);
+
+/* Allocate missing RT pages within the given address range.
+ * WARNING: The caller is responsible not to pass out-of-bounds ranges.
+ * @param: for_write:   When non-ZERO, ensure that user-memory can be
+ *                      written to in the event that section memory is
+ *                      normally not writable.
+ *                      When this value was set, the caller should run
+ *                     'DCCSection_RTDoneWrite' before passing execution
+ *                      back to the RT thread.
+ * @return: * :         The user-pointer to the start of the memory range.
+ * @return: DRT_VERROR: Failed to allocate RT memory (an error/warning has been emit)
+ */
+DCCFUN void DRT_USER *
+DCCSection_RTAlloc(struct DCCSection *__restrict self,
+                   DCC(target_ptr_t) addr,
+                   DCC(target_siz_t) size, int for_write);
+DCCFUN void
+DCCSection_RTDoneWrite(struct DCCSection *__restrict self,
+                       DCC(target_ptr_t) addr,
+                       DCC(target_siz_t) size);
+
+/* Copy text data from 'addr...+=size' to 'target'.
+ * NOTE: During this operation, data referred to by relocations
+ *       is filled in with 'DRT_FAULT_ADDRESS'
+ * @return: 0: Failed to lookup host data.
+ * @return: 1: Successfully copied data. */
+DCCFUN int
+DCCSection_RTCopy(struct DCCSection *__restrict self,
+                  void DRT_USER *__restrict target,
+                  DCC(target_ptr_t) addr,
+                  DCC(target_siz_t) size);
+
+#else /* DCC_CONFIG_HAVE_DRT */
+#define DCCSection_RTInit(self) (void)0
+#define DCCSection_RTQuit(self) (void)0
+#endif /* !DCC_CONFIG_HAVE_DRT */
+
+
 
 struct DCCTextBuf {
  uint8_t *tb_begin; /*< [0..1][<= tb_end][owned] Start pointer for assembly code. */
  uint8_t *tb_end;   /*< [0..1][>= tb_begin] Compile-time allocated code end. */
  uint8_t *tb_max;   /*< [0..1][>= tb_pos] Used code end (overflow above 'tb_end' symbolically describes zero-initialized memory). */
  uint8_t *tb_pos;   /*< [0..1][>= tb_begin] Current code position (NOTE: May be placed above 'tb_end' for lazy alloc-on-write).
-                     * >> Everything between this and 'tb_max' should be considered as ZERO-initialized, virtual memory. */
+                     *   >> Everything between this and 'tb_max' should be considered as ZERO-initialized, virtual memory. */
 };
 #define DCCTextBuf_ADDR(self)            ((DCC(target_ptr_t))((self)->tb_pos-(self)->tb_begin))
 #define DCCTextBuf_SETADDR(self,a) (void)((self)->tb_pos = (self)->tb_begin+(a))
@@ -551,6 +656,9 @@ struct DCCSection {
  struct DCCAllocRange *sc_alloc; /*< [0..1][chain(->ar_next->...)] Reference-counted tracking of section text. */
  DCC(target_ptr_t)     sc_merge; /*< Used during merging: Base address of merge destination. */
  struct DCCA2l         sc_a2l;   /*< Addr2Line debug information. */
+#if DCC_CONFIG_HAVE_DRT
+ struct DCCRTSection   sc_rt;    /*< RT Section information. */
+#endif /* DCC_CONFIG_HAVE_DRT */
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
  struct DCCSection    *sc_elflnk; /*< [0..1] Used by ELF: Link section. */
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
@@ -572,10 +680,11 @@ DCCDAT struct DCCSection DCCSection_Abs;
 
 #define DCCSection_BASE(self)             ((self)->sc_start.sy_addr)
 #define DCCSection_SETBASE(self,v)  (void)((self)->sc_start.sy_addr=(v))
-#define DCCSection_VSIZE(self) ((DCC(target_siz_t))((self)->sc_text.tb_max-(self)->sc_text.tb_begin))
-#define DCCSection_MSIZE(self) ((DCC(target_siz_t))(((self)->sc_text.tb_end < (self)->sc_text.tb_max ? \
-                                                     (self)->sc_text.tb_end : (self)->sc_text.tb_max)-\
-                                                     (self)->sc_text.tb_begin))
+#define DCCSection_VSIZE(self)      ((DCC(target_siz_t))((self)->sc_text.tb_max-(self)->sc_text.tb_begin))
+#define DCCSection_MSIZE(self)      ((DCC(target_siz_t))(((self)->sc_text.tb_end < (self)->sc_text.tb_max ? \
+                                                          (self)->sc_text.tb_end : (self)->sc_text.tb_max)-\
+                                                          (self)->sc_text.tb_begin))
+#define DCCSection_TEXTBUF(self)    ((self) == DCCUnit_Current.u_curr ? &DCCUnit_Current.u_tbuf : &(self)->sc_text)
 
 #ifdef DCC_SYMFLAG_SEC_OWNSBASE
 #define DCCSection_TEXTBASE(self) \
@@ -740,7 +849,7 @@ DCCSection_Hasrel(struct DCCSection *__restrict self,
  *          coincide with '*relc' being set to ZERO.
  *          To handle no-relocations, the caller must check '*relc'. */
 DCCFUN struct DCCRel *
-DCCSection_Getrel(struct DCCSection *__restrict self,
+DCCSection_GetRel(struct DCCSection *__restrict self,
                   DCC(target_ptr_t) addr,
                   DCC(target_siz_t) size,
                   size_t *__restrict relc);
@@ -1336,6 +1445,15 @@ DCCFUN struct DCCSection *DCCUnit_NewSecs(char const *__restrict name, DCC(symfl
  * macros, assertions, keyword flags, etc. */
 #define DCC_LIBDEF_FLAG_NO_RESET_TPP 0x00000100
 
+/* Automatically push/pop the current unit before & after
+ * non-source, statically linked input files.
+ * NOTE: With the fact that importing source files
+ *       doesn't require an empty unit to begin with,
+ *       this flag is perfect when importing input
+ *       files of unknown typing in an environment
+ *       suitable for direct execution mode. */
+#define DCC_LIBDEF_FLAG_AUTOMERGE  0x00000200
+
 /* This library defines an internal object.
  * When this flag is set, a special, hard-coded
  * search path is used for locating the object. */
@@ -1528,7 +1646,7 @@ DCCFUN char *dbgstr(target_ptr_t addr);
 #define t_putw              DCCUnit_TPutw
 #define t_putl              DCCUnit_TPutl
 #define t_putq              DCCUnit_TPutq
-#define t_putrel(type,sym) (DCCCompiler_ISCGEN() ? DCCSection_Putrel(DCCUnit_Current.u_text,DCCUnit_TADDR(),type,sym) : (void)0)
+#define t_putrel(type,sym) (DCCCompiler_ISCGEN() ? DCCSection_Putrel(DCCUnit_Current.u_curr,DCCUnit_TADDR(),type,sym) : (void)0)
 #define t_alloc             DCCUnit_TAlloc
 #define t_write             DCCUnit_TWrite
 #define t_defsym            DCCUnit_DEFSYM

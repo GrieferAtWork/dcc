@@ -649,6 +649,22 @@ typedef uint8_t DCC(rcset_t); /* TODO: Use this in more places! */
   if ((--(ri),DCC_RCSET_HAS(x,ri)))
 
 
+#ifndef DCC_CONFIG_HAVE_DRT
+#define DCC_CONFIG_HAVE_DRT 1
+#endif
+
+/* Disable DRT when not targeting the host CPU. */
+#if DCC_HOST_CPUM != DCC_TARGET_CPUM
+#undef DCC_CONFIG_HAVE_DRT
+#define DCC_CONFIG_HAVE_DRT 0
+#endif /* DCC_HOST_CPUM != DCC_TARGET_CPUM */
+
+
+#if DCC_CONFIG_HAVE_DRT
+#define DRT_HOST /* Annotation for compiler memory. */
+#define DRT_USER /* Annotation for user memory. */
+#endif
+
 
 DCC_DECL_END
 

@@ -25,12 +25,91 @@
 #include <dcc/unit.h>
 #include <dcc/compiler.h>
 #include <dcc/linker.h>
+#include <drt/drt.h>
 
 #include <string.h>
 
 #include "x86_util.h"
 
+#if DCC_CONFIG_HAVE_DRT
+#include "../drt/drt.h"
+#endif
+
 DCC_DECL_BEGIN
+
+PRIVATE void DCCDisp_SymAddr8(struct DCCSymAddr const *__restrict expr);
+PRIVATE void DCCDisp_SymDisp8(struct DCCSymAddr const *__restrict expr);
+PRIVATE void DCCDisp_SymAddr16(struct DCCSymAddr const *__restrict expr);
+PRIVATE void DCCDisp_SymDisp16(struct DCCSymAddr const *__restrict expr);
+PRIVATE void DCCDisp_SymAddr32(struct DCCSymAddr const *__restrict expr);
+PRIVATE void DCCDisp_SymDisp32(struct DCCSymAddr const *__restrict expr);
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
+PRIVATE void DCCDisp_SymAddr64(struct DCCSymAddr const *__restrict expr);
+PRIVATE void DCCDisp_SymDisp64(struct DCCSymAddr const *__restrict expr);
+#endif
+
+
+#if DCC_CONFIG_HAVE_DRT
+PUBLIC void
+DCCDisp_Probe_(struct DCCMemLoc const *__restrict addr,
+               size_t n_bytes) {
+ /* ECX = 'addr'; [EDX = 'n_bytes']; */
+ struct DCCSymAddr val;
+ int push_regs = 0;
+#define PUSH_ECX 0x01
+#define PUSH_EDX 0x02
+ if (!n_bytes) return;
+ if (n_bytes == 1 ||
+     n_bytes == 2 ||
+     n_bytes == 4
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
+  || n_bytes == 8
+#endif
+     ) {
+  rc_t rc = DCC_RC_FORSIZE(n_bytes);
+  /* Try to generate a 'mov' instruction with an empty register. */
+  rc = DCCVStack_GetReg(rc,1|2);
+  if (rc && (DCC_RC_ISCONST(addr->ml_reg) ||
+            (addr->ml_reg&DCC_RI_MASK) != (rc&DCC_RI_MASK))) {
+   DCCDisp_MemMovReg(addr,rc);
+  } else {
+   /* Fallback: Compile a 'test' instruction. */
+   int has_test = DCCVStack_HasTst();
+   val.sa_off = 0,val.sa_sym = NULL;
+   if (has_test) t_putb(0x9c); /* pushf */
+   DCCDisp_CstBinMem('t',&val,addr,n_bytes,1); /* test $0, addr */
+   if (has_test) t_putb(0x9d); /* popf */
+  }
+  return;
+ }
+
+ /* Fallback: Call a compiler-internal function. */
+ if (DCCVStack_GetRegInuse(DCC_RR_XDX)) {
+  push_regs |= PUSH_EDX;
+  DCCDisp_RegPush(DCC_RR_XDX);
+ }
+ val.sa_sym = DCCUnit_NewSyms("__probe_nb",DCC_SYMFLAG_WEAK);
+ if (val.sa_sym && DCCSym_ISFORWARD(val.sa_sym))
+     DCCSym_Define(val.sa_sym,&DCCSection_Abs,(target_ptr_t)(void *)&DRT_U_ProbeN,0,1);
+ DCCDisp_IntMovReg(n_bytes,DCC_RR_XDX);
+ if (DCCVStack_GetRegInuse(DCC_RR_XCX)) {
+  push_regs |= PUSH_ECX;
+  DCCDisp_RegPush(DCC_RR_XCX);
+ }
+ /* Load the probe address into 'CX' */
+ DCCDisp_LeaReg(addr,DCC_RR_XCX);
+ val.sa_off = 0;
+ /* Call the probe function.
+  * NOTE: This is compiled manually to prevent an infinite recursion when
+  *       'DCCDisp_LocCll' would try to probe the probe functions themself. */
+ t_putb(0xe8);
+ DCCDisp_SymDisp32(&val);
+ if (push_regs&PUSH_ECX) DCCDisp_PopReg(DCC_RR_XCX);
+ if (push_regs&PUSH_EDX) DCCDisp_PopReg(DCC_RR_XDX);
+}
+#endif /* DCC_CONFIG_HAVE_DRT */
+
+
 
 LOCAL void *
 DCCMemLoc_CompilerAddr_impl(struct DCCMemLoc const *__restrict l,
@@ -147,7 +226,7 @@ DCCMemLoc_CompilerText(struct DCCMemLoc const *__restrict l,
    text->ct_sec  = target_sec;
    text->ct_base = symaddr.sa_off;
    /* Lookup relocations inside the symbol's address range. */
-   text->ct_relv = DCCSection_Getrel(target_sec,symaddr.sa_off,
+   text->ct_relv = DCCSection_GetRel(target_sec,symaddr.sa_off,
                                      n_bytes,&text->ct_relc);
    /* Directly write to target memory (at compile-time).
     * >> This is used for static initializer of global data. */

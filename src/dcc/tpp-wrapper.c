@@ -26,6 +26,7 @@
 #include <dcc/unit.h>
 #include <dcc/type.h>
 #include <dcc/compiler.h>
+#include <drt/drt.h>
 
 #include <stdio.h>
 #include <stdarg.h>

@@ -24,6 +24,9 @@
 #include "vstack.h"
 #include "lexer.h"
 #include "target.h"
+#if DCC_CONFIG_HAVE_DRT
+#include "../drt/drt.h"
+#endif
 
 DCC_DECL_BEGIN
 
@@ -43,6 +46,23 @@ DCCDAT void DCCDisp_X86PutSegmentPrefix(rc_t memrc);
 
 DCCFUN void DCCDisp_SymAddr(struct DCCSymAddr const *__restrict expr, DCC(width_t) width);
 DCCFUN void DCCDisp_SymDisp(struct DCCSymAddr const *__restrict expr, DCC(width_t) width);
+
+#if DCC_CONFIG_HAVE_DRT
+/* Probe the existence of data at a given memory address 'addr'.
+ * This function is used to implement data probing in direct compilation
+ * mode, as is required for safe wait-for-symbol semantics.
+ * HINT: Data probing is only required for operations that do not
+ *       directly dereference the given memory location 'addr'.
+ */
+#ifdef __INTELLISENSE__
+DCCFUN void DCCDisp_Probe(struct DCCMemLoc const *__restrict addr, size_t n_bytes);
+#else
+#define DCCDisp_Probe(addr,n_bytes) (DRT_ENABLED() ? DCCDisp_Probe_(addr,n_bytes) : (void)0)
+DCCFUN void DCCDisp_Probe_(struct DCCMemLoc const *__restrict addr, size_t n_bytes);
+#endif
+#else /* DCC_CONFIG_HAVE_DRT */
+#define DCCDisp_Probe(addr,n_bytes) (void)0
+#endif /* !DCC_CONFIG_HAVE_DRT */
 
 /* If known, translate the memory location 'l' into its compile-time
  * counterpart, returning a pointer to the section data.

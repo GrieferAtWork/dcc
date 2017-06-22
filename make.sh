@@ -70,6 +70,7 @@ mkdir -p $(build "") || exit $?
 # Compile DCC source files
 src src/*.c
 src src/dcc/*.c
+src src/drt/*.c
 src lib/src/a2l/addr2line-common.c
 
 echo $CC -g -o "$out_bin" "${object_list[@]}"

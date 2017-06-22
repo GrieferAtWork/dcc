@@ -77,6 +77,7 @@ PUBLIC void
 DCCDisp_LocJcc(test_t t, struct DCCMemLoc const *__restrict addr) {
  assert(addr);
  assertf(t >= 0 && t <= 0xf,"t = %x",t);
+ DCCDisp_Probe(addr,DCC_TARGET_SIZEOF_POINTER);
  if (addr->ml_reg != DCC_RC_CONST) {
   rc_t preg = DCCDisp_AddProtReg(&addr->ml_sad,
                                   addr->ml_reg);
@@ -98,6 +99,7 @@ DCCDisp_SymJcc(DCC(test_t) t, struct DCCSym *__restrict sym) {
 }
 PUBLIC void
 DCCDisp_LocJmp(struct DCCMemLoc const *__restrict addr) {
+ DCCDisp_Probe(addr,DCC_TARGET_SIZEOF_POINTER);
  if (addr->ml_reg != DCC_RC_CONST) {
   rc_t preg = DCCDisp_AddProtReg(&addr->ml_sad,
                                   addr->ml_reg);
@@ -193,6 +195,7 @@ DCCDisp_MemJmp(struct DCCMemLoc const *__restrict src,
   t_putb(0xff);
   asm_modmem(4,src);
  } else {
+  /* ~shrugs~ */
   rc_t temp = DCCVStack_GetReg(DCC_RC_PTR,1);
   DCCDisp_IntMovReg(0,temp);
   DCCDisp_RegJmp(temp);
@@ -250,6 +253,7 @@ DCCDisp_SccMem(test_t t, struct DCCMemLoc const *__restrict dst,
 
 PUBLIC void
 DCCDisp_LocCll(struct DCCMemLoc const *__restrict addr) {
+ DCCDisp_Probe(addr,DCC_TARGET_SIZEOF_POINTER);
  if (addr->ml_reg) {
   rc_t preg = DCCDisp_AddProtReg(&addr->ml_sad,addr->ml_reg)|
                                 (addr->ml_reg&DCC_RC_MASK_86SEGP);

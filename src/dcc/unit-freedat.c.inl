@@ -294,6 +294,15 @@ next:
  *piter = newslot; /* Inherit object. */
 }
 
+PUBLIC void
+DCCFreeData_ReleaseMerge(struct DCCFreeData *__restrict self,
+                         target_ptr_t addr, target_siz_t size) {
+ assert(self);
+ if unlikely(!size) return;
+ (void)addr;
+ /* TODO: Mark everything in addr...+=size not already marked. */
+}
+
 DCC_DECL_END
 
 #endif /* !GUARD_DCC_UNIT_FREEDAT_C_INL */

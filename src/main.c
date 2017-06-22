@@ -26,6 +26,7 @@
 #include <dcc/stream.h>
 #include <dcc/unit.h>
 #include <dcc/preprocessor.h>
+#include <drt/drt.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -70,23 +71,21 @@ INTERN void def(char const *name, target_ptr_t addr) {
 }
 
 static void add_import(char const *filename) {
- DCCUnit_Push();
- { /* Load a static library or source file. */
-   struct DCCLibDef def;
-   def.ld_flags    = (uint32_t)(DCC_LIBDEF_FLAG_STATIC|
-                                DCC_LIBDEF_FLAG_NODYN|
-                                DCC_LIBDEF_FLAG_NOSEARCHSTD|
-                                DCC_LIBDEF_FLAG_NOSEARCHEXT|
-                                DCC_LIBDEF_FLAG_SOURCE);
-   def.ld_name     = filename;
-   def.ld_size     = strlen(filename);
-   def.ld_expsymfa = (symflag_t)-1;
-   def.ld_expsymfo = (symflag_t) 0;
-   def.ld_impsymfa = (symflag_t)-1;
-   def.ld_impsymfo = (symflag_t) 0;
-   DCCUnit_Import(&def);
- }
- DCCUnit_Pop(OK); /* Merge if OK */
+ /* Load a static library or source file. */
+ struct DCCLibDef def;
+ def.ld_flags    = (uint32_t)(DCC_LIBDEF_FLAG_STATIC|
+                              DCC_LIBDEF_FLAG_AUTOMERGE|
+                              DCC_LIBDEF_FLAG_NODYN|
+                              DCC_LIBDEF_FLAG_NOSEARCHSTD|
+                              DCC_LIBDEF_FLAG_NOSEARCHEXT|
+                              DCC_LIBDEF_FLAG_SOURCE);
+ def.ld_name     = filename;
+ def.ld_size     = strlen(filename);
+ def.ld_expsymfa = (symflag_t)-1;
+ def.ld_expsymfo = (symflag_t) 0;
+ def.ld_impsymfa = (symflag_t)-1;
+ def.ld_impsymfo = (symflag_t) 0;
+ DCCUnit_Import(&def);
 }
 
 static void add_library(char const *filename) {
@@ -217,6 +216,7 @@ int main(int argc, char *argv[]) {
 
  DCCLinker_Init(&linker);
  DCCUnit_Init(&unit);
+ DRT_Init();
  TPPLexer_Current->l_flags |= (TPPLEXER_FLAG_TERMINATE_STRING_LF
                               |TPPLEXER_FLAG_COMMENT_NOOWN_LF
 #ifdef _WIN32
@@ -339,6 +339,16 @@ int main(int argc, char *argv[]) {
  { /* DEFAULT: Actually compile stuff. */
  default:
   load_stdlib();
+#if DCC_CONFIG_HAVE_DRT
+  /* Start DRT when it is enabled. */
+  if (DRT_ENABLED()) {
+   struct DCCSym *drt_entry;
+   drt_entry = DCCUnit_NewSyms("__drt_start",DCC_SYMFLAG_NONE);
+   if likely(drt_entry) {
+    DRT_Start(drt_entry,NULL);
+   }
+  }
+#endif /* DCC_CONFIG_HAVE_DRT */
   /*dcc_dump_symbols();*/
   while (argc) {
    /* Parse the input code. */
@@ -348,6 +358,13 @@ int main(int argc, char *argv[]) {
    if (!OK) break;
    ++argv,--argc;
   }
+#if DCC_CONFIG_HAVE_DRT
+  /* Serve all remaining DRT synchronizations. */
+  if (DRT_ENABLED()) {
+   if (OK) DRT_SyncAll();
+   goto end;
+  }
+#endif /* DCC_CONFIG_HAVE_DRT */
  } break;
 
  }
@@ -447,6 +464,7 @@ end:
  result = OK ? 0 : 1;
  //if (!OK) dcc_dump_symbols();
 
+ DRT_Quit();
  DCCUnit_Quit(&unit);
  DCCLinker_Quit(&linker);
  DCCUnit_ClearCache();

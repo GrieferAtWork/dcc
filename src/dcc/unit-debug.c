@@ -26,6 +26,7 @@
 #include <dcc/linker.h>
 #include <dcc/compiler.h>
 #include <dcc/addr2line.h>
+#include <drt/drt.h>
 
 DCC_DECL_BEGIN
 
@@ -109,6 +110,7 @@ PUBLIC void DCC_ATTRIBUTE_FASTCALL
 DCCUnit_MkDebugL(int level) {
  struct A2lState state;
  (void)level; /* TODO: Use me. */
+ DRT_Sync(); /* This seems like a good place! */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
  /* Put a debug addr2line entry. */
  DCCA2l_CaptureState(&state,A2L_STATE_HASLINE|A2L_STATE_HASPATH|
@@ -119,6 +121,7 @@ PUBLIC void DCC_ATTRIBUTE_FASTCALL
 DCCUnit_MkDebugLC(int level) {
  struct A2lState state;
  (void)level; /* TODO: Use me. */
+ DRT_Sync(); /* This seems like a good place! */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
  /* Put a debug addr2line entry. */
  DCCA2l_CaptureState(&state,A2L_STATE_HASLINE|A2L_STATE_HASCOL|

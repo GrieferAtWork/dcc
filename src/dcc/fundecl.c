@@ -149,6 +149,9 @@ DCCFunctionFrame_Leave(struct DCCFunctionFrame *__restrict self) {
    * (Aka. Don't generate anything when the surrounding code is dead) */
   if (!(self->ff_old_flags&DCC_COMPILER_FLAG_DEAD))
    compiler.c_flags &= ~(DCC_COMPILER_FLAG_NOCGEN|DCC_COMPILER_FLAG_DEAD);
+  /* TODO: In DRT-more, we must pre-allocate a decent amount of stack memory,
+   *       simply because we won't have a chance to allocate more later! */
+
   /* Generate the prolog. */
   DCCDisp_GenProlog(&self->ff_dispinfo);
   /* Only need to generate an epilog symbol if the function

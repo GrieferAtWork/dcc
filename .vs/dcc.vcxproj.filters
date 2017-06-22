@@ -25,6 +25,12 @@
     <Filter Include="lib\src\a2l">
       <UniqueIdentifier>{62e7da98-913a-4042-ad3d-21b9cc14a650}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\drt">
+      <UniqueIdentifier>{ef3bf64f-3369-4f97-b759-80f52ea5c27b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\drt">
+      <UniqueIdentifier>{865769ec-16c0-48c8-b089-dba955590b1a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.c">
@@ -98,6 +104,9 @@
     </ClCompile>
     <ClCompile Include="..\lib\src\a2l\addr2line-common.c">
       <Filter>lib\src\a2l</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\drt\drt.c">
+      <Filter>src\drt</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -178,6 +187,12 @@
     </ClInclude>
     <ClInclude Include="..\lib\src\a2l\addr2line.h">
       <Filter>lib\src\a2l</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\drt\drt.h">
+      <Filter>include\drt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\drt\drt.h">
+      <Filter>src\drt</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -294,6 +309,15 @@
     </None>
     <None Include="..\src\dcc\lexer-builtins-cpuid.c.inl">
       <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\drt\drt-user.c.inl">
+      <Filter>src\drt</Filter>
+    </None>
+    <None Include="..\src\drt\drt-sync.c.inl">
+      <Filter>src\drt</Filter>
+    </None>
+    <None Include="..\src\drt\drt-thread.c.inl">
+      <Filter>src\drt</Filter>
     </None>
   </ItemGroup>
 </Project>
