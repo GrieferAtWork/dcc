@@ -105,26 +105,38 @@ INTERN void __attribute__((__naked__)) DRT_ThreadExit(void) {
 #endif
 
 
+struct DRTStartupInfo {
+ struct DCPUState si_cpu;
+ size_t           si_argsiz;    /*  */
+ uint8_t          si_argdat[1]; /* [si_argsiz] Initial input data. */
+};
+
 PRIVATE DWORD WINAPI
-DRT_ThreadEntry(struct DCPUState *pstate) {
- struct DCPUState my_state = *pstate;
+DRT_ThreadEntry(struct DRTStartupInfo *info) {
+ struct DCPUState initcpu = info->si_cpu;
  NT_TIB *tib = (NT_TIB *)__readfsdword(0x18);
  //EXCEPTION_REGISTRATION_RECORD root_handler;
  void **u_stack;
- free(pstate);
  /* Reserve part of the DRT thread's stack for internal use. */
  u_stack = (void **)((target_ptr_t)tib->StackBase-DRT_U_STACKRESERVE);
 
 #define PUSH(x) *--u_stack = (x)
+ /* Push some NULL-pointers to (potentially) ease debugging. */
+ PUSH(NULL);
+ PUSH(NULL);
+
+ /* Copy argument memory. */
+ *(uintptr_t *)&u_stack -= info->si_argsiz;
+ memcpy(u_stack,info->si_argdat,info->si_argsiz);
+
  /* Setup the user-stack in a way that when the DRT entry point returns,
   * it will call 'ExitThread()' with the value from its EAX register. */
- PUSH(NULL);
- PUSH(NULL);
  PUSH((void *)&DRT_ThreadExit);
 
- my_state.cs_gpreg.u_gp[DCC_ASMREG_ESP] = (target_ptr_t)u_stack;
- my_state.cs_gpreg.u_gp[DCC_ASMREG_EBP] = (target_ptr_t)u_stack;
+ initcpu.cs_gpreg.u_gp[DCC_ASMREG_ESP] = (target_ptr_t)u_stack;
+ initcpu.cs_gpreg.u_gp[DCC_ASMREG_EBP] = (target_ptr_t)u_stack;
 #undef PUSH
+ free(info);
 
 #if 0
  /* Register the root exception handler responsible for wait on data. */
@@ -144,23 +156,26 @@ DRT_ThreadEntry(struct DCPUState *pstate) {
 #endif
  
  /* Switch to the given CPU state. */
- DRT_SetCPUState(&my_state);
+ DRT_SetCPUState(&initcpu);
 }
 
 
 PUBLIC void
 DRT_Start(struct DCCSym *__restrict entry_point,
-          struct DCPUState const *misc_state) {
- struct DCPUState *state = NULL;
+          struct DCPUState const *misc_state,
+           void const *argdat, size_t argsize) {
+ struct DRTStartupInfo *info = NULL;
  assert(entry_point);
  assertf( (drt.rt_flags&DRT_FLAG_ENABLED),"DRT has not been enabled");
  assertf(!(drt.rt_flags&DRT_FLAG_STARTED),"DRT has already been started");
 
  /* Copy the initial state. */
- state = (struct DCPUState *)malloc(sizeof(struct DCPUState));
- if unlikely(!state) goto err0;
- if (misc_state) *state = *misc_state;
- else memset(state,0,sizeof(struct DCPUState));
+ info = (struct DRTStartupInfo *)malloc(DCC_COMPILER_OFFSETOF(struct DRTStartupInfo,si_argdat)+argsize);
+ if unlikely(!info) goto err0;
+ if (misc_state) info->si_cpu = *misc_state;
+ else memset(&info->si_cpu,0,sizeof(struct DCPUState));
+ info->si_argsiz = argsize;
+ memcpy(info->si_argdat,argdat,argsize);
  assert(drt.rt_event.ue_code == DRT_EVENT_NONE);
  drt.rt_event.ue_sem = CreateSemaphoreA(NULL,0,0x1000,NULL);
  if unlikely(!drt.rt_event.ue_sem ||
@@ -216,22 +231,21 @@ DRT_Start(struct DCCSym *__restrict entry_point,
    * who's only purpose is to contain a relocation against
    * the entry point, meaning that once it is called, DRT will
    * do its job and wait until that exact symbol is defined. */
-  state->cs_ipreg.i_code = bootstrap_udata;
+  info->si_cpu.cs_ipreg.i_code = bootstrap_udata;
  }
 
  drt.rt_flags |= DRT_FLAG_STARTED;
  drt.rt_thread = CreateThread(NULL,DRT_U_STACKRESERVE+drt.rt_stacksize,
                              (LPTHREAD_START_ROUTINE)&DRT_ThreadEntry,
-                              state,0,&drt.rt_threadid);
+                              info,0,&drt.rt_threadid);
  if unlikely(!drt.rt_thread ||
               drt.rt_thread == INVALID_HANDLE_VALUE)
               goto err2;
 
-
  return;
  /* TODO: Warnings? */
 err2: CloseHandle(drt.rt_event.ue_sem);
-err1: free(state);
+err1: free(info);
 err0: drt.rt_flags &= ~(DRT_FLAG_STARTED|DRT_FLAG_ENABLED);
 }
 

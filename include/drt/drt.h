@@ -595,10 +595,16 @@ DCCFUN DCC(target_ptr_t) *DRT_AllocPEIndirection(void);
  *  - An empty stack-frame with a return address pointing
  *    to code that will terminate the application will
  *    be called should the given 'entry_point' ever return.
+ *  - In addition, caller-given 'argdat..+=argsize' memory
+ *    will be copied onto the runtime stack for use through
+ *    regular function arguments.
  * WARNING: The caller is responsible to enable DRT because calling this function.
  */
 DCCFUN void DRT_Start(struct DCCSym *__restrict entry_point,
-                      struct DCPUState const *misc_state);
+                      struct DCPUState const *misc_state,
+                      void const *argdat, size_t argsize);
+
+
 
 /* Activate the given CPU state. */
 DCCFUN DCC_ATTRIBUTE_NORETURN void

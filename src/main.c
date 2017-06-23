@@ -195,6 +195,9 @@ static void load_stdlib(void) {
 
 int main(int argc, char *argv[]) {
  int result = 0;
+#if DCC_CONFIG_HAVE_DRT
+ char **drt_argv_buf = NULL;
+#endif
 #ifdef __DCC_VERSION__
 #if HAVE_HLOG
  //INTDEF void dcc_outf(char const *fmt, ...);
@@ -343,9 +346,15 @@ int main(int argc, char *argv[]) {
   /* Start DRT when it is enabled. */
   if (DRT_ENABLED()) {
    struct DCCSym *drt_entry;
-   drt_entry = DCCUnit_NewSyms("__drt_start",DCC_SYMFLAG_NONE);
+   drt_entry = DCCUnit_NewSyms("main",DCC_SYMFLAG_NONE);
    if likely(drt_entry) {
-    DRT_Start(drt_entry,NULL);
+    static char const *const default_drt_argv[2] = {"DRT",NULL};
+    drt_argv_buf = (char **)(malloc)(sizeof(default_drt_argv));
+    {
+     target_ptr_t drt_args[2] = {1,(target_ptr_t)drt_argv_buf};
+     if (drt_argv_buf) memcpy(drt_argv_buf,default_drt_argv,sizeof(default_drt_argv));
+     DRT_Start(drt_entry,NULL,drt_args,sizeof(drt_args));
+    }
    }
   }
 #endif /* DCC_CONFIG_HAVE_DRT */
@@ -470,6 +479,9 @@ end:
  DCCUnit_ClearCache();
  DCCPreprocessor_Quit(&preproc);
  TPP_FINALIZE();
+#if DCC_CONFIG_HAVE_DRT
+ free(drt_argv_buf);
+#endif
 #ifdef _CRTDBG_MAP_ALLOC
  _CrtDumpMemoryLeaks();
 #endif
