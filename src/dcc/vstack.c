@@ -27,6 +27,9 @@
 #include <dcc/linker.h>
 #include <dcc/unit.h>
 #include <dcc/vstack.h>
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+#include <drt/drt.h>
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -753,7 +756,10 @@ DCCLinker_PEIndImport(struct DCCStackValue *__restrict self) {
  struct DCCSym *pesym,*iat_sym;
  struct DCCSection *symsec;
  assert(self);
- //if (!(self->sv_flags&DCC_SFLAG_LVALUE)) return;
+#if DCC_CONFIG_HAVE_DRT
+ /* In DRT mode, linking is always performed without indirection! */
+ if (DRT_ENABLED()) return;
+#endif
  if (!DCC_RC_ISCONST(self->sv_reg)) return;
  if ((pesym = self->sv_sym) == NULL) return;
  /* Force ITA indirection on symbols declared as '__attribute__((dllimport))' */
@@ -1759,18 +1765,12 @@ end_cmp:
        op == '|' || op == '^'/* || op == '?'*/) &&
       DCCTYPE_GROUP(self  ->sv_ctype.t_type) != DCCTYPE_LVALUE &&
       DCCTYPE_GROUP(target->sv_ctype.t_type) != DCCTYPE_LVALUE) {
-#ifdef __INTELLISENSE__
-   /* This is how you write offsetof in a way that intellisense can understand!
-    * >> How da fuq did you not realize that, Microsoft? You're the DEV of both! */
-#undef offsetof
-#define offsetof(s,m) (size_t)&((s *)0)->m
-#endif
    target_siz_t reg_siz = DCC_RC_SIZE(self->sv_reg);
    if (!DCC_RC_ISCONST(self->sv_reg2)) reg_siz += DCC_RC_SIZE(self->sv_reg);
    /* We must not allow the operands to be swapped
     * if it would cause one of them to be truncated. */
    if (reg_siz >= DCCType_Sizeof(&target->sv_ctype,NULL,1)) {
-    char temp[sizeof(struct DCCStackValue)-offsetof(struct DCCStackValue,sv_flags)];
+    char temp[sizeof(struct DCCStackValue)-DCC_COMPILER_OFFSETOF(struct DCCStackValue,sv_flags)];
     /* Handle optimizations for commutative operators in rhs.
      * >> This not only simplifies optimization, but is kind-of
      *    a requirement to prevent assembly code like:

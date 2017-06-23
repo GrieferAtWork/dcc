@@ -137,7 +137,7 @@ DCCUnit_DynLoadPE(struct DCCLibDef *__restrict def,
   goto end;
  }
  if (HAS_FIELD(fhdr.SizeOfOptionalHeader)) {
-  size_t newsize = offsetof(NT_HEADER,ohdr)+
+  size_t newsize = DCC_COMPILER_OFFSETOF(NT_HEADER,ohdr)+
                    hdr.fhdr.SizeOfOptionalHeader;
   if (newsize < hdr_size) hdr_size = newsize;
  }

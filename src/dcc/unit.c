@@ -39,12 +39,6 @@
 #include <alloca.h>
 #endif
 
-#ifdef _WIN32
-#include <dcc_winmin.h>
-#else
-#include <sys/mman.h>
-#endif
-
 DCC_DECL_BEGIN
 
 
@@ -326,26 +320,26 @@ DCCSection_Destroy(struct DCCSection *__restrict self) {
   DCCSection_RTQuit(self);
 
   /* Delete the text buffer. */
-  free(self->sc_text.tb_begin);
+  free(self->sc_dat.sd_text.tb_begin);
 #if DCC_DEBUG
-  self->sc_text.tb_begin = NULL;
+  self->sc_dat.sd_text.tb_begin = NULL;
 #endif
 
   /* Delete relocations. */
   { struct DCCRel *iter,*end;
-    end = (iter = self->sc_relv)+self->sc_relc;
+    end = (iter = self->sc_dat.sd_relv)+self->sc_dat.sd_relc;
     for (; iter != end; ++iter) {
      assert(iter->r_sym);
      DCCSym_Decref(iter->r_sym);
     }
-    free(self->sc_relv);
+    free(self->sc_dat.sd_relv);
   }
   /* Delete free section memory. */
-  DCCFreeData_Quit(&self->sc_free);
+  DCCFreeData_Quit(&self->sc_dat.sd_free);
 
   /* Delete allocated section memory reference counters. */
   { struct DCCAllocRange *iter,*next;
-    iter = self->sc_alloc;
+    iter = self->sc_dat.sd_alloc;
     while (iter) {
      next = iter->ar_next;
      free(iter);
@@ -354,23 +348,12 @@ DCCSection_Destroy(struct DCCSection *__restrict self) {
   }
 
   /* Delete debug information. */
-  DCCA2l_Quit(&self->sc_a2l);
-
-  /* Delete base memory. */
-#ifdef DCC_SYMFLAG_SEC_OWNSBASE
-  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE) {
-#ifdef _WIN32
-   VirtualFree((LPVOID)DCCSection_BASE(self),
-               (size_t)(self->sc_text.tb_end-
-                        self->sc_text.tb_begin),
-                MEM_DECOMMIT);
-#else
-   munmap((void *)DCCSection_BASE(self),
-          (size_t)(self->sc_text.tb_end-
-                   self->sc_text.tb_begin));
-#endif
-  }
-#endif /* DCC_SYMFLAG_SEC_OWNSBASE */
+  DCCA2l_Quit(&self->sc_dat.sd_a2l);
+ } else {
+#if DCC_CONFIG_HAVE_DRT
+  if (self->sc_imp.si_dlrt != DCC_DLERROR)
+      DCC_dlclose(self->sc_imp.si_dlrt);
+#endif /* DCC_CONFIG_HAVE_DRT */
  }
 }
 
@@ -459,10 +442,10 @@ DCCSection_Clear(struct DCCSection *__restrict self) {
  if (!DCCSection_ISIMPORT(self)) {
   /* Delete relocations. */
   { struct DCCRel *begin,*iter,*end;
-    end = (iter = begin = self->sc_relv)+self->sc_relc;
-    self->sc_relv = NULL;
-    self->sc_relc = 0;
-    self->sc_rela = 0;
+    end = (iter = begin = self->sc_dat.sd_relv)+self->sc_dat.sd_relc;
+    self->sc_dat.sd_relv = NULL;
+    self->sc_dat.sd_relc = 0;
+    self->sc_dat.sd_rela = 0;
     for (; iter != end; ++iter) {
 #if 0
      _CrtCheckMemory();
@@ -475,9 +458,9 @@ DCCSection_Clear(struct DCCSection *__restrict self) {
      DCCSym_Decref(iter->r_sym);
     }
     free(begin);
-    assert(!self->sc_rela);
-    assert(!self->sc_relc);
-    assert(!self->sc_relv);
+    assert(!self->sc_dat.sd_rela);
+    assert(!self->sc_dat.sd_relc);
+    assert(!self->sc_dat.sd_relv);
   }
  }
 }
@@ -847,10 +830,15 @@ DCCSection_New(struct TPPKeyword const *__restrict name,
  assert(name);
  if (flags&DCC_SYMFLAG_SEC_ISIMPORT) {
   /* Allocate an import section! */
-  result = (struct DCCSection *)calloc(1,offsetof(struct DCCSection,sc_text));
+  result = (struct DCCSection *)calloc(1,DCCSECTION_SIZEOF_IMP);
   if unlikely(!result) goto seterr;
+  /* Mirror the name by default. */
+  result->sc_imp.si_file = name;
+#if !DCC_DLERROR_IS_ZERO
+  result->sc_imp.si_dlrt = DCC_DLERROR;
+#endif
  } else {
-  result = (struct DCCSection *)calloc(1,sizeof(struct DCCSection));
+  result = (struct DCCSection *)calloc(1,DCCSECTION_SIZEOF_DAT);
   if unlikely(!result) goto seterr;
   DCCSection_RTInit(result);
  }
@@ -872,6 +860,30 @@ DCCSection_News(char const *__restrict name, symflag_t flags) {
 }
 
 
+#if DCC_CONFIG_HAVE_DRT
+PUBLIC void *
+DCCSection_DLImport(struct DCCSection *__restrict self,
+                    char const *__restrict symbol_name) {
+ dl_t dl;
+ assert(self);
+ assert(DCCSection_ISIMPORT(self));
+ dl = self->sc_imp.si_dlrt;
+ if (dl == DCC_DLERROR) {
+  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_WARNED_NOIMP)
+      return NULL;
+  dl = DCC_dlopen(self->sc_imp.si_file->k_name);
+  if (dl == DCC_DLERROR) {
+   /* TODO: Retry all library paths from 'linker.l_paths'. */
+   WARN(W_DRT_DLOPEN_FAILED,self->sc_imp.si_file->k_name);
+   self->sc_start.sy_flags |= DCC_SYMFLAG_SEC_WARNED_NOIMP;
+   return NULL;
+  }
+  self->sc_imp.si_dlrt = dl;
+ }
+ return DCC_dlsym(dl,symbol_name);
+}
+#endif /* DCC_CONFIG_HAVE_DRT */
+
 PUBLIC void
 DCCSection_Putrelo(struct DCCSection *__restrict self,
                    struct DCCRel const *__restrict relo) {
@@ -879,25 +891,25 @@ DCCSection_Putrelo(struct DCCSection *__restrict self,
  assert(self);
  assert(relo);
  DCCSECTION_ASSERT_NOTANIMPORT(self);
- if (self->sc_relc == self->sc_rela) {
-  size_t newalloc = self->sc_rela;
+ if (self->sc_dat.sd_relc == self->sc_dat.sd_rela) {
+  size_t newalloc = self->sc_dat.sd_rela;
   if (!newalloc) newalloc = 1;
   newalloc *= 2;
   /* Allocate more relocation entries. */
-  begin = (struct DCCRel *)realloc(self->sc_relv,newalloc*
+  begin = (struct DCCRel *)realloc(self->sc_dat.sd_relv,newalloc*
                                    sizeof(struct DCCRel));
   if unlikely(!begin) return;
-  self->sc_relv = begin;
-  self->sc_rela = newalloc;
+  self->sc_dat.sd_relv = begin;
+  self->sc_dat.sd_rela = newalloc;
  } else {
-  begin = self->sc_relv;
+  begin = self->sc_dat.sd_relv;
  }
- end = iter = begin+self->sc_relc;
+ end = iter = begin+self->sc_dat.sd_relc;
  while (iter != begin && iter[-1].r_addr > relo->r_addr) --iter;
  memmove(iter+1,iter,(size_t)((end-iter)*sizeof(struct DCCRel)));
  *iter = *relo;
  DCCSym_Incref(iter->r_sym);
- ++self->sc_relc;
+ ++self->sc_dat.sd_relc;
 }
 
 PUBLIC struct DCCRel *
@@ -908,27 +920,27 @@ DCCSection_Allocrel(struct DCCSection *__restrict self,
  assert(self);
  assert(n_relocs);
  DCCSECTION_ASSERT_NOTANIMPORT(self);
- minsize = self->sc_relc+n_relocs;
- if (minsize > self->sc_rela) {
+ minsize = self->sc_dat.sd_relc+n_relocs;
+ if (minsize > self->sc_dat.sd_rela) {
   /* Must increase the buffer size. */
-  newsize = self->sc_rela;
+  newsize = self->sc_dat.sd_rela;
   if unlikely(!newsize) newsize = 1;
   do newsize *= 2; while (newsize < minsize);
-  result = (struct DCCRel *)realloc(self->sc_relv,newsize*
+  result = (struct DCCRel *)realloc(self->sc_dat.sd_relv,newsize*
                                     sizeof(struct DCCRel));
   if unlikely(!result) goto seterr;
-  self->sc_relv = result;
-  self->sc_rela = newsize;
+  self->sc_dat.sd_relv = result;
+  self->sc_dat.sd_rela = newsize;
  }
- result = old_end = self->sc_relv+self->sc_relc;
+ result = old_end = self->sc_dat.sd_relv+self->sc_dat.sd_relc;
  /* Make sure to allocate relocations in the correct place! */
- if (!min_addr) result = self->sc_relv;
- else while (result != self->sc_relv &&
+ if (!min_addr) result = self->sc_dat.sd_relv;
+ else while (result != self->sc_dat.sd_relv &&
              result[-1].r_addr >= min_addr) --result;
  if (result != old_end) {
   memmove(old_end,result,n_relocs*sizeof(struct DCCRel));
  }
- self->sc_relc += n_relocs;
+ self->sc_dat.sd_relc += n_relocs;
  return result;
 seterr:
  TPPLexer_SetErr();
@@ -944,7 +956,7 @@ DCCSection_Delrel(struct DCCSection *__restrict self,
  size_t result; int is_malloc_ptr = 0;
  assert(self);
  DCCSECTION_ASSERT_NOTANIMPORT(self);
- end = del_end = (begin = self->sc_relv)+self->sc_relc;
+ end = del_end = (begin = self->sc_dat.sd_relv)+self->sc_dat.sd_relc;
  while (del_end != begin && del_end[-1].r_addr >= addr_end) --del_end;
  del_begin = del_end;
  while (del_begin != begin && del_begin[-1].r_addr >= addr) --del_begin;
@@ -964,9 +976,9 @@ stack_alloc_oldsym:
       assert(begin->r_addr >= addr && begin->r_addr < addr_end),
       assert(begin->r_sym),*sym_iter = begin->r_sym;
  assert(sym_iter == old_symv+result);
- assert(result <= self->sc_relc);
+ assert(result <= self->sc_dat.sd_relc);
  memmove(del_begin,del_end,(size_t)(end-del_end)*sizeof(struct DCCRel));
- self->sc_relc -= result;
+ self->sc_dat.sd_relc -= result;
  sym_end = (sym_iter = old_symv)+result;
  /* Drop references from the old relocation symbols.
   * This must be done after we've removed the relocations in case
@@ -987,7 +999,7 @@ DCCSection_Hasrel(struct DCCSection *__restrict self,
  target_ptr_t addr_end = addr+size;
  assert(self);
  DCCSECTION_ASSERT_NOTANIMPORT(self);
- rel_end = (begin = self->sc_relv)+self->sc_relc;
+ rel_end = (begin = self->sc_dat.sd_relv)+self->sc_dat.sd_relc;
  for (;;) {
   if (rel_end == begin) return 0;
   if (rel_end[-1].r_addr < addr_end) break;
@@ -1004,7 +1016,7 @@ DCCSection_GetRel(struct DCCSection *__restrict self,
  target_ptr_t addr_end = addr+size;
  assert(self);
  DCCSECTION_ASSERT_NOTANIMPORT(self);
- rel_end = (begin = self->sc_relv)+self->sc_relc;
+ rel_end = (begin = self->sc_dat.sd_relv)+self->sc_dat.sd_relc;
  while (rel_end != begin && rel_end[-1].r_addr >= addr_end) --rel_end;
  rel_begin = rel_end;
  while (rel_begin != begin && rel_begin[-1].r_addr >= addr) --rel_begin;
@@ -1026,7 +1038,7 @@ DCCSection_Movrel(struct DCCSection *__restrict self,
   target_off_t addr_off = (target_off_t)(new_addr-old_addr);
   end = (iter = relv)+relc;
   for (; iter != end; ++iter) iter->r_addr += addr_off;
-  end = (iter = self->sc_relv)+self->sc_relc;
+  end = (iter = self->sc_dat.sd_relv)+self->sc_dat.sd_relc;
   while (iter != end && iter->r_addr < new_addr) ++iter;
   if (iter > relv) {
    mov  = (size_t)((iter/*+relc*/)-(relv/*+relc*/));
@@ -1053,21 +1065,6 @@ DCCSection_SetBaseTo(struct DCCSection *__restrict self,
                      target_ptr_t address) {
  assert(self);
  DCCSECTION_ASSERT_NOTANIMPORT(self);
-#ifdef DCC_SYMFLAG_SEC_OWNSBASE
- if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE) {
-  self->sc_start.sy_flags &= ~(DCC_SYMFLAG_SEC_OWNSBASE);
-#ifdef _WIN32
-  VirtualFree((LPVOID)DCCSection_BASE(self),
-              (size_t)(self->sc_text.tb_end-
-                       self->sc_text.tb_begin),
-               MEM_DECOMMIT);
-#else
-  munmap((void *)DCCSection_BASE(self),
-         (size_t)(self->sc_text.tb_end-
-                  self->sc_text.tb_begin));
-#endif
- }
-#endif /* DCC_SYMFLAG_SEC_OWNSBASE */
  DCCSection_SETBASE(self,address);
 }
 
@@ -1078,12 +1075,8 @@ DCCSection_ResolveDisp(struct DCCSection *__restrict self) {
  size_t result = 0;
  assert(self);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- end = (iter = self->sc_relv)+self->sc_relc;
- base_address = self->sc_text.tb_begin;
-#ifdef DCC_SYMFLAG_SEC_OWNSBASE
- if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE)
-     base_address = (uint8_t *)DCCSection_BASE(self);
-#endif
+ end = (iter = self->sc_dat.sd_relv)+self->sc_dat.sd_relc;
+ base_address = self->sc_dat.sd_text.tb_begin;
  while (iter != end) {
   uint8_t *rel_addr; target_ptr_t rel_value;
   struct DCCSymAddr symaddr;
@@ -1123,18 +1116,13 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
  target_ptr_t base_address;
  size_t result = 0;
  assert(self),DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- assert(self->sc_text.tb_max >= self->sc_text.tb_pos);
+ assert(self->sc_dat.sd_text.tb_max >= self->sc_dat.sd_text.tb_pos);
  /* Special case: Don't need to do anything if there are no relocations! */
- if unlikely(!self->sc_relc) return 0;
+ if unlikely(!self->sc_dat.sd_relc) return 0;
  base_address = DCCSection_BASE(self);
  assert(base_address || !(self->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED));
- relbase = self->sc_text.tb_begin;
-#ifdef DCC_SYMFLAG_SEC_OWNSBASE
- if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE) {
-  relbase = (uint8_t *)base_address;
- }
-#endif
- end = (iter = self->sc_relv)+self->sc_relc;
+ relbase = self->sc_dat.sd_text.tb_begin;
+ end = (iter = self->sc_dat.sd_relv)+self->sc_dat.sd_relc;
  for (; iter != end; ++iter) {
   target_ptr_t rel_value;
   struct DCCSymAddr symaddr;
@@ -1162,8 +1150,8 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
         rel_value += symaddr.sa_sym->sy_addr;
   }
   assert(reldata >= relbase);
-  assert(reldata <  relbase+(self->sc_text.tb_end-
-                             self->sc_text.tb_begin));
+  assert(reldata <  relbase+(self->sc_dat.sd_text.tb_end-
+                             self->sc_dat.sd_text.tb_begin));
   switch (iter->r_type) {
 #if DCC_TARGET_HASM(M_I386)
   case R_386_8:       *(int8_t  *)reldata += (int8_t )rel_value; break;
@@ -1185,8 +1173,8 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
 #endif
   case DCC_R_EXT_SIZE:
    if (DCCSym_ISSECTION(symaddr.sa_sym))
-        *(target_siz_t *)reldata += (target_siz_t)(DCCSym_TOSECTION(symaddr.sa_sym)->sc_text.tb_max-
-                                                   DCCSym_TOSECTION(symaddr.sa_sym)->sc_text.tb_begin);
+        *(target_siz_t *)reldata += (target_siz_t)(DCCSym_TOSECTION(symaddr.sa_sym)->sc_dat.sd_text.tb_max-
+                                                   DCCSym_TOSECTION(symaddr.sa_sym)->sc_dat.sd_text.tb_begin);
    else *(target_siz_t *)reldata += symaddr.sa_sym->sy_size;
    break;
   default: break;
@@ -1198,66 +1186,6 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
  }
  return result;
 }
-
-#if DCC_HOST_CPUM == DCC_TARGET_CPUM
-PUBLIC void
-DCCSection_SetBase(struct DCCSection *__restrict self) {
- void *codebase; size_t codesize;
- assert(self),DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- assert(self->sc_text.tb_max >= self->sc_text.tb_pos);
- /* Cannot assign the base of a fixed section. */
- if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED) return;
- /* Make sure the entire text is allocated. */
- if (!DCCSection_GetText(self,0,(size_t)(self->sc_text.tb_max-
-                                         self->sc_text.tb_begin))
-     ) return;
- codesize = (size_t)(self->sc_text.tb_max-self->sc_text.tb_begin);
- /* Fix alignment requirements. */
- if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_U) self->sc_start.sy_align = 1;
- /* When we don't need execute permissions, and the
-  * code is already properly aligned, we can simply
-  * re-use the pre-allocated buffer! */
- if (!(self->sc_start.sy_flags&DCC_SYMFLAG_SEC_X) &&
-     !((uintptr_t)self->sc_text.tb_begin&(self->sc_start.sy_align-1))) {
-  DCCSection_SetBaseTo(self,(target_ptr_t)self->sc_text.tb_begin);
-  return;
- }
- /* TODO: What about alignment?
-  *       The functions below ~should~ allocate memory that is
-  *       page-aligned (4096 on x86), but can we be sure of that? */
-#ifdef _WIN32
- {
-  DWORD type = (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_X) ? PAGE_EXECUTE_READWRITE : PAGE_READWRITE;
-  codebase = VirtualAlloc(NULL,codesize,MEM_COMMIT,type);
- }
-#else
- {
-  int type = PROT_READ|PROT_WRITE;
-  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_X) type |= PROT_EXEC;
-#ifdef MAP_ANON
-  codebase = mmap(NULL,codesize,type,MAP_ANON,-1,0);
-#elif defined(MAP_ANONYMOUS)
-  codebase = mmap(NULL,codesize,type,MAP_ANONYMOUS,-1,0);
-#else
-  {
-   int fd = open("/dev/null",O_RDONLY);
-   codebase = mmap(NULL,codesize,type,0,fd,0);
-   close(fd);
-  }
-#endif
- }
- if unlikely(codebase == (void *)(uintptr_t)-1) codebase = NULL;
-#endif
- if unlikely(!codebase) goto seterr; /* Prevent problems... */
- memcpy(codebase,self->sc_text.tb_begin,codesize);
- DCCSection_SetBaseTo(self,(target_ptr_t)codebase);
- self->sc_start.sy_flags |= (DCC_SYMFLAG_SEC_OWNSBASE|
-                             DCC_SYMFLAG_SEC_FIXED);
- return;
-seterr:
- TPPLexer_SetErr();
-}
-#endif /* DCC_HOST_CPUM == DCC_TARGET_CPUM */
 
 PUBLIC struct DCCSym *
 DCCSection_GetSym(struct DCCSection *__restrict self,
@@ -1284,31 +1212,31 @@ DCCSection_GetText(struct DCCSection *__restrict self,
  target_ptr_t addr_end = addr+size;
  assert(self);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- assertf(addr_end <= (target_ptr_t)(self->sc_text.tb_max-
-                                    self->sc_text.tb_begin),
+ assertf(addr_end <= (target_ptr_t)(self->sc_dat.sd_text.tb_max-
+                                    self->sc_dat.sd_text.tb_begin),
          "The given address range %lu..%lu is out-of-bounds of 0..%lu",
          (unsigned long)addr,(unsigned long)addr_end,
-         (unsigned long)(self->sc_text.tb_max-self->sc_text.tb_begin));
- if (addr_end > (target_ptr_t)(self->sc_text.tb_end-
-                               self->sc_text.tb_begin)) {
+         (unsigned long)(self->sc_dat.sd_text.tb_max-self->sc_dat.sd_text.tb_begin));
+ if (addr_end > (target_ptr_t)(self->sc_dat.sd_text.tb_end-
+                               self->sc_dat.sd_text.tb_begin)) {
   uint8_t *newvec,*oldvec; size_t old_size;
   assert(addr_end);
   /* The given address is located past the allocated end of the text buffer.
    * With that in mind, we must increase the buffer to allocate at least up to 'addr_end'! */
-  oldvec = self->sc_text.tb_begin;
+  oldvec = self->sc_dat.sd_text.tb_begin;
   newvec = (uint8_t *)realloc(oldvec,(size_t)addr_end);
   if unlikely(!newvec) goto seterr;
   /* zero-initialize the newly allocated portion. */
-  old_size = (size_t)(self->sc_text.tb_end-oldvec);
+  old_size = (size_t)(self->sc_dat.sd_text.tb_end-oldvec);
   memset(newvec+old_size,0,(size_t)addr_end-old_size);
   /* Update the text pointers. */
-  self->sc_text.tb_pos   = newvec+(self->sc_text.tb_pos-oldvec);
-  self->sc_text.tb_max   = newvec+(self->sc_text.tb_max-oldvec);
-  self->sc_text.tb_end   = newvec+(size_t)addr_end;
-  self->sc_text.tb_begin = newvec;
+  self->sc_dat.sd_text.tb_pos   = newvec+(self->sc_dat.sd_text.tb_pos-oldvec);
+  self->sc_dat.sd_text.tb_max   = newvec+(self->sc_dat.sd_text.tb_max-oldvec);
+  self->sc_dat.sd_text.tb_end   = newvec+(size_t)addr_end;
+  self->sc_dat.sd_text.tb_begin = newvec;
  }
  /* Actually retrieving the text pointer is fairly simple! */
- return self->sc_text.tb_begin+addr;
+ return self->sc_dat.sd_text.tb_begin+addr;
 seterr: TPPLexer_SetErr();
  return NULL;
 }
@@ -1321,7 +1249,7 @@ DCCSection_TryGetText(struct DCCSection *__restrict self,
  struct DCCTextBuf *text;
  uint8_t *section_off,*section_end;
  assert(self);
- text = self == unit.u_curr ? &unit.u_tbuf : &self->sc_text;
+ text = self == unit.u_curr ? &unit.u_tbuf : &self->sc_dat.sd_text;
  section_off = text->tb_begin+addr;
  section_end = text->tb_end;
  if (section_end > text->tb_max)
@@ -1348,7 +1276,7 @@ DCCSection_DAlloc(struct DCCSection *__restrict self,
  if (self->sc_start.sy_align < align)
      self->sc_start.sy_align = align;
  /* Try to re-use previously allocated memory. */
- result = DCCFreeData_Acquire(&self->sc_free,size,align,offset);
+ result = DCCFreeData_Acquire(&self->sc_dat.sd_free,size,align,offset);
  if (result == DCC_FREEDATA_INVPTR)
      result = DCCSection_DAllocBack(self,size,align,offset);
  return result;
@@ -1362,20 +1290,20 @@ DCCSection_DAllocBack(struct DCCSection *__restrict self,
  target_ptr_t result,aligned_result;
  uint8_t *new_pointer;
  /* Allocate at the end. */
- result = (target_ptr_t)(self->sc_text.tb_max-self->sc_text.tb_begin);
+ result = (target_ptr_t)(self->sc_dat.sd_text.tb_max-self->sc_dat.sd_text.tb_begin);
  /* Align the result pointer. */
  aligned_result  = (result+(align-1)-offset) & ~(align-1);
  aligned_result += offset;
  if (aligned_result != result) {
   /* Mark alignment & offset memory as free. */
-  DCCFreeData_Release(&self->sc_free,result,aligned_result-result);
+  DCCFreeData_Release(&self->sc_dat.sd_free,result,aligned_result-result);
  }
  result = aligned_result;
  /* Update the text max-pointer. */
- new_pointer = self->sc_text.tb_begin+result+size;
- if (self->sc_text.tb_pos == self->sc_text.tb_max)
-     self->sc_text.tb_pos = new_pointer;
- self->sc_text.tb_max = new_pointer;
+ new_pointer = self->sc_dat.sd_text.tb_begin+result+size;
+ if (self->sc_dat.sd_text.tb_pos == self->sc_dat.sd_text.tb_max)
+     self->sc_dat.sd_text.tb_pos = new_pointer;
+ self->sc_dat.sd_text.tb_max = new_pointer;
  return result;
 }
 
@@ -1386,13 +1314,13 @@ DCCSection_DAllocAt(struct DCCSection *__restrict self,
  assert(self);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
  /* Check if we can allocate at the end. */
- if (addr >= (target_ptr_t)(self->sc_text.tb_max-
-                            self->sc_text.tb_begin)) {
+ if (addr >= (target_ptr_t)(self->sc_dat.sd_text.tb_max-
+                            self->sc_dat.sd_text.tb_begin)) {
   /* Yes: Allocate past the end. */
-  self->sc_text.tb_max = self->sc_text.tb_begin+addr+size;
+  self->sc_dat.sd_text.tb_max = self->sc_dat.sd_text.tb_begin+addr+size;
   return addr;
  }
- return DCCFreeData_AcquireAt(&self->sc_free,addr,size);
+ return DCCFreeData_AcquireAt(&self->sc_dat.sd_free,addr,size);
 }
 
 PUBLIC target_ptr_t
@@ -1435,7 +1363,7 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
     if unlikely(!newvec) goto end;
     /* Move relocations & debug informatino. */
     DCCSection_Movrel(self,aligned_result,old_addr,new_size);
-    DCCA2l_Mov(&self->sc_a2l,aligned_result,old_addr,new_size);
+    DCCA2l_Mov(&self->sc_dat.sd_a2l,aligned_result,old_addr,new_size);
     /* Move memory. */
     memmove(newvec,oldvec,new_size);
     DCCSection_DFree(self,old_addr,alignment_offset);
@@ -1468,7 +1396,7 @@ alloc_newblock:
    if unlikely(!newvec) goto end;
    /* Move relocations & debug information. */
    DCCSection_Movrel(self,result,old_addr,old_size);
-   DCCA2l_Mov(&self->sc_a2l,result,old_addr,old_size);
+   DCCA2l_Mov(&self->sc_dat.sd_a2l,result,old_addr,old_size);
    /* Move the common memory to the new location. */
    memmove(newvec,oldvec,old_size);
    /* Free overlap/the old vector. */
@@ -1499,7 +1427,7 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
          "The given addr %lx isn't aligned by %lx",
         (unsigned long)addr,(unsigned long)min_align);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- assert(!DCCFreeData_Has(&self->sc_free,addr,size));
+ assert(!DCCFreeData_Has(&self->sc_dat.sd_free,addr,size));
  if unlikely(!size || (linker.l_flags&DCC_LINKER_FLAG_O_NOMERGESYM)) goto end;
  if (self->sc_start.sy_align < min_align)
      self->sc_start.sy_align = min_align;
@@ -1508,20 +1436,20 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
   struct DCCRel *new_relv; size_t new_relc;
   uint8_t *addr_data,*search_iter,*search_end;
   relv = DCCSection_GetRel(self,addr,size,&relc);
-  search_end = self->sc_text.tb_end;
-  if (search_end > self->sc_text.tb_max)
-      search_end = self->sc_text.tb_max;
+  search_end = self->sc_dat.sd_text.tb_end;
+  if (search_end > self->sc_dat.sd_text.tb_max)
+      search_end = self->sc_dat.sd_text.tb_max;
   /* Search for previous iterations. */
-  search_iter = self->sc_text.tb_begin;
-  addr_data   = self->sc_text.tb_begin+addr;
+  search_iter = self->sc_dat.sd_text.tb_begin;
+  addr_data   = self->sc_dat.sd_text.tb_begin+addr;
   if (addr_data >= search_end) goto end;
   search_end     = (search_iter+addr)-size;
   while (search_iter <= search_end) {
    if (!memcmp(search_iter,addr_data,size)) {
     target_ptr_t new_result; /* We've got a match! */
-    new_result = (target_ptr_t)(search_iter-self->sc_text.tb_begin);
+    new_result = (target_ptr_t)(search_iter-self->sc_dat.sd_text.tb_begin);
     /* Make sure the match is actually allocated. */
-    if (DCCFreeData_Has(&self->sc_free,new_result,size)) goto next;
+    if (DCCFreeData_Has(&self->sc_dat.sd_free,new_result,size)) goto next;
     /* Make sure that the relocations in the
      * new area match those from the old. */
     new_relv = DCCSection_GetRel(self,new_result,size,&new_relc);
@@ -1549,7 +1477,7 @@ next:
 end:
  /* TODO: (ab-)use this function for transferring
   *        data to lower, free memory regions? */
- assert(result == addr || !DCCFreeData_Has(&self->sc_free,result,size));
+ assert(result == addr || !DCCFreeData_Has(&self->sc_dat.sd_free,result,size));
  assertf(!size || !(addr&(min_align-1)),
          "The given addr %lx isn't aligned by %lx",
         (unsigned long)addr,(unsigned long)min_align);
@@ -1588,17 +1516,17 @@ DCCSection_DAllocMem(struct DCCSection *__restrict self,
  /* Optimize away trailing ZERO-bytes, instead using bss-trailing memory. */
  while (mem_size && ((uint8_t *)memory)[mem_size-1] == 0) --mem_size;
  if (!(self->sc_start.sy_flags&DCC_SYMFLAG_SEC_M)) goto alloc_normal;
- iter = self->sc_text.tb_begin;
- end  = self->sc_text.tb_end;
- if (end > self->sc_text.tb_max)
-     end = self->sc_text.tb_max;
+ iter = self->sc_dat.sd_text.tb_begin;
+ end  = self->sc_dat.sd_text.tb_end;
+ if (end > self->sc_dat.sd_text.tb_max)
+     end = self->sc_dat.sd_text.tb_max;
  end -= (size+offset);
- if (end >= self->sc_text.tb_end) goto alloc_normal;
+ if (end >= self->sc_dat.sd_text.tb_end) goto alloc_normal;
  iter += offset;
  while (iter < end) {
   if (memeq_sized(iter,size,(uint8_t const *)memory,mem_size)) {
    /* We've got a match! */
-   result = (target_ptr_t)(iter-self->sc_text.tb_begin);
+   result = (target_ptr_t)(iter-self->sc_dat.sd_text.tb_begin);
    goto done;
   }
   iter += align;
@@ -1606,22 +1534,22 @@ DCCSection_DAllocMem(struct DCCSection *__restrict self,
  if (size != mem_size) {
   target_ptr_t trail_addr;
   /* Check for match in trailing ZERO-memory. */
-  end = self->sc_text.tb_end;
-  if (end > self->sc_text.tb_max)
-      end = self->sc_text.tb_max;
-  trail_addr  = (end-self->sc_text.tb_begin);
+  end = self->sc_dat.sd_text.tb_end;
+  if (end > self->sc_dat.sd_text.tb_max)
+      end = self->sc_dat.sd_text.tb_max;
+  trail_addr  = (end-self->sc_dat.sd_text.tb_begin);
   trail_addr -=  mem_size;
   trail_addr  = (trail_addr+(align-1)) & ~(align-1);
   trail_addr += offset;
-  iter = self->sc_text.tb_begin+trail_addr;
-  if (iter <  self->sc_text.tb_begin || iter >= end) goto alloc_normal;
+  iter = self->sc_dat.sd_text.tb_begin+trail_addr;
+  if (iter <  self->sc_dat.sd_text.tb_begin || iter >= end) goto alloc_normal;
   if (!memcmp(iter,memory,mem_size)) {
    /* We've got a match! */
    result = trail_addr;
    iter  += size;
    /* Make sure to reserve trailing ZERO-memory. */
-   if (self->sc_text.tb_max < iter)
-       self->sc_text.tb_max = iter;
+   if (self->sc_dat.sd_text.tb_max < iter)
+       self->sc_dat.sd_text.tb_max = iter;
    goto done;
   }
  }
@@ -1659,14 +1587,14 @@ DCCSection_DFree(struct DCCSection *__restrict self,
  target_siz_t allocated_size;
  assert(self);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- assertf(addr_end <= (target_ptr_t)(self->sc_text.tb_max-
-                                    self->sc_text.tb_begin),
+ assertf(addr_end <= (target_ptr_t)(self->sc_dat.sd_text.tb_max-
+                                    self->sc_dat.sd_text.tb_begin),
          "The given address range %lu..%lu is out-of-bounds of 0..%lu",
          (unsigned long)addr,(unsigned long)addr_end,
-         (unsigned long)(self->sc_text.tb_max-self->sc_text.tb_begin));
- addr_ptr = self->sc_text.tb_begin+addr;
- if (addr_ptr < self->sc_text.tb_end) {
-  allocated_size = (size_t)(self->sc_text.tb_end-addr_ptr);
+         (unsigned long)(self->sc_dat.sd_text.tb_max-self->sc_dat.sd_text.tb_begin));
+ addr_ptr = self->sc_dat.sd_text.tb_begin+addr;
+ if (addr_ptr < self->sc_dat.sd_text.tb_end) {
+  allocated_size = (size_t)(self->sc_dat.sd_text.tb_end-addr_ptr);
   if (allocated_size > size)
       allocated_size = size;
  } else {
@@ -1674,22 +1602,22 @@ DCCSection_DFree(struct DCCSection *__restrict self,
  }
  /* ZERO-initialize the free & allocated memory. */
  memset(addr_ptr,0,allocated_size);
- if (addr_end == (target_ptr_t)(self->sc_text.tb_max-
-                                self->sc_text.tb_begin)) {
+ if (addr_end == (target_ptr_t)(self->sc_dat.sd_text.tb_max-
+                                self->sc_dat.sd_text.tb_begin)) {
   /* Special case: The given address range is located just at the end of theoretical memory.
    * >> With that in mind, we can simply free the associated memory range by moving the address-max downwards. */
-  self->sc_text.tb_max -= size;
-  if (self->sc_text.tb_pos > self->sc_text.tb_max)
-      self->sc_text.tb_pos = self->sc_text.tb_max;
+  self->sc_dat.sd_text.tb_max -= size;
+  if (self->sc_dat.sd_text.tb_pos > self->sc_dat.sd_text.tb_max)
+      self->sc_dat.sd_text.tb_pos = self->sc_dat.sd_text.tb_max;
  } else {
   /* Fallback: Register a free memory region. */
-  DCCFreeData_Release(&self->sc_free,addr,size);
+  DCCFreeData_Release(&self->sc_dat.sd_free,addr,size);
  }
- assert(self->sc_text.tb_max >= self->sc_text.tb_begin);
+ assert(self->sc_dat.sd_text.tb_max >= self->sc_dat.sd_text.tb_begin);
  /* Delete all relocations. */
  DCCSection_Delrel(self,addr,size);
  /* Delete all debug information. */
- DCCA2l_Delete(&self->sc_a2l,addr,size);
+ DCCA2l_Delete(&self->sc_dat.sd_a2l,addr,size);
 }
 
 
@@ -1813,25 +1741,26 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_unit                 */NULL,
  /* sc_pself                */NULL,
  /* sc_next                 */NULL,
- /* sc_text                 */{
- /* sc_text.tb_begin        */NULL,
- /* sc_text.tb_end          */NULL,
- /* sc_text.tb_max          */(uint8_t *)(uintptr_t)(intptr_t)-1,
- /* sc_text.tb_pos          */(uint8_t *)(uintptr_t)(intptr_t)-1},
- /* sc_free                 */{
- /* sc_free.fd_begin        */NULL},
- /* sc_alloc                */NULL,
- /* sc_merge                */0,
- /* sc_a2l                  */{
- /* sc_a2l.d_chunka         */0,
- /* sc_a2l.d_chunkc         */0,
- /* sc_a2l.d_chunkv         */NULL},
+ /* sc_dat                  */{{
+ /* sc_dat.sd_text          */{
+ /* sc_dat.sd_text.tb_begin */NULL,
+ /* sc_dat.sd_text.tb_end   */NULL,
+ /* sc_dat.sd_text.tb_max   */(uint8_t *)(uintptr_t)(intptr_t)-1,
+ /* sc_dat.sd_text.tb_pos   */(uint8_t *)(uintptr_t)(intptr_t)-1},
+ /* sc_dat.sd_free          */{
+ /* sc_dat.sd_free.fd_begin */NULL},
+ /* sc_dat.sd_alloc         */NULL,
+ /* sc_dat.sd_merge         */0,
+ /* sc_dat.sd_a2l           */{
+ /* sc_dat.sd_a2l.d_chunka  */0,
+ /* sc_dat.sd_a2l.d_chunkc  */0,
+ /* sc_dat.sd_a2l.d_chunkv  */NULL},
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
- /* sc_elflnk               */NULL,
+ /* sc_dat.sd_elflnk        */NULL,
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
- /* sc_relc                 */0,
- /* sc_rela                 */0,
- /* sc_relv                 */NULL,
+ /* sc_dat.sd_relc          */0,
+ /* sc_dat.sd_rela          */0,
+ /* sc_dat.sd_relv          */NULL}}
 };
 
 PUBLIC void *
@@ -1839,7 +1768,7 @@ DCCSection_TAlloc(struct DCCSection *__restrict self,
                   target_siz_t size) {
  assert(self);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- return DCCTextBuf_TAlloc(&self->sc_text,size);
+ return DCCTextBuf_TAlloc(&self->sc_dat.sd_text,size);
 }
 PUBLIC void
 DCCSection_TAlign(struct DCCSection *__restrict self,
@@ -1848,7 +1777,7 @@ DCCSection_TAlign(struct DCCSection *__restrict self,
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
  if (self->sc_start.sy_align < align)
      self->sc_start.sy_align = align;
- DCCTextBuf_TAlign(&self->sc_text,align,offset);
+ DCCTextBuf_TAlign(&self->sc_dat.sd_text,align,offset);
 }
 PUBLIC void
 DCCSection_TWrite(struct DCCSection *__restrict self,
@@ -1856,14 +1785,14 @@ DCCSection_TWrite(struct DCCSection *__restrict self,
  void *buf;
  assert(self);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- buf = DCCTextBuf_TAlloc(&self->sc_text,s);
+ buf = DCCTextBuf_TAlloc(&self->sc_dat.sd_text,s);
  if (buf) memcpy(buf,p,s);
 }
 PUBLIC void DCCSection_TPutb(struct DCCSection *__restrict self,
                              uint8_t byte) {
  assert(self);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- DCCTextBuf_TPutb(&self->sc_text,byte);
+ DCCTextBuf_TPutb(&self->sc_dat.sd_text,byte);
 }
 
 
@@ -1888,20 +1817,20 @@ DCCUnit_Flush(struct DCCUnit *__restrict self, uint32_t flags) {
  if (flags&(DCCUNIT_FLUSHFLAG_SECMEM|DCCUNIT_FLUSHFLAG_SYMTAB)) {
   section = self->u_secs;
   while (section) {
-   assert(section->sc_text.tb_max >=
-          section->sc_text.tb_pos);
+   assert(section->sc_dat.sd_text.tb_max >=
+          section->sc_dat.sd_text.tb_pos);
    if ((flags&DCCUNIT_FLUSHFLAG_SECMEM) &&
-       (section->sc_text.tb_max < section->sc_text.tb_end) &&
+       (section->sc_dat.sd_text.tb_max < section->sc_dat.sd_text.tb_end) &&
        (section != self->u_curr)) {
     uint8_t *newtext; size_t new_size;
-    new_size = (size_t)(section->sc_text.tb_max-
-                        section->sc_text.tb_begin);
-    newtext  = (uint8_t *)realloc(section->sc_text.tb_begin,new_size);
+    new_size = (size_t)(section->sc_dat.sd_text.tb_max-
+                        section->sc_dat.sd_text.tb_begin);
+    newtext  = (uint8_t *)realloc(section->sc_dat.sd_text.tb_begin,new_size);
     if (newtext) {
-     section->sc_text.tb_pos   = newtext+(section->sc_text.tb_pos-section->sc_text.tb_begin);
-     section->sc_text.tb_max   = newtext+new_size;
-     section->sc_text.tb_end   = newtext+new_size;
-     section->sc_text.tb_begin = newtext;
+     section->sc_dat.sd_text.tb_pos   = newtext+(section->sc_dat.sd_text.tb_pos-section->sc_dat.sd_text.tb_begin);
+     section->sc_dat.sd_text.tb_max   = newtext+new_size;
+     section->sc_dat.sd_text.tb_end   = newtext+new_size;
+     section->sc_dat.sd_text.tb_begin = newtext;
     }
    }
    if (flags&DCCUNIT_FLUSHFLAG_SYMTAB) {
@@ -1922,20 +1851,20 @@ DCCUnit_Flush(struct DCCUnit *__restrict self, uint32_t flags) {
  if (flags&DCCUNIT_FLUSHFLAG_RELOCS) {
   section = self->u_secs;
   while (section) {
-   assert(section->sc_relc <= section->sc_rela);
-   if (section->sc_relc != section->sc_rela) {
-    if (!section->sc_relc) {
-     free(section->sc_relv);
-     section->sc_rela = 0;
-     section->sc_relv = NULL;
+   assert(section->sc_dat.sd_relc <= section->sc_dat.sd_rela);
+   if (section->sc_dat.sd_relc != section->sc_dat.sd_rela) {
+    if (!section->sc_dat.sd_relc) {
+     free(section->sc_dat.sd_relv);
+     section->sc_dat.sd_rela = 0;
+     section->sc_dat.sd_relv = NULL;
     } else {
      struct DCCRel *newrel;
-     newrel = (struct DCCRel *)realloc(section->sc_relv,
-                                       section->sc_relc*
+     newrel = (struct DCCRel *)realloc(section->sc_dat.sd_relv,
+                                       section->sc_dat.sd_relc*
                                        sizeof(struct DCCRel));
      if likely(newrel) {
-      section->sc_relv = newrel;
-      section->sc_rela = section->sc_relc;
+      section->sc_dat.sd_relv = newrel;
+      section->sc_dat.sd_rela = section->sc_dat.sd_relc;
      }
     }
    }
@@ -1951,7 +1880,7 @@ DCCUnit_DebugString(target_ptr_t addr) {
  uint8_t *text_end;
  if (!sec) sec = DCCUnit_GetSecs(A2L_STRING_SECTION);
  if (!sec) return NULL;
- text = sec == unit.u_curr ? &unit.u_tbuf : &sec->sc_text;
+ text = sec == unit.u_curr ? &unit.u_tbuf : &sec->sc_dat.sd_text;
  text_end = text->tb_end;
  if (text_end > text->tb_max)
      text_end = text->tb_max;
@@ -2145,7 +2074,7 @@ DCCUnit_Quit(struct DCCUnit *__restrict self) {
   * unused symbol deconstruction. */
  ++dcc_no_recursive_symdel;
  if (self->u_curr) {
-  memcpy(&self->u_curr->sc_text,&self->u_tbuf,
+  memcpy(&self->u_curr->sc_dat.sd_text,&self->u_tbuf,
          sizeof(struct DCCTextBuf));
   self->u_curr = NULL;
  }
@@ -2456,11 +2385,11 @@ PUBLIC struct DCCSection *
 DCCUnit_SetCurr(struct DCCSection *sec) {
  struct DCCSection *result;
  if ((result = unit.u_curr) != NULL) {
-  memcpy(&result->sc_text,&unit.u_tbuf,
+  memcpy(&result->sc_dat.sd_text,&unit.u_tbuf,
          sizeof(struct DCCTextBuf));
  }
  if ((unit.u_curr = sec) != NULL) {
-  memcpy(&unit.u_tbuf,&sec->sc_text,
+  memcpy(&unit.u_tbuf,&sec->sc_dat.sd_text,
          sizeof(struct DCCTextBuf));
  }
  unit.u_prev = result;

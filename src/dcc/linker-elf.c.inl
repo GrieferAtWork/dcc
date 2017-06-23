@@ -245,7 +245,7 @@ PRIVATE secgp_t secgp_of(struct DCCSection const *__restrict section) {
  switch (section->sc_start.sy_flags&
         (DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W|DCC_SYMFLAG_SEC_X)) {
  case DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W|DCC_SYMFLAG_SEC_X: return SECGP_RWX;
- case DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W:                   return section->sc_text.tb_max == section->sc_text.tb_end ? SECGP_RW_FULL : SECGP_RW;
+ case DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W:                   return section->sc_dat.sd_text.tb_max == section->sc_dat.sd_text.tb_end ? SECGP_RW_FULL : SECGP_RW;
  case DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_X:                   return SECGP_RX;
  case DCC_SYMFLAG_SEC_R:                                     return SECGP_R;
  case DCC_SYMFLAG_SEC_W|DCC_SYMFLAG_SEC_X:                   return SECGP_WX;
@@ -291,16 +291,16 @@ secty_of(struct DCCSection const *__restrict section) {
 
 //////////////////////////////////////////////////////////////////////////
 DCC_LOCAL size_t secinfo_msize(struct secinfo const *__restrict self) {
- uint8_t *effective_end = self->si_sec->sc_text.tb_end;
- if (effective_end > self->si_sec->sc_text.tb_max)
-     effective_end = self->si_sec->sc_text.tb_max;
+ uint8_t *effective_end = self->si_sec->sc_dat.sd_text.tb_end;
+ if (effective_end > self->si_sec->sc_dat.sd_text.tb_max)
+     effective_end = self->si_sec->sc_dat.sd_text.tb_max;
  return (size_t)(effective_end-
-                 self->si_sec->sc_text.tb_begin);
+                 self->si_sec->sc_dat.sd_text.tb_begin);
 }
 //////////////////////////////////////////////////////////////////////////
 DCC_LOCAL target_siz_t secinfo_vsize(struct secinfo const *__restrict self) {
- return (target_siz_t)(self->si_sec->sc_text.tb_max-
-                       self->si_sec->sc_text.tb_begin);
+ return (target_siz_t)(self->si_sec->sc_dat.sd_text.tb_max-
+                       self->si_sec->sc_dat.sd_text.tb_begin);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -402,15 +402,15 @@ elf_mk_hash(struct DCCSection *__restrict hashsec,
  assert(hashsec != symtab);
  assert(hashsec != strtab);
  assert(symtab != strtab);
- symcnt  = (size_t)(symtab->sc_text.tb_max-
-                    symtab->sc_text.tb_begin);
+ symcnt  = (size_t)(symtab->sc_dat.sd_text.tb_max-
+                    symtab->sc_dat.sd_text.tb_begin);
  symcnt /= sizeof(Elf(Sym));
  if unlikely(!symcnt) return;
- sym_end = (sym_iter = sym_begin = (Elf(Sym) *)symtab->sc_text.tb_begin)+symcnt;
- strdat = (char *)strtab->sc_text.tb_begin;
- assert(symtab->sc_text.tb_max <=
-        symtab->sc_text.tb_end);
- hashsec->sc_text.tb_pos = hashsec->sc_text.tb_begin;
+ sym_end = (sym_iter = sym_begin = (Elf(Sym) *)symtab->sc_dat.sd_text.tb_begin)+symcnt;
+ strdat = (char *)strtab->sc_dat.sd_text.tb_begin;
+ assert(symtab->sc_dat.sd_text.tb_max <=
+        symtab->sc_dat.sd_text.tb_end);
+ hashsec->sc_dat.sd_text.tb_pos = hashsec->sc_dat.sd_text.tb_begin;
  linkptr = (uint32_t *)DCCSection_TAlloc(hashsec,
                                         (2+bucketcnt+symcnt)*
                                          sizeof(uint32_t));
@@ -527,7 +527,8 @@ skip_sym: sym->sy_elfid = 0; continue;
   entry_addr = DCCSection_TADDR(elf.elf_dynsym);
   DCCSection_TWrite(elf.elf_dynsym,&esym,sizeof(esym));
   if (symaddr.sa_sym->sy_sec && !DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
-   DCCSection_Putrel(elf.elf_dynsym,entry_addr+offsetof(Elf(Sym),st_value),
+   DCCSection_Putrel(elf.elf_dynsym,entry_addr+
+                     DCC_COMPILER_OFFSETOF(Elf(Sym),st_value),
                      DCC_R_DATA_PTR,&symaddr.sa_sym->sy_sec->sc_start);
   }
   /* TODO: Shouldn't we add a relocations for undefined symbol aliases?
@@ -584,7 +585,7 @@ PRIVATE void elf_mk_relsec(void) {
  /* Allocate relocation sections. */
  struct DCCSection *section;
  DCCUnit_ENUMSEC(section) {
-  if (section->sc_relc) get_relsec(section,1);
+  if (section->sc_dat.sd_relc) get_relsec(section,1);
  }
 }
 
@@ -624,7 +625,7 @@ elf_mk_secinfo(struct secinfo *__restrict info,
  }
  //iter->si_hdr.sh_offset = ...; /* Filled later. */
  //iter->si_hdr.sh_size = ...; /* Filled later. */
- if (elf.elf_dynsym) elf.elf_dynsym->sc_elflnk = elf.elf_dynstr;
+ if (elf.elf_dynsym) elf.elf_dynsym->sc_dat.sd_elflnk = elf.elf_dynstr;
 #if SHN_UNDEF != 0
  info->si_hdr.sh_link = SHN_UNDEF;
 #endif
@@ -690,8 +691,8 @@ PRIVATE void elf_mk_seclnk(void) {
  /* Execute all relocations. */
  end = (iter = elf.elf_secv)+elf.elf_secc;
  for (; iter != end; ++iter) {
-  if (iter->si_sec->sc_elflnk) {
-   iter->si_hdr.sh_link = elf_get_secidx(iter->si_sec->sc_elflnk);
+  if (iter->si_sec->sc_dat.sd_elflnk) {
+   iter->si_hdr.sh_link = elf_get_secidx(iter->si_sec->sc_dat.sd_elflnk);
   }
  }
 }
@@ -720,7 +721,7 @@ PRIVATE void elf_mk_delnoprel(void) {
  for (; iter != end; ++iter) {
   struct DCCRel *rel_iter,*rel_end;
   struct DCCSection *sec = iter->si_sec;
-  rel_end = (rel_iter = sec->sc_relv)+sec->sc_relc;
+  rel_end = (rel_iter = sec->sc_dat.sd_relv)+sec->sc_dat.sd_relc;
   while (rel_iter != rel_end) {
    assert(rel_iter < rel_end);
    if (rel_iter->r_type == DCC_R_NONE) {
@@ -729,9 +730,9 @@ PRIVATE void elf_mk_delnoprel(void) {
     /* NOTE: Leaving the associated section data dangling here, is intended! */
     rel_iter->r_sym->sy_size = 0;
     DCCSym_Decref(rel_iter->r_sym);
-    assert(sec->sc_relc);
+    assert(sec->sc_dat.sd_relc);
     /* Update relocation information. */
-    --rel_end,--sec->sc_relc;
+    --rel_end,--sec->sc_dat.sd_relc;
     memmove(rel_iter,rel_iter+1,
            (size_t)(rel_end-rel_iter)*
             sizeof(struct DCCRel));
@@ -782,9 +783,9 @@ PRIVATE void elf_mk_reldat(void) {
   Elf(Rel)    *reldata;
   size_t relcnt;
   assert(iter_sec);
-  relcnt = iter_sec->sc_relc;
+  relcnt = iter_sec->sc_dat.sd_relc;
   if unlikely(!relcnt) continue;
-  rel_end = (rel_iter = iter_sec->sc_relv)+relcnt;
+  rel_end = (rel_iter = iter_sec->sc_dat.sd_relv)+relcnt;
   if (linker.l_flags&DCC_LINKER_FLAG_PIC) {
    for (; rel_iter != rel_end; ++rel_iter) {
     if (!elf_wantpicrel(rel_iter)) --relcnt;
@@ -801,10 +802,10 @@ PRIVATE void elf_mk_reldat(void) {
                                            relcnt*sizeof(Elf(Rel)));
   if unlikely(!reldata) break;
   /* Link the relocations against the dynamic symbol table. */
-  iter->si_rel->sc_elflnk = elf.elf_dynsym;
+  iter->si_rel->sc_dat.sd_elflnk = elf.elf_dynsym;
   iter->si_rdat = reladdr;
   iter->si_rcnt = relcnt;
-  rel_iter = iter_sec->sc_relv;
+  rel_iter = iter_sec->sc_dat.sd_relv;
   if (linker.l_flags&DCC_LINKER_FLAG_PIC) {
    for (; rel_iter != rel_end; ++rel_iter) {
     if (!elf_wantpicrel(rel_iter)) continue;
@@ -840,7 +841,7 @@ PRIVATE void elf_mk_reladj(void) {
   if unlikely(!reldata) break;
   secbase   = DCCSection_BASE(iter_sec);
   relend    = reldata+iter->si_rcnt;
-  text_data = iter->si_sec->sc_text.tb_begin;
+  text_data = iter->si_sec->sc_dat.sd_text.tb_begin;
   for (; reldata != relend; ++reldata) {
    /* Adjust the relocation address from section-relative to image-relative.
     * WARNING: This can only be done after virtual addresses have been generated.
@@ -975,8 +976,8 @@ elf_mk_dynfll(void) {
   case DT_SYMENT: if (!elf.elf_dynsym) goto def; iter->d_un.d_ptr = sizeof(Elf(Sym)); break;
   case DT_STRTAB: if (!elf.elf_dynstr) goto def; iter->d_un.d_ptr = DCCSection_BASE(elf.elf_dynstr); break;
   case DT_STRSZ:  if (!elf.elf_dynstr) goto def;
-   iter->d_un.d_ptr = (Elf(Addr))(elf.elf_dynstr->sc_text.tb_max-
-                                  elf.elf_dynstr->sc_text.tb_begin);
+   iter->d_un.d_ptr = (Elf(Addr))(elf.elf_dynstr->sc_dat.sd_text.tb_max-
+                                  elf.elf_dynstr->sc_dat.sd_text.tb_begin);
    break;
   {
    struct secinfo *sec_iter,*sec_end;
@@ -1114,8 +1115,8 @@ PRIVATE void elf_mk_delsecunused(secgp_t min_gp) {
    if (elf.elf_dynsym) {
     Elf(Section) seci = (Elf(Section))(iter-elf.elf_secv);
     Elf(Sym) *sym_iter,*sym_end;
-    sym_iter = (Elf(Sym) *)elf.elf_dynsym->sc_text.tb_begin;
-    sym_end  = (Elf(Sym) *)elf.elf_dynsym->sc_text.tb_end;
+    sym_iter = (Elf(Sym) *)elf.elf_dynsym->sc_dat.sd_text.tb_begin;
+    sym_end  = (Elf(Sym) *)elf.elf_dynsym->sc_dat.sd_text.tb_end;
     for (; sym_iter < sym_end; ++sym_iter) {
      assertf(sym_iter->st_shndx != seci,
              "Attempting to delete section '%s' with dynamic symbols",
@@ -1137,7 +1138,7 @@ PRIVATE void elf_mk_delsecunused(secgp_t min_gp) {
 PRIVATE void elf_clr_unused(struct DCCSection **psec) {
  struct DCCSection *sec;
  assert(psec); sec = *psec;
- if (sec && sec->sc_text.tb_max == sec->sc_text.tb_begin) *psec = NULL;
+ if (sec && sec->sc_dat.sd_text.tb_max == sec->sc_dat.sd_text.tb_begin) *psec = NULL;
 }
 PRIVATE struct phinfo *elf_mk_phdr(void) {
  struct phinfo *result = elf.elf_phdv;
@@ -1438,14 +1439,14 @@ elf_mk_outfile(stream_t fd) {
     size_t text_size,phys_size;
     /* Generate padding until the section data. */
     DCCStream_PadAddr(fd,iter->si_hdr.sh_offset);
-    text_size = (size_t)(iter->si_sec->sc_text.tb_end-
-                         iter->si_sec->sc_text.tb_begin);
+    text_size = (size_t)(iter->si_sec->sc_dat.sd_text.tb_end-
+                         iter->si_sec->sc_dat.sd_text.tb_begin);
     phys_size = iter->si_hdr.sh_size;
     if (text_size > phys_size)
         text_size = phys_size;
-    assert((size_t)(iter->si_sec->sc_text.tb_end-
-                    iter->si_sec->sc_text.tb_begin) >= text_size);
-    s_write(fd,iter->si_sec->sc_text.tb_begin,text_size);
+    assert((size_t)(iter->si_sec->sc_dat.sd_text.tb_end-
+                    iter->si_sec->sc_dat.sd_text.tb_begin) >= text_size);
+    s_write(fd,iter->si_sec->sc_dat.sd_text.tb_begin,text_size);
     /* Pad a difference between the physical and text size with ZEROes. */
     if (text_size != phys_size) DCCStream_PadSize(fd,phys_size-text_size);
    }
@@ -1487,7 +1488,7 @@ DCCLinker_Make(stream_t target) {
  elf.elf_dynsym  = DCCUnit_NewSecs(".dynsym",                          DCC_SYMFLAG_SEC(1,0,0,0,0,0));
  elf.elf_dynstr  = DCCUnit_NewSecs(".dynstr",                          DCC_SYMFLAG_SEC(1,0,0,0,1,0));
  elf.elf_hash    = DCCUnit_NewSecs(".hash",                            DCC_SYMFLAG_SEC(1,0,0,0,0,0));
- if (elf.elf_dynsym) elf.elf_dynsym->sc_elflnk = elf.elf_dynstr;
+ if (elf.elf_dynsym) elf.elf_dynsym->sc_dat.sd_elflnk = elf.elf_dynstr;
 #define CC(x) { x; if unlikely(!OK) goto end; }
  if unlikely(!OK) goto end;
  CC(elf_mk_entry());

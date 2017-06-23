@@ -483,18 +483,18 @@ DCCDisp_TextMovMem(struct DCCCompilerText const *__restrict text, target_siz_t s
  src_sec = text->ct_sec;
  assert(src_sec);
  assert(dst);
- src_txt = src_sec == unit.u_curr ? &unit.u_tbuf : &src_sec->sc_text;
+ src_txt = src_sec == unit.u_curr ? &unit.u_tbuf : &src_sec->sc_dat.sd_text;
 
  /* Move text w/ relocations. */
  src_addr = text->ct_base;
  dst_iter = *dst;
- i = text->ct_relv-src_sec->sc_relv;
+ i = text->ct_relv-src_sec->sc_dat.sd_relv;
  rel_end = i+text->ct_relc;
- assert(!text->ct_relc || rel_end <= src_sec->sc_relc);
+ assert(!text->ct_relc || rel_end <= src_sec->sc_dat.sd_relc);
  for (; i < rel_end; ++i) {
   target_ptr_t jump; width_t relw;
   struct DCCSymAddr symaddr;
-  struct DCCRel *rel = &src_sec->sc_relv[i];
+  struct DCCRel *rel = &src_sec->sc_dat.sd_relv[i];
   assert(rel->r_addr >= src_addr &&
          rel->r_addr <  src_addr+src_bytes);
   jump           = (target_ptr_t)(rel->r_addr-src_addr);

@@ -1096,7 +1096,7 @@ DCCA2l_LookupAdr(struct A2lState *__restrict result,
       full_addr.sa_off += adr->sa_sym->sy_addr;
  result->s_addr = (a2l_addr_t)full_addr.sa_off;
  /* Lookup information about the generated A2L state in the associated section. */
- if (DCCA2l_Lookup(&adr->sa_sym->sy_sec->sc_a2l,result)) return 1;
+ if (DCCA2l_Lookup(&adr->sa_sym->sy_sec->sc_dat.sd_a2l,result)) return 1;
 fail:
  A2lState_RESET(result);
  return 0;

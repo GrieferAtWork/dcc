@@ -130,6 +130,18 @@
 #   define DCC_COMPILER_ALIGNOF(T) ((size_t)&((struct { char x; T s; } *)0)->s)
 #endif
 
+#ifndef DCC_COMPILER_OFFSETOF
+#if defined(__GNUC__) || __has_builtin(__builtin_offsetof)
+#   define DCC_COMPILER_OFFSETOF       __builtin_offsetof
+#else
+#   define DCC_COMPILER_OFFSETOF(m,s) ((size_t)&((m *)0)->s)
+#endif
+#endif /* !DCC_COMPILER_OFFSETOF */
+
+#ifndef DCC_COMPILER_OFFSETAFTER
+#define DCC_COMPILER_OFFSETAFTER(m,s) ((size_t)(&((m *)0)->s+1))
+#endif /* !DCC_COMPILER_OFFSETAFTER */
+
 #if defined(__TPP_EVAL) && __TPP_VERSION__ >= 200
 #   define DCC_COMPILER_STRLEN(s) __TPP_EVAL(#(s))
 #else
@@ -168,40 +180,45 @@
 #endif
 
 #ifdef DCC_PRIVATE_API
-#define PRIVATE        DCC_PRIVATE
-#define PUBLIC         DCC_PUBLIC
-#define LOCAL          DCC_LOCAL
-#define INTERN         DCC_INTERN
-#define INTDEF         DCC_INTDEF
+#   define PRIVATE        DCC_PRIVATE
+#   define PUBLIC         DCC_PUBLIC
+#   define LOCAL          DCC_LOCAL
+#   define INTERN         DCC_INTERN
+#   define INTDEF         DCC_INTDEF
 #endif
 
+#ifndef DCC_ATTRIBUTE_NORETURN
 #ifdef _MSC_VER
-#define DCC_ATTRIBUTE_NORETURN  __declspec(noreturn)
+#   define DCC_ATTRIBUTE_NORETURN  __declspec(noreturn)
 #elif defined(__GNUC__) || __has_attribute(noreturn)
-#define DCC_ATTRIBUTE_NORETURN  __attribute__((__noreturn__))
+#   define DCC_ATTRIBUTE_NORETURN  __attribute__((__noreturn__))
 #else
-#define DCC_NO_ATTRIBUTE_NORETURN
-#define DCC_ATTRIBUTE_NORETURN
+#   define DCC_NO_ATTRIBUTE_NORETURN
+#   define DCC_ATTRIBUTE_NORETURN
 #endif
+#endif /* !DCC_ATTRIBUTE_NORETURN */
 
+#ifndef DCC_ATTRIBUTE_DLLIMPORT
 #ifdef _MSC_VER
-#define DCC_ATTRIBUTE_DLLIMPORT  __declspec(dllimport)
-#define DCC_ATTRIBUTE_DLLEXPORT  __declspec(dllexport)
+#   define DCC_ATTRIBUTE_DLLIMPORT  __declspec(dllimport)
+#   define DCC_ATTRIBUTE_DLLEXPORT  __declspec(dllexport)
 #elif defined(__DCC_VERSION__) && defined(__PE__)
-#define DCC_ATTRIBUTE_DLLIMPORT  __attribute__((__dllimport__))
-#define DCC_ATTRIBUTE_DLLEXPORT  __attribute__((__dllexport__))
+#   define DCC_ATTRIBUTE_DLLIMPORT  __attribute__((__dllimport__))
+#   define DCC_ATTRIBUTE_DLLEXPORT  __attribute__((__dllexport__))
 #elif (!defined(__GNUC__) && __has_attribute(dllimport)) || \
       (defined(__GNUC__) && (defined(_WIN32) || defined(__CYGWIN__)))
-#define DCC_ATTRIBUTE_DLLIMPORT  __attribute__((__dllimport__))
-#define DCC_ATTRIBUTE_DLLEXPORT  __attribute__((__dllexport__))
+#   define DCC_ATTRIBUTE_DLLIMPORT  __attribute__((__dllimport__))
+#   define DCC_ATTRIBUTE_DLLEXPORT  __attribute__((__dllexport__))
 #else
-#define DCC_NO_ATTRIBUTE_DLLIMPORT
-#define DCC_NO_ATTRIBUTE_DLLEXPORT
-#define DCC_ATTRIBUTE_DLLIMPORT
-#define DCC_ATTRIBUTE_DLLEXPORT
+#   define DCC_NO_ATTRIBUTE_DLLIMPORT
+#   define DCC_NO_ATTRIBUTE_DLLEXPORT
+#   define DCC_ATTRIBUTE_DLLIMPORT
+#   define DCC_ATTRIBUTE_DLLEXPORT
 #endif
+#endif /* !DCC_ATTRIBUTE_DLLIMPORT */
 
 
+#ifndef DCC_LIKELY
 #if defined(__GNUC__) || __has_builtin(__builtin_expect)
 #   define DCC_LIKELY(x)    (__builtin_expect(!!(x),1))
 #   define DCC_UNLIKELY(x)  (__builtin_expect(!!(x),0))
@@ -209,7 +226,9 @@
 #   define DCC_LIKELY
 #   define DCC_UNLIKELY
 #endif
+#endif /* !DCC_LIKELY */
 
+#ifndef DCC_UNREACHABLE
 #if defined(__GNUC__) || __has_builtin(__builtin_unreachable)
 #   define DCC_UNREACHABLE   __builtin_unreachable
 #elif defined(_MSC_VER)
@@ -217,7 +236,9 @@
 #else
 #   define DCC_UNREACHABLE() (void)0
 #endif
+#endif /* !DCC_UNREACHABLE */
 
+#ifndef DCC_ATTRIBUTE_FASTCALL
 #if defined(_MSC_VER)
 #   define DCC_ATTRIBUTE_FASTCALL  __fastcall
 #elif (defined(__i386__) || defined(__i386) || defined(i386)) || \
@@ -227,7 +248,9 @@
 #   define DCC_NO_ATTRIBUTE_FASTCALL
 #   define DCC_ATTRIBUTE_FASTCALL  /* nothing */
 #endif
+#endif /* !DCC_ATTRIBUTE_FASTCALL */
 
+#ifndef DCC_ATTRIBUTE_STDCALL
 #if defined(_MSC_VER)
 #   define DCC_ATTRIBUTE_STDCALL  __stdcall
 #elif defined(__GNUC__) || defined(__DCC_VERSION__) || \
@@ -237,23 +260,28 @@
 #   define DCC_NO_ATTRIBUTE_STDCALL
 #   define DCC_ATTRIBUTE_STDCALL  /* nothing */
 #endif
-
+#endif /* !DCC_ATTRIBUTE_STDCALL */
 
 DCC_DECL_BEGIN
 
+#ifndef DCC_BREAKPOINT
 #ifdef _MSC_VER
 extern void __debugbreak(void);
+#   pragma intrinsic(__debugbreak)
 #   define DCC_BREAKPOINT  __debugbreak
-#elif defined(__GNUC__) && \
-     (defined(__i386__) || defined(__i386) || \
-      defined(i386) || defined(__x86_64__))
-#   define DCC_BREAKPOINT() ({ __asm__ __volatile__("int $3\n" : : : "memory"); (void)0; })
 #elif __has_builtin(__builtin_breakpoint)
 #   define DCC_BREAKPOINT    __builtin_breakpoint
+#elif (defined(__i386__) || defined(__i386) || defined(i386) || defined(__x86_64__))
+#if defined(__GNUC__) || defined(__DCC_VERSION__)
+#   define DCC_BREAKPOINT() (__extension__({ __asm__ __volatile__("int {$}3\n" : : : "memory"); (void)0; }))
+#elif defined(__TCC__)
+#   define DCC_BREAKPOINT() ({ __asm__ __volatile__("int $3\n" : : : "memory"); (void)0; })
+#endif
 #else
 #   define DCC_NO_BREAKPOINT
 #   define DCC_BREAKPOINT() (void)0
 #endif
+#endif /* !DCC_BREAKPOINT */
 
 
 DCCFUN

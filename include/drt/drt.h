@@ -25,10 +25,342 @@
 
 
 /* 
- *  ...
- *  TODO: Here be explanation of how DRT (Direct-Run-Time) works
- *  ...
+ * How does DCC manage to execute C code _while_ it is still compiling said code?
+ * 
+ * Answering that question will take a while, so I'm going to break down the
+ * answer into different segments covering various problems (and solutions).
+ * NOTE: For the duration of this explanation I will refer to the
+ *       direct nature of DCC's DRT (DirectRunTime) compilation
+ *       mode as a non-blocking design model.
  *
+ * #1: The simple stuff:
+ *      - Lexer/Preprocessor/Tokenizer
+ *      - Parser
+ * #2: The somewhat more complicated stuff:
+ *      - Assembler
+ * #3: The really complicated stuff:
+ *      - Linker
+ * #4: The WTF! - That just sounds crazy stuff:
+ *      - Execution
+ *
+ * Lexer/Preprocessor/Tokenizer:
+ *   This isn't really the place to discuss this, but using TPP as underlying
+ *   engine, the C preprocessor pseudo-language at no point contains any
+ *   feature that would require advanced knowledge of major chunks of
+ *   information further down the file.
+ *   With that in mind, building a non-blocking preprocessor is as simple
+ *   as setting the goal of never reading the entirety of an input file,
+ *   and instead always working with 
+ *   At this point I could go into further detail on some of TPP's optimizations,
+ *   but in the end you can easily convince yourself of its non-blocking
+ *   nature by running '$ dcc --tok -E -', which will launch DCC in tokenized
+ *   preprocessor-mode, with the input file set to STDIN, meaning you can write 
+ *   to your hearts content with the only buffering being line-buffering.
+ * 
+ * 
+ * Parser:
+ *   Building ontop of a non-blocking preprocessor, anything but a 
+ *   non-blocking Parser should seem more complicated than exactly
+ *   that.
+ *   Though it should be noted that DCC's parser is fully non-blocking,
+ *   by which I am referring to the fact that at no point will tokens
+ *   be parsed prematurely, such as with a function one would naïvely
+ *   call 'peek_token'.
+ *   While something similar does exist, at no point will the runtime
+ *   yield a token, only to later revert to a previous token.
+ *   It will at places yield a token and reconfigure the lexer to
+ *   yield the same token again, but never goes any further than that.
+ *   Sadly, considering this, a few minor restrictions must apply to
+ *   any C source file that is attempted to-be compiled with DCC, as
+ *   with the presence of labels in C, any compiler wanting to parse
+ *   them is forced to implement some form of token look-ahead.
+ *   >>    int x = 10;
+ *   >>my_label:
+ *   >>    if (x-- >= 0) goto my_label;
+ *   >>    printf("x = %d\n",x); // -2
+ *   Let's look at this line:
+ *   >>my_label:
+ *     ^^^^^^^^
+ *   The compiler is currently looking at the token 'my_label' and
+ *   tries to figure out if it might possibly be a label (which it is).
+ *   Just like any other self-respecting compiler, of course DCC
+ *   also recognized this as a proper label, by doing some manual
+ *   scanning in search for what is likely to be the next token.
+ *   In this case, the deduction is quite simple, and it will be
+ *   in almost all cases.
+ *   Some things that might make this harder include preprocessor directives
+ *   or comments, of which DCC is only able to handle the latter, yet
+ *   the most notorious case is as follows:
+ *   >>#define DOPPELPUNKT   :
+ *   >>    int x = 10;
+ *   >>my_label DOPPELPUNKT
+ *   >>    if (x-- >= 0) goto my_label;
+ *   >>#if __SIZEOF_POINTER__ <= 4
+ *   >>my_other_label1
+ *   >>#else
+ *   >>my_other_label2
+ *   >>#endif
+ *   >>               :
+ *   >>    printf("x = %d\n",x); // -2
+ *   Technically fully compliant to STD-C, DCC isn't able to
+ *   recognize any of the label definitions you can find above.
+ *   A fixed version that DCC could parse as well would look like this:
+ *   >>    int x = 10;
+ *   >>my_label:
+ *   >>    if (x-- >= 0) goto my_label;
+ *   >>#if __SIZEOF_POINTER__ <= 4
+ *   >>my_other_label1:
+ *   >>#else
+ *   >>my_other_label2:
+ *   >>#endif
+ *   >>    printf("x = %d\n",x); // -2
+ *   Yet considering the stylistic choices that would lead a programmer
+ *   do anything else that the latter lead to the choice of omitting
+ *   support for code that would cause your eyes to start burning.
+ *   It should also be noted that DCC does not make use of any kind
+ *   of AST generation, directly using a V-Stack (commonly called
+ *   Value-Stack, but in DCC uniformly referred to Virtual-Stack)
+ *
+ *
+ * Assembler:
+ *   Just as mentioned above, this is where it gets complicated,
+ *   and where we encounter the first couple of problems.
+ *   For the duration of this passage, i386+ assembly will be used.
+ *   Let's take a look at a regular, old function:
+ *   >> void my_loop(void) {
+ *   >>     int i;
+ *   >>     for (i = 0; i < 10; ++i) {
+ *   >>         int z = get_value(i);
+ *   >>         printf("value(%d) = %d\n",i,z);
+ *   >>     }
+ *   >> }
+ *   The assembly for this function might then look like this:
+ *   >>.global my_loop
+ *   >>my_loop:
+ *   >>    push   %esp
+ *   >>    movl   %esp, %ebp
+ *   >>    subl   $8,   %esp
+ *   >>    movl   $0,   -4(%ebp) // i = 0
+ *   >>1:  cmpl   $0xa, -4(%ebp) // i < 10
+ *   >>    jge    1f
+ *   >>    jmp    2f
+ *   >>3:  incl   -4(%ebp)       // ++i
+ *   >>    jmp    1b
+ *   >>2:  pushl  -4(%ebp)
+ *   >>    call   get_value      // get_value(i)
+ *   >>    add    $4,   %esp
+ *   >>    mov    %eax, -8(%ebp) // z = get_value...
+ *   >>    pushl  -8(%ebp)
+ *   >>    pushl  -4(%ebp)
+ *   >>    push   $"value(%d) = %d\n"
+ *   >>    call   printf         // printf(...)
+ *   >>    add    $12,  %esp
+ *   >>    jmp    3b
+ *   >>1:  leave
+ *   >>    ret
+ *   >>.size my_loop, . - my_loop
+ *   As you can see in the assembly, one work-around for ensuring
+ *   proper execution order of the loop-incrementer at the end of
+ *   the loop can already be seen in the seemingly (and admittedly)
+ *   pointless double-jump around the code for '++i'.
+ *   The reason for this lies within the fact that DCC doesn't
+ *   generate AST and doesn't cache code before generation of
+ *   assembly, meaning that the assembler has no choice but
+ *   to output code as it appears (that is left-to-right, top-bottom),
+ *   no matter how many jump are required to ensure proper execution
+ *   order.
+ *   Yet the most pressing matter, and something you may have already
+ *   noticed, is the '$8' in 'subl ..., %esp'.
+ *   Let me explain what this does: It allocates 8 bytes of stack
+ *   memory that are used for local variables during execution of
+ *   the accompanying function.
+ *   But looking further down the line, 
+ *   You may not like the current solution, but long-story-short:
+ *   DCC simply pre-allocated a _lot_ of memory for every stack
+ *   frame, although only does so in direct compilation mode.
+ *   Yet this problem isn't fixed easily:
+ *   You might think about relocating frame sizes at a later
+ *   point, maybe stating that the DRT thread can be paused
+ *   and its stack pointer adjusted. But that is a _very_ bad
+ *   idea for the fact that in C or assembly, pointers cannot
+ *   be tracked, meaning stack-allocated data structures would
+ *   be broken if ESP was blindly to-be changed.
+ *   Another problem would be breaking functions further up
+ *   the stack in the even that DRT is currently inside of
+ *   'get_value', at which point the user is still writing
+ *   'my_loop' when deciding to add a 3rd variable.
+ *   At that point, 'ESP' had already been (somehow) adjusted
+ *   to allow for 8 bytes of stack memory, when 4 more bytes
+ *   suddenly get added, yet there is nowhere to put them
+ *   and no way of relocation ESP again, mainly because it is
+ *   being used for addressing local variables inside of 'get_value'.
+ *   So considering these problems, preallocating a _very_ big
+ *   stack-frame beforehand remains a very good solution.
+ *   NOTE: Future versions of DCC will potentially optimize
+ *         on this by updating such a function's prolog
+ *         once it has been compiled to mirror the correct
+ *        (and smaller) frame size.
+ *         But until then, remember that this isn't even a
+ *         problem outside of DRT mode ('dcc -d')
+ *
+ *
+ * Linker:   
+ *   Everything above you'd probably have been able to figure out
+ *   even without the explanation. - But how does one link code
+ *   without knowing what will belong where, or how to relocate
+ *   code while it is running.
+ *   Let me answer the latter first: You don't! - And you don't even try to!
+ *   Instead, you simply design an execution-address-layout with
+ *   sufficient space addressable memory for every section of the executable.
+ *   In the end, this simply means doing something like
+ *   this in the initialization of every section:
+ *   >> my_section->drt_address = current_drt_address;
+ *   >> current_drt_address += MAX_SIZE_FOR_ANY_SECTION;
+ *   Again: This was something you probably could have guessed.
+ *          But how does something like this work:
+ *   >> int add(int x, int y);
+ *   >> int main() {
+ *   >>     int r = add(10,20);
+ *   >>     printf("r = %d\n",r);
+ *   >>     return 0;
+ *   >> }
+ *   >> 
+ *   >> [...]
+ *   >> 
+ *   >> // For the first part of the anwer below,
+ *   >> // the below definition doesn't exist.
+ *   >> int add(int x, int y) {
+ *   >>     return x+y;
+ *   >> }
+ *
+ *   To answer that question, let's look at the assembly again:
+ *   >> .global add
+ *   >> .global main
+ *   >> main:
+ *   >>    push   %esp
+ *   >>    movl   %esp, %ebp
+ *   >>    pushl  $20
+ *   >>    pushl  $10
+ *   >>    call   add
+ *   >>    addl   $8, %esp
+ *   >>    movl   $0, %eax
+ *   >>    ret
+ *   >> .size main, . - main
+ *
+ *   As should be obvious, the definition of 'add' is
+ *   nowhere to be seen, so what does the code call when
+ *   it is running? What kind of black magic is this?
+ *   Well... I may have lied a bit about how the assembly looks.
+ *   In particular: The following is a better representation
+ *   of what the 'call add' line looks like:
+ *   >>    mov    add, %eax
+ *   >>    call   add
+ *   Or an even more binary-representative view:
+ *   >>    mov    0xfffff001, %eax
+ *   >>    call   0xfffff001
+ *
+ *   What!? That's not helping anything! Why are you loading 'add'?
+ *   What happens here is a premature access to 'add' that will
+ *   touch the memory address, essentially forcing a SEGFAULT
+ *   that can be captured, alongside information about where
+ *   it originated from.
+ *   Essentially, looking at the SEGFAULT caused by the 'mov'
+ *   instruction, DRT can figure out that the user-code is
+ *   planning to access data at '0xfffff001'.
+ *   But this isn't what's interesting about this.
+ *   What is interesting though, is the fact that DRT can ask DCC
+ *   to essentially do the following when this is encountered, using
+ *   a system I like to call 'Lazy Relocation':
+ *     Given the address of an instruction, scan its memory
+ *     and all contained bytes until the end of the 'mov' opcode
+ *     for relocations.
+ *     Following that, suspend the DRT until all symbols referred
+ *     to by those relocations have been defined, at which point
+ *     all section code already committed for execution by DRT
+ *     shall be updated to contain the proper addresses for that
+ *     symbol.
+ *     This essentially means that calling an undefined symbol
+ *     'add' will cause DRT to wait until the symbol is defined
+ *     when it first encounters a reference to the symbol:
+ *   >> int main() {
+ *   >>     WAIT_FOR_SYMBOL("add");
+ *   >>     int r = add(10,20);
+ *   >>     WAIT_FOR_SYMBOL("printf");
+ *   >>     printf("r = %d\n",r);
+ *   >>     return 0;
+ *   >> }
+ *   >>
+ *   >> int add(int x, int y) {
+ *   >>     TRIGGER_SYMBOL_DEFINED("add");
+ *   >>     return x+y;
+ *   >> }
+ *      
+ *   One problem not currently handled is the following:  
+ *   >> extern int x[6];
+ *   >> int *px = &x[3];
+ *   >> 
+ *   >> int main() {
+ *   >>     WAIT_FOR_SYMBOL("px"); // OK: 'px' is defined
+ *   >>     printf("px  = %p\n",px);
+ *   >>     printf("*px = %d\n",*px);
+ *   >> }
+ *   >> 
+ *   >> int x[6] = { 2,1,6,3,42,17 };
+ *   
+ *   The naïve solution implemented by to recursively look at
+ *   the definition of symbol during DRT relocations, considering
+ *   its size and address to recursively wait for any other
+ *   symbol it may be referring to.
+ *   (TODO: DRT doesn't actually do this right now...)
+ *   
+ *   But getting back to a simpler problem: How does DRT
+ *   know when to wait for more code in its own function?
+ *   After all: there isn't anything to dereference when
+ *   there is no code at all...
+ *
+ *   >> int main() {
+ *   >>     printf("Hello World\n");
+ *   >>     // For the sake of this example, the below code doesn't exist yet.
+ *   >>     printf("Hello Griefer\n");
+ *   >>     return 0;
+ *   >> }
+ *   
+ *   The answer to this is quite simple and has to do with the default
+ *   initialization of DRT memory, which is a simple memset() with '0xf4' bytes.
+ *   On i386+, this refers to the 'hlt' instruction, an opcode that is rarely
+ *   ever used, and if used, cannot be executed in ring #3 without a #PF IRQ,
+ *   or in other words: Only a kernel is allowed to execute it, and if you
+ *   try to, an exception will be triggered. Using, and capturing that exception,
+ *   figuring out that execution has reached missing code is as simple as
+ *   handling said exception and doing a similar kind of wait that suspends
+ *   DRT execution until 'printf("Hello Griefer\n");' is eventually parsed.
+ *
+ *   At this point I should mention that the DRT uses a copy of regular
+ *   section memory, that is copied at so-called synchronization points,
+ *   meaning that there is no chance of executing a partially written opcode,
+ *   or writing a memory address while that same address is being executed.
+ *
+ *   Shared library can easily be loaded using 'LoadLibraryA'/'dlopen',
+ *   after which it is is a simple matter of using 'GetProcAddress'/'dlsym'
+ *   for retrieving the absolute symbol address that can be used for
+ *   linking relocation against an import section.
+ *
+ *   RESTRICTIONS:
+ *     - DRT is currently limited to a single thread, and even though
+ *       it is quite possible to extend this limit, user-code must
+ *       somehow user compiler-provided functionality for creating
+ *       new threads and/or inform DCC once a new thread has been
+ *       launched so-as to setup exception handlers properly.
+ *     - Windows SEH exception handling cannot be used as doing so
+ *       would interfere with the exception handlers set up to
+ *       capture and process exception codes used for synchronizing
+ *       the DRT execution environment with DCC's section data.
+ *       NOTE: The same goes for unit signal hooks.
+ *       (TODO: DRT is lacking hooks for unix signals...)
+ *     - With changes to assembly, code will not be identical to
+ *       that produced when DRT is disabled ('-d' is not passed on
+ *       the commandline), as well as the inability to output DRT
+ *       code, as well as generate an ELF/PE executable.
  */
 
 
@@ -162,8 +494,8 @@ typedef sem_t     DCC(semaphore_t);
 #define DRT_EVENT_FETCHSOME 0x00000002 /*< Similar to 'DRT_EVENT_FETCH', but it's ok if only ~something~ could be fetched. */
 
 struct DRTUserEvent {
- DCC(semaphore_t)   ue_sem;      /*< Semaphore that the user-thread may wait for when  */
- /*atomic*/uint32_t ue_code;     /*< Event code (One of 'DRT_EVENT_*'). */
+ DCC(semaphore_t)   ue_sem;  /*< Semaphore that the user-thread may wait for when  */
+ /*atomic*/uint32_t ue_code; /*< Event code (One of 'DRT_EVENT_*'). */
  union{
   struct { /* DRT_EVENT_FETCH|DRT_EVENT_FETCHSOME */
    void  *f_addr;   /*< [in] Start of memory to fetch. */

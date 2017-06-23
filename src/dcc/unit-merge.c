@@ -68,8 +68,8 @@ validate_sym(struct DCCSym *__restrict sym) {
 found_sec:
   if (!DCCSection_ISIMPORT(sym->sy_sec)) {
    DCCSection_TBEGIN(sym->sy_sec);
-   sec_size = (target_siz_t)(sym->sy_sec->sc_text.tb_max-
-                             sym->sy_sec->sc_text.tb_begin);
+   sec_size = (target_siz_t)(sym->sy_sec->sc_dat.sd_text.tb_max-
+                             sym->sy_sec->sc_dat.sd_text.tb_begin);
    DCCSection_TEND(sym->sy_sec);
    assert(DCCSym_ISSECTION(sym) ||
           sym->sy_addr+sym->sy_size >= sym->sy_addr);
@@ -95,7 +95,7 @@ PRIVATE void DCCSection_InsAlloc(struct DCCSection *__restrict self,
                                  target_ptr_t ins_base) {
  struct DCCAllocRange *iter,*next,**pinsert;
  if unlikely(!range) return; /* nothing to inherit! */
- pinsert = &self->sc_alloc;
+ pinsert = &self->sc_dat.sd_alloc;
  while ((iter = *pinsert) != NULL &&
          iter->ar_addr+iter->ar_size <= ins_base)
          pinsert = &iter->ar_next;
@@ -107,10 +107,10 @@ PRIVATE void DCCSection_InsAlloc(struct DCCSection *__restrict self,
         iter->ar_addr += ins_base;
   }
   *pinsert = range; /* Inherit _all_ */
-  if (pinsert != &self->sc_alloc) {
+  if (pinsert != &self->sc_dat.sd_alloc) {
    /* Check if we must merge the last range of 'self' with 'range'. */
    iter = (struct DCCAllocRange *)((uintptr_t)pinsert-
-                                   offsetof(struct DCCAllocRange,ar_next));
+                                    DCC_COMPILER_OFFSETOF(struct DCCAllocRange,ar_next));
    if (iter->ar_refcnt == range->ar_refcnt &&
        iter->ar_addr+iter->ar_size == range->ar_addr) {
     /* Extend the last range of 'self' and delete the first from 'range'. */
@@ -210,30 +210,30 @@ DCCUnit_Merge(struct DCCUnit *__restrict other, uint32_t flags) {
     dst_buffer = (uint8_t *)DCCSection_GetText(dstsec,other_sec_base,other_sec_size);
     if unlikely(!dst_buffer) goto end;
     /* Append raw section memory to the end. */
-    memcpy(dst_buffer,srcsec->sc_text.tb_begin,other_sec_size);
+    memcpy(dst_buffer,srcsec->sc_dat.sd_text.tb_begin,other_sec_size);
    }
-   dstsec->sc_merge = other_sec_base;
+   dstsec->sc_dat.sd_merge = other_sec_base;
    /* Inherit all allocated data ranges. */
-   DCCSection_InsAlloc(dstsec,srcsec->sc_alloc,other_sec_base);
-   srcsec->sc_alloc = NULL;
+   DCCSection_InsAlloc(dstsec,srcsec->sc_dat.sd_alloc,other_sec_base);
+   srcsec->sc_dat.sd_alloc = NULL;
    /* Inherit all free data ranges. */
-   if (srcsec->sc_free.fd_begin) {
+   if (srcsec->sc_dat.sd_free.fd_begin) {
     struct DCCFreeRange **pinsert,*ins,*iter,*before_ins;
     /* Update all source free address ranges. */
-    iter = srcsec->sc_free.fd_begin;
+    iter = srcsec->sc_dat.sd_free.fd_begin;
     do iter->fr_addr += other_sec_base;
     while ((iter = iter->fr_next) != NULL);
 
-    pinsert = &dstsec->sc_free.fd_begin;
+    pinsert = &dstsec->sc_dat.sd_free.fd_begin;
     while ((ins = *pinsert) != NULL &&
             ins->fr_addr < other_sec_base)
             pinsert = &ins->fr_next;
     /* Insert all source free ranges into '*pinsert' */
-    *pinsert = iter = srcsec->sc_free.fd_begin;
-    if (pinsert != &dstsec->sc_free.fd_begin) {
+    *pinsert = iter = srcsec->sc_dat.sd_free.fd_begin;
+    if (pinsert != &dstsec->sc_dat.sd_free.fd_begin) {
      /* Must check to see if we must merge this free range with the previous one! */
      before_ins = (struct DCCFreeRange *)((uintptr_t)pinsert-
-                                          offsetof(struct DCCFreeRange,fr_next));
+                                           DCC_COMPILER_OFFSETOF(struct DCCFreeRange,fr_next));
      if (before_ins->fr_addr+before_ins->fr_size == iter->fr_addr) {
       /* Must merge the first range of the new section with the last of the old. */
       before_ins->fr_size += iter->fr_size;
@@ -242,7 +242,7 @@ DCCUnit_Merge(struct DCCUnit *__restrict other, uint32_t flags) {
       iter = before_ins->fr_next;
      }
     }
-    srcsec->sc_free.fd_begin = NULL;
+    srcsec->sc_dat.sd_free.fd_begin = NULL;
     if (ins) {
      /* Must append this portion to the end. */
      while (iter->fr_next) iter = iter->fr_next;
@@ -264,20 +264,20 @@ DCCUnit_Merge(struct DCCUnit *__restrict other, uint32_t flags) {
  /* Merge debug informations. */
  if (linker.l_flags&DCC_LINKER_FLAG_GENDEBUG) {
   target_ptr_t string_merge;
-  if (unit.u_dbgstr) string_merge = unit.u_dbgstr->sc_merge;
+  if (unit.u_dbgstr) string_merge = unit.u_dbgstr->sc_dat.sd_merge;
   else {
    struct DCCSection *debug_string;
    debug_string = DCCUnit_GetSecs(A2L_STRING_SECTION);
-   string_merge = debug_string ? debug_string->sc_merge : 0;
+   string_merge = debug_string ? debug_string->sc_dat.sd_merge : 0;
   }
   for (srcsec = other->u_secs; srcsec; srcsec = srcsec->sc_next) {
    struct DCCSection *dstsec;
-   if (!srcsec->sc_a2l.d_chunkc) continue;
+   if (!srcsec->sc_dat.sd_a2l.d_chunkc) continue;
    dstsec = DCCUnit_GetSec(srcsec->sc_start.sy_name);
    if (dstsec) {
     /* Merge debug informations. */
-    DCCA2l_RelocString(&srcsec->sc_a2l,string_merge);
-    DCCA2l_Merge(&dstsec->sc_a2l,&srcsec->sc_a2l,dstsec->sc_merge);
+    DCCA2l_RelocString(&srcsec->sc_dat.sd_a2l,string_merge);
+    DCCA2l_Merge(&dstsec->sc_dat.sd_a2l,&srcsec->sc_dat.sd_a2l,dstsec->sc_dat.sd_merge);
    }
   }
  }
@@ -388,7 +388,7 @@ DCCUnit_Merge(struct DCCUnit *__restrict other, uint32_t flags) {
 #endif
     if (!DCCSection_ISIMPORT(new_section)) {
      /* Adjust the symbol address accordingly. */
-     src_sym->sy_addr += new_section->sc_merge;
+     src_sym->sy_addr += new_section->sc_dat.sd_merge;
     }
     src_sym->sy_sec = new_section; /* Inherit reference. */
     /* Insert the symbol into its new section. */
@@ -627,7 +627,7 @@ dont_redef:
   struct DCCSection *dstsec;
   uint8_t *relbase;
   target_ptr_t merge_base;
-  if (!srcsec->sc_relc) continue;
+  if (!srcsec->sc_dat.sd_relc) continue;
   //assertf(!srcsec->sc_symc,"Section '%s' still contains symbols after all were inherited",
   //         srcsec->sc_start.sy_name->k_name);
   dstsec = DCCUnit_GetSec(srcsec->sc_start.sy_name);
@@ -637,14 +637,14 @@ dont_redef:
    WARN(W_LINKER_CANT_RELOC_LIB_SECTION,dstsec->sc_start.sy_name);
    continue;
   }
-  merge_base = dstsec->sc_merge;
-  rel_end = (rel_iter = rel_vec = srcsec->sc_relv)+srcsec->sc_relc;
-  reldst = DCCSection_Allocrel(dstsec,srcsec->sc_relc,merge_base);
-  srcsec->sc_rela = 0;  /* Ensure consistent state. */
-  srcsec->sc_relc = 0;
-  srcsec->sc_relv = NULL;
+  merge_base = dstsec->sc_dat.sd_merge;
+  rel_end = (rel_iter = rel_vec = srcsec->sc_dat.sd_relv)+srcsec->sc_dat.sd_relc;
+  reldst = DCCSection_Allocrel(dstsec,srcsec->sc_dat.sd_relc,merge_base);
+  srcsec->sc_dat.sd_rela = 0;  /* Ensure consistent state. */
+  srcsec->sc_dat.sd_relc = 0;
+  srcsec->sc_dat.sd_relv = NULL;
 
-  relbase = dstsec->sc_text.tb_begin;
+  relbase = dstsec->sc_dat.sd_text.tb_begin;
   if likely(reldst) for (; rel_iter != rel_end; ++rel_iter,++reldst) {
    uint8_t *reldata; struct DCCSym *relsym;
    relsym = rel_iter->r_sym;
@@ -667,8 +667,8 @@ dont_redef:
    reldst->r_addr += merge_base; /* Adjust for merge offset. */
    reldata = relbase+reldst->r_addr;
    assert(reldata >= relbase);
-   assert(reldata <  relbase+(dstsec->sc_text.tb_end-
-                              dstsec->sc_text.tb_begin));
+   assert(reldata <  relbase+(dstsec->sc_dat.sd_text.tb_end-
+                              dstsec->sc_dat.sd_text.tb_begin));
    /* Adjust disposition relocations (Must subtract 'merge_base'). */
    switch (reldst->r_type) {
 #if DCC_TARGET_HASM(M_I386)

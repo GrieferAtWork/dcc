@@ -42,7 +42,6 @@ DRT_U_W32ExceptionHandler(EXCEPTION_RECORD *ExceptionRecord, PVOID EstablisherFr
  (void)DispatcherContext;
  if (ExceptionRecord && ContextRecord) {
   DWORD code = ExceptionRecord->ExceptionCode;
-  0xC0000096;
   target_ptr_t eip_end,eip = (target_ptr_t)ContextRecord->Eip;
   if (code == EXCEPTION_ACCESS_VIOLATION) {
    target_ptr_t access_addr = ExceptionRecord->ExceptionInformation[1];

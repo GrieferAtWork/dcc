@@ -637,10 +637,10 @@ stringwriter_write(struct stringwriter *__restrict self,
   assert(new_alloc);
   while (self->sw_strc+len > new_alloc) new_alloc *= 2;
   new_str = (struct TPPString *)realloc(self->sw_strv,
-                                        offsetof(struct TPPString,s_text)+
+                                        DCC_COMPILER_OFFSETOF(struct TPPString,s_text)+
                                        (new_alloc+1)*sizeof(char));
   if unlikely(!new_str) {
-   DCC_AllocFailed(offsetof(struct TPPString,s_text)+
+   DCC_AllocFailed(DCC_COMPILER_OFFSETOF(struct TPPString,s_text)+
                   (new_alloc+1)*sizeof(char));
    return;
   }
@@ -707,7 +707,7 @@ return_empty:
   return TPPFile_Empty.f_text;
  }
  /* Allocate an initial buffer. */
- writer.sw_strv = (struct TPPString *)malloc(offsetof(struct TPPString,s_text)+
+ writer.sw_strv = (struct TPPString *)malloc(DCC_COMPILER_OFFSETOF(struct TPPString,s_text)+
                                             (writer.sw_stra+1)*sizeof(char));
  end = (flush_start = iter = str->s_text)+str->s_size;
  assert(iter != end);
@@ -914,7 +914,7 @@ done:
   struct TPPString *new_str;
   if unlikely(!writer.sw_strc) { free(writer.sw_strv); goto return_empty; }
   new_str = (struct TPPString *)realloc(writer.sw_strv,
-                                        offsetof(struct TPPString,s_text)+
+                                        DCC_COMPILER_OFFSETOF(struct TPPString,s_text)+
                                        (writer.sw_strc+1)*sizeof(char));
   if (new_str) writer.sw_strv = new_str;
  }

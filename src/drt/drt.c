@@ -31,7 +31,7 @@
 #include "drt.h"
 
 #if DCC_HOST_OS == DCC_OS_WINDOWS
-#   include <Windows.h>
+#   include <dcc_winmin.h>
 #else
 #   include <sys/mman.h>
 #endif
@@ -208,21 +208,21 @@ void DRT_SetCPUState(struct DCPUState const *__restrict state) {
 #endif
 
 PUBLIC void DCCSection_RTInit(struct DCCSection *__restrict self) {
- self->sc_rt.rs_vaddr = drt.rt_nextaddr;
- self->sc_rt.rs_allocpagea = 0;
- self->sc_rt.rs_allocpagev = NULL;
+ self->sc_dat.sd_rt.rs_vaddr = drt.rt_nextaddr;
+ self->sc_dat.sd_rt.rs_allocpagea = 0;
+ self->sc_dat.sd_rt.rs_allocpagev = NULL;
  if (!DRT_ENABLED()) return;
  drt.rt_nextaddr += drt.rt_maxsection;
 }
 PUBLIC void DCCSection_RTQuit(struct DCCSection *__restrict self) {
  void DRT_USER *addr; size_t size;
  /* Free all allocated virtual memory. */
- DCCRTSECTION_FOREACH_BEGIN(&self->sc_rt,addr,size) {
+ DCCRTSECTION_FOREACH_BEGIN(&self->sc_dat.sd_rt,addr,size) {
   DRT_VFree(addr,size);
  }
  DCCRTSECTION_FOREACH_END;
- free(self->sc_rt.rs_allocpagev);
- DCCFreeData_Quit(&self->sc_rt.rs_mirror);
+ free(self->sc_dat.sd_rt.rs_allocpagev);
+ DCCFreeData_Quit(&self->sc_dat.sd_rt.rs_mirror);
 }
 
 PUBLIC void DRT_USER *
@@ -237,9 +237,9 @@ DCCSection_RTAlloc(struct DCCSection *__restrict self,
  assert(!DCCSection_ISCURR(self) ||
        (compiler.c_flags&DCC_COMPILER_FLAG_TEXTFLUSH));
  assert(addr+size >= addr);
- assert(addr+size <= (size_t)(self->sc_text.tb_max-
-                              self->sc_text.tb_begin));
- result = self->sc_rt.rs_vaddr+addr;
+ assert(addr+size <= (size_t)(self->sc_dat.sd_text.tb_max-
+                              self->sc_dat.sd_text.tb_begin));
+ result = self->sc_dat.sd_rt.rs_vaddr+addr;
  if unlikely(!size) return result; /* Handle special case: empty range. */
  page_min = (addr)/DCC_TARGET_PAGESIZE;
  page_max = (addr+size)/DCC_TARGET_PAGESIZE;
@@ -257,31 +257,31 @@ DCCSection_RTAlloc(struct DCCSection *__restrict self,
  }
 
  /* Make sure the page allocation tracker has sufficient length. */
- if (page_max >= self->sc_rt.rs_allocpagea) {
+ if (page_max >= self->sc_dat.sd_rt.rs_allocpagea) {
   uint8_t *new_allocv; size_t newsize;
-  newsize = self->sc_rt.rs_allocpagea;
+  newsize = self->sc_dat.sd_rt.rs_allocpagea;
   if unlikely(!newsize) newsize = 1;
   do newsize *= 2; while (page_max >= newsize);
-  new_allocv = (uint8_t *)realloc(self->sc_rt.rs_allocpagev,
+  new_allocv = (uint8_t *)realloc(self->sc_dat.sd_rt.rs_allocpagev,
                                   newsize*sizeof(uint8_t));
   if unlikely(!new_allocv) { DCC_AllocFailed(newsize*sizeof(uint8_t)); goto err; }
-  memset(new_allocv+self->sc_rt.rs_allocpagea,0,
-        (newsize-self->sc_rt.rs_allocpagea)*sizeof(uint8_t));
-  self->sc_rt.rs_allocpagea = newsize;
-  self->sc_rt.rs_allocpagev = new_allocv;
+  memset(new_allocv+self->sc_dat.sd_rt.rs_allocpagea,0,
+        (newsize-self->sc_dat.sd_rt.rs_allocpagea)*sizeof(uint8_t));
+  self->sc_dat.sd_rt.rs_allocpagea = newsize;
+  self->sc_dat.sd_rt.rs_allocpagev = new_allocv;
  }
  /* Allocate all pages  */
  for (i = page_min; i <= page_max; ++i) {
-  if (!DCCRTSection_ISALLOCATED_(&self->sc_rt,i)) {
+  if (!DCCRTSection_ISALLOCATED_(&self->sc_dat.sd_rt,i)) {
    size_t alloc_begin = i,alloc_end = i;
    symflag_t flags; void *base_address;
    size_t alloc_size;
    do ++alloc_end;
    while (alloc_end <= page_max &&
-         !DCCRTSection_ISALLOCATED_(&self->sc_rt,alloc_end));
+         !DCCRTSection_ISALLOCATED_(&self->sc_dat.sd_rt,alloc_end));
    flags = self->sc_start.sy_flags;
    if (for_write) flags |= DCC_SYMFLAG_SEC_W;
-   base_address = (void *)DCCRTSection_PAGEADDR(&self->sc_rt,alloc_begin);
+   base_address = (void *)DCCRTSection_PAGEADDR(&self->sc_dat.sd_rt,alloc_begin);
    alloc_size   = (size_t)(alloc_end-alloc_begin)*DCC_TARGET_PAGESIZE;
    if (DRT_VMall(base_address,alloc_size,flags) == DRT_VERROR) {
     WARN(W_DRT_VMALL_FAILED_ALLOC,
@@ -295,7 +295,7 @@ DCCSection_RTAlloc(struct DCCSection *__restrict self,
    if (flags&DCC_SYMFLAG_SEC_W)
        memset(base_address,DRT_U_FILLER,alloc_size);
    /* Mark all pages as allocated. */
-   do DCCRTSection_SETALLOCATED_(&self->sc_rt,alloc_begin);
+   do DCCRTSection_SETALLOCATED_(&self->sc_dat.sd_rt,alloc_begin);
    while (++alloc_begin != alloc_end);
   } else {
    has_existing_pages = 1;
@@ -325,23 +325,23 @@ DCCSection_RTDoneWrite(struct DCCSection *__restrict self,
  assert(!DCCSection_ISCURR(self) ||
        (compiler.c_flags&DCC_COMPILER_FLAG_TEXTFLUSH));
  assert(addr+size >= addr);
- assert(addr+size <= (size_t)(self->sc_text.tb_max-
-                              self->sc_text.tb_begin));
+ assert(addr+size <= (size_t)(self->sc_dat.sd_text.tb_max-
+                              self->sc_dat.sd_text.tb_begin));
  /* Nothing to do if the section is naturally writable. */
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_W) return;
- if (DRT_VProt(DCCRTSection_ADDR(&self->sc_rt,addr),size,
+ if (DRT_VProt(DCCRTSection_ADDR(&self->sc_dat.sd_rt,addr),size,
                self->sc_start.sy_flags) == DRT_VERROR) {
   WARN(W_DRT_VPROT_FAILED_READONLY,
        self->sc_start.sy_name->k_name,
-      (void *)DCCRTSection_ADDR(&self->sc_rt,addr),
-      (void *)(DCCRTSection_ADDR(&self->sc_rt,addr)+(size-1)),
+      (void *)DCCRTSection_ADDR(&self->sc_dat.sd_rt,addr),
+      (void *)(DCCRTSection_ADDR(&self->sc_dat.sd_rt,addr)+(size-1)),
       (int)GetLastError());
  }
 #if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_X) {
   /* Flush the instruction cache after writing to an executable section. */
   FlushInstructionCache(GetCurrentProcess(),
-                        DCCRTSection_ADDR(&self->sc_rt,addr),
+                        DCCRTSection_ADDR(&self->sc_dat.sd_rt,addr),
                         size);
  }
 #endif /* OS_F_WINDOWS */

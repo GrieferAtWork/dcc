@@ -240,7 +240,8 @@ DCCFreeData_Release(struct DCCFreeData *__restrict self,
    iter->fr_addr -= size;
    if (piter != &self->fd_begin) {
     /* Check for merge below. */
-    newslot = (struct DCCFreeRange *)((uintptr_t)piter-offsetof(struct DCCFreeRange,fr_next));
+    newslot = (struct DCCFreeRange *)((uintptr_t)piter-
+                                      DCC_COMPILER_OFFSETOF(struct DCCFreeRange,fr_next));
     assert(newslot->fr_next == iter);
     assert(iter->fr_addr >= newslot->fr_addr+newslot->fr_size);
     if (iter->fr_addr == newslot->fr_addr+newslot->fr_size) {
@@ -253,7 +254,8 @@ DCCFreeData_Release(struct DCCFreeData *__restrict self,
   }
   /* Insert a new range before the current. */
   if (piter != &self->fd_begin) {
-   newslot = (struct DCCFreeRange *)((uintptr_t)piter-offsetof(struct DCCFreeRange,fr_next));
+   newslot = (struct DCCFreeRange *)((uintptr_t)piter-
+                                     DCC_COMPILER_OFFSETOF(struct DCCFreeRange,fr_next));
    assert(newslot->fr_size);
    assert(addr >= newslot->fr_addr+newslot->fr_size);
    if (newslot->fr_addr+newslot->fr_size == addr) {
@@ -281,7 +283,8 @@ next:
  /* Append at the end. */
  assert(!*piter);
  if (piter != &self->fd_begin) {
-  newslot = (struct DCCFreeRange *)((uintptr_t)piter-offsetof(struct DCCFreeRange,fr_next));
+  newslot = (struct DCCFreeRange *)((uintptr_t)piter-
+                                    DCC_COMPILER_OFFSETOF(struct DCCFreeRange,fr_next));
   /* Special case: Extend the last range. */
   if (newslot->fr_addr+newslot->fr_size == addr) {
    newslot->fr_size += size;

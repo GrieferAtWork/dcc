@@ -995,7 +995,8 @@ DCCType_ToTPPString(struct DCCType const *__restrict self,
  if likely(result) for (;;) {
   reqsize = DCCType_ToString(result->s_text,++bufsize,self,name);
   if (reqsize != bufsize) {
-   newresult = (struct TPPString *)realloc(result,offsetof(struct TPPString,s_text)+
+   newresult = (struct TPPString *)realloc(result,
+                                           DCC_COMPILER_OFFSETOF(struct TPPString,s_text)+
                                            reqsize*sizeof(char));
    if (newresult) result = newresult;
    else if (reqsize > bufsize) {
@@ -1005,7 +1006,8 @@ DCCType_ToTPPString(struct DCCType const *__restrict self,
   }
   if (reqsize <= bufsize) {
    if (reqsize != bufsize) {
-    newresult = (struct TPPString *)realloc(result,offsetof(struct TPPString,s_text)+
+    newresult = (struct TPPString *)realloc(result,
+                                            DCC_COMPILER_OFFSETOF(struct TPPString,s_text)+
                                             reqsize*sizeof(char));
     if (newresult) result = newresult;
    }

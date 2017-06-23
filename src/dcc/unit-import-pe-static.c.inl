@@ -104,7 +104,7 @@ PRIVATE int load_pe_sections(PIMAGE_SECTION_HEADER secv,
   /* Fill everything that shouldn't be read with ZEROes (shouldn't happen...) */
   memset(sec_data+readsiz,0,iter->SizeOfRawData-readsiz);
   /* NOTE: 'sc_base' will (hopefully) be fixed during relocations. */
-  section->sc_merge = iter->VirtualAddress;
+  section->sc_dat.sd_merge = iter->VirtualAddress;
   DCCSection_SETBASE(section,iter->VirtualAddress);
  }
  return 1;
@@ -117,15 +117,15 @@ PRIVATE void *get_vaddr(target_ptr_t rva, size_t minsize, size_t *maxsize) {
  size_t sec_size;
  void *result;
  DCCUnit_ENUMSEC(sec) {
-  if (rva < sec->sc_merge) continue;
-  sec_offset = rva-sec->sc_merge;
+  if (rva < sec->sc_dat.sd_merge) continue;
+  sec_offset = rva-sec->sc_dat.sd_merge;
   sec_size   = DCCSection_VSIZE(sec);
   if (sec_offset < sec_size) {
    /* Found the associated section! */
    if (sec_offset+minsize > sec_size) result = NULL;
    else result = DCCSection_GetText(sec,sec_offset,minsize);
    if (maxsize) {
-    *maxsize = result ? (size_t)(sec->sc_text.tb_end-
+    *maxsize = result ? (size_t)(sec->sc_dat.sd_text.tb_end-
                                 (uint8_t *)result)
                       : (size_t)0;
    }
@@ -171,7 +171,7 @@ DCCUnit_StaLoadPE(struct DCCLibDef *__restrict def,
   goto end;
  }
  if (HAS_FIELD(fhdr.SizeOfOptionalHeader)) {
-  size_t newsize = offsetof(NT_HEADER,ohdr)+
+  size_t newsize = DCC_COMPILER_OFFSETOF(NT_HEADER,ohdr)+
                    hdr.fhdr.SizeOfOptionalHeader;
   if (newsize < hdr_size) hdr_size = newsize;
  }
@@ -383,9 +383,6 @@ next_block:
    * delete the section base addresses! */
   { struct DCCSection *sec;
     DCCUnit_ENUMSEC(sec) {
-#ifdef DCC_SYMFLAG_SEC_OWNSBASE
-     assert(!(sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE));
-#endif
      DCCSection_SETBASE(sec,0);
      sec->sc_start.sy_flags &= ~(DCC_SYMFLAG_SEC_FIXED);
     }

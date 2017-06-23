@@ -1736,6 +1736,13 @@ DEF_WARNING(W_DRT_SECTION_TOO_LARGE,(WG_COMPILER_DRIVER),WSTATE_WARN,{ char *n =
 DEF_WARNING(W_DRT_VMALL_FAILED_ALLOC,(WG_COMPILER_DRIVER),WSTATE_ERROR,{ char *n = ARG(char *); void *a = ARG(void *); void *b = ARG(void *); WARNF("Failed to allocate section " Q("%s") " virtual memory %p...%p (error %#x)",n,a,b,ARG(int)); })
 DEF_WARNING(W_DRT_VPROT_FAILED_WRITABLE,(WG_COMPILER_DRIVER),WSTATE_ERROR,{ char *n = ARG(char *); void *a = ARG(void *); void *b = ARG(void *); WARNF("Failed to make section " Q("%s") " virtual memory %p...%p writable (error %#x)",n,a,b,ARG(int)); })
 DEF_WARNING(W_DRT_VPROT_FAILED_READONLY,(WG_COMPILER_DRIVER),WSTATE_WARN,{ char *n = ARG(char *); void *a = ARG(void *); void *b = ARG(void *); WARNF("Failed to make section " Q("%s") " virtual memory %p...%p readonly (error %#x)",n,a,b,ARG(int)); })
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
+DEF_WARNING(W_DRT_DLOPEN_FAILED,(WG_COMPILER_DRIVER,WG_ENVIRON),WSTATE_WARN,WARNF("Failed to load dynamic library " Q("%s") " (error %#x)",ARG(char *),GetLastError()))
+#elif !!(DCC_HOST_OS&DCC_OS_F_UNIX) || __has_include(<dlfcn.h>)
+DEF_WARNING(W_DRT_DLOPEN_FAILED,(WG_COMPILER_DRIVER,WG_ENVIRON),WSTATE_WARN,WARNF("Failed to load dynamic library " Q("%s") " (error " Q("%s") ")",ARG(char *),dlerror()))
+#else
+DEF_WARNING(W_DRT_DLOPEN_FAILED,(WG_COMPILER_DRIVER,WG_ENVIRON),WSTATE_WARN,WARNF("Failed to load dynamic library " Q("%s"),ARG(char *)))
+#endif
 #endif /* DCC_CONFIG_HAVE_DRT */
 
 

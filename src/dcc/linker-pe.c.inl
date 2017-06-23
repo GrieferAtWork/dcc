@@ -231,7 +231,7 @@ secty_of(struct DCCSection const *__restrict section) {
   if (CHECK_NAME(".iedat")) return SECTY_IDATA;
   if (CHECK_NAME(".pdata")) return SECTY_PDATA;
   if ((section->sc_start.sy_flags&DCC_SYMFLAG_SEC_W)/* &&
-      (section->sc_text.tb_begin == section->sc_text.tb_end)*/)
+      (section->sc_dat.sd_text.tb_begin == section->sc_dat.sd_text.tb_end)*/)
        return SECTY_BSS;
   return (section->sc_start.sy_flags&DCC_SYMFLAG_SEC_R) ? SECTY_DATA : SECTY_OTHER;
  } else if (!(section->sc_start.sy_flags&DCC_SYMFLAG_SEC_ISIMPORT)) {
@@ -280,8 +280,8 @@ pe_mk_reldat(struct DCCSection *__restrict relocs) {
    --iter;
   } else if (siter != send) {
    if (siter->si_sec) {
-    end = (iter = siter->si_sec->sc_relv)+
-                  siter->si_sec->sc_relc;
+    end = (iter = siter->si_sec->sc_dat.sd_relv)+
+                  siter->si_sec->sc_dat.sd_relc;
    }
    ++siter;
    continue;
@@ -355,7 +355,7 @@ pe_mk_imptab(struct DCCSection *__restrict thunk) {
                                          sy_name->k_size*sizeof(char));
     if (p) pe_toupper(p,lib->sc_start.sy_name->k_size);
   }
-  hdr      = (PIMAGE_IMPORT_DESCRIPTOR)(thunk->sc_text.tb_begin+dll_ptr);
+  hdr      = (PIMAGE_IMPORT_DESCRIPTOR)(thunk->sc_dat.sd_text.tb_begin+dll_ptr);
   dll_ptr += sizeof(IMAGE_IMPORT_DESCRIPTOR);
   hdr->FirstThunk         = thunk_ptr+thunk_base;
   hdr->OriginalFirstThunk = entry_ptr+thunk_base;
@@ -405,8 +405,8 @@ pe_mk_imptab(struct DCCSection *__restrict thunk) {
        DCCSym_Define(sym,thunk,thunk_ptr,0,1);
       }
       entry_addr += thunk_base; /* Patch the entry address. */
-      *(target_ptr_t *)(thunk->sc_text.tb_begin+thunk_ptr) =
-      *(target_ptr_t *)(thunk->sc_text.tb_begin+entry_ptr) = entry_addr;
+      *(target_ptr_t *)(thunk->sc_dat.sd_text.tb_begin+thunk_ptr) =
+      *(target_ptr_t *)(thunk->sc_dat.sd_text.tb_begin+entry_ptr) = entry_addr;
       thunk_ptr += DCC_TARGET_SIZEOF_POINTER;
       entry_ptr += DCC_TARGET_SIZEOF_POINTER;
 
@@ -416,13 +416,13 @@ pe_mk_imptab(struct DCCSection *__restrict thunk) {
     assert(!lib->sc_symc);
   }
   /* Trailing ZERO-entry. */
-  *(target_ptr_t *)(thunk->sc_text.tb_begin+thunk_ptr) =
-  *(target_ptr_t *)(thunk->sc_text.tb_begin+entry_ptr) = 0;
+  *(target_ptr_t *)(thunk->sc_dat.sd_text.tb_begin+thunk_ptr) =
+  *(target_ptr_t *)(thunk->sc_dat.sd_text.tb_begin+entry_ptr) = 0;
   thunk_ptr += DCC_TARGET_SIZEOF_POINTER;
   entry_ptr += DCC_TARGET_SIZEOF_POINTER;
  }
  /* Trailing ZERO-entry. */
- hdr = (IMAGE_IMPORT_DESCRIPTOR*)(thunk->sc_text.tb_begin+dll_ptr);
+ hdr = (IMAGE_IMPORT_DESCRIPTOR*)(thunk->sc_dat.sd_text.tb_begin+dll_ptr);
  hdr->FirstThunk         = 0;
  hdr->OriginalFirstThunk = 0;
  hdr->Name               = 0;
@@ -645,7 +645,7 @@ pe_mk_exptab(struct DCCSection *__restrict thunk) {
      * ALSO: This way, all the exported symbols will have an incremented
      *       reference count, indicating that they are actually used.
      * ALSO#2: This way, we can safely (and implicitly) export aliased symbols. */
-    *(DWORD *)(thunk->sc_text.tb_begin+func_addr) = 0;
+    *(DWORD *)(thunk->sc_dat.sd_text.tb_begin+func_addr) = 0;
     DCCSection_Putrel(thunk,func_addr,DCC_R_RELATIVE,*iter);
     func_addr += sizeof(DWORD);
     /* Allocate and store memory for the function name. */
@@ -653,10 +653,10 @@ pe_mk_exptab(struct DCCSection *__restrict thunk) {
                                               (sym_name->k_size+0)*sizeof(char),
                                               (sym_name->k_size+1)*sizeof(char),
                                                1,0);
-    *(DWORD *)(thunk->sc_text.tb_begin+name_addr) = name_address+thunk_base;
+    *(DWORD *)(thunk->sc_dat.sd_text.tb_begin+name_addr) = name_address+thunk_base;
     name_addr += sizeof(DWORD);
     /* Fill in ordinal information. */
-    *(WORD *)(thunk->sc_text.tb_begin+ord_addr) = ord++;
+    *(WORD *)(thunk->sc_dat.sd_text.tb_begin+ord_addr) = ord++;
     ord_addr += sizeof(WORD);
    }
  }
@@ -666,7 +666,7 @@ pe_mk_exptab(struct DCCSection *__restrict thunk) {
   *       But that can easily be prevented by explicitly allocating a '.thunk' section,
   *       or by simply not marking it as mergeable (which it shouldn't be to begin with) */
  pe.pe_exp_addr  = expdir_addr;
- pe.pe_exp_size  = (DWORD)(thunk->sc_text.tb_max-thunk->sc_text.tb_begin);
+ pe.pe_exp_size  = (DWORD)(thunk->sc_dat.sd_text.tb_max-thunk->sc_dat.sd_text.tb_begin);
  pe.pe_exp_size -= expdir_addr;
 end:;
 }
@@ -750,15 +750,15 @@ PRIVATE void pe_mk_secvec(void) {
    if (pe.pe_reloc == section) pe_mk_reldat(section);
 
    /* Figure out the virtual and physical section size. */
-   info->si_data = section->sc_text.tb_begin;
+   info->si_data = section->sc_dat.sd_text.tb_begin;
    {
-    uint8_t *effective_end = section->sc_text.tb_end;
-    if (effective_end > section->sc_text.tb_max)
-        effective_end = section->sc_text.tb_max;
+    uint8_t *effective_end = section->sc_dat.sd_text.tb_end;
+    if (effective_end > section->sc_dat.sd_text.tb_max)
+        effective_end = section->sc_dat.sd_text.tb_max;
     info->si_msize = (size_t)(effective_end-
-                              section->sc_text.tb_begin);
-    info->si_vsize = (target_siz_t)(section->sc_text.tb_max-
-                                    section->sc_text.tb_begin);
+                              section->sc_dat.sd_text.tb_begin);
+    info->si_vsize = (target_siz_t)(section->sc_dat.sd_text.tb_max-
+                                    section->sc_dat.sd_text.tb_begin);
    }
    if (info->si_vsize) {
 #if 0
@@ -791,7 +791,7 @@ pe_mk_relrva(struct secinfo *__restrict info) {
  size = info->si_msize;
  if (size < DCC_TARGET_SIZEOF_POINTER) return;
  size -= DCC_TARGET_SIZEOF_POINTER;
- end = (iter = sec->sc_relv)+sec->sc_relc;
+ end = (iter = sec->sc_dat.sd_relv)+sec->sc_dat.sd_relc;
  data_end = data+size;
  for (; iter != end; ++iter) {
   if (iter->r_type == DCC_R_RELATIVE) {

@@ -194,6 +194,9 @@
     <ClInclude Include="..\src\drt\drt.h">
       <Filter>src\drt</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\dcc\dl.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\dcc\lexer-attributes.c.inl">

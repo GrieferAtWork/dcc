@@ -649,13 +649,10 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
     sec = DCCUnit_NewSecs(name,secflags);
     if unlikely(!sec) goto sec_unused;
     if (!(secflags&DCC_SYMFLAG_SEC_ISIMPORT)) {
-     if (sec->sc_text.tb_begin != sec->sc_text.tb_end)
+     if (sec->sc_dat.sd_text.tb_begin != sec->sc_dat.sd_text.tb_end)
          WARN(W_LIB_ELF_STATIC_SECNAME_REUSED,file,name);
-#ifdef DCC_SYMFLAG_SEC_OWNSBASE
-     assert(!(sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE));
-#endif
-     free(sec->sc_text.tb_begin);
-     elf_loadsection(iter,&sec->sc_text,fd,start);
+     free(sec->sc_dat.sd_text.tb_begin);
+     elf_loadsection(iter,&sec->sc_dat.sd_text,fd,start);
      sec->sc_start.sy_align = iter->sh_addralign;
      DCCSection_SETBASE(sec,iter->sh_addr);
     }
@@ -891,8 +888,8 @@ done_symvec:
      if unlikely(DCCSection_ISIMPORT(debug_sec)) continue; /* TODO: Warning: A2L information for import section. */
      elf_loadsection(iter,&a2l_text,fd,start);
      if (a2l_text.tb_max != a2l_text.tb_begin) {
-      if likely(!debug_sec->sc_a2l.d_chunkc) {
-       DCCA2l_Import(&debug_sec->sc_a2l,
+      if likely(!debug_sec->sc_dat.sd_a2l.d_chunkc) {
+       DCCA2l_Import(&debug_sec->sc_dat.sd_a2l,
                     (a2l_op_t *)a2l_text.tb_begin,
                     (size_t)(a2l_text.tb_max-a2l_text.tb_begin));
       } else {
@@ -904,7 +901,7 @@ done_symvec:
        DCCA2l_Import(&temp,
                     (a2l_op_t *)a2l_text.tb_begin,
                     (size_t)(a2l_text.tb_max-a2l_text.tb_begin));
-       DCCA2l_Merge(&debug_sec->sc_a2l,&temp,0);
+       DCCA2l_Merge(&debug_sec->sc_dat.sd_a2l,&temp,0);
        DCCA2l_Quit(&temp);
       }
      }
@@ -1013,8 +1010,8 @@ reloc_loaded:
      *  - The section we're supposed to write the relocations to is stored in 'relo_section' */
     relcnt  = (size_t)(relo_text.tb_end-relo_text.tb_begin);
     relcnt /= sizeof(Elf(Rel));
-    relo_sec_size = (target_ptr_t)(relo_section->sc_text.tb_max-
-                                   relo_section->sc_text.tb_begin);
+    relo_sec_size = (target_ptr_t)(relo_section->sc_dat.sd_text.tb_max-
+                                   relo_section->sc_dat.sd_text.tb_begin);
     if (relcnt &&
        (dcc_rel = (struct DCCRel *)DCCSection_Allocrel(relo_section,relcnt,0)) != NULL) {
      rel_end = (rel_iter = (Elf(Rel) *)relo_text.tb_begin)+relcnt;
@@ -1052,15 +1049,15 @@ absrel:
       ++dcc_rel;
      }
      /* Fix unused (aka. invalid) relocations. */
-     final_relcnt = (size_t)(dcc_rel-relo_section->sc_relv);
+     final_relcnt = (size_t)(dcc_rel-relo_section->sc_dat.sd_relv);
      assert(final_relcnt <= relcnt);
-     assert(relo_section->sc_relc >= relcnt);
+     assert(relo_section->sc_dat.sd_relc >= relcnt);
      if (relcnt != final_relcnt) {
-      memmove(relo_section->sc_relv+final_relcnt,
-              relo_section->sc_relv+relcnt,
-             (relo_section->sc_relc-relcnt)*
+      memmove(relo_section->sc_dat.sd_relv+final_relcnt,
+              relo_section->sc_dat.sd_relv+relcnt,
+             (relo_section->sc_dat.sd_relc-relcnt)*
               sizeof(struct DCCRel));
-      relo_section->sc_relc = final_relcnt;
+      relo_section->sc_dat.sd_relc = final_relcnt;
      }
     }
     free(relo_text.tb_begin);
@@ -1094,9 +1091,6 @@ absrel:
   /* With all relocations loaded, we can now
    * delete the section base addresses! */
   DCCUnit_ENUMSEC(sec) {
-#ifdef DCC_SYMFLAG_SEC_OWNSBASE
-   assert(!(sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE));
-#endif
    DCCSection_SETBASE(sec,0);
    sec->sc_start.sy_flags &= ~(DCC_SYMFLAG_SEC_FIXED);
   }

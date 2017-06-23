@@ -84,8 +84,8 @@ PUBLIC void DCCUnit_MkDebugSym(void) {
  DCCUnit_ENUMSEC(sec) {
   struct DCCSym *a2l_sym; void *data;
   target_ptr_t secinfo_addr;
-  if (!sec->sc_a2l.d_chunkc) continue;
-  a2l_sym = DCCA2lWrite_AllocData(&sec->sc_a2l,debug_sec);
+  if (!sec->sc_dat.sd_a2l.d_chunkc) continue;
+  a2l_sym = DCCA2lWrite_AllocData(&sec->sc_dat.sd_a2l,debug_sec);
   if unlikely(!a2l_sym) break;
   /* Found a section containing debug informations! */
   secinfo_addr = DCCSection_DAlloc(debug_sec,SECINFO_SIZEOF,SECINFO_ALIGNOF,0);
@@ -115,7 +115,7 @@ DCCUnit_MkDebugL(int level) {
  /* Put a debug addr2line entry. */
  DCCA2l_CaptureState(&state,A2L_STATE_HASLINE|A2L_STATE_HASPATH|
                             A2L_STATE_HASFILE|A2L_STATE_HASNAME);
- DCCA2l_Insert(&unit.u_text->sc_a2l,&state);
+ DCCA2l_Insert(&unit.u_text->sc_dat.sd_a2l,&state);
 }
 PUBLIC void DCC_ATTRIBUTE_FASTCALL
 DCCUnit_MkDebugLC(int level) {
@@ -127,7 +127,7 @@ DCCUnit_MkDebugLC(int level) {
  DCCA2l_CaptureState(&state,A2L_STATE_HASLINE|A2L_STATE_HASCOL|
                             A2L_STATE_HASPATH|A2L_STATE_HASFILE|
                             A2L_STATE_HASNAME);
- DCCA2l_Insert(&unit.u_text->sc_a2l,&state);
+ DCCA2l_Insert(&unit.u_text->sc_dat.sd_a2l,&state);
 }
 
 

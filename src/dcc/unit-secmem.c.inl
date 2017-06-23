@@ -68,8 +68,8 @@ DCCSection_DSafeFree(struct DCCSection *__restrict self,
  target_ptr_t sym_end;
  target_siz_t siz_max;
  DCCSection_TBEGIN(self);
- siz_max = (target_siz_t)(self->sc_text.tb_max-
-                          self->sc_text.tb_begin);
+ siz_max = (target_siz_t)(self->sc_dat.sd_text.tb_max-
+                          self->sc_dat.sd_text.tb_begin);
  sym_end = addr+size;
  if (sym_end < addr || sym_end > siz_max) {
   WARN(W_LINKER_SYMBOL_SIZE_OUT_OF_BOUNDS,
@@ -99,20 +99,20 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
  int result = 1;
  assert(self);
  assert(!DCCSection_ISIMPORT(self));
- assert(!DCCFreeData_Has(&self->sc_free,addr,size));
+ assert(!DCCFreeData_Has(&self->sc_dat.sd_free,addr,size));
  assert(n_refcnt);
  if unlikely(!OK) goto err; /* Don't do anything if an error occurred. */
  if unlikely(!size) goto end; /* nothing to do here! */
  REFLOG(("+++ incref('%s',%#lx,%lu) x%u\n",self->sc_start.sy_name->k_name,
         (unsigned long)addr,(unsigned long)size,n_refcnt));
- for (prange = &self->sc_alloc;
+ for (prange = &self->sc_dat.sd_alloc;
      (range  = *prange) != NULL;
       prange = &range->ar_next) {
 #define CURR_RANGE       (*range)
 #define NEXT_RANGE       (*range->ar_next)
-#define PREV_RANGE       (*(struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)))
+#define PREV_RANGE       (*(struct DCCAllocRange *)((uintptr_t)prange-DCC_COMPILER_OFFSETOF(struct DCCAllocRange,ar_next)))
 #define HAS_NEXT_RANGE   (range->ar_next != NULL)
-#define HAS_PREV_RANGE   (prange != &self->sc_alloc)
+#define HAS_PREV_RANGE   (prange != &self->sc_dat.sd_alloc)
 #define CURR_RANGE_BEGIN (CURR_RANGE.ar_addr)
 #if DCC_DEBUG
 #define ASSERT_RELATION() \
@@ -358,7 +358,7 @@ next:;
  assert(prange);
  assert(range == *prange);
  assert(!range);
- assert(prange == &self->sc_alloc ||
+ assert(prange == &self->sc_dat.sd_alloc ||
         PREV_RANGE.ar_addr+PREV_RANGE.ar_size <= addr);
  newrange = DCCAllocRange_New(addr,size,n_refcnt);
  if unlikely(!newrange) goto err;
@@ -391,7 +391,7 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
  REFLOG(("DCCSection_DIncref: incref('%s',%#lx,%lu)\n",self->sc_start.sy_name->k_name,
         (unsigned long)addr,(unsigned long)size));
  addr_end = addr+size;
- prange = &self->sc_alloc;
+ prange = &self->sc_dat.sd_alloc;
  /* TODO: This function (seems) to work, but it could be written _MUCH_ better! */
  while ((range = *prange) != NULL) {
   target_siz_t bytes_until_next_range;
@@ -411,9 +411,9 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
        range->ar_addr   == addr_end) {
     /* Extend this range downwards. */
     range->ar_addr -= size;
-    if (prange != &self->sc_alloc) {
+    if (prange != &self->sc_dat.sd_alloc) {
      struct DCCAllocRange *prev_range;
-     prev_range = ((struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)));
+     prev_range = ((struct DCCAllocRange *)((uintptr_t)prange-DCC_COMPILER_OFFSETOF(struct DCCAllocRange,ar_next)));
      assert(prev_range->ar_next == range);
      assert(prev_range->ar_addr+prev_range->ar_size <= range->ar_addr);
      if (prev_range->ar_addr+prev_range->ar_size == range->ar_addr &&
@@ -471,8 +471,8 @@ DCCSection_DIncrefN(struct DCCSection *__restrict self,
              range->ar_addr+range->ar_size <=
              range->ar_next->ar_addr);
      assert(addr == range->ar_addr);
-     if (prange != &self->sc_alloc) {
-      newrange = ((struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)));
+     if (prange != &self->sc_dat.sd_alloc) {
+      newrange = ((struct DCCAllocRange *)((uintptr_t)prange-DCC_COMPILER_OFFSETOF(struct DCCAllocRange,ar_next)));
       assert(newrange->ar_next == range);
       assert(newrange->ar_addr+newrange->ar_size <= range->ar_addr);
       if (newrange->ar_refcnt == range->ar_refcnt &&
@@ -603,9 +603,9 @@ next:
  /* Append a new range. */
  assert(range == *prange);
  assert(!range);
- assert(prange == &self->sc_alloc ||
-       ((struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)))->ar_addr+
-       ((struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)))->ar_size <= addr);
+ assert(prange == &self->sc_dat.sd_alloc ||
+       ((struct DCCAllocRange *)((uintptr_t)prange-DCC_COMPILER_OFFSETOF(struct DCCAllocRange,ar_next)))->ar_addr+
+       ((struct DCCAllocRange *)((uintptr_t)prange-DCC_COMPILER_OFFSETOF(struct DCCAllocRange,ar_next)))->ar_size <= addr);
  range = DCCAllocRange_New(addr,size,n_refcnt);
  if unlikely(!range) goto err;
  range->ar_next = NULL;
@@ -625,17 +625,17 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
  assert(self);
  assert(!DCCSection_ISIMPORT(self));
  if unlikely(!OK) goto err; /* Don't do anything if an error occurred. */
- assert(!DCCFreeData_Has(&self->sc_free,addr,size));
- prange   = &self->sc_alloc;
+ assert(!DCCFreeData_Has(&self->sc_dat.sd_free,addr,size));
+ prange   = &self->sc_dat.sd_alloc;
  REFLOG(("--- decref('%s',%#lx,%lu)\n",self->sc_start.sy_name->k_name,
         (unsigned long)addr,(unsigned long)size));
  /* Search range and only free reference that dropped to ZERO(0). */
  while(size) {
 #define CURR_RANGE       (*range)
 #define NEXT_RANGE       (*range->ar_next)
-#define PREV_RANGE       (*(struct DCCAllocRange *)((uintptr_t)prange-offsetof(struct DCCAllocRange,ar_next)))
+#define PREV_RANGE       (*(struct DCCAllocRange *)((uintptr_t)prange-DCC_COMPILER_OFFSETOF(struct DCCAllocRange,ar_next)))
 #define HAS_NEXT_RANGE   (range->ar_next != NULL)
-#define HAS_PREV_RANGE   (prange != &self->sc_alloc)
+#define HAS_PREV_RANGE   (prange != &self->sc_dat.sd_alloc)
 #define CURR_RANGE_BEGIN (CURR_RANGE.ar_addr)
 #if DCC_DEBUG
 #define ASSERT_RELATION() \
@@ -813,7 +813,7 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
  assert(self);
  assert(!DCCSection_ISIMPORT(self));
  if unlikely(!OK) goto err; /* Don't do anything if an error occurred. */
- prange   = &self->sc_alloc;
+ prange   = &self->sc_dat.sd_alloc;
  addr_end = addr+size;
  REFLOG(("--- decref('%s',%#lx,%lu)\n",self->sc_start.sy_name->k_name,
         (unsigned long)addr,(unsigned long)size));

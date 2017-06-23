@@ -149,13 +149,13 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
 #define ELF_SHDR_IDX(h) ((Elf(Section))((h)-shdrv))
  assert(def);
  shdr_regc = unit.u_secc,shdr_relc = 0;
- DCCUnit_ENUMSEC(sec) if (sec->sc_relc) ++shdr_relc;
+ DCCUnit_ENUMSEC(sec) if (sec->sc_dat.sd_relc) ++shdr_relc;
  assert(shdr_relc <= shdr_regc);
  shdr_a2lc = 0;
  shdr_intc = 3; /* '.shstrtab', '.symtab', '.strtab' */
  if (!(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT)) {
   ++shdr_intc; /* '.DCC.symflg' */
-  DCCUnit_ENUMSEC(sec) if (sec->sc_a2l.d_chunkc) ++shdr_a2lc; /* '.DCC.a2l.<BASE_SECTION>' */
+  DCCUnit_ENUMSEC(sec) if (sec->sc_dat.sd_a2l.d_chunkc) ++shdr_a2lc; /* '.DCC.a2l.<BASE_SECTION>' */
  }
 
  shdr_impc = (def->ed_flags&DCC_EXPFLAG_ELF_NOEXT) ? 0 : unit.u_impc; /* Import section headers. */
@@ -217,7 +217,7 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
   symflag_t secflags = sec->sc_start.sy_flags;
   assert(shdr_iter < shdr_regv+shdr_regc);
   shdr_iter->s_sec              = sec;
-  shdr_iter->s_buf              = sec->sc_text;
+  shdr_iter->s_buf              = sec->sc_dat.sd_text;
   shdr_iter->s_oldaddr          = sec->sc_start.sy_addr;
   shdr_iter->s_hdr.sh_name      = DCCTextBuf_AllocString(&SHDR_SHSTRTAB->s_buf,
                                                          sec->sc_start.sy_name->k_name,
@@ -230,11 +230,11 @@ DCCUnit_ExportElf(struct DCCExpDef *__restrict def,
   if (secflags&DCC_SYMFLAG_SEC_M) shdr_iter->s_hdr.sh_flags |= SHF_MERGE;
   shdr_iter->s_hdr.sh_addralign = sec->sc_start.sy_align;
   sec->sc_start.sy_addr = ELF_SHDR_IDX(shdr_iter);
-  if (sec->sc_a2l.d_chunkc &&
+  if (sec->sc_dat.sd_a2l.d_chunkc &&
     !(def->ed_flags&DCC_EXPFLAG_ELF_NOEXT)) {
    a2l_op_t *a2l_code; size_t a2l_size;
    /* Must generate an A2L section. */
-   a2l_code = DCCA2l_Link(&sec->sc_a2l,&a2l_size);
+   a2l_code = DCCA2l_Link(&sec->sc_dat.sd_a2l,&a2l_size);
    if unlikely(!a2l_code) a2l_size = 0;
    /* Directly inherit linked A2L code. */
    shdr_a2l_iter->s_buf.tb_begin     = (uint8_t *)a2l_code;
@@ -357,7 +357,7 @@ done_symflg:;
  DCCUnit_ENUMSEC(sec) {
   Elf(Rel) *rel_data;
   struct DCCRel *rel_iter,*rel_end;
-  if (!sec->sc_relc) continue;
+  if (!sec->sc_dat.sd_relc) continue;
   assert(shdr_iter < shdr_relv+shdr_relc);
   shdr_iter->s_hdr.sh_name = DCCTextBuf_AllocRelString(&SHDR_SHSTRTAB->s_buf,
                                                        sec->sc_start.sy_name->k_name,
@@ -370,10 +370,10 @@ done_symflg:;
   shdr_iter->s_hdr.sh_entsize   = sizeof(Elf(Rel));
   shdr_iter->s_hdr.sh_addralign = DCC_COMPILER_ALIGNOF(Elf(Rel));
   rel_data = (Elf(Rel) *)DCCTextBuf_TAlloc_intern(&shdr_iter->s_buf,
-                                                  sec->sc_relc*
+                                                  sec->sc_dat.sd_relc*
                                                   sizeof(Elf(Rel)));
   if unlikely(!rel_data) continue;
-  rel_end = (rel_iter = sec->sc_relv)+sec->sc_relc;
+  rel_end = (rel_iter = sec->sc_dat.sd_relv)+sec->sc_dat.sd_relc;
   for (; rel_iter != rel_end; ++rel_iter,++rel_data) {
    uint32_t symid;
    if (rel_iter->r_sym == &DCCSection_Abs.sc_start) {

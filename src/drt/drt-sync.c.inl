@@ -69,7 +69,7 @@ DRT_FaultRel(uint8_t DRT_USER *__restrict uaddr,
 #undef USER_BASE_ADDRESS
 
 
-#define USER_BASE_ADDRESS ((target_ptr_t)sec->sc_rt.rs_vaddr)
+#define USER_BASE_ADDRESS ((target_ptr_t)sec->sc_dat.sd_rt.rs_vaddr)
 INTERN int
 DRT_ResolveRel(uint8_t DRT_USER *__restrict uaddr,
                uint8_t DRT_HOST *__restrict haddr,
@@ -91,6 +91,7 @@ DRT_ResolveRel(uint8_t DRT_USER *__restrict uaddr,
   if ((rel->r_sym->sy_flags&DCC_SYMFLAG_WEAK) &&
       (drt.rt_flags&DRT_FLAG_JOINING)) rel_value = 0;
   else {
+missing_reference:
    if (warn_failure) {
     WARN(W_UNRESOLVED_REFERENCE,
          sec,rel->r_addr,
@@ -101,10 +102,12 @@ DRT_ResolveRel(uint8_t DRT_USER *__restrict uaddr,
    return 0; /* Unresolved symbol. */
   }
  } else if (DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
-  /* TODO: What's this '+rel->r_addr' about? */
-  rel_value = /*dlopen_base_addr+*/symaddr.sa_off+symaddr.sa_sym->sy_addr+rel->r_addr;
+  rel_value = (target_ptr_t)DCCSection_DLImport(symaddr.sa_sym->sy_sec,
+                                                symaddr.sa_sym->sy_name->k_name);
+  if (!rel_value) goto missing_reference;
+  rel_value += symaddr.sa_off;
  } else {
-  rel_value = symaddr.sa_off+(target_ptr_t)symaddr.sa_sym->sy_sec->sc_rt.rs_vaddr;
+  rel_value = symaddr.sa_off+(target_ptr_t)symaddr.sa_sym->sy_sec->sc_dat.sd_rt.rs_vaddr;
   if (!DCCSym_ISSECTION(symaddr.sa_sym))
        rel_value += symaddr.sa_sym->sy_addr;
  }
@@ -136,8 +139,8 @@ DRT_FindUserSection(void DRT_USER *addr) {
  uintptr_t nearest_distance = (uintptr_t)-1;
  DCCUnit_ENUMSEC(iter) {
   uintptr_t distance;
-  if ((uintptr_t)addr < (uintptr_t)iter->sc_rt.rs_vaddr) continue;
-  distance = (uintptr_t)addr-(uintptr_t)iter->sc_rt.rs_vaddr;
+  if ((uintptr_t)addr < (uintptr_t)iter->sc_dat.sd_rt.rs_vaddr) continue;
+  distance = (uintptr_t)addr-(uintptr_t)iter->sc_dat.sd_rt.rs_vaddr;
   if (distance < nearest_distance) {
    result = iter;
    if (distance < DCC_TARGET_PAGESIZE) break;
@@ -162,11 +165,11 @@ DRT_TryFetchData(void DRT_USER *addr,
  sec = DRT_FindUserSection(addr);
  if unlikely(!sec) goto invalid;
  DCCSection_TBEGIN(sec);
- text_end = sec->sc_text.tb_end;
- if (text_end > sec->sc_text.tb_max)
-     text_end = sec->sc_text.tb_max;
- sec_max  = (target_ptr_t)(text_end-sec->sc_text.tb_begin);
- sec_addr = (target_ptr_t)((uintptr_t)addr-(uintptr_t)sec->sc_rt.rs_vaddr);
+ text_end = sec->sc_dat.sd_text.tb_end;
+ if (text_end > sec->sc_dat.sd_text.tb_max)
+     text_end = sec->sc_dat.sd_text.tb_max;
+ sec_max  = (target_ptr_t)(text_end-sec->sc_dat.sd_text.tb_begin);
+ sec_addr = (target_ptr_t)((uintptr_t)addr-(uintptr_t)sec->sc_dat.sd_rt.rs_vaddr);
  if (sec_addr >= sec_max) {
   result = 0;
   if (warn_failure) { /* TODO: Warning */ }
@@ -190,7 +193,7 @@ DRT_TryFetchData(void DRT_USER *addr,
    for (; rel_iter != rel_end; ++rel_iter) {
     if (rel_iter->r_type == DCC_R_NONE) continue;
     if (DRT_ResolveRel((uint8_t *)addr+rel_iter->r_addr,
-                       (uint8_t *)sec->sc_text.tb_begin+rel_iter->r_addr,
+                       (uint8_t *)sec->sc_dat.sd_text.tb_begin+rel_iter->r_addr,
                         rel_iter,sec,warn_failure)) {
      /* Destroy relocations once they've been resolved in user-space,
       * thereby ensuring that every relocation is only resolved once. */
@@ -203,7 +206,7 @@ DRT_TryFetchData(void DRT_USER *addr,
   }
   *pmissing_relc = missing_relc;
   *pfetched_relc = fetched_relc;
-  DCCFreeData_ReleaseMerge(&sec->sc_rt.rs_mirror,sec_addr,result);
+  DCCFreeData_ReleaseMerge(&sec->sc_dat.sd_rt.rs_mirror,sec_addr,result);
   DCCSection_RTDoneWrite(sec,sec_addr,result);
  }
  DCCSection_TEND(sec);

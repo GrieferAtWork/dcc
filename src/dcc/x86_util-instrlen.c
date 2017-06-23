@@ -628,8 +628,8 @@ INTERN struct DCCSection *
 dcc_getsec(target_ptr_t rva) {
  struct DCCSection *sec;
  DCCUnit_ENUMSEC(sec) {
-  if (rva >= sec->sc_merge &&
-      rva <= sec->sc_merge+
+  if (rva >= sec->sc_dat.sd_merge &&
+      rva <= sec->sc_dat.sd_merge+
       DCCSection_VSIZE(sec)) return sec;
  }
  return NULL;
@@ -644,17 +644,17 @@ x86_mkrel_textdisp(struct DCCSection *__restrict text_section,
  ptrdiff_t oldpos,oldmax; size_t textend; rel_t type;
  assert(text_section);
  assert(text_section->sc_start.sy_flags&DCC_SYMFLAG_SEC_X);
- oldmax = text_section->sc_text.tb_max-text_section->sc_text.tb_begin;
+ oldmax = text_section->sc_dat.sd_text.tb_max-text_section->sc_dat.sd_text.tb_begin;
  if unlikely(!oldmax) return; /* Skip empty sections. */
  textend = DCCSection_BASE(text_section)+oldmax;
- oldpos = text_section->sc_text.tb_pos-text_section->sc_text.tb_begin;
- text_section->sc_text.tb_pos = text_section->sc_text.tb_max;
+ oldpos = text_section->sc_dat.sd_text.tb_pos-text_section->sc_dat.sd_text.tb_begin;
+ text_section->sc_dat.sd_text.tb_pos = text_section->sc_dat.sd_text.tb_max;
  trail = (uint8_t *)DCCSection_TAlloc(text_section,NOP_TRAIL_SIZE);
  if unlikely(!trail) return;
  /* Allocate a small trail of nop-bytes, ensuring that the
   * code below will not crash because of invalid input. */
  memset(trail,0x90,NOP_TRAIL_SIZE);
- iter = begin = text_section->sc_text.tb_begin;
+ iter = begin = text_section->sc_dat.sd_text.tb_begin;
 #if INSTRLEN_DEBUG
  instrlen_offset = DCCSection_BASE(text_section)+image_base;
  instrlen_base   = begin;
@@ -755,8 +755,8 @@ adv:
   iter = next;
  }
  memset(trail,0,NOP_TRAIL_SIZE);
- text_section->sc_text.tb_pos = text_section->sc_text.tb_begin+oldpos;
- text_section->sc_text.tb_max = text_section->sc_text.tb_begin+oldmax;
+ text_section->sc_dat.sd_text.tb_pos = text_section->sc_dat.sd_text.tb_begin+oldpos;
+ text_section->sc_dat.sd_text.tb_max = text_section->sc_dat.sd_text.tb_begin+oldmax;
 }
 
 

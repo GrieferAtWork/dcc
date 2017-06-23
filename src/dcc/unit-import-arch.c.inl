@@ -111,7 +111,7 @@ DCCUnit_LoadARCH(struct DCCLibDef *__restrict def,
     *       With that in mind: Don't warn about illegal magic when we're not aligned. */
    if (!in_ill_hdr && !(start&1)) {
     WARN(W_LIB_ARCH_INVALID_MAGIC,file,
-        (unsigned long)(start+offsetof(struct ar_hdr,ar_fmag)));
+        (unsigned long)(start+DCC_COMPILER_OFFSETOF(struct ar_hdr,ar_fmag)));
     in_ill_hdr = 1;
    }
    /* Try again at the next byte.

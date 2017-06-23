@@ -26,6 +26,10 @@
 #include "addr2line.h"
 #include "../../lib/include/elf.h"
 
+#if DCC_CONFIG_HAVE_DRT
+#include "dl.h"
+#endif /* DCC_CONFIG_HAVE_DRT */
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -135,8 +139,8 @@ DCCMemLoc_Contains(struct DCCMemLoc const *__restrict vector,
 #define DCC_SYMFLAG_SEC_FIXED    0x20000000 /*< The section must be loaded to a fixed address already specified by 'sy_addr'.
                                              *  When multiple sections overlap at the same virtual address, it is the linker's job to solve such problems. */
 #define DCC_SYMFLAG_SEC_NOALLOC  0x40000000 /*< The runtime linker is not required to allocate this section. */
-#if DCC_HOST_CPUM == DCC_TARGET_CPUM
-#define DCC_SYMFLAG_SEC_OWNSBASE 0x80000000 /*< The base address is allocated through system-functions and must be freed. */
+#if DCC_CONFIG_HAVE_DRT
+#define DCC_SYMFLAG_SEC_WARNED_NOIMP 0x80000000 /*< Set after a warning about a missing library has been emit. */
 #endif
 
 typedef uint32_t DCC(symflag_t);
@@ -287,7 +291,7 @@ union{
 #define DCCSym_SECTION(self)    (self)->sy_sec
 #define DCCSym_IMPORT(self)     (self)->sy_import
 
-#define DCCSym_TOSECTION(self) ((struct DCCSection *)((uintptr_t)(self)-offsetof(struct DCCSection,sc_start)))
+#define DCCSym_TOSECTION(self) ((struct DCCSection *)((uintptr_t)(self)-DCC_COMPILER_OFFSETOF(struct DCCSection,sc_start)))
 #define DCCSym_ISSECTION(self) ((self) == &(self)->sy_sec->sc_start)
 
 #define DCCSym_ISDEFINED(self) ((self)->sy_sec != NULL)
@@ -623,6 +627,9 @@ struct DCCTextBuf {
 #define DCCTextBuf_ADDR(self)            ((DCC(target_ptr_t))((self)->tb_pos-(self)->tb_begin))
 #define DCCTextBuf_SETADDR(self,a) (void)((self)->tb_pos = (self)->tb_begin+(a))
 
+#define DCCSECTION_SIZEOF_IMP   DCC_COMPILER_OFFSETAFTER(struct DCCSection,sc_imp)
+#define DCCSECTION_SIZEOF_DAT   DCC_COMPILER_OFFSETAFTER(struct DCCSection,sc_dat)
+
 struct DCCSection {
  /* Descriptor for a section/library dependency. */
  struct DCCSym         sc_start; /*< Start symbol (always a label at offset '0' of this same section).
@@ -635,9 +642,10 @@ struct DCCSection {
  struct DCCUnit       *sc_unit;  /*< [0..1] Unit associated with this section. */
  struct DCCSection   **sc_pself; /*< [1..1|==self][0..1] Self-pointer in the 'sc_next->...' section chain. */
  struct DCCSection    *sc_next;  /*< [0..1][chain(->sc_next->...)] Next section in the unit with the same moduled name-id. */
- /* NOTE: None of the below are available when 'DCCSection_ISIMPORT(self)' evaluates to non-ZERO(0). */
- struct DCCTextBuf     sc_text;  /*< Flushed section text buffer (May not be up-to-date for the current section). */
- struct DCCFreeData    sc_free;  /*< Tracker for free section data. */
+union{
+struct{ /* 'DCCSection_ISIMPORT(self) == 0' */
+ struct DCCTextBuf     sd_text;  /*< Flushed section text buffer (May not be up-to-date for the current section). */
+ struct DCCFreeData    sd_free;  /*< Tracker for free section data. */
  /* Why is reference-counted section memory important? - This is why:
   *     Because now that assembly can define symbol sizes, we can no
   *     longer safely use those values for section data tracking.
@@ -652,20 +660,28 @@ struct DCCSection {
   * >> .size b, . - b
   * When neither 'a', nor 'b' are used, both will try to free the same data.
   * >> CRASH!
-  * ALSO: This will be required for object-file hard aliases. */
- struct DCCAllocRange *sc_alloc; /*< [0..1][chain(->ar_next->...)] Reference-counted tracking of section text. */
- DCC(target_ptr_t)     sc_merge; /*< Used during merging: Base address of merge destination. */
- struct DCCA2l         sc_a2l;   /*< Addr2Line debug information. */
+  * ALSO: This is required for object-file hard aliases. */
+ struct DCCAllocRange *sd_alloc; /*< [0..1][chain(->ar_next->...)] Reference-counted tracking of section text. */
+ DCC(target_ptr_t)     sd_merge; /*< Used during merging: Base address of merge destination. */
+ struct DCCA2l         sd_a2l;   /*< Addr2Line debug information. */
 #if DCC_CONFIG_HAVE_DRT
- struct DCCRTSection   sc_rt;    /*< RT Section information. */
+ struct DCCRTSection   sd_rt;    /*< RT Section information. */
 #endif /* DCC_CONFIG_HAVE_DRT */
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
- struct DCCSection    *sc_elflnk; /*< [0..1] Used by ELF: Link section. */
+ struct DCCSection    *sd_elflnk; /*< [0..1] Used by ELF: Link section. */
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */
- size_t                sc_relc;  /*< Amount of relocations currently in use. */
- size_t                sc_rela;  /*< Amount of allocated relocations. */
- struct DCCRel        *sc_relv;  /*< [0..sc_relc|alloc(sc_rela)|sort(->r_addr,<)][owned]
-                                  *   Vector of relocations to memory within this section. */
+ size_t                sd_relc;  /*< Amount of relocations currently in use. */
+ size_t                sd_rela;  /*< Amount of allocated relocations. */
+ struct DCCRel        *sd_relv;  /*< [0..sc_dat.sd_relc|alloc(sc_dat.sd_rela)|sort(->r_addr,<)][owned]
+                                  *   Vector of relocations for memory within this section. */
+} sc_dat;
+struct{ /* 'DCCSection_ISIMPORT(self) != 0' */
+ struct TPPKeyword const *si_file;  /*< [1..1] TODO: Unused in some places: Filename of the import library (Usually equals 'sc_start.sy_name') */
+#if DCC_CONFIG_HAVE_DRT
+ DCC(dl_t)                si_dlrt;  /*< [0..1][NULL = DCC_DLERROR] Lazily loaded library for runtime usage. */
+#endif /* DCC_CONFIG_HAVE_DRT */
+} sc_imp;
+};
 };
 
 /* Builtin section: ABS (Absolute section always relocated & with a base at ZERO) */
@@ -680,19 +696,12 @@ DCCDAT struct DCCSection DCCSection_Abs;
 
 #define DCCSection_BASE(self)             ((self)->sc_start.sy_addr)
 #define DCCSection_SETBASE(self,v)  (void)((self)->sc_start.sy_addr=(v))
-#define DCCSection_VSIZE(self)      ((DCC(target_siz_t))((self)->sc_text.tb_max-(self)->sc_text.tb_begin))
-#define DCCSection_MSIZE(self)      ((DCC(target_siz_t))(((self)->sc_text.tb_end < (self)->sc_text.tb_max ? \
-                                                          (self)->sc_text.tb_end : (self)->sc_text.tb_max)-\
-                                                          (self)->sc_text.tb_begin))
-#define DCCSection_TEXTBUF(self)    ((self) == DCCUnit_Current.u_curr ? &DCCUnit_Current.u_tbuf : &(self)->sc_text)
-
-#ifdef DCC_SYMFLAG_SEC_OWNSBASE
-#define DCCSection_TEXTBASE(self) \
- ((self)->sc_start.sy_flags&DCC_SYMFLAG_SEC_OWNSBASE) \
-  ? (uint8_t *)DCCSection_BASE(self) : ((self)->sc_text.tb_begin)
-#else
-#define DCCSection_TEXTBASE(self) ((self)->sc_text.tb_begin)
-#endif
+#define DCCSection_VSIZE(self)      ((DCC(target_siz_t))((self)->sc_dat.sd_text.tb_max-(self)->sc_dat.sd_text.tb_begin))
+#define DCCSection_MSIZE(self)      ((DCC(target_siz_t))(((self)->sc_dat.sd_text.tb_end < (self)->sc_dat.sd_text.tb_max ? \
+                                                          (self)->sc_dat.sd_text.tb_end : (self)->sc_dat.sd_text.tb_max)-\
+                                                          (self)->sc_dat.sd_text.tb_begin))
+#define DCCSection_TEXTBUF(self)    ((self) == DCCUnit_Current.u_curr ? &DCCUnit_Current.u_tbuf : &(self)->sc_dat.sd_text)
+#define DCCSection_TEXTBASE(self)   ((self)->sc_dat.sd_text.tb_begin)
 
 #define DCCSection_HASBASE(self) \
  (DCCSection_BASE(self) || ((self)->sc_start.sy_flags&DCC_SYMFLAG_SEC_FIXED))
@@ -730,7 +739,7 @@ do{ DCC_ASSERT(!DCCSection_ISIMPORT(self));\
     if (DCCSection_ISCURR(self)) {\
      DCC_ASSERTF(!(DCCCompiler_Current.c_flags&DCC_COMPILER_FLAG_TEXTFLUSH),"Text was already flushed");\
      DCCCompiler_Current.c_flags |= DCC_COMPILER_FLAG_TEXTFLUSH;\
-     memcpy(&(self)->sc_text,&DCCUnit_Current.u_tbuf,\
+     memcpy(&(self)->sc_dat.sd_text,&DCCUnit_Current.u_tbuf,\
             sizeof(struct DCCTextBuf));\
     }\
 }while(DCC_MACRO_FALSE)
@@ -739,7 +748,7 @@ do{ DCC_ASSERT(!DCCSection_ISIMPORT(self));\
     if (DCCSection_ISCURR(self)) {\
      DCC_ASSERTF(DCCCompiler_Current.c_flags&DCC_COMPILER_FLAG_TEXTFLUSH,"Text was not flushed");\
      DCCCompiler_Current.c_flags &= ~(DCC_COMPILER_FLAG_TEXTFLUSH);\
-     memcpy(&DCCUnit_Current.u_tbuf,&(self)->sc_text,\
+     memcpy(&DCCUnit_Current.u_tbuf,&(self)->sc_dat.sd_text,\
             sizeof(struct DCCTextBuf));\
     }\
 }while(DCC_MACRO_FALSE)
@@ -747,17 +756,31 @@ do{ DCC_ASSERT(!DCCSection_ISIMPORT(self));\
 #define DCCSection_TBEGIN(self) \
 do{ DCC_ASSERT(!DCCSection_ISIMPORT(self));\
     if (DCCSection_ISCURR(self))\
-    memcpy(&(self)->sc_text,&DCCUnit_Current.u_tbuf,\
+    memcpy(&(self)->sc_dat.sd_text,&DCCUnit_Current.u_tbuf,\
            sizeof(struct DCCTextBuf));\
 }while(DCC_MACRO_FALSE)
 #define DCCSection_TEND(self) \
 do{ DCC_ASSERT(!DCCSection_ISIMPORT(self));\
     if (DCCSection_ISCURR(self)) \
-    memcpy(&DCCUnit_Current.u_tbuf,&(self)->sc_text,\
+    memcpy(&DCCUnit_Current.u_tbuf,&(self)->sc_dat.sd_text,\
            sizeof(struct DCCTextBuf));\
 }while(DCC_MACRO_FALSE)
 #endif
 
+#if DCC_CONFIG_HAVE_DRT
+/* Lazily load the dynamic library associated with a given import
+ * section at compile-time for use by DRT direct symbol relocations.
+ * In the even that the library could not be loaded, a warning is emit
+ * once and NULL is returned. Note though, that NULL may also be returned
+ * when no symbol named 'symbol_name' could be found.
+ * @param: symbol_name: A '\0'-terminated string of the symbol name to query.
+ * @return: * :   The absolute compile-time address of the specified symbol.
+ * @return: NULL: Failed to load the library, or find the specified symbol.
+ * @requires: DCCSection_ISIMPORT(self) */
+DCCFUN void *
+DCCSection_DLImport(struct DCCSection *__restrict self,
+                    char const *__restrict symbol_name);
+#endif /* DCC_CONFIG_HAVE_DRT */
 
 /* Looking at the reference counters of section data,
  * mark all regions of section memory not in use as free.
@@ -919,14 +942,6 @@ DCCFUN size_t DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_w
  * @requires: !DCCSection_ISIMPORT(self) */
 DCCFUN void DCCSection_SetBaseTo(struct DCCSection *__restrict self, DCC(target_ptr_t) address);
 
-#if DCC_HOST_CPUM == DCC_TARGET_CPUM
-/* Allocate a base address for the given section.
- * This function is required for execution of code after it has been generated.
- * NOTE: Upon failure, a lexer error is set.
- * @requires: !DCCSection_ISIMPORT(self) */
-DCCFUN void DCCSection_SetBase(struct DCCSection *__restrict self);
-#endif /* DCC_HOST_CPUM == DCC_TARGET_CPUM */
-
 /* Returns a symbol 'name' apart of the given section 'self'
  * WARNING: If the section contains multiple symbols named 'name', which symbol
  *          will be returned is undefined (although one of them will be returned).
@@ -967,7 +982,7 @@ DCCSection_TryGetText(struct DCCSection *__restrict self,
                       DCC(target_siz_t) *max_vsize);
 
 #define DCCSection_TEXTOFF(self,p) \
- (target_ptr_t)((uint8_t *)(p)-((self) == unit.u_curr ? unit.u_tbuf.tb_begin : (self)->sc_text.tb_begin))
+ (target_ptr_t)((uint8_t *)(p)-((self) == unit.u_curr ? unit.u_tbuf.tb_begin : (self)->sc_dat.sd_text.tb_begin))
 
 
 /* Allocates zero-initialized section memory.
@@ -1110,7 +1125,7 @@ DCCSection_DDecref(struct DCCSection *__restrict self,
                    DCC(target_ptr_t) addr,
                    DCC(target_siz_t) size);
 
-#define DCCSection_TADDR(self)       DCCTextBuf_ADDR(&(self)->sc_text)
+#define DCCSection_TADDR(self)       DCCTextBuf_ADDR(&(self)->sc_dat.sd_text)
 /* Allocate 'size' bytes of text memory, advancing
  * the text pointer and returning its old address.
  * @requires: !DCCSection_ISIMPORT(self)
@@ -1157,7 +1172,7 @@ struct DCCUnit {
  struct DCCSection     *u_dbgstr;/*< [0..1] Default section: '.dbgstr' (Section used for debug strings). */
  struct DCCSection     *u_prev;  /*< [0..1] The section selected before the current one (or NULL if none was). */
  struct DCCSection     *u_curr;  /*< [0..1] Currently selected section (target for writing text). */
- struct DCCTextBuf      u_tbuf;  /*< Current text buffer (in-lined local cache for 'u_curr->sc_text') */
+ struct DCCTextBuf      u_tbuf;  /*< Current text buffer (in-lined local cache for 'u_curr->sc_dat.sd_text') */
 };
 
 /* Global object: The current compilation unit. */

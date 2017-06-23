@@ -86,7 +86,7 @@ struct DCCCompilerText {
  struct DCCSection *ct_sec;  /*< [0..1] Section that the text is located inside of. */
  DCC(target_ptr_t)  ct_base; /*< Text base address (The offset of the text in 'ct_sec' and start of relocations). */
  size_t             ct_relc; /*< Amount of relocations affecting the text. */
- struct DCCRel     *ct_relv; /*< [?..ct_relc][weak(ct_sec->sc_relv)] Vector of (sorted) relocations affective the text. */
+ struct DCCRel     *ct_relv; /*< [?..ct_relc][weak(ct_sec->sc_dat.sd_relv)] Vector of (sorted) relocations affective the text. */
 };
 
 

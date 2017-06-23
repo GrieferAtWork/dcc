@@ -52,8 +52,8 @@ DCCSection_FreeUnused(struct DCCSection *__restrict self) {
  assert(self),DCCSECTION_ASSERT_TEXT_FLUSHED(self);
  /* Step #1: Clear all old free address ranges. */
  { struct DCCFreeRange *iter,*next;
-   iter = self->sc_free.fd_begin;
-   self->sc_free.fd_begin = NULL;
+   iter = self->sc_dat.sd_free.fd_begin;
+   self->sc_dat.sd_free.fd_begin = NULL;
    while (iter) {
     next = iter->fr_next;
     free(iter);
@@ -65,7 +65,7 @@ DCCSection_FreeUnused(struct DCCSection *__restrict self) {
    target_ptr_t last_range_end;
    target_siz_t section_size;
    target_siz_t unused_size;
-   iter           = self->sc_alloc;
+   iter           = self->sc_dat.sd_alloc;
    last_range_end = 0;
    section_size   = DCCSection_VSIZE(self);
    while (iter) {
@@ -73,7 +73,7 @@ DCCSection_FreeUnused(struct DCCSection *__restrict self) {
     assert(iter->ar_refcnt != 0);
     unused_size = (target_siz_t)(iter->ar_addr-last_range_end);
     if (last_range_end+unused_size >= section_size) goto done_step2;
-    if (unused_size) DCCFreeData_Release(&self->sc_free,last_range_end,unused_size);
+    if (unused_size) DCCFreeData_Release(&self->sc_dat.sd_free,last_range_end,unused_size);
     last_range_end = iter->ar_addr+iter->ar_size;
     iter = iter->ar_next;
    }
@@ -81,7 +81,7 @@ DCCSection_FreeUnused(struct DCCSection *__restrict self) {
     * range and the section end as unused. */
    assert(section_size >= last_range_end);
    unused_size = section_size-last_range_end;
-   if (unused_size) DCCFreeData_Release(&self->sc_free,last_range_end,unused_size);
+   if (unused_size) DCCFreeData_Release(&self->sc_dat.sd_free,last_range_end,unused_size);
 done_step2:;
  }
 }
@@ -128,7 +128,7 @@ DCCSection_CollapseSymbols(struct DCCSection *__restrict self) {
    *      'sym->sy_addr..sym->sy_size' as available.
    *       Otherwise, we can't move large functions just a bit
    *       when a small area of memory becomes available below. */
-  below_addr = DCCFreeData_AcquireBelow(&self->sc_free,sym->sy_addr,
+  below_addr = DCCFreeData_AcquireBelow(&self->sc_dat.sd_free,sym->sy_addr,
                                         sym->sy_size,sym->sy_align,0);
   if (below_addr != DCC_FREEDATA_INVPTR) {
    /* Must collapse this symbol! */
@@ -136,12 +136,12 @@ DCCSection_CollapseSymbols(struct DCCSection *__restrict self) {
    assert(below_addr < sym->sy_addr);
    src_data = (uint8_t *)DCCSection_GetText(self,sym->sy_addr,sym->sy_size);
    if unlikely(!src_data) continue;
-   dst_data = self->sc_text.tb_begin+below_addr;
+   dst_data = self->sc_dat.sd_text.tb_begin+below_addr;
    assert(dst_data < src_data);
    assert(dst_data+sym->sy_size <= src_data);
    /* Move all relocations to the lower memory address. */
    DCCSection_Movrel(self,below_addr,sym->sy_addr,sym->sy_size);
-   DCCA2l_Mov(&self->sc_a2l,below_addr,sym->sy_addr,sym->sy_size);
+   DCCA2l_Mov(&self->sc_dat.sd_a2l,below_addr,sym->sy_addr,sym->sy_size);
    /* Copy symbol data to lower memory. */
    memcpy(dst_data,src_data,sym->sy_size);
    /* Update section data reference counters. */
@@ -161,7 +161,7 @@ DCCSection_TrimFree(struct DCCSection *__restrict self) {
  struct DCCFreeRange **plast_range,*last_range;
  target_siz_t result = 0;
  assert(self),DCCSECTION_ASSERT_TEXT_FLUSHED(self);
- last_range = *(plast_range = &self->sc_free.fd_begin);
+ last_range = *(plast_range = &self->sc_dat.sd_free.fd_begin);
  /* Without any free ranges, we can't trim anything. */
  if unlikely(!last_range) goto end;
  while (last_range->fr_next) {
@@ -173,16 +173,16 @@ DCCSection_TrimFree(struct DCCSection *__restrict self) {
   last_range = *plast_range;
  }
  assert((target_ptr_t)(last_range->fr_addr+last_range->fr_size) <=
-        (target_ptr_t)(self->sc_text.tb_max-self->sc_text.tb_begin));
+        (target_ptr_t)(self->sc_dat.sd_text.tb_max-self->sc_dat.sd_text.tb_begin));
  if ((target_ptr_t)(last_range->fr_addr+last_range->fr_size) ==
-     (target_ptr_t)(self->sc_text.tb_max-self->sc_text.tb_begin)) {
+     (target_ptr_t)(self->sc_dat.sd_text.tb_max-self->sc_dat.sd_text.tb_begin)) {
   /* The last free range describes the end of the section.
    * >> We can now trim the section to release data near its end. */
   result = last_range->fr_size;
-  self->sc_text.tb_max = self->sc_text.tb_begin+last_range->fr_addr;
+  self->sc_dat.sd_text.tb_max = self->sc_dat.sd_text.tb_begin+last_range->fr_addr;
   /* Clamp the text pointer at the end. */
-  if (self->sc_text.tb_pos > self->sc_text.tb_max)
-      self->sc_text.tb_pos = self->sc_text.tb_max;
+  if (self->sc_dat.sd_text.tb_pos > self->sc_dat.sd_text.tb_max)
+      self->sc_dat.sd_text.tb_pos = self->sc_dat.sd_text.tb_max;
   /* Delete the last free range. */
   assert(!last_range->fr_next);
   *plast_range = NULL;
