@@ -285,7 +285,7 @@ PUBLIC int DCCParse_Pragma(void) {
    TPPLexer_Current->l_flags &= ~(TPPLEXER_FLAG_NO_MACROS|
                                   TPPLEXER_FLAG_NO_DIRECTIVES|
                                   TPPLEXER_FLAG_NO_BUILTIN_MACROS);
-   if unlikely(TOK != '(') TPPLexer_Warn(W_EXPECTED_LPAREN);
+   if unlikely(TOK != '(') WARN(W_EXPECTED_LPAREN);
    else YIELD();
    while (TOK != ')') {
     switch (TOK) {
@@ -303,7 +303,7 @@ PUBLIC int DCCParse_Pragma(void) {
       if (DCC_MACRO_FALSE) { case '-': mode = 0; YIELD(); }
       if unlikely(!TPPLexer_Eval(&path_string)) return 0;
       if (path_string.c_kind != TPP_CONST_STRING) {
-       TPPLexer_Warn(W_PRAGMA_LIBRARY_PATH_EXPECTED_STRING,&path_string);
+       WARN(W_PRAGMA_LIBRARY_PATH_EXPECTED_STRING,&path_string);
       } else {
        char *path; size_t size = path_string.c_data.c_string->s_size;
        if (path_string.c_data.c_string->s_refcnt == 1) {
@@ -332,10 +332,33 @@ PUBLIC int DCCParse_Pragma(void) {
     if (TOK != ',') break;
     YIELD();
    }
-   if unlikely(TOK != ')') TPPLexer_Warn(W_EXPECTED_RPAREN);
+   if unlikely(TOK != ')') WARN(W_EXPECTED_RPAREN);
    else YIELD();
   } break;
-  default: break; /* Reserved for future use (don't warn about unknown dcc-pragma). */
+
+  default:
+   /* Reserved for future use (don't warn about unknown dcc-pragma). */
+#if DCC_DEBUG
+   if (TPP_ISKEYWORD(TOKEN.t_id) &&
+      !strcmp(TOKEN.t_kwd->k_name,"__sleep")) {
+    struct TPPConst val;
+    /* Let the compiler sleep for a while.
+     * >> Used to simulate pauses in input streams &
+     *    aiding in the debugging of DRT symbol waiting. */
+    YIELD();
+    if (TOK != '(') WARN(W_EXPECTED_LPAREN); else YIELD();
+    if (TPPLexer_Eval(&val)) {
+     TPPConst_ToInt(&val);
+#ifdef _WIN32
+     Sleep((DWORD)val.c_data.c_int);
+#else
+     sleep((int)val.c_data.c_int);
+#endif
+    }
+    if (TOK != ')') WARN(W_EXPECTED_LPAREN); else YIELD();
+   }
+#endif
+   break;
   }
  } break;
 

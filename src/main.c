@@ -353,6 +353,7 @@ int main(int argc, char *argv[]) {
     {
      target_ptr_t drt_args[2] = {1,(target_ptr_t)drt_argv_buf};
      if (drt_argv_buf) memcpy(drt_argv_buf,default_drt_argv,sizeof(default_drt_argv));
+     /* 'main(1,(char *[]){ "DRT", NULL })' */
      DRT_Start(drt_entry,NULL,drt_args,sizeof(drt_args));
     }
    }

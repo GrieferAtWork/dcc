@@ -271,10 +271,14 @@ DRT_FindUserSection(void DRT_USER *addr) {
   distance = (uintptr_t)addr-(uintptr_t)iter->sc_dat.sd_rt.rs_vaddr;
   if (distance < nearest_distance) {
    result = iter;
-   if (distance < DCC_TARGET_PAGESIZE) break;
+   if (distance < drt.rt_maxsection)
+       return result;
    nearest_distance = distance;
   }
  }
+ /* Don't associated the address when it is too far away. */
+ if (nearest_distance > drt.rt_maxsection*16)
+     result = NULL;
  return result;
 }
 

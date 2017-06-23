@@ -68,9 +68,15 @@ DCCDisp_Probe_(struct DCCMemLoc const *__restrict addr,
      ) {
   rc_t rc = DCC_RC_FORSIZE(n_bytes);
   /* Try to generate a 'mov' instruction with an empty register. */
-  rc = DCCVStack_GetReg(rc,1|2);
+  rc = DCCVStack_GetReg(rc|DCC_ASMREG_ECX,1|2);
+  /* TODO: Dirty hack to not use EAX or EDX because
+   *       they might be dangling return registers.
+   *       Instead, somehow mark the registers as
+   *       in-use during return statements. */
   if (rc && (DCC_RC_ISCONST(addr->ml_reg) ||
-            (addr->ml_reg&DCC_RI_MASK) != (rc&DCC_RI_MASK))) {
+            (addr->ml_reg&DCC_RI_MASK) != (rc&DCC_RI_MASK)) &&
+     (rc&DCC_RI_MASK) != DCC_ASMREG_AX &&
+     (rc&DCC_RI_MASK) != DCC_ASMREG_DX) {
    DCCDisp_MemMovReg(addr,rc);
   } else {
    /* Fallback: Compile a 'test' instruction. */
