@@ -519,7 +519,7 @@ union{
 #define DRT_DEFAULT_STACKSIZE  0x00010000 /*< Default stack size. */
 #define DRT_DEFAULT_FRAMESIZE  0x00001000 /*< Default frame size. */
 #define DRT_DEFAULT_MAXSECTION 0x00100000 /*< Default max-section size. */
-#define DRT_DEFAULT_BASEADDR   0x40000000 /*< Starting address for DRT section memory. */
+#define DRT_DEFAULT_BASEADDR   0x40000000 /*< Starting address for DRT section memory (NOTE: Only meant as a hint; may not be used on some hosts). */
 
 #define DRT_FAULT_ADDRESS 0xfffff001 /* Faulty address used for filling in unresolved relocations in user-code. */
 
@@ -606,7 +606,7 @@ DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(void);
 #define DRT_SYNC_OK   1
 #define DRT_SYNC_FAIL 2
 
-
+#ifdef DCC_PRIVATE_API
 /* Allocate/Free virtual memory, or set permissions.
  * @param: vaddr:       The virtual address to allocate memory at.
  *                      [DRT_VMall] When 'DRT_VANY', let the kernel decide where to allocate memory.
@@ -614,15 +614,17 @@ DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(void);
  * @param: perm:        Memory permissions (Set of 'DCC_SYMFLAG_SEC_(R|W|X)')
  * @return: * :         Virtual base address of allocated memory (always equal to 'vaddr' if not 'DRT_VANY')
  * @return: DRT_VERROR: Failed to allocate memory for one reason or another (_NO_ lexer error is set). */
-DCCFUN void DRT_USER *DRT_VMall(void DRT_USER *vaddr, size_t n_bytes, DCC(symflag_t) prot);
-DCCFUN void DRT_USER *DRT_VProt(void DRT_USER *vaddr, size_t n_bytes, DCC(symflag_t) prot);
-DCCFUN void           DRT_VFree(void DRT_USER *vaddr, size_t n_bytes);
+INTERN void DRT_USER *DRT_VMall(void DRT_USER *vaddr, size_t n_bytes, DCC(symflag_t) prot);
+INTERN void DRT_USER *DRT_VProt(void DRT_USER *vaddr, size_t n_bytes, DCC(symflag_t) prot);
+INTERN void           DRT_VFree(void DRT_USER *vaddr, size_t n_bytes);
 #define DRT_VANY   ((void DRT_USER *)(uintptr_t)0)
 #if DCC_HOST_OS == DCC_OS_WINDOWS
 #define DRT_VERROR ((void DRT_USER *)(uintptr_t)0)
 #else
 #define DRT_VERROR ((void DRT_USER *)(uintptr_t)-1)
 #endif
+#endif /* DCC_PRIVATE_API */
+
 
 #ifdef DCC_PRIVATE_API
 #ifdef __INTELLISENSE__

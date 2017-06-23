@@ -156,7 +156,9 @@ DRT_Start(struct DCCSym *__restrict entry_point,
  else memset(state,0,sizeof(struct DCPUState));
  assert(drt.rt_event.ue_code == DRT_EVENT_NONE);
  drt.rt_event.ue_sem = CreateSemaphoreA(NULL,0,0x1000,NULL);
- if unlikely(!drt.rt_event.ue_sem || drt.rt_event.ue_sem == INVALID_HANDLE_VALUE) goto err1;
+ if unlikely(!drt.rt_event.ue_sem ||
+              drt.rt_event.ue_sem == INVALID_HANDLE_VALUE)
+              goto err1;
 
  /* This part gets a bit hacky, because we create a small section
   * who's only purpose is going to be to hold a small bit of code
@@ -198,7 +200,8 @@ DRT_Start(struct DCCSym *__restrict entry_point,
   if unlikely(bootstrap_udata == DRT_VERROR) goto err2;
   /* Copy the bootstrap code. */
   if unlikely(!DCCSection_RTCopy(startup,bootstrap_udata,
-                                 bootstrap_addr,bootstrap_size)) goto err2;
+                                 bootstrap_addr,bootstrap_size))
+               goto err2;
   /* Notify the startup section that we're done writing code. */
   DCCSection_RTDoneWrite(startup,bootstrap_addr,bootstrap_size);
   /* At this point, 'bootstrap_udata' is a pointer to
@@ -213,7 +216,9 @@ DRT_Start(struct DCCSym *__restrict entry_point,
  drt.rt_thread = CreateThread(NULL,DRT_U_STACKRESERVE+drt.rt_stacksize,
                              (LPTHREAD_START_ROUTINE)&DRT_ThreadEntry,
                               state,0,NULL);
- if unlikely(!drt.rt_thread || drt.rt_thread == INVALID_HANDLE_VALUE) goto err2;
+ if unlikely(!drt.rt_thread ||
+              drt.rt_thread == INVALID_HANDLE_VALUE)
+              goto err2;
 
 
  return;

@@ -54,9 +54,11 @@ PRIVATE DWORD const mall_prot[] = {
  /* [PROT(DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W|DCC_SYMFLAG_SEC_X)] = */PAGE_EXECUTE_READWRITE,
 };
 
-PUBLIC void DRT_USER *
+INTERN void DRT_USER *
 DRT_VMall(void DRT_USER *vaddr, size_t n_bytes, symflag_t prot) {
- return VirtualAlloc(vaddr,n_bytes,MEM_COMMIT|MEM_RESERVE,mall_prot[PROT(prot)]);
+ void *result        = VirtualAlloc(vaddr,n_bytes,MEM_COMMIT,mall_prot[PROT(prot)]);
+ if (!result) result = VirtualAlloc(vaddr,n_bytes,MEM_COMMIT|MEM_RESERVE,mall_prot[PROT(prot)]);
+ return result;
 }
 PUBLIC void DRT_USER *
 DRT_VProt(void DRT_USER *vaddr, size_t n_bytes, symflag_t prot) {
@@ -208,19 +210,30 @@ void DRT_SetCPUState(struct DCPUState const *__restrict state) {
 #endif
 
 PUBLIC void DCCSection_RTInit(struct DCCSection *__restrict self) {
- self->sc_dat.sd_rt.rs_vaddr = drt.rt_nextaddr;
- self->sc_dat.sd_rt.rs_allocpagea = 0;
- self->sc_dat.sd_rt.rs_allocpagev = NULL;
  if (!DRT_ENABLED()) return;
- drt.rt_nextaddr += drt.rt_maxsection;
+#if DCC_HOST_OS == DCC_OS_WINDOWS
+ self->sc_dat.sd_rt.rs_vaddr = (uint8_t DRT_USER *)
+  VirtualAlloc(0,drt.rt_maxsection,MEM_RESERVE,PAGE_NOACCESS);
+ if unlikely(!self->sc_dat.sd_rt.rs_vaddr)
+#endif
+ {
+  self->sc_dat.sd_rt.rs_vaddr = drt.rt_nextaddr;
+  drt.rt_nextaddr            += drt.rt_maxsection;
+ }
 }
 PUBLIC void DCCSection_RTQuit(struct DCCSection *__restrict self) {
- void DRT_USER *addr; size_t size;
  /* Free all allocated virtual memory. */
- DCCRTSECTION_FOREACH_BEGIN(&self->sc_dat.sd_rt,addr,size) {
-  DRT_VFree(addr,size);
+#if DCC_HOST_OS == DCC_OS_WINDOWS
+ VirtualFree(self->sc_dat.sd_rt.rs_vaddr,0,MEM_RELEASE);
+#else
+ {
+  void DRT_USER *addr; size_t size;
+  DCCRTSECTION_FOREACH_BEGIN(&self->sc_dat.sd_rt,addr,size) {
+   DRT_VFree(addr,size);
+  }
+  DCCRTSECTION_FOREACH_END;
  }
- DCCRTSECTION_FOREACH_END;
+#endif
  free(self->sc_dat.sd_rt.rs_allocpagev);
  DCCFreeData_Quit(&self->sc_dat.sd_rt.rs_mirror);
 }
@@ -337,7 +350,7 @@ DCCSection_RTDoneWrite(struct DCCSection *__restrict self,
       (void *)(DCCRTSection_ADDR(&self->sc_dat.sd_rt,addr)+(size-1)),
       (int)GetLastError());
  }
-#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
+#if DCC_HOST_OS == DCC_OS_WINDOWS
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_X) {
   /* Flush the instruction cache after writing to an executable section. */
   FlushInstructionCache(GetCurrentProcess(),
