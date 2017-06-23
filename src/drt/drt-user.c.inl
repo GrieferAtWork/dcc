@@ -72,9 +72,16 @@ INTERN void DRT_USER DRT_U_WaitEvent(uint32_t code) {
     * NOTE: Warnings were already emit by 'DRT_H_Sync'. */
    ExitThread(1);
   }
- } else if (WaitForSingleObject(drt.rt_event.ue_sem,INFINITE) == WAIT_FAILED) {
-  fprintf(stderr,"Failed to wait for DRT event\n");
-  exit(1);
+ } else {
+#if 1
+  /* Flush various global buffers before starting to wait. */
+  fflush(stdout);
+  fflush(stderr);
+#endif
+  if (WaitForSingleObject(drt.rt_event.ue_sem,INFINITE) == WAIT_FAILED) {
+   fprintf(stderr,"Failed to wait for DRT event\n");
+   exit(1);
+  }
  }
 }
 

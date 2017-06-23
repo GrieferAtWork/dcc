@@ -35,6 +35,26 @@
 
 DCC_DECL_BEGIN
 
+struct sec_info {
+ struct sec_info const *si_next; /*< [0..1] Information about the next section. */
+ void                  *si_addr; /*< [1..1] Section start address. */
+ size_t                 si_size; /*< Section size. */
+ a2l_op_t const        *si_a2l;  /*< [0..1] Addr2line code. */
+};
+
+/* Data for a stub-definition of section information used when DRT is enabled.
+ * >> Defining this early prevents a compile-cycle dependency that would
+ *    otherwise (and correctly so) prevent DRT from continuing execution
+ *    until the compiler finishes. */
+PRIVATE struct sec_info const stub_secinfo = {
+ /* si_next */NULL,
+ /* si_addr */NULL,
+ /* si_size */0,
+ /* si_a2l  */NULL,
+};
+
+
+
 INTERN EXCEPTION_DISPOSITION NTAPI
 DRT_U_W32ExceptionHandler(EXCEPTION_RECORD *ExceptionRecord, PVOID EstablisherFrame,
                           CONTEXT *ContextRecord, PVOID DispatcherContext) {
@@ -181,6 +201,17 @@ DRT_Start(struct DCCSym *__restrict entry_point,
  if unlikely(!drt.rt_event.ue_sem ||
               drt.rt_event.ue_sem == INVALID_HANDLE_VALUE)
               goto err1;
+
+ {
+  struct DCCSym *a2l_info;
+  a2l_info = DCCUnit_NewSyms("__dcc_dbg_secinfo",DCC_SYMFLAG_HIDDEN);
+  if (a2l_info && DCCSym_ISFORWARD(a2l_info)) {
+   DCCSym_Define(a2l_info,&DCCSection_Abs,
+                (target_ptr_t)&stub_secinfo,
+                 sizeof(stub_secinfo),
+                 DCC_COMPILER_ALIGNOF(stub_secinfo));
+  }
+ }
 
  /* This part gets a bit hacky, because we create a small section
   * who's only purpose is going to be to hold a small bit of code

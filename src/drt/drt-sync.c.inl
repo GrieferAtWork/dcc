@@ -26,6 +26,7 @@
 #include <dcc/compiler.h>
 #include <dcc/unit.h>
 #include <drt/drt.h>
+#include "../dcc/x86_util.h"
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #include "../dcc/linker-pe.h"
 #endif
@@ -378,12 +379,12 @@ done_mirror:
  * NOTE: Any byte of memory is only copied once before being marked as mirrored.
  * NOTE: This function copies whole pages, meaning that more than 'size' bytes may be copied.
  * @return: *: Amount of newly loaded bytes. */
-PRIVATE void
+LOCAL void
 DCCSection_RTMirrorText(struct DCCSection *__restrict self,
                         target_ptr_t addr,
                         size_t *__restrict prelc_ok, size_t *__restrict prelc_no,
                         size_t *__restrict psize_ok, size_t *__restrict psize_total,
-                        int warn_failure) {
+                        int warn_failure, int single_instruction) {
  uint8_t DRT_USER *utext;
  uint8_t DRT_HOST *htext;
  struct DCCTextBuf *text;
@@ -403,6 +404,13 @@ DCCSection_RTMirrorText(struct DCCSection *__restrict self,
  /* Artificially limit for how much code is ever fetched at once. */
  if (size > DCC_TARGET_PAGESIZE)
      size = DCC_TARGET_PAGESIZE;
+ if (single_instruction) {
+  uint8_t *hcode = htext+addr;
+  assert(self->sc_start.sy_flags&DCC_SYMFLAG_SEC_X);
+  /* Only load a single instruction. */
+  size = (target_siz_t)(x86_instrlen(hcode)-hcode);
+  assert(size);
+ }
  utext = DCCSection_RTAlloc(self,addr,size,1);
  if unlikely(utext == DRT_VERROR) goto end;
  utext = self->sc_dat.sd_rt.rs_vaddr;
@@ -512,26 +520,35 @@ PUBLIC int DCC_ATTRIBUTE_FASTCALL DRT_H_Sync(int warn_failure) {
 
  {
   size_t relc_no;
+  int single_instruction;
  case DRT_EVENT_MIRROR_TEXT:
+  single_instruction = 0;
   sec = DRT_FindUserSection(drt.rt_event.ue_text.te_addr);
   if unlikely(!sec) {
    /* Invalid address. */
    result = DRT_SYNC_FAULT;
    goto post;
   }
+load_text:
   DCCSection_RTMirrorText(sec,
                          (target_ptr_t)((uintptr_t)drt.rt_event.ue_text.te_addr-
                                         (uintptr_t)sec->sc_dat.sd_rt.rs_vaddr),
                          &drt.rt_event.ue_text.te_relc_ok,&relc_no,
                          &drt.rt_event.ue_text.te_size_ok,
                          &drt.rt_event.ue_text.te_size_total,
-                          warn_failure);
+                          warn_failure,single_instruction);
   /* If data was read or everything was already read to begin with, post the results. */
   if (drt.rt_event.ue_text.te_relc_ok ||
       drt.rt_event.ue_text.te_size_ok ||
      (drt.rt_event.ue_text.te_size_total && !relc_no)) {
    result = DRT_SYNC_OK;
    goto post;
+  }
+  /* Try again, but only attempt to load a single instruction. */
+  if (!single_instruction &&
+      (sec->sc_start.sy_flags&DCC_SYMFLAG_SEC_X)) {
+   single_instruction = 1;
+   goto load_text;
   }
 unresolved:
   result = DRT_SYNC_UNRESOLVED;

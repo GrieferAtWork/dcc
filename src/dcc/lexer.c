@@ -25,6 +25,10 @@
 #include <dcc/linker.h>
 #include <dcc/compiler.h>
 
+#if DCC_DEBUG
+#include <drt/drt.h>
+#endif
+
 #include "lexer-priv.h"
 
 #include "cmd.h"
@@ -349,6 +353,7 @@ PUBLIC int DCCParse_Pragma(void) {
     if (TOK != '(') WARN(W_EXPECTED_LPAREN); else YIELD();
     if (TPPLexer_Eval(&val)) {
      TPPConst_ToInt(&val);
+     DRT_Sync();
 #ifdef _WIN32
      Sleep((DWORD)val.c_data.c_int);
 #else

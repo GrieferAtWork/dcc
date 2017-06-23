@@ -32,7 +32,9 @@ DCC_DECL_BEGIN
 
 /* The user-space structure layout for section information.
  * NOTE: This must always remain compatible with the
- *       structure found in '/lib/src/addr2line.c'! */
+ *       structure found in '/lib/src/crt/addr2line.c'
+ *                      and '/src/drt/drt-thread.c.inl'
+ */
 #define SECINFO_ENTRYSYM       "__dcc_dbg_secinfo"
 #define SECINFO_ALIGNOF        (DCC_TARGET_SIZEOF_POINTER)
 #define SECINFO_SIZEOF         (DCC_TARGET_SIZEOF_POINTER*3+DCC_TARGET_SIZEOF_SIZE_T)
@@ -74,6 +76,17 @@ DCCA2lWrite_AllocData(struct DCCA2l *__restrict a2l,
 PUBLIC void DCCUnit_MkDebugSym(void) {
  struct DCCSym *secinfo_sym;
  struct DCCSection *sec,*debug_sec;
+#if DCC_CONFIG_HAVE_DRT
+ /* DRT defines a stub debug symbol to prevent a
+  * compilation-cycle dependency on '__dcc_dbg_secinfo'
+  * >> If it didn't do so, the first time DRT accessed
+  *    anything from the CRT code page, it would have to
+  *    be suspended until the compiler eventually got
+  *    here (which only happens once everything is done)
+  */
+ if (DRT_ENABLED()) return;
+#endif /* DCC_CONFIG_HAVE_DRT */
+
  /* Don't do anything when no debug informations should be generated. */
  if (!(linker.l_flags&DCC_LINKER_FLAG_GENDEBUG)) return;
  secinfo_sym = DCCUnit_NewSyms(SECINFO_ENTRYSYM,DCC_SYMFLAG_HIDDEN);
