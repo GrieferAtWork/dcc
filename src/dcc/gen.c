@@ -586,16 +586,56 @@ DCCDisp_FillNop(void *__restrict p, size_t n_bytes) {
 
 PUBLIC void
 DCCDisp_FunProlog(struct DCCDispFunction *__restrict info) {
+ uint8_t *p;
  assert(info);
  info->df_proaddr = t_addr;
-#if DCC_DEBUG
- {
-  void *p = t_alloc(MAX_PROLOG_SIZE);
-  if (p) DCCDisp_FillNop(p,MAX_PROLOG_SIZE);
- }
-#else
- t_alloc(MAX_PROLOG_SIZE);
+ if ((p = (uint8_t *)t_alloc(MAX_PROLOG_SIZE)) != NULL) {
+#if DCC_CONFIG_HAVE_DRT
+  if (DRT_ENABLED()) {
+   uint8_t *iter = p;
+   /* Allocate a large stack-frame by default. */
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+   struct DCCSymAddr chkstk;
+   if ((chkstk.sa_sym = DCCUnit_NewSyms("__chkstk",DCC_SYMFLAG_HIDDEN)) != NULL) {
+    uint8_t *saved_textptr;
+    chkstk.sa_off = 0;
+    *iter++ = 0xb8; /* movl $drt.rt_framesize, %eax */
+    *(uint32_t *)iter = drt.rt_framesize;
+    iter += 4;
+    *iter++ = 0xe8; /* call */
+    saved_textptr         = unit.u_tbuf.tb_pos;
+    assert(saved_textptr >= unit.u_tbuf.tb_begin);
+    assert(saved_textptr <= unit.u_tbuf.tb_end);
+    assert(iter          >= unit.u_tbuf.tb_begin);
+    assert(iter          <= unit.u_tbuf.tb_end);
+    unit.u_tbuf.tb_pos    = iter;
+    *(uint32_t *)iter     = (uint32_t)((int32_t)DCCDisp_PutDispRel(&chkstk,DCC_R_DISP_32)-4);
+    assert(saved_textptr >= unit.u_tbuf.tb_begin);
+    assert(saved_textptr <= unit.u_tbuf.tb_end);
+    unit.u_tbuf.tb_pos = saved_textptr;
+   } else
 #endif
+   {
+    *iter++ = 0x50+DCC_ASMREG_EBP; /* push %ebp */
+    *iter++ = 0x89,*iter++ = 0xe5; /* mov %esp, %ebp */
+    *iter++ = 0x81,*iter++ = 0xec; /* sub $stack_size, %esp */
+    *(uint32_t *)iter = drt.rt_framesize;
+    iter += 4;
+#if MAX_PROLOG_SIZE == 10
+    *iter++ = DCCGEN_NOPBYTE; /* nop. */
+#elif MAX_PROLOG_SIZE > 9
+    DCCDisp_FillNop(iter,MAX_PROLOG_SIZE-9);
+#endif
+   }
+  } else
+#endif /* DCC_CONFIG_HAVE_DRT */
+  {
+#if DCC_DEBUG
+   DCCDisp_FillNop(p,MAX_PROLOG_SIZE);
+#endif
+  }
+ }
+
 #if 0 /* HAVE_HLOG Hardcore logging! */
  if (compiler.c_fun && strcmp(compiler.c_fun->d_name->k_name,"__hardlog") != 0) {
   struct DCCMemLoc loc;
@@ -667,6 +707,14 @@ DCCDisp_GenProlog(struct DCCDispFunction *__restrict info) {
   /* Fill the rest with NOPs (Still faster than 'sub $0, %esp'...) */
   DCCDisp_FillNop(prologue,MAX_PROLOG_SIZE-3);
  }
+#if DCC_CONFIG_HAVE_DRT
+ if (DRT_ENABLED()) {
+  /* TODO: Delete any mapping for 'info->df_proaddr...+=MAX_PROLOG_SIZE'
+   *       in 'unit.u_curr->sc_dat.sd_rt.rs_mirror', as well as somehow
+   *       get DRT to mirror those changes during the next synchronization
+   *       point in the event that changes have been made. */
+ }
+#endif /* DCC_CONFIG_HAVE_DRT */
 }
 PUBLIC void DCCDisp_Ret(void) { t_putb(0xc3); }
 PUBLIC void DCCDisp_FunEpilog(void) {

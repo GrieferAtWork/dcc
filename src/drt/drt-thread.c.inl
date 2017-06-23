@@ -42,12 +42,15 @@ DRT_U_W32ExceptionHandler(EXCEPTION_RECORD *ExceptionRecord, PVOID EstablisherFr
  (void)DispatcherContext;
  if (ExceptionRecord && ContextRecord) {
   DWORD code = ExceptionRecord->ExceptionCode;
-  target_ptr_t eip_end,eip = (target_ptr_t)ContextRecord->Eip;
+  target_ptr_t eip_end,eip;
+  eip = (target_ptr_t)ExceptionRecord->ExceptionAddress;
+  if (!eip) eip = (target_ptr_t)ContextRecord->Eip; /* Should never happen... */
   if (code == EXCEPTION_ACCESS_VIOLATION) {
    target_ptr_t access_addr = ExceptionRecord->ExceptionInformation[1];
-   /* If a non-faulty address was accessed, load it as an operand. */
+   /* If a non-faulty address was accessed, try to load it as an operand. */
    if (access_addr < DRT_FAULT_ADDRESS) {
-    if (!DRT_U_FetchSome((void *)access_addr)) goto done;
+    if (DRT_U_FetchSome((void *)access_addr))
+        return ExceptionContinueExecution;
    }
    /* Wait for data and relocations within the caller's current instruction. */
    /* TODO: This is a dirty hack to get most probe code working, but
@@ -58,39 +61,80 @@ DRT_U_W32ExceptionHandler(EXCEPTION_RECORD *ExceptionRecord, PVOID EstablisherFr
     * >>               // we must ensure it is fixed below as well!
     * >> call foo
     */
-load_eip:
    eip_end = (target_ptr_t)x86_instrlen((uint8_t const *)eip);
-   eip_end = (target_ptr_t)x86_instrlen((uint8_t const *)eip_end);
+   eip_end = (target_ptr_t)x86_instrlen((uint8_t const *)eip_end); /* TODO: Delete this line. */
    /* If we've managed to load data or relocations, try again. */
    if (!DRT_U_Fetch((void *)eip,eip_end-eip))
         goto done;
    return ExceptionContinueExecution;
   } else if (code == EXCEPTION_PRIV_INSTRUCTION) {
    /* When unmapped filler memory is encountered, load more instructions. */
-   if (*(uint8_t *)eip == DRT_U_FILLER) goto load_eip;
+   if (*(uint8_t *)eip == DRT_U_FILLER) {
+    if (DRT_U_FetchSome((void *)eip))
+        return ExceptionContinueExecution;
+   }
   }
  }
 done:
  return ExceptionContinueSearch;
 }
 
+INTERN LONG NTAPI
+DRT_U_W32VExceptionHandler(EXCEPTION_POINTERS *ExceptionInfo) {
+ EXCEPTION_DISPOSITION disp;
+ if unlikely(!ExceptionInfo) return EXCEPTION_CONTINUE_SEARCH;
+ disp = DRT_U_W32ExceptionHandler(ExceptionInfo->ExceptionRecord,NULL,
+                                  ExceptionInfo->ContextRecord,NULL);
+ if (disp == ExceptionContinueExecution)
+     return EXCEPTION_CONTINUE_EXECUTION;
+ return EXCEPTION_CONTINUE_SEARCH;
+}
+
+#ifdef _MSC_VER
+INTERN void __declspec(naked) DRT_ThreadExit(void) {
+ __asm mov ecx, eax;
+ __asm jmp ExitThread;
+}
+#else
+INTERN void __attribute__((__naked__)) DRT_ThreadExit(void) {
+ __asm__("mov %eax, %ecx\n"
+         "jmp ExitThread\n");
+ __builtin_unreachable();
+}
+#endif
+
+
 PRIVATE DWORD WINAPI
 DRT_ThreadEntry(struct DCPUState *pstate) {
  struct DCPUState my_state = *pstate;
  NT_TIB *tib = (NT_TIB *)__readfsdword(0x18);
  EXCEPTION_REGISTRATION_RECORD root_handler;
- void *u_stack;
+ void **u_stack;
  free(pstate);
  /* Reserve part of the DRT thread's stack for internal use. */
- u_stack = (void *)((target_ptr_t)tib->StackBase-DRT_U_STACKRESERVE);
+ u_stack = (void **)((target_ptr_t)tib->StackBase-DRT_U_STACKRESERVE);
 
- my_state.cs_gpreg.u_gp[DCC_ASMREG_ESP] =
+#define PUSH(x) *--u_stack = (x)
+ /* Setup the user-stack in a way that when the DRT entry point returns,
+  * it will call 'ExitThread()' with the value from its EAX register. */
+ PUSH(NULL);
+ PUSH(NULL);
+ PUSH((void *)&DRT_ThreadExit);
+
+ my_state.cs_gpreg.u_gp[DCC_ASMREG_ESP] = (target_ptr_t)u_stack;
  my_state.cs_gpreg.u_gp[DCC_ASMREG_EBP] = (target_ptr_t)u_stack;
+#undef PUSH
 
  /* Register the root exception handler responsible for wait on data. */
  root_handler.Handler = &DRT_U_W32ExceptionHandler;
  root_handler.Next    = tib->ExceptionList;
  tib->ExceptionList   = &root_handler;
+
+ /* Register a vectored exception handler, which although doing the same,
+  * is (supposedly) called much sooner during exception handling.
+  * If I understand it correctly, passing '(ULONG)-1' will
+  * set up the handler to be called first '_ALWAYS_'. */
+ AddVectoredContinueHandler((ULONG)-1,&DRT_U_W32VExceptionHandler);
  
  /* Switch to the given CPU state. */
  DRT_SetCPUState(&my_state);

@@ -353,6 +353,7 @@ DCCSection_RTCopy(struct DCCSection *__restrict self,
                   void DRT_USER *__restrict target,
                   target_ptr_t addr, target_siz_t size) {
  struct DCCRel *rel_iter,*rel_end; size_t relc;
+ /* TODO: Optimization for trailing ZERO-memory. */
  void *host_data = DCCSection_GetText(self,addr,size);
  if unlikely(!host_data) return 0;
  memcpy(target,host_data,size);
@@ -373,6 +374,7 @@ DCCSection_RTCopy(struct DCCSection *__restrict self,
 PUBLIC void DRT_Init(void) {
  memset(&drt,0,sizeof(drt));
  drt.rt_stacksize  = DRT_DEFAULT_STACKSIZE;
+ drt.rt_framesize  = DRT_DEFAULT_FRAMESIZE;
  drt.rt_maxsection = DRT_DEFAULT_MAXSECTION;
  drt.rt_baseaddr   = (uint8_t DRT_USER *)DRT_DEFAULT_BASEADDR;
  drt.rt_nextaddr   = (uint8_t DRT_USER *)DRT_DEFAULT_BASEADDR;

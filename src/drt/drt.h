@@ -77,7 +77,8 @@ INTDEF void
 DRT_FaultRel(uint8_t DRT_USER *__restrict uaddr,
              struct DCCRel const *__restrict rel);
 
-
+/* Using the value in EAX as return value, exit the calling thread. */
+INTDEF void DRT_ThreadExit(void);
 
 
 DCC_DECL_END

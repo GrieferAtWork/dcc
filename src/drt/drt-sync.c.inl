@@ -159,16 +159,12 @@ DRT_TryFetchData(void DRT_USER *addr,
                  size_t *__restrict pmissing_relc,
                  size_t *__restrict pfetched_relc,
                  int warn_failure) {
- struct DCCSection *sec;
- uint8_t *text_end; size_t result;
+ struct DCCSection *sec; size_t result;
  target_ptr_t sec_max,sec_addr;
  sec = DRT_FindUserSection(addr);
  if unlikely(!sec) goto invalid;
  DCCSection_TBEGIN(sec);
- text_end = sec->sc_dat.sd_text.tb_end;
- if (text_end > sec->sc_dat.sd_text.tb_max)
-     text_end = sec->sc_dat.sd_text.tb_max;
- sec_max  = (target_ptr_t)(text_end-sec->sc_dat.sd_text.tb_begin);
+ sec_max  = (target_ptr_t)(sec->sc_dat.sd_text.tb_max-sec->sc_dat.sd_text.tb_begin);
  sec_addr = (target_ptr_t)((uintptr_t)addr-(uintptr_t)sec->sc_dat.sd_rt.rs_vaddr);
  if (sec_addr >= sec_max) {
   result = 0;

@@ -516,7 +516,8 @@ union{
 #define DRT_FLAG_JOINING  0x00000004 /*< Set once the compiler starts joining DRT. */
 #define DRT_FLAG_JOINING2 0x00000008 /*< Set after 'DRT_FLAG_JOINING' when the compiler isn't going to do anything anymore. */
 
-#define DRT_DEFAULT_STACKSIZE  0x00004000 /*< Default stack size. */
+#define DRT_DEFAULT_STACKSIZE  0x00010000 /*< Default stack size. */
+#define DRT_DEFAULT_FRAMESIZE  0x00001000 /*< Default frame size. */
 #define DRT_DEFAULT_MAXSECTION 0x00100000 /*< Default max-section size. */
 #define DRT_DEFAULT_BASEADDR   0x40000000 /*< Starting address for DRT section memory. */
 
@@ -525,6 +526,7 @@ union{
 struct DRT {
  uint32_t            rt_flags;      /*< [flags] RT flags (Set of 'DRT_FLAG_*'). */
  DCC(target_siz_t)   rt_stacksize;  /*< Initial stack size for the RT thread. */
+ DCC(target_siz_t)   rt_framesize;  /*< Default size of a stack-frame while its final size isn't known yet. */
  DCC(target_siz_t)   rt_maxsection; /*< The min amount of addressable bytes that
                                      *  should be reserved between RT section. */
  uint8_t DRT_USER   *rt_baseaddr;   /*< The effective image base-address for DRT code.
