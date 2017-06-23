@@ -40,6 +40,22 @@ DCC_DECL_BEGIN
 
 PUBLIC struct DRT DRT_Current;
 
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+PUBLIC target_ptr_t *DRT_AllocPEIndirection(void) {
+ struct DRTPEInd *curr = drt.rt_peind.ic_first;
+ if (!curr || (assert(curr->i_using <= DRT_PEIND_SLOTSIZE),
+               curr->i_using == DRT_PEIND_SLOTSIZE)) {
+  curr = (struct DRTPEInd *)malloc(sizeof(struct DRTPEInd));
+  if unlikely(!curr) { DCC_AllocFailed(sizeof(struct DRTPEInd)); }
+  curr->i_next = drt.rt_peind.ic_first;
+  drt.rt_peind.ic_first = curr;
+  curr->i_using = 0;
+ }
+ return &curr->i_ptr[curr->i_using++];
+}
+#endif
+
+
 #define PROT_MASK   (DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W|DCC_SYMFLAG_SEC_X)
 #define PROT(prot) (((prot)&PROT_MASK) >> 16)
 #if DCC_HOST_OS == DCC_OS_WINDOWS
@@ -228,17 +244,19 @@ PUBLIC void DCCSection_RTQuit(struct DCCSection *__restrict self) {
 #else
  {
   void DRT_USER *addr; size_t size;
-  DCCRTSECTION_FOREACH_BEGIN(&self->sc_dat.sd_rt,addr,size) {
+  DCCRTSECTION_FOREACH_BEGIN(&self->sc_dat.sd_rt,
+                             DCC_RT_PAGEATTR_ALLOC,
+                             addr,size) {
    DRT_VFree(addr,size);
   }
   DCCRTSECTION_FOREACH_END;
  }
 #endif
- free(self->sc_dat.sd_rt.rs_allocpagev);
- DCCFreeData_Quit(&self->sc_dat.sd_rt.rs_mirror);
+ free(self->sc_dat.sd_rt.rs_pagev);
+ DCCFreeData_Quit(&self->sc_dat.sd_rt.rs_mtext);
 }
 
-PUBLIC void DRT_USER *
+PUBLIC uint8_t DRT_USER *
 DCCSection_RTAlloc(struct DCCSection *__restrict self,
                    target_ptr_t addr, target_siz_t size,
                    int for_write) {
@@ -247,11 +265,7 @@ DCCSection_RTAlloc(struct DCCSection *__restrict self,
  int has_existing_pages = 0;
  assert(self);
  assert(!DCCSection_ISIMPORT(self));
- assert(!DCCSection_ISCURR(self) ||
-       (compiler.c_flags&DCC_COMPILER_FLAG_TEXTFLUSH));
  assert(addr+size >= addr);
- assert(addr+size <= (size_t)(self->sc_dat.sd_text.tb_max-
-                              self->sc_dat.sd_text.tb_begin));
  result = self->sc_dat.sd_rt.rs_vaddr+addr;
  if unlikely(!size) return result; /* Handle special case: empty range. */
  page_min = (addr)/DCC_TARGET_PAGESIZE;
@@ -270,28 +284,32 @@ DCCSection_RTAlloc(struct DCCSection *__restrict self,
  }
 
  /* Make sure the page allocation tracker has sufficient length. */
- if (page_max >= self->sc_dat.sd_rt.rs_allocpagea) {
-  uint8_t *new_allocv; size_t newsize;
-  newsize = self->sc_dat.sd_rt.rs_allocpagea;
-  if unlikely(!newsize) newsize = 1;
-  do newsize *= 2; while (page_max >= newsize);
-  new_allocv = (uint8_t *)realloc(self->sc_dat.sd_rt.rs_allocpagev,
-                                  newsize*sizeof(uint8_t));
-  if unlikely(!new_allocv) { DCC_AllocFailed(newsize*sizeof(uint8_t)); goto err; }
-  memset(new_allocv+self->sc_dat.sd_rt.rs_allocpagea,0,
-        (newsize-self->sc_dat.sd_rt.rs_allocpagea)*sizeof(uint8_t));
-  self->sc_dat.sd_rt.rs_allocpagea = newsize;
-  self->sc_dat.sd_rt.rs_allocpagev = new_allocv;
+ {
+  size_t page_alloc = (page_max+((DCC_TARGET_BITPERBYTE/DCC_RT_PAGEATTR_COUNT)-1))/
+                                 (DCC_TARGET_BITPERBYTE/DCC_RT_PAGEATTR_COUNT);
+  if (page_alloc >= self->sc_dat.sd_rt.rs_pagea) {
+   uint8_t *new_allocv; size_t newsize;
+   newsize = self->sc_dat.sd_rt.rs_pagea;
+   if unlikely(!newsize) newsize = 1;
+   do newsize *= 2; while (page_alloc >= newsize);
+   new_allocv = (uint8_t *)realloc(self->sc_dat.sd_rt.rs_pagev,
+                                   newsize*sizeof(uint8_t));
+   if unlikely(!new_allocv) { DCC_AllocFailed(newsize*sizeof(uint8_t)); goto err; }
+   memset(new_allocv+self->sc_dat.sd_rt.rs_pagea,0,
+         (newsize-self->sc_dat.sd_rt.rs_pagea)*sizeof(uint8_t));
+   self->sc_dat.sd_rt.rs_pagea = newsize;
+   self->sc_dat.sd_rt.rs_pagev = new_allocv;
+  }
  }
- /* Allocate all pages  */
+ /* Allocate all pages */
  for (i = page_min; i <= page_max; ++i) {
-  if (!DCCRTSection_ISALLOCATED_(&self->sc_dat.sd_rt,i)) {
+  if (DCCRTSection_PAGE_ISUNUSED(&self->sc_dat.sd_rt,i)) {
    size_t alloc_begin = i,alloc_end = i;
    symflag_t flags; void *base_address;
    size_t alloc_size;
    do ++alloc_end;
    while (alloc_end <= page_max &&
-         !DCCRTSection_ISALLOCATED_(&self->sc_dat.sd_rt,alloc_end));
+          DCCRTSection_PAGE_ISUNUSED(&self->sc_dat.sd_rt,alloc_end));
    flags = self->sc_start.sy_flags;
    if (for_write) flags |= DCC_SYMFLAG_SEC_W;
    base_address = (void *)DCCRTSection_PAGEADDR(&self->sc_dat.sd_rt,alloc_begin);
@@ -308,7 +326,7 @@ DCCSection_RTAlloc(struct DCCSection *__restrict self,
    if (flags&DCC_SYMFLAG_SEC_W)
        memset(base_address,DRT_U_FILLER,alloc_size);
    /* Mark all pages as allocated. */
-   do DCCRTSection_SETALLOCATED_(&self->sc_dat.sd_rt,alloc_begin);
+   do DCCRTSection_SET_PAGEATTR(&self->sc_dat.sd_rt,alloc_begin,0x1);
    while (++alloc_begin != alloc_end);
   } else {
    has_existing_pages = 1;
@@ -327,7 +345,8 @@ DCCSection_RTAlloc(struct DCCSection *__restrict self,
   }
  }
  return result;
-err: return DRT_VERROR;
+err:
+ return (uint8_t *)DRT_VERROR;
 }
 
 PUBLIC void
@@ -335,53 +354,26 @@ DCCSection_RTDoneWrite(struct DCCSection *__restrict self,
                        target_ptr_t addr, target_siz_t size) {
  assert(self);
  assert(!DCCSection_ISIMPORT(self));
- assert(!DCCSection_ISCURR(self) ||
-       (compiler.c_flags&DCC_COMPILER_FLAG_TEXTFLUSH));
  assert(addr+size >= addr);
- assert(addr+size <= (size_t)(self->sc_dat.sd_text.tb_max-
-                              self->sc_dat.sd_text.tb_begin));
  /* Nothing to do if the section is naturally writable. */
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_W) return;
- if (DRT_VProt(DCCRTSection_ADDR(&self->sc_dat.sd_rt,addr),size,
+ if (DRT_VProt(DCCRTSection_BYTEADDR(&self->sc_dat.sd_rt,addr),size,
                self->sc_start.sy_flags) == DRT_VERROR) {
   WARN(W_DRT_VPROT_FAILED_READONLY,
        self->sc_start.sy_name->k_name,
-      (void *)DCCRTSection_ADDR(&self->sc_dat.sd_rt,addr),
-      (void *)(DCCRTSection_ADDR(&self->sc_dat.sd_rt,addr)+(size-1)),
+      (void *)(DCCRTSection_BYTEADDR(&self->sc_dat.sd_rt,addr)),
+      (void *)(DCCRTSection_BYTEADDR(&self->sc_dat.sd_rt,addr)+(size-1)),
       (int)GetLastError());
  }
 #if DCC_HOST_OS == DCC_OS_WINDOWS
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_X) {
   /* Flush the instruction cache after writing to an executable section. */
   FlushInstructionCache(GetCurrentProcess(),
-                        DCCRTSection_ADDR(&self->sc_dat.sd_rt,addr),
+                        DCCRTSection_BYTEADDR(&self->sc_dat.sd_rt,addr),
                         size);
  }
 #endif /* OS_F_WINDOWS */
 }
-
-
-PUBLIC int
-DCCSection_RTCopy(struct DCCSection *__restrict self,
-                  void DRT_USER *__restrict target,
-                  target_ptr_t addr, target_siz_t size) {
- struct DCCRel *rel_iter,*rel_end; size_t relc;
- /* TODO: Optimization for trailing ZERO-memory. */
- void *host_data = DCCSection_GetText(self,addr,size);
- if unlikely(!host_data) return 0;
- memcpy(target,host_data,size);
- rel_iter = DCCSection_GetRel(self,addr,size,&relc);
- if (relc) {
-  /* Setup faulty relocations to trigger DRT data load. */
-  *(uintptr_t *)&target -= addr;
-  rel_end = rel_iter+relc;
-  for (; rel_iter != rel_end; ++rel_iter) {
-   DRT_FaultRel((uint8_t DRT_USER *)((uintptr_t)target+rel_iter->r_addr),rel_iter);
-  }
- }
- return 1;
-}
-
 
 
 PUBLIC void DRT_Init(void) {
@@ -404,6 +396,17 @@ PUBLIC void DRT_Quit(void) {
   memset(&drt.rt_event,0,sizeof(drt.rt_event));
   drt.rt_flags &= ~(DRT_FLAG_STARTED);
  }
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+ {
+  struct DRTPEInd *iter,*next;
+  iter = drt.rt_peind.ic_first;
+  while (iter) {
+   next = iter->i_next;
+   free(iter);
+   iter = next;
+  }
+ }
+#endif
 }
 
 DCC_DECL_END

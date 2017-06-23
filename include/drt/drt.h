@@ -307,11 +307,10 @@
  *   >> 
  *   >> int x[6] = { 2,1,6,3,42,17 };
  *   
- *   The naïve solution implemented by to recursively look at
- *   the definition of symbol during DRT relocations, considering
+ *   The naïve solution implemented by DCC is to recursively look at
+ *   the definition of a symbol during DRT relocations, considering
  *   its size and address to recursively wait for any other
- *   symbol it may be referring to.
- *   (TODO: DRT doesn't actually do this right now...)
+ *   symbols it may be referring to.
  *   
  *   But getting back to a simpler problem: How does DRT
  *   know when to wait for more code in its own function?
@@ -482,32 +481,55 @@ struct DCPUState {
 
 #ifdef _WIN32
 typedef void     *DCC(thread_t);
+typedef DWORD     DCC(threadid_t);
 typedef void     *DCC(semaphore_t);
+#define DRT_HAVE_THREAD_ID
 #else
 typedef pthread_t DCC(thread_t);
 typedef sem_t     DCC(semaphore_t);
 #endif
 
 
-#define DRT_EVENT_NONE      0x00000000 /*< No event. */
-#define DRT_EVENT_FETCH     0x00000001 /*< Load data & relocations in a given address range. */
-#define DRT_EVENT_FETCHSOME 0x00000002 /*< Similar to 'DRT_EVENT_FETCH', but it's ok if only ~something~ could be fetched. */
+#define DRT_EVENT_NONE        0x00000000 /*< No event. */
+#define DRT_EVENT_MIRROR_TEXT 0x00000001 /*< Load text. */
+#define DRT_EVENT_MIRROR_DATA 0x00000002 /*< Load data. */
+#define DRT_EVENT_MIRROR_RELO 0x00000003 /*< TODO: Missing: Load relocations. */
 
 struct DRTUserEvent {
  DCC(semaphore_t)   ue_sem;  /*< Semaphore that the user-thread may wait for when  */
  /*atomic*/uint32_t ue_code; /*< Event code (One of 'DRT_EVENT_*'). */
  union{
-  struct { /* DRT_EVENT_FETCH|DRT_EVENT_FETCHSOME */
-   void  *f_addr;   /*< [in] Start of memory to fetch. */
-union{
-   size_t f_size;   /*< [DRT_EVENT_FETCH][in]      Min amount of bytes to fetch. */
-   size_t f_norelc; /*< [DRT_EVENT_FETCHSOME][out] Amount of relocations that could not be resolved. */
-};
-   size_t f_okrelc; /*< [out] Amount of successfully relocations. */
-   size_t f_datsz;  /*< [out] Amount of filled bytes of memory (ZERO(0) if no data could be fetched). */
-  } ue_fetch;
+  struct { /* DRT_EVENT_MIRROR_TEXT */
+   void  *te_addr;       /*< [in]  Start of text data to fetch. */
+   size_t te_relc_ok;    /*< [out] Amount of newly loaded relocations. */
+   size_t te_size_ok;    /*< [out] Amount of newly loaded text bytes. */
+   size_t te_size_total; /*< [out] Total amount of bytes that were checked. */
+  } ue_text;
+  struct { /* DRT_EVENT_MIRROR_DATA */
+   void  *de_addr;    /*< [in]  Start of text data to fetch. */
+   size_t de_size;    /*< [in]  Min amount of bytes to try and mirror (may not be ZERO(0)). 
+                       *  [out] Amount of successfully loaded bytes (Or ZERO(0) if a faulty address was given).
+                       *        When this field is '(size_t)-1' upon exit, an invalid pointer was given. */
+  } ue_data;
+  struct { /* DRT_EVENT_MIRROR_RELO */
+   void  *re_addr;    /*< [in]  Start of memory to scan for unresolved relocations. */
+   size_t re_size;    /*< [in]  Amount of bytes to scan.
+                       *  [out] Amount of bytes that were scanned. */
+  } ue_relo;
  };
 };
+
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+#define DRT_PEIND_SLOTSIZE 64
+struct DRTPEInd {
+ struct DRTPEInd  *i_next;                    /*< [0..1][owned] Next cache entry. */
+ size_t            i_using;                   /*< Amount of entries in use within this IND cache. */
+ DCC(target_ptr_t) i_ptr[DRT_PEIND_SLOTSIZE]; /*< Vector of fixed-address PE indirection pointers. */
+};
+struct DRTPEIndirectionCache {
+ struct DRTPEInd *ic_first; /*< [0..1][owned] First cache entry. */
+};
+#endif
 
 
 #define DRT_FLAG_NONE     0x00000000
@@ -535,7 +557,13 @@ struct DRT {
                                      *  memory to call its own. */
  uint8_t DRT_USER   *rt_nextaddr;   /*< The base address of the next uninitialized section. */
  DCC(thread_t)       rt_thread;     /*< [valid_if(DRT_FLAG_STARTED)] RT thread handle. */
+#ifdef DRT_HAVE_THREAD_ID
+ DCC(threadid_t)     rt_threadid;   /*< [valid_if(DRT_FLAG_STARTED)] RT thread id. */
+#endif
  struct DRTUserEvent rt_event;      /*< [valid_if(DRT_FLAG_STARTED)] The pending user-thread event. */
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+ struct DRTPEIndirectionCache rt_peind; /*< Cache of PE indirection pointers. */
+#endif
 };
 
 
@@ -545,6 +573,12 @@ DCCDAT struct DRT DRT_Current;
 /* Initialize/Finalize DRT data structures. */
 DCCFUN void DRT_Init(void);
 DCCFUN void DRT_Quit(void);
+
+#if DCC_TARGET_BIN == DCC_BINARY_PE
+/* Allocate a fixed-address PE indirection pointer.
+ * @return: NULL: Failed to allocate a fixed indirection slot. */
+DCCFUN DCC(target_ptr_t) *DRT_AllocPEIndirection(void);
+#endif
 
 /* Enable DRT (called when '-d' is passed on the commandline) */
 #define DRT_Enable()  (void)(DRT_Current.rt_flags |= DRT_FLAG_ENABLED)
@@ -589,9 +623,10 @@ DRT_SetCPUState(struct DCPUState const *__restrict state);
  * With that in mind, 'DRT_SyncAll' will also eventually join()
  * the user-thread, meaning that it should only be called once
  * all input files have been compiled.
- * @return: DRT_SYNC_NONE: No data was synchronized.
- * @return: DRT_SYNC_OK:   Data was synchronized.
- * @return: DRT_SYNC_FAIL: Failed to synchronize data due to undefined symbols / missing data.
+ * @return: DRT_SYNC_NONE:       No data was synchronized.
+ * @return: DRT_SYNC_OK:         Data was synchronized.
+ * @return: DRT_SYNC_UNRESOLVED: Failed to synchronize data due to undefined symbols / missing data.
+ * @return: DRT_SYNC_FAULT:      Failed to synchronize data due to an invalid address range.
  */
 #ifdef __INTELLISENSE__
 DCCFUN int DRT_Sync(void);
@@ -602,9 +637,10 @@ DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(void);
 #define DRT_Sync()    (DRT_STARTED() ? DRT_H_Sync(0) : 0)
 #define DRT_SyncAll() (DRT_STARTED() ? DRT_H_SyncAll() : 0)
 #endif
-#define DRT_SYNC_NONE 0
-#define DRT_SYNC_OK   1
-#define DRT_SYNC_FAIL 2
+#define DRT_SYNC_NONE       0
+#define DRT_SYNC_OK         1
+#define DRT_SYNC_UNRESOLVED 2
+#define DRT_SYNC_FAULT      3
 
 #ifdef DCC_PRIVATE_API
 /* Allocate/Free virtual memory, or set permissions.

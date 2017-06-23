@@ -499,9 +499,6 @@ DCCFreeData_AcquireAt(struct DCCFreeData *__restrict self,
 DCCFUN void
 DCCFreeData_Release(struct DCCFreeData *__restrict self,
                     DCC(target_ptr_t) addr, DCC(target_siz_t) size);
-DCCFUN void
-DCCFreeData_ReleaseMerge(struct DCCFreeData *__restrict self,
-                         DCC(target_ptr_t) addr, DCC(target_siz_t) size);
 
 /* Check if a given address range is part of the free data.
  * @return: 0 : No address within the range is marked as free.
@@ -526,49 +523,51 @@ struct DCCAllocRange {
 
 
 #if DCC_CONFIG_HAVE_DRT
+
+#define DCC_RT_PAGEATTR_UNUSED 0x0 /*< The page is not allocated. */
+#define DCC_RT_PAGEATTR_MALLOC 0x1 /*< The page is allocated from the kernel. */
+#define DCC_RT_PAGEATTR_MIRROR 0x2 /*< The page is allocated and DRT is attempting to mirror it. */
+#define DCC_RT_PAGEATTR_USABLE 0x3 /*< The page is allocated and mirrored. */
+
+#define DCC_RT_PAGEATTR_COUNT 0x2
+
 struct DCCRTSection {
  /* Memory is copied into RT sections using copy-on-access, that is initially,
   * all RT sections are empty, and memory is only cloned once it is accessed. */
 #ifdef __INTELLISENSE__
- uint8_t           *rs_vaddr;      /*< DRT section base address (Same access permissions as the associated section). */
+ uint8_t           *rs_vaddr; /*< DRT section base address (Same access permissions as the associated section). */
 #else
- uint8_t DRT_USER  *rs_vaddr;      /*< DRT section base address (Same access permissions as the associated section). */
+ uint8_t DRT_USER  *rs_vaddr; /*< DRT section base address (Same access permissions as the associated section). */
 #endif
- size_t             rs_allocpagea; /*< Amount of bytes allocated for the 'rs_allocpagev' vector. */
- uint8_t           *rs_allocpagev; /*< [1..1|alloc(rs_allocpagea)][owned] Bitset of pages already allocated for this section. */
- struct DCCFreeData rs_mirror;     /*< Descriptor for data that has already been mirrored (~free~ data is mirrored data) */
+ size_t             rs_pagea; /*< Amount of bytes allocated for the 'rs_pagev' vector. */
+ uint8_t           *rs_pagev; /*< [1..1|alloc(rs_pagea)][owned] Vector of 'DCC_RT_PAGEATTR_COUNT'-bit long entires of page properties. */
+ struct DCCFreeData rs_mtext; /*< Mirrored text. */
 };
 
 
-/* Returns the effective user-address of a given section pointer (aka. target pointer).
- * WARNING: The returned address may not be allocated yet. */
-#define DCCRTSection_ADDR(self,ptr)       ((self)->rs_vaddr+(ptr))
-/* Similar to 'DCCRTSection_ADDR', but return the user-address of a specific page. */
-#define DCCRTSection_PAGEADDR(self,pagei) ((self)->rs_vaddr+(pagei)*DCC_TARGET_PAGESIZE)
-/* Return the max amount of pages that are currently tracked. */
-#if (DCC_TARGET_PAGESIZE % DCC_TARGET_BITPERBYTE) == 0
-#define DCCRTSection_PAGECOUNT(self)      ((self)->rs_allocpagea/(DCC_TARGET_PAGESIZE/DCC_TARGET_BITPERBYTE))
-#else
-#define DCCRTSection_PAGECOUNT(self)      (((self)->rs_allocpagea*DCC_TARGET_BITPERBYTE)/DCC_TARGET_PAGESIZE)
-#endif
-/* Return non-zero if the given page 'pagei' is currently allocated. */
-#define DCCRTSection_ISALLOCATED(self,pagei) \
-      ((pagei) < DCCRTSection_PAGECOUNT(self) && DCCRTSection_ISALLOCATED_(self,pagei))
-#define DCCRTSection_ISALLOCATED_(self,pagei) \
-      ((self)->rs_allocpagev[(pagei)/DCC_TARGET_BITPERBYTE]&\
-                      (1 << ((pagei)%DCC_TARGET_BITPERBYTE)))
-#define DCCRTSection_SETALLOCATED_(self,pagei) \
-      ((self)->rs_allocpagev[(pagei)/DCC_TARGET_BITPERBYTE] |= \
-                      (1 << ((pagei)%DCC_TARGET_BITPERBYTE)))
+#define DCCRTSection_BYTEADDR(self,ptr)          ((self)->rs_vaddr+(ptr))
+#define DCCRTSection_PAGEADDR(self,i)            ((self)->rs_vaddr+(i)*DCC_TARGET_PAGESIZE)
+#define DCCRTSection_PAGECOUNT(self)             ((self)->rs_pagea*(DCC_TARGET_BITPERBYTE/DCC_RT_PAGEATTR_COUNT))
+#define DCCRTSection_PAGEATTR(self,i)            ((self)->rs_pagev[(i)/(DCC_TARGET_BITPERBYTE/DCC_RT_PAGEATTR_COUNT)] >> (DCC_RT_PAGEATTR_COUNT*((i)%(DCC_TARGET_BITPERBYTE/DCC_RT_PAGEATTR_COUNT))))
+#define DCCRTSection_GET_PAGEATTR(self,i,attr)   ((self)->rs_pagev[(i)/(DCC_TARGET_BITPERBYTE/DCC_RT_PAGEATTR_COUNT)] &   ((attr) << (DCC_RT_PAGEATTR_COUNT*((i)%(DCC_TARGET_BITPERBYTE/DCC_RT_PAGEATTR_COUNT)))))
+#define DCCRTSection_SET_PAGEATTR(self,i,attr)   ((self)->rs_pagev[(i)/(DCC_TARGET_BITPERBYTE/DCC_RT_PAGEATTR_COUNT)] |=  ((attr) << (DCC_RT_PAGEATTR_COUNT*((i)%(DCC_TARGET_BITPERBYTE/DCC_RT_PAGEATTR_COUNT)))))
+#define DCCRTSection_UNSET_PAGEATTR(self,i,attr) ((self)->rs_pagev[(i)/(DCC_TARGET_BITPERBYTE/DCC_RT_PAGEATTR_COUNT)] &= ~((attr) << (DCC_RT_PAGEATTR_COUNT*((i)%(DCC_TARGET_BITPERBYTE/DCC_RT_PAGEATTR_COUNT)))))
+
+#define DCCRTSection_PAGE_ISUNUSED(self,i) (!DCCRTSection_GET_PAGEATTR(self,i,0x3))
+#define DCCRTSection_PAGE_ISMALLOC(self,i) (DCCRTSection_PAGEATTR(self,i) == DCC_RT_PAGEATTR_MALLOC)
+#define DCCRTSection_PAGE_ISMIRROR(self,i) (DCCRTSection_PAGEATTR(self,i) == DCC_RT_PAGEATTR_MIRROR)
+#define DCCRTSection_PAGE_ISUSABLE(self,i) (DCCRTSection_PAGEATTR(self,i) == DCC_RT_PAGEATTR_USABLE)
+
+#define DCCRTSection_PAGE_ISLOCKED(self,i)  DCCRTSection_GET_PAGEATTR(self,i,0x2)
 
 /* Enumerate all allocated address ranges. */
-#define DCCRTSECTION_FOREACH_BEGIN(self,addr,n_bytes) \
+#define DCCRTSECTION_FOREACH_BEGIN(self,attr,addr,n_bytes) \
  do{ size_t rts_i = 0,rts_count = DCCRTSection_PAGECOUNT(self); \
      for (; rts_i != rts_count; ++rts_i) \
-     if (DCCRTSection_ISALLOCATED_(self,rts_i)) { \
+     if (DCCRTSection_GET_PAGEATTR(self,rts_i,attr)) { \
       size_t rts_end_page = rts_i; \
       *(void DRT_USER **)&(addr) = (void DRT_USER *)DCCRTSection_PAGEADDR(self,rts_end_page); \
-      do ++rts_end_page; while (rts_end_page != rts_count && DCCRTSection_ISALLOCATED_(self,rts_end_page)); \
+      do ++rts_end_page; while (rts_end_page != rts_count && DCCRTSection_GET_PAGEATTR(self,rts_end_page,attr)); \
       (n_bytes) = (size_t)(rts_end_page-rts_i)*DCC_TARGET_PAGESIZE,rts_i = rts_end_page; \
 
 #define DCCRTSECTION_FOREACH_END \
@@ -590,7 +589,7 @@ DCCFUN void DCCSection_RTQuit(struct DCCSection *__restrict self);
  * @return: * :         The user-pointer to the start of the memory range.
  * @return: DRT_VERROR: Failed to allocate RT memory (an error/warning has been emit)
  */
-DCCFUN void DRT_USER *
+DCCFUN uint8_t DRT_USER *
 DCCSection_RTAlloc(struct DCCSection *__restrict self,
                    DCC(target_ptr_t) addr,
                    DCC(target_siz_t) size, int for_write);
@@ -598,17 +597,6 @@ DCCFUN void
 DCCSection_RTDoneWrite(struct DCCSection *__restrict self,
                        DCC(target_ptr_t) addr,
                        DCC(target_siz_t) size);
-
-/* Copy text data from 'addr...+=size' to 'target'.
- * NOTE: During this operation, data referred to by relocations
- *       is filled in with 'DRT_FAULT_ADDRESS'
- * @return: 0: Failed to lookup host data.
- * @return: 1: Successfully copied data. */
-DCCFUN int
-DCCSection_RTCopy(struct DCCSection *__restrict self,
-                  void DRT_USER *__restrict target,
-                  DCC(target_ptr_t) addr,
-                  DCC(target_siz_t) size);
 
 #else /* DCC_CONFIG_HAVE_DRT */
 #define DCCSection_RTInit(self) (void)0
@@ -863,7 +851,7 @@ DCCSection_Delrel(struct DCCSection *__restrict self,
  * @return: 1 : At least one relocation was found.
  * @requires: !DCCSection_ISIMPORT(self) */
 DCCFUN int
-DCCSection_Hasrel(struct DCCSection *__restrict self,
+DCCSection_Hasrel(struct DCCSection const *__restrict self,
                   DCC(target_ptr_t) addr,
                   DCC(target_siz_t) size);
 
@@ -872,7 +860,7 @@ DCCSection_Hasrel(struct DCCSection *__restrict self,
  *          coincide with '*relc' being set to ZERO.
  *          To handle no-relocations, the caller must check '*relc'. */
 DCCFUN struct DCCRel *
-DCCSection_GetRel(struct DCCSection *__restrict self,
+DCCSection_GetRel(struct DCCSection const *__restrict self,
                   DCC(target_ptr_t) addr,
                   DCC(target_siz_t) size,
                   size_t *__restrict relc);

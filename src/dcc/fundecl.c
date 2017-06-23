@@ -105,6 +105,12 @@ DCCFunctionFrame_Enter(struct DCCFunctionFrame *__restrict self,
   /* Align the text pointer. */
   if (align >= 2) DCCUnit_TAlign(align,0);
  }
+#if DCC_CONFIG_HAVE_DRT
+ /* Ensure page-alignment between functions. */
+ if (DRT_ENABLED()) {
+  DCCUnit_TAlign(DCC_TARGET_PAGESIZE,0);
+ }
+#endif
  /* Define the location for the function symbol. */
  t_defsym(fun_sym);
  assert(fun_sym->sy_sec == self->ff_new_section);

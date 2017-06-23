@@ -993,7 +993,7 @@ done:
 }
 
 PUBLIC int
-DCCSection_Hasrel(struct DCCSection *__restrict self,
+DCCSection_Hasrel(struct DCCSection const *__restrict self,
                   target_ptr_t addr, target_siz_t size) {
  struct DCCRel *rel_end,*begin;
  target_ptr_t addr_end = addr+size;
@@ -1009,7 +1009,7 @@ DCCSection_Hasrel(struct DCCSection *__restrict self,
 }
 
 PUBLIC struct DCCRel *
-DCCSection_GetRel(struct DCCSection *__restrict self,
+DCCSection_GetRel(struct DCCSection const *__restrict self,
                   target_ptr_t addr, target_siz_t size,
                   size_t *__restrict relc) {
  struct DCCRel *rel_end,*rel_begin,*begin;
@@ -1279,6 +1279,17 @@ DCCSection_DAlloc(struct DCCSection *__restrict self,
  result = DCCFreeData_Acquire(&self->sc_dat.sd_free,size,align,offset);
  if (result == DCC_FREEDATA_INVPTR)
      result = DCCSection_DAllocBack(self,size,align,offset);
+#if DCC_CONFIG_HAVE_DRT
+ else if (DRT_ENABLED()) {
+  size_t page_index = result/DCC_TARGET_PAGESIZE;
+  /* Make sure not to allocate data within a mirrored page. */
+  if (page_index < DCCRTSection_PAGECOUNT(&self->sc_dat.sd_rt) &&
+      DCCRTSection_PAGE_ISLOCKED(&self->sc_dat.sd_rt,page_index)) {
+   DCCSection_DFree(self,result,size);
+   result = DCCSection_DAllocBack(self,size,align,offset);
+  }
+ }
+#endif
  return result;
 }
 
@@ -1290,9 +1301,22 @@ DCCSection_DAllocBack(struct DCCSection *__restrict self,
  target_ptr_t result,aligned_result;
  uint8_t *new_pointer;
  /* Allocate at the end. */
- result = (target_ptr_t)(self->sc_dat.sd_text.tb_max-self->sc_dat.sd_text.tb_begin);
+ result = (target_ptr_t)(self->sc_dat.sd_text.tb_max-
+                         self->sc_dat.sd_text.tb_begin);
+ aligned_result = (result+(align-1)-offset) & ~(align-1);
+#if DCC_CONFIG_HAVE_DRT
+ if (DRT_ENABLED()) for (;;) {
+  size_t page_index = result/DCC_TARGET_PAGESIZE;
+  /* Make sure to allocate memory in the next page,
+   * so-as to ensure safe detection of access later. */
+  if (page_index >= DCCRTSection_PAGECOUNT(&self->sc_dat.sd_rt) ||
+     !DCCRTSection_PAGE_ISLOCKED(&self->sc_dat.sd_rt,page_index)) break;
+  aligned_result &= ~(DCC_TARGET_PAGESIZE-1);
+  aligned_result +=   DCC_TARGET_PAGESIZE;
+  result          =   aligned_result;
+ }
+#endif
  /* Align the result pointer. */
- aligned_result  = (result+(align-1)-offset) & ~(align-1);
  aligned_result += offset;
  if (aligned_result != result) {
   /* Mark alignment & offset memory as free. */
@@ -1331,6 +1355,10 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
  target_ptr_t result = old_addr;
  assert(self);
  DCCSECTION_ASSERT_TEXT_FLUSHED(self);
+#if DCC_CONFIG_HAVE_DRT
+ /* TODO: Special handling for reallocation data into
+  *       a new page if the old page has been mirrored. */
+#endif
  if (!old_size) {
   /* Special case: First allocation. */
   result = DCCSection_DAlloc(self,new_size,new_align,new_offset);

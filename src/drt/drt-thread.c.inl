@@ -42,51 +42,52 @@ DRT_U_W32ExceptionHandler(EXCEPTION_RECORD *ExceptionRecord, PVOID EstablisherFr
  (void)DispatcherContext;
  if (ExceptionRecord && ContextRecord) {
   DWORD code = ExceptionRecord->ExceptionCode;
-  target_ptr_t eip_end,eip;
+  target_ptr_t eip;
   eip = (target_ptr_t)ExceptionRecord->ExceptionAddress;
   if (!eip) eip = (target_ptr_t)ContextRecord->Eip; /* Should never happen... */
   if (code == EXCEPTION_ACCESS_VIOLATION) {
    target_ptr_t access_addr = ExceptionRecord->ExceptionInformation[1];
    /* If a non-faulty address was accessed, try to load it as an operand. */
    if (access_addr < DRT_FAULT_ADDRESS) {
-    if (DRT_U_FetchSome((void *)access_addr))
+    if (DRT_U_FetchData((void *)access_addr,1))
         return ExceptionContinueExecution;
    }
-   /* Wait for data and relocations within the caller's current instruction. */
-   /* TODO: This is a dirty hack to get most probe code working, but
-    *       filling in the relocation to one symbol must somehow cause
-    *       all other undefined relocations to the same symbol to also
-    *       be filled in!
-    * >> testl $0, foo // If the relocation to 'foo' is fixed here,
-    * >>               // we must ensure it is fixed below as well!
-    * >> call foo
-    */
-   eip_end = (target_ptr_t)x86_instrlen((uint8_t const *)eip);
-   eip_end = (target_ptr_t)x86_instrlen((uint8_t const *)eip_end); /* TODO: Delete this line. */
-   /* If we've managed to load data or relocations, try again. */
-   if (!DRT_U_Fetch((void *)eip,eip_end-eip))
-        goto done;
-   return ExceptionContinueExecution;
+#if 0 /* TODO: This isn't working yet. */
+   {
+    /* Wait for symbol relocations within the current instruction.
+     * NOTE: These relocations must be mirrored globally, meaning
+     *       that any other existing relocation against every symbol
+     *       either directly, or indirectly referred to by said
+     *       instruction must be relocated _everywhere_ */
+    uintptr_t eip_end = (uintptr_t)x86_instrlen((uint8_t const *)eip);
+    if (DRT_U_FetchRelo((void *)eip,(size_t)(eip_end-eip)))
+        return ExceptionContinueExecution;
+   }
+#else
+   if (DRT_U_FetchText((void *)eip))
+       return ExceptionContinueExecution;
+#endif
   } else if (code == EXCEPTION_PRIV_INSTRUCTION) {
    /* When unmapped filler memory is encountered, load more instructions. */
    if (*(uint8_t *)eip == DRT_U_FILLER) {
-    if (DRT_U_FetchSome((void *)eip))
+    if (DRT_U_FetchText((void *)eip))
         return ExceptionContinueExecution;
    }
   }
  }
-done:
  return ExceptionContinueSearch;
 }
 
 INTERN LONG NTAPI
 DRT_U_W32VExceptionHandler(EXCEPTION_POINTERS *ExceptionInfo) {
- EXCEPTION_DISPOSITION disp;
- if unlikely(!ExceptionInfo) return EXCEPTION_CONTINUE_SEARCH;
- disp = DRT_U_W32ExceptionHandler(ExceptionInfo->ExceptionRecord,NULL,
-                                  ExceptionInfo->ContextRecord,NULL);
- if (disp == ExceptionContinueExecution)
-     return EXCEPTION_CONTINUE_EXECUTION;
+ if (GetCurrentThreadId() == drt.rt_threadid) {
+  EXCEPTION_DISPOSITION disp;
+  if unlikely(!ExceptionInfo) return EXCEPTION_CONTINUE_SEARCH;
+  disp = DRT_U_W32ExceptionHandler(ExceptionInfo->ExceptionRecord,NULL,
+                                   ExceptionInfo->ContextRecord,NULL);
+  if (disp == ExceptionContinueExecution)
+      return EXCEPTION_CONTINUE_EXECUTION;
+ }
  return EXCEPTION_CONTINUE_SEARCH;
 }
 
@@ -108,7 +109,7 @@ PRIVATE DWORD WINAPI
 DRT_ThreadEntry(struct DCPUState *pstate) {
  struct DCPUState my_state = *pstate;
  NT_TIB *tib = (NT_TIB *)__readfsdword(0x18);
- EXCEPTION_REGISTRATION_RECORD root_handler;
+ //EXCEPTION_REGISTRATION_RECORD root_handler;
  void **u_stack;
  free(pstate);
  /* Reserve part of the DRT thread's stack for internal use. */
@@ -125,16 +126,22 @@ DRT_ThreadEntry(struct DCPUState *pstate) {
  my_state.cs_gpreg.u_gp[DCC_ASMREG_EBP] = (target_ptr_t)u_stack;
 #undef PUSH
 
+#if 0
  /* Register the root exception handler responsible for wait on data. */
  root_handler.Handler = &DRT_U_W32ExceptionHandler;
  root_handler.Next    = tib->ExceptionList;
  tib->ExceptionList   = &root_handler;
+#endif
 
  /* Register a vectored exception handler, which although doing the same,
   * is (supposedly) called much sooner during exception handling.
   * If I understand it correctly, passing '(ULONG)-1' will
   * set up the handler to be called first '_ALWAYS_'. */
- AddVectoredContinueHandler((ULONG)-1,&DRT_U_W32VExceptionHandler);
+#ifdef __DRT__
+ AddVectoredExceptionHandler((ULONG)-2,&DRT_U_W32VExceptionHandler);
+#else
+ AddVectoredExceptionHandler((ULONG)-1,&DRT_U_W32VExceptionHandler);
+#endif
  
  /* Switch to the given CPU state. */
  DRT_SetCPUState(&my_state);
@@ -174,7 +181,7 @@ DRT_Start(struct DCCSym *__restrict entry_point,
   struct DCCSection *startup,*old_text,*prev_text;
   uint8_t DRT_USER *bootstrap_udata;
   target_ptr_t bootstrap_addr;
-  target_siz_t bootstrap_size;
+  target_siz_t bootstrap_size,bootstrap_sizeok;
   struct DCCMemLoc entry_loc;
   startup = DCCUnit_NewSecs(".drt.init",DCC_SYMFLAG_SEC(1,0,1,0,0,0));
   if unlikely(!startup) goto err2;
@@ -199,9 +206,9 @@ DRT_Start(struct DCCSym *__restrict entry_point,
   bootstrap_udata = (uint8_t DRT_USER *)DCCSection_RTAlloc(startup,bootstrap_addr,bootstrap_size,1);
   if unlikely(bootstrap_udata == DRT_VERROR) goto err2;
   /* Copy the bootstrap code. */
-  if unlikely(!DCCSection_RTCopy(startup,bootstrap_udata,
-                                 bootstrap_addr,bootstrap_size))
-               goto err2;
+  DCCSection_RTMirrorData(startup,
+                          bootstrap_addr,bootstrap_size,
+                         &bootstrap_sizeok,0);
   /* Notify the startup section that we're done writing code. */
   DCCSection_RTDoneWrite(startup,bootstrap_addr,bootstrap_size);
   /* At this point, 'bootstrap_udata' is a pointer to
@@ -215,7 +222,7 @@ DRT_Start(struct DCCSym *__restrict entry_point,
  drt.rt_flags |= DRT_FLAG_STARTED;
  drt.rt_thread = CreateThread(NULL,DRT_U_STACKRESERVE+drt.rt_stacksize,
                              (LPTHREAD_START_ROUTINE)&DRT_ThreadEntry,
-                              state,0,NULL);
+                              state,0,&drt.rt_threadid);
  if unlikely(!drt.rt_thread ||
               drt.rt_thread == INVALID_HANDLE_VALUE)
               goto err2;

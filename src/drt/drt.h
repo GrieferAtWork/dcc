@@ -44,11 +44,10 @@ INTDEF void DRT_USER DRT_U_WaitEvent(uint32_t code);
 
 /* Fetch data & relocations within the given address range.
  * @param: min_size: The min amount of bytes to fetch. (ZERO isn't allowed)
- * @return: * : The actual amount of bytes successfully fetched. (ZERO indicates an invalid pointer)
- * NOTE: 'DRT_U_FetchSome' will not return until at least ONE(1) byte was fetched.
- * NOTE: 'DRT_U_FetchSome' may not fetch all relocations within the affected code area. */
-INTDEF size_t DRT_USER DRT_U_Fetch(void DRT_USER *addr, size_t min_size);
-INTDEF size_t DRT_USER DRT_U_FetchSome(void DRT_USER *addr);
+ * @return: 0/1: Indicate success/failure of fetching data. */
+INTDEF int DRT_USER DRT_U_FetchText(void DRT_USER *addr);
+INTDEF int DRT_USER DRT_U_FetchData(void DRT_USER *addr, size_t min_size);
+INTDEF int DRT_USER DRT_U_FetchRelo(void DRT_USER *addr, size_t size);
 
 #ifndef DCC_NO_ATTRIBUTE_FASTCALL
 INTDEF void DRT_USER DCC_ATTRIBUTE_FASTCALL DRT_U_ProbeN(void DRT_USER *p, size_t n);
@@ -61,6 +60,12 @@ DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(void);
 
 /* Find and return the address associated with the given user-section address 'addr'. */
 INTDEF struct DCCSection *DRT_FindUserSection(void DRT_USER *addr);
+
+INTDEF int
+DCCSection_RTMirrorData(struct DCCSection *__restrict self,
+                        target_ptr_t addr, target_siz_t size,
+                        target_siz_t *__restrict psize_ok,
+                        int warn_failure);
 
 /* Try to resolve the given relocation 'rel' from 'sec',
  * targeting memory in 'uaddr' with section data from 'haddr'. */

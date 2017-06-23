@@ -67,7 +67,7 @@ INTERN void DRT_USER DRT_U_WaitEvent(uint32_t code) {
  if (drt.rt_flags&DRT_FLAG_JOINING2) {
   /* The compiler thread is no more. - We're in charge now! */
   /* Really hacky: Do the synchronization ourself. */
-  if (DRT_H_Sync(1) != DRT_SYNC_OK) {
+  if (DRT_H_Sync(1) == DRT_SYNC_UNRESOLVED) {
    /* Exit the thread if nothing else can be done!
     * NOTE: Warnings were already emit by 'DRT_H_Sync'. */
    ExitThread(1);
@@ -78,20 +78,30 @@ INTERN void DRT_USER DRT_U_WaitEvent(uint32_t code) {
  }
 }
 
-INTERN size_t DRT_USER
-DRT_U_Fetch(void DRT_USER *addr, size_t size) {
- memset(&drt.rt_event.ue_fetch,0,sizeof(drt.rt_event.ue_fetch));
- drt.rt_event.ue_fetch.f_addr = addr;
- drt.rt_event.ue_fetch.f_size = size;
- DRT_U_WaitEvent(DRT_EVENT_FETCH);
- return drt.rt_event.ue_fetch.f_datsz;
+INTERN int DRT_USER
+DRT_U_FetchText(void DRT_USER *addr) {
+ drt.rt_event.ue_text.te_addr    = addr;
+ drt.rt_event.ue_text.te_relc_ok = 0;
+ drt.rt_event.ue_text.te_size_ok = 0;
+ DRT_U_WaitEvent(DRT_EVENT_MIRROR_TEXT);
+ return drt.rt_event.ue_text.te_relc_ok ||
+        drt.rt_event.ue_text.te_size_ok ||
+        drt.rt_event.ue_text.te_size_total;
 }
-INTERN size_t DRT_USER
-DRT_U_FetchSome(void DRT_USER *addr) {
- memset(&drt.rt_event.ue_fetch,0,sizeof(drt.rt_event.ue_fetch));
- drt.rt_event.ue_fetch.f_addr = addr;
- DRT_U_WaitEvent(DRT_EVENT_FETCHSOME);
- return drt.rt_event.ue_fetch.f_datsz;
+INTERN int DRT_USER
+DRT_U_FetchData(void DRT_USER *addr, size_t size) {
+ drt.rt_event.ue_data.de_addr = addr;
+ drt.rt_event.ue_data.de_size = size;
+ DRT_U_WaitEvent(DRT_EVENT_MIRROR_DATA);
+ return /*drt.rt_event.ue_data.de_size &&*/
+        drt.rt_event.ue_data.de_size != (size_t)-1;
+}
+INTERN int DRT_USER
+DRT_U_FetchRelo(void DRT_USER *addr, size_t size) {
+ drt.rt_event.ue_relo.re_addr = addr;
+ drt.rt_event.ue_relo.re_size = size;
+ DRT_U_WaitEvent(DRT_EVENT_MIRROR_RELO);
+ return drt.rt_event.ue_relo.re_size != 0;
 }
 
 DCC_DECL_END
