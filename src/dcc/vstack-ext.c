@@ -109,10 +109,10 @@ pe_alloca:
   vpushxr(DCC_RR_XSP); /* x, %esp */
   vswap();             /* %esp, x */
   vgen2('-');          /* %esp */
-  vpop(1);             /* Force apply disposition. */
-  vpushxr(DCC_RR_XSP); /* Push the ESP register again. */
-  vcast_pt(DCCTYPE_VOID,1);
  }
+ vpop(1);             /* Force apply disposition. */
+ vpushxr(DCC_RR_XSP); /* Push the ESP register again. */
+ vcast_pt(DCCTYPE_VOID,1);
 }
 
 PUBLIC void DCC_VSTACK_CALL

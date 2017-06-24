@@ -205,7 +205,7 @@ DCCParse_BuiltinMinMax(void) {
   if (first) first = 0;
   else {
    vpromi2();
-   vminmax(mode);
+   vxminmax(mode);
   }
   if (TOK != ',') break;
   YIELD();

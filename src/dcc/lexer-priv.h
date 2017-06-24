@@ -191,7 +191,7 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinFree(void);              /* void  __
 /* CPU */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinCPUInit(void);           /* void __builtin_cpu_init(void); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinCPUQuery(void);          /* int __builtin_cpu_is(char const *cpuname),__builtin_cpu_supports(char const *feature); */
-LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinCPUVendor(void);         /* char (&__builtin_cpu_vendor(void))[...]; */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinCPUVendor(void);         /* char (&__builtin_cpu_vendor([char *buf]))[...], (&__builtin_cpu_brand([char *buf]))[...]; */
 
 /* MISC */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinScanner(void);           /* int __builtin_ffs(int x),__builtin_ffsl(long x),__builtin_ffsll(long long x),__builtin_ffscc(auto x, size_t s);

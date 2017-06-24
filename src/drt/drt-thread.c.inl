@@ -92,7 +92,8 @@ DRT_U_W32ExceptionHandler(EXCEPTION_RECORD *ExceptionRecord, PVOID EstablisherFr
   } else if (code == EXCEPTION_PRIV_INSTRUCTION) {
    /* When unmapped filler memory is encountered, load more instructions. */
    if (*(uint8_t *)eip == DRT_U_FILLER) {
-    if (DRT_U_FetchText((void *)eip))
+    if (DRT_U_FetchText((void *)eip) ||
+        drt.rt_event.ue_text.te_size_total)
         return ExceptionContinueExecution;
    }
   }
@@ -114,12 +115,12 @@ DRT_U_W32VExceptionHandler(EXCEPTION_POINTERS *ExceptionInfo) {
 }
 
 #ifdef _MSC_VER
-INTERN void __declspec(naked) DRT_ThreadExit(void) {
+INTERN void __declspec(naked) DRT_U_ThreadExit(void) {
  __asm mov ecx, eax;
  __asm jmp ExitThread;
 }
 #else
-INTERN void __attribute__((__naked__)) DRT_ThreadExit(void) {
+INTERN void __attribute__((__naked__)) DRT_U_ThreadExit(void) {
  __asm__("mov %eax, %ecx\n"
          "jmp ExitThread\n");
  __builtin_unreachable();
@@ -157,7 +158,7 @@ DRT_ThreadEntry(struct DRTStartupInfo *info) {
 
  /* Setup the user-stack in a way that when the DRT entry point returns,
   * it will call 'ExitThread()' with the value from its EAX register. */
- PUSH((void *)&DRT_ThreadExit);
+ PUSH((void *)&DRT_U_ThreadExit);
 
  initcpu.cs_gpreg.u_gp[DCC_ASMREG_ESP] = (target_ptr_t)u_stack;
  initcpu.cs_gpreg.u_gp[DCC_ASMREG_EBP] = (target_ptr_t)u_stack;

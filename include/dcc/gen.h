@@ -273,6 +273,7 @@ DCCFUN void DCCDisp_LeaMem(struct DCCMemLoc const *__restrict addr,
 
 typedef uint8_t DCC(test_t);
 
+#if DCC_TARGET_HASI(I_X86)
 #define DCC_TEST_NBIT     1
 #define DCC_TEST_NOT(x) ((x)^DCC_TEST_NBIT)
 
@@ -306,6 +307,9 @@ typedef uint8_t DCC(test_t);
 #define DCC_TEST_NG   0xe /* test: not greater (ZF=1 or SF<>OF). */
 #define DCC_TEST_G    0xf /* test: greater (ZF=0 and SF=OF). */
 #define DCC_TEST_NLE  0xf /* test: not less or equal (ZF=0 and SF=OF). */
+#else /* I_X86 */
+#error FIXME
+#endif /* !I_X86 */
 
 /* Set the state of a given test to 1
  * NOTE: After this process, 'tst' will mirror 1,
@@ -321,12 +325,13 @@ DCCFUN void DCCDisp_SymJmp(struct DCCSym const *__restrict sym);
 #define     DCCDisp_RegCll(reg)   DCCDisp_UnaryReg('(',reg)
 #define     DCCDisp_MemCll(src,n) DCCDisp_UnaryMem('(',src,n)
 DCCFUN void DCCDisp_LocCll(struct DCCMemLoc const *__restrict addr);
+DCCFUN void DCCDisp_SymCll(struct DCCSym const *__restrict sym);
 
 /* Generate a conditional jump (according to EFLAGS) */
 DCCFUN void DCCDisp_RegJcc(DCC(test_t) t, DCC(rc_t) reg);
 DCCFUN void DCCDisp_MemJcc(DCC(test_t) t, struct DCCMemLoc const *__restrict src, DCC(target_siz_t) n);
 DCCFUN void DCCDisp_LocJcc(DCC(test_t) t, struct DCCMemLoc const *__restrict addr);
-DCCFUN void DCCDisp_SymJcc(DCC(test_t) t, struct DCCSym *__restrict sym);
+DCCFUN void DCCDisp_SymJcc(DCC(test_t) t, struct DCCSym const *__restrict sym);
 
 /* Conditionally move 'src' into 'dst'. */
 DCCFUN void DCCDisp_RegCMovReg(DCC(test_t) t, DCC(rc_t) src, DCC(rc_t) dst, int src_unsigned);

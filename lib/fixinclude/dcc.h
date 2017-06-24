@@ -76,15 +76,7 @@ struct [[__packed__]] __cpuinfo {
 	unsigned __int32 __cpuid_7_edx;
 	unsigned __int32 __cpuid_7_ecx;
 	unsigned __int32 __cpuid_0_eax;
-union [[__packed__]] {
-struct [[__packed__]] {
 	unsigned __int32 __cpuid_0_ebx;
-	unsigned __int32 __cpuid_0_edx;
-	unsigned __int32 __cpuid_0_ecx;
-	unsigned __int8  __cpuid_zero;
-};
-	char             __cpuid_vendor[13];
-};
 #else
 	int              __placeholder;
 #endif

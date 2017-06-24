@@ -89,11 +89,11 @@ DCCDisp_LocJcc(test_t t, struct DCCMemLoc const *__restrict addr) {
  }
 }
 PUBLIC void
-DCCDisp_SymJcc(DCC(test_t) t, struct DCCSym *__restrict sym) {
+DCCDisp_SymJcc(DCC(test_t) t, struct DCCSym const *__restrict sym) {
  struct DCCMemLoc addr;
  addr.ml_reg = DCC_RC_CONST;
  addr.ml_off = 0;
- addr.ml_sym = sym;
+ addr.ml_sym = (struct DCCSym *)sym;
  DCCDisp_LocJcc(t,&addr);
 }
 PUBLIC void
@@ -253,7 +253,7 @@ DCCDisp_SccMem(test_t t, struct DCCMemLoc const *__restrict dst,
 PUBLIC void
 DCCDisp_LocCll(struct DCCMemLoc const *__restrict addr) {
  assert(addr);
- if (addr->ml_reg) {
+ if (addr->ml_reg != DCC_RC_CONST) {
   rc_t preg = DCCDisp_AddProtReg(&addr->ml_sad,addr->ml_reg)|
                                 (addr->ml_reg&DCC_RC_MASK_86SEGP);
   DCCDisp_UnaryReg('(',preg);
@@ -265,6 +265,16 @@ DCCDisp_LocCll(struct DCCMemLoc const *__restrict addr) {
   DCCDisp_SymDisp32(&addr->ml_sad);
  }
 }
+
+PUBLIC void
+DCCDisp_SymCll(struct DCCSym const *__restrict sym) {
+ struct DCCMemLoc addr;
+ addr.ml_reg = DCC_RC_CONST;
+ addr.ml_off = 0;
+ addr.ml_sym = (struct DCCSym *)sym;
+ DCCDisp_LocCll(&addr);
+}
+
 
 DCC_DECL_END
 

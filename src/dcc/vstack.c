@@ -617,7 +617,8 @@ load_self_pointer:
   }
  }
 #endif /* I_X86 */
- if (self->sv_const.it || self->sv_sym) {
+ if ((self->sv_const.it || self->sv_sym) &&
+     !DCC_RC_ISCONST(self->sv_reg)) {
   DCCStackValue_FixRegister(self);
   if (self->sv_const.it || self->sv_sym) {
    struct DCCSymAddr temp;
@@ -1240,8 +1241,16 @@ integral_common: DCCDisp_CstBinMem(op,&temp,target,n,DCCStackValue_IsUnsignedOrP
   case 8: temp.sa_off = (target_off_t)DCC_H2T64(self->sv_const.u64); goto integral_common;
 #endif
   default:
+#if DCC_HOST_BYTEORDER == DCC_TARGET_BYTEORDER
    DCCDisp_VecBinMem(op,&self->sv_const,8,target,n,
                      DCCStackValue_IsUnsignedOrPtr(self));
+#else
+   {
+    uint64_t temp = DCC_H2T64(self->sv_const.u64);
+    DCCDisp_VecBinMem(op,&temp,8,target,n,
+                      DCCStackValue_IsUnsignedOrPtr(self));
+   }
+#endif
    break;
   }
   return;

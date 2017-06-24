@@ -189,6 +189,7 @@ DEF_BUILTIN(__builtin_cpu_init)
 DEF_BUILTIN(__builtin_cpu_is)
 DEF_BUILTIN(__builtin_cpu_supports)
 DEF_BUILTIN(__builtin_cpu_vendor)
+DEF_BUILTIN(__builtin_cpu_brand)
 
 DEF_K(__builtin_va_list) MACRO(KWD___builtin_va_list,1)
 KWD_FLAGS(KWD___builtin_va_list,TPP_KEYWORDFLAG_HAS_BUILTIN)
@@ -528,10 +529,13 @@ PREDEFINED_MACRO_IF(__KOS__,HAS(EXT_SYSTEM_MACROS),"1")
 /* Predefined macros. */
 #if DCC_TARGET_HASM(M_I386)
 ARCH_MACRO3(i386)
-#endif
+#endif /* M_I386 */
+#if DCC_TARGET_HASM(M_I387)
+ARCH_MACRO3(i387)
+#endif /* M_I387 */
 #if DCC_TARGET_HASM(M_I486)
 ARCH_MACRO3(i486)
-#endif
+#endif /* M_I486 */
 #if DCC_TARGET_HASM(M_I586)
 ARCH_MACRO3(i586)
 #endif /* M_I586 */

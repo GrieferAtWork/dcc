@@ -36,25 +36,6 @@
 
 DCC_DECL_BEGIN
 
-#define DRT_U_STACKRESERVE 0x1000 /* Amount of user-stack bytes to reserve for DRT itself. */
-#define DRT_U_FILLER       0xf4   /* hlt - Will raise a #GP because DCC isn't meant to run in kernel space. */
-
-
-INTDEF void DRT_USER DRT_U_WaitEvent(uint32_t code);
-
-/* Fetch data & relocations within the given address range.
- * @param: min_size: The min amount of bytes to fetch. (ZERO isn't allowed)
- * @return: 0/1: Indicate success/failure of fetching data. */
-INTDEF int DRT_USER DRT_U_FetchText(void DRT_USER *addr);
-INTDEF int DRT_USER DRT_U_FetchData(void DRT_USER *addr, size_t min_size);
-INTDEF int DRT_USER DRT_U_FetchRelo(void DRT_USER *addr, size_t size);
-
-#ifndef DCC_NO_ATTRIBUTE_FASTCALL
-INTDEF void DRT_USER DCC_ATTRIBUTE_FASTCALL DRT_U_ProbeN(void DRT_USER *p, size_t n);
-#else
-INTDEF void DRT_USER DRT_U_ProbeN(void);
-#endif
-
 DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_Sync(int warn_failure);
 DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(void);
 
@@ -82,8 +63,32 @@ INTDEF void
 DRT_FaultRel(uint8_t DRT_USER *__restrict uaddr,
              struct DCCRel const *__restrict rel);
 
+
+/* User-code functions.
+ * All of these functions can be called either
+ * directly, or indirectly from DRT user-space. */
+
+#define DRT_U_STACKRESERVE 0x1000 /* Amount of user-stack bytes to reserve for DRT itself. */
+#define DRT_U_FILLER       0xf4   /* hlt - Will raise a #GP because DCC isn't meant to run in kernel space. */
+
+
+INTDEF void DRT_USER DRT_U_WaitEvent(uint32_t code);
+
+/* Fetch data & relocations within the given address range.
+ * @param: min_size: The min amount of bytes to fetch. (ZERO isn't allowed)
+ * @return: 0/1: Indicate success/failure of fetching data. */
+INTDEF int DRT_USER DRT_U_FetchText(void DRT_USER *addr);
+INTDEF int DRT_USER DRT_U_FetchData(void DRT_USER *addr, size_t min_size);
+INTDEF int DRT_USER DRT_U_FetchRelo(void DRT_USER *addr, size_t size);
+
+#ifndef DCC_NO_ATTRIBUTE_FASTCALL
+INTDEF void DRT_USER DCC_ATTRIBUTE_FASTCALL DRT_U_ProbeN(void DRT_USER *p, size_t n);
+#else
+INTDEF void DRT_USER DRT_U_ProbeN(void);
+#endif
+
 /* Using the value in EAX as return value, exit the calling thread. */
-INTDEF void DRT_ThreadExit(void);
+INTDEF void DRT_U_ThreadExit(void);
 
 
 typedef struct {
@@ -97,7 +102,7 @@ typedef struct {
 } target_lc_t;
 
 /* The function that '_addr2line' from <dcc.h> is linked against in DRT mode. */
-INTDEF target_bool_t DRT_U_Addr2line(void DRT_USER *ip, target_lc_t *info);
+INTDEF target_bool_t DRT_USER DRT_U_Addr2line(void DRT_USER *ip, target_lc_t *info);
 
 
 DCC_DECL_END

@@ -649,8 +649,6 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_MinMax(DCC(tok_t) mode);
  * >> size_t strnlen(char const *s, size_t max);
  * >> void  *rawmemchr(void const *p, int c);
  * >> void  *rawmemrchr(void const *p, int c); // non-standard
- * >> void  *rawmemend(void const *p, int c); // non-standard
- * >> void  *rawmemrend(void const *p, int c); // non-standard
  * >> char  *strend(char const *s); // non-standard
  * >> char  *strnend(char const *s, size_t max); // non-standard
  * >> size_t memlen(void const *p, int c, size_t s); // non-standard
@@ -728,7 +726,34 @@ extern struct DCCStackValue *vbottom;
 #define vbitfld    DCCVStack_Bitfld
 #define vbitfldf   DCCVStack_Bitfldf
 #define vsubscript DCCVStack_Subscript
-#define vminmax    DCCVStack_MinMax
+
+/* VStack extension short names. */
+#define vxmin()         DCCVStack_MinMax('<')
+#define vxmax()         DCCVStack_MinMax('>')
+#define vxminmax        DCCVStack_MinMax
+#define vxalloca        DCCVStack_Alloca
+#define vxalloca_n(n)  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,n),vxalloca())
+#define vxbswap         DCCVStack_BSwap
+#define vxclz()         DCCVStack_Scanner(KWD___builtin_clz)
+#define vxffs()         DCCVStack_Scanner(KWD___builtin_ffs)
+#define vxmemchr()      DCCVStack_Scas(DCC_VSTACK_SCAS_MEMCHR)
+#define vxmemend()      DCCVStack_Scas(DCC_VSTACK_SCAS_MEMEND)
+#define vxmemlen()      DCCVStack_Scas(DCC_VSTACK_SCAS_MEMLEN)
+#define vxmemrchr()     DCCVStack_Scas(DCC_VSTACK_SCAS_MEMRCHR)
+#define vxmemrend()     DCCVStack_Scas(DCC_VSTACK_SCAS_MEMREND)
+#define vxmemrlen()     DCCVStack_Scas(DCC_VSTACK_SCAS_MEMRLEN)
+#define vxrawmemchr()  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vxmemend())
+#define vxrawmemrchr() (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vxmemrend())
+#define vxrawmemlen()  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vxmemlen())
+#define vxrawmemrlen() (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vxmemrlen())
+#define vxstrlen()     (vpushi(DCCTYPE_CHAR,'\0'),vxrawmemlen())
+#define vxstrnlen()    (vpushi(DCCTYPE_CHAR,'\0'),vswap(),vxmemlen())
+#define vxstrend()     (vpushi(DCCTYPE_CHAR,'\0'),vxrawmemchr())
+#define vxstrnend()    (vpushi(DCCTYPE_CHAR,'\0'),vswap(),vxmemend())
+#define vxmemcmp        DCCVStack_Memcmp
+#define vxmemset        DCCVStack_Memset
+#define vxmemcpy()      DCCVStack_Memcpy(0)
+#define vxmemmove()     DCCVStack_Memcpy(1)
 
 #define vprom()    DCCStackValue_Promote(vbottom)
 #define vpromi()   DCCStackValue_PromoteInt(vbottom)

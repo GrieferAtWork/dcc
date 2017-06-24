@@ -25,6 +25,7 @@
 #include <dcc/unit.h>
 #include <dcc/compiler.h>
 #include <dcc/linker.h>
+#include <dcc/byteorder.h>
 #include <drt/drt.h>
 
 #include <string.h>
@@ -348,13 +349,13 @@ DCCDisp_PutDispRel(struct DCCSymAddr const *__restrict addr, rel_t rel) {
 
 PRIVATE void DCCDisp_SymAddr8(struct DCCSymAddr const *__restrict expr) { t_putb((uint8_t)DCCDisp_PutAddrRel(expr,DCC_R_DATA_8)); }
 PRIVATE void DCCDisp_SymDisp8(struct DCCSymAddr const *__restrict expr) { t_putb((uint8_t)((int8_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_8)-1)); }
-PRIVATE void DCCDisp_SymAddr16(struct DCCSymAddr const *__restrict expr) { t_putw((uint16_t)DCCDisp_PutAddrRel(expr,DCC_R_DATA_16)); }
-PRIVATE void DCCDisp_SymDisp16(struct DCCSymAddr const *__restrict expr) { t_putw((uint16_t)((int16_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_16)-2)); }
-PRIVATE void DCCDisp_SymAddr32(struct DCCSymAddr const *__restrict expr) { t_putl((uint32_t)DCCDisp_PutAddrRel(expr,DCC_R_DATA_32)); }
-PRIVATE void DCCDisp_SymDisp32(struct DCCSymAddr const *__restrict expr) { t_putl((uint32_t)((int32_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_32)-4)); }
+PRIVATE void DCCDisp_SymAddr16(struct DCCSymAddr const *__restrict expr) { t_putw(DCC_H2T16((uint16_t)DCCDisp_PutAddrRel(expr,DCC_R_DATA_16))); }
+PRIVATE void DCCDisp_SymDisp16(struct DCCSymAddr const *__restrict expr) { t_putw(DCC_H2T16((uint16_t)((int16_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_16)-2))); }
+PRIVATE void DCCDisp_SymAddr32(struct DCCSymAddr const *__restrict expr) { t_putl(DCC_H2T32((uint32_t)DCCDisp_PutAddrRel(expr,DCC_R_DATA_32))); }
+PRIVATE void DCCDisp_SymDisp32(struct DCCSymAddr const *__restrict expr) { t_putl(DCC_H2T32((uint32_t)((int32_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_32)-4))); }
 #if DCC_TARGET_SIZEOF_IMM_MAX >= 8
-PRIVATE void DCCDisp_SymAddr64(struct DCCSymAddr const *__restrict expr) { t_putq((uint64_t)DCCDisp_PutAddrRel(expr,DCC_R_DATA_64)); }
-PRIVATE void DCCDisp_SymDisp64(struct DCCSymAddr const *__restrict expr) { t_putq((uint64_t)((int64_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_64)-8)); }
+PRIVATE void DCCDisp_SymAddr64(struct DCCSymAddr const *__restrict expr) { t_putq(DCC_H2T64((uint64_t)DCCDisp_PutAddrRel(expr,DCC_R_DATA_64))); }
+PRIVATE void DCCDisp_SymDisp64(struct DCCSymAddr const *__restrict expr) { t_putq(DCC_H2T64((uint64_t)((int64_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_64)-8))); }
 #endif
 
 PUBLIC void
@@ -648,15 +649,15 @@ DCCDisp_FunProlog(struct DCCDispFunction *__restrict info) {
 
 #if 0 /* HAVE_HLOG Hardcore logging! */
  if (compiler.c_fun && strcmp(compiler.c_fun->d_name->k_name,"__hardlog") != 0) {
-  struct DCCMemLoc loc;
-  loc.ml_sym = DCCUnit_NewSyms("__hardlog",DCC_SYMFLAG_NONE);
-  if (loc.ml_sym) loc.ml_off = 0,loc.ml_reg = DCC_RC_CONST,DCCDisp_LocCll(&loc);
+  struct DCCSym *sym;
+  sym = DCCUnit_NewSyms("__hardlog",DCC_SYMFLAG_NONE);
+  if (sym) DCCDisp_SymCll(sym);
  }
 #endif
 #if 0 /* Hardcore debugging! */
- { struct DCCMemLoc loc;
-   loc.ml_sym = DCCUnit_NewSyms("_CrtCheckMemory",DCC_SYMFLAG_DLLIMPORT);
-   if (loc.ml_sym) loc.ml_off = 0,loc.ml_reg = DCC_RC_CONST,DCCDisp_LocCll(&loc);
+ { struct DCCSym *sym;
+   sym = DCCUnit_NewSyms("_CrtCheckMemory",DCC_SYMFLAG_DLLIMPORT);
+   if (sym) DCCDisp_SymCll(sym);
  }
 #endif
 }

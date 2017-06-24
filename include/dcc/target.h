@@ -34,17 +34,18 @@ enum{I_X86,};
 
 /* Known CPU names. */
 #define DCC_CPUM_I386        1
-#define DCC_CPUM_I486        2
-#define DCC_CPUM_I586        3
+#define DCC_CPUM_I387        2
+#define DCC_CPUM_I486        3
+#define DCC_CPUM_I586        4
 #define DCC_CPUM_PENTIUM     DCC_CPUM_I586
-#define DCC_CPUM_PENTIUM_MMX 4
-#define DCC_CPUM_K6          5
-#define DCC_CPUM_PENTIUM_PRO 6
-#define DCC_CPUM_PENTIUM_II  7
-#define DCC_CPUM_I686        8
+#define DCC_CPUM_PENTIUM_MMX 5
+#define DCC_CPUM_K6          6
+#define DCC_CPUM_PENTIUM_PRO 7
+#define DCC_CPUM_PENTIUM_II  8
+#define DCC_CPUM_I686        9
 #ifdef __INTELLISENSE__
-enum{M_8086,M_80186,M_80286,M_I386,M_I486,M_I586,M_PENTIUM,
-     M_PENTIUM_MMX,M_K6,M_PENTIUM_PRO,M_PENTIUM_II,M_I686,};
+enum{M_I386,M_I387,M_I486,M_I586,M_PENTIUM,M_PENTIUM_MMX,
+     M_K6,M_PENTIUM_PRO,M_PENTIUM_II,M_I686,};
 #endif
 
 /* Known CPU features. */

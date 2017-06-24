@@ -649,12 +649,12 @@ asm_gen_modrm(int8_t reg, struct DCCAsmOperand const *op) {
  int mod,reg1,reg2,sib_reg1;
  if (op->ao_type & (DCC_ASMOP_REG
 #ifdef DCC_ASMOP_R_MMX
-  |DCC_ASMOP_R_MMX
+    |DCC_ASMOP_R_MMX
 #endif
 #ifdef DCC_ASMOP_R_SSE
-  |DCC_ASMOP_R_SSE
+    |DCC_ASMOP_R_SSE
 #endif
-  )) {
+     )) {
   /* Regular register: mod == '11'. */
   t_putb(MODRM_REGISTER(reg,op->ao_reg));
  } else if (op->ao_reg == -1 && op->ao_reg2 == -1) {

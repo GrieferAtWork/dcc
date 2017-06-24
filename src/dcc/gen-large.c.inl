@@ -75,24 +75,22 @@ DCCMemLoc_MinAlign(struct DCCMemLoc const *__restrict self) {
 #ifdef LARGEMEM_STACK_LLONG
 PRIVATE void
 DCCDisp_LargeBinLLong(tok_t op, int src_unsigned) {
- struct DCCMemLoc funloc;
+ struct DCCSym *sym;
  struct DCCSymAddr cleanup;
  assert(IS_LARGE_OP(op));
  /* Call an external symbol. */
- funloc.ml_reg = DCC_RC_CONST;
- funloc.ml_off = 0;
 #define CRT_SYMFLAG (DCC_SYMFLAG_HIDDEN)
  cleanup.sa_off = 2*DCC_TARGET_SIZEOF_LONG_LONG;
  switch (op) { /* Use GCC names for binary compatibility. */
- case TOK_SHL:     funloc.ml_sym = DCCUnit_NewSyms("__ashlti3",CRT_SYMFLAG); goto cleanup_adj;
- case TOK_SHR:     funloc.ml_sym = DCCUnit_NewSyms("__lshrti3",CRT_SYMFLAG); goto cleanup_adj;
- case TOK_RANGLE3: funloc.ml_sym = DCCUnit_NewSyms("__ashrti3",CRT_SYMFLAG);
+ case TOK_SHL:     sym = DCCUnit_NewSyms("__ashlti3",CRT_SYMFLAG); goto cleanup_adj;
+ case TOK_SHR:     sym = DCCUnit_NewSyms("__lshrti3",CRT_SYMFLAG); goto cleanup_adj;
+ case TOK_RANGLE3: sym = DCCUnit_NewSyms("__ashrti3",CRT_SYMFLAG);
 cleanup_adj: cleanup.sa_off -= (DCC_TARGET_SIZEOF_LONG_LONG-DCC_TARGET_SIZEOF_INT); break;
- case '/':         funloc.ml_sym = DCCUnit_NewSyms(src_unsigned ? "__udivti3" : "__divti3",CRT_SYMFLAG); break;
- case '%':         funloc.ml_sym = DCCUnit_NewSyms(src_unsigned ? "__umodti3" : "__modti3",CRT_SYMFLAG); break;
- default:          funloc.ml_sym = DCCUnit_NewSyms("__multi3",CRT_SYMFLAG); break;
+ case '/':         sym = DCCUnit_NewSyms(src_unsigned ? "__udivti3" : "__divti3",CRT_SYMFLAG); break;
+ case '%':         sym = DCCUnit_NewSyms(src_unsigned ? "__umodti3" : "__modti3",CRT_SYMFLAG); break;
+ default:          sym = DCCUnit_NewSyms("__multi3",CRT_SYMFLAG); break;
  }
- DCCDisp_LocCll(&funloc);
+ DCCDisp_SymCll(sym);
  cleanup.sa_sym = NULL;
  DCCDisp_AddReg(&cleanup,DCC_RR_XSP);
 }
@@ -104,20 +102,20 @@ DCCDisp_LargeMemBinMem_fixed(tok_t op,
                              struct DCCMemLoc const *__restrict dst,
                              target_siz_t n_bytes, int src_unsigned) {
  uint8_t kill_mask;
- struct DCCMemLoc funloc;
+ struct DCCSym *funsym;
  struct DCCSymAddr cleanup;
  assert(IS_LARGE_OP(op));
  assert(n_bytes > DCC_TARGET_SIZEOF_ARITH_MAX);
  assert(src),assert(dst);
  kill_mask = 0xff;
- if (src->ml_reg != DCC_RC_CONST) kill_mask &= ~(1 << (src->ml_reg&DCC_RI_MASK));
- if (dst->ml_reg != DCC_RC_CONST) kill_mask &= ~(1 << (dst->ml_reg&DCC_RI_MASK));
+ if (!DCC_RC_ISCONST(src->ml_reg)) kill_mask &= ~(1 << (src->ml_reg&DCC_RI_MASK));
+ if (!DCC_RC_ISCONST(dst->ml_reg)) kill_mask &= ~(1 << (dst->ml_reg&DCC_RI_MASK));
 
  DCCVStack_KillInt(kill_mask);
 #ifdef LARGEMEM_STACK_LLONG
  if (n_bytes == LARGEMEM_STACK_LLONG) {
-  if (dst->ml_reg != DCC_RC_CONST &&
-     !DCC_ASMREG_ISPROTECTED(dst->ml_reg&DCC_RI_MASK)) {
+  if (!DCC_RC_ISCONST(dst->ml_reg) &&
+      !DCC_ASMREG_ISPROTECTED(dst->ml_reg&DCC_RI_MASK)) {
    /* Must safe the destination register across the call. */
    if ((dst->ml_reg&DCC_RI_MASK) != DCC_ASMREG_EAX &&
        (dst->ml_reg&DCC_RI_MASK) != DCC_ASMREG_EDX) {
@@ -150,18 +148,16 @@ DCCDisp_LargeMemBinMem_fixed(tok_t op,
  /* Call an external symbol. */
  DCCDisp_LocPush(src);
  DCCDisp_LocPush(dst);
- funloc.ml_reg = DCC_RC_CONST;
- funloc.ml_off = 0;
  n_bytes *= DCC_TARGET_BITPERBYTE;
  switch (op) { /* Special functions for variadic integral size. */
- case TOK_SHL:     funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xshl%lu",(unsigned long)n_bytes); break;
- case TOK_SHR:     funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xshr%lu",(unsigned long)n_bytes); break;
- case TOK_RANGLE3: funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xsar%lu",(unsigned long)n_bytes); break;
- case '/':         funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,src_unsigned ? "__xudiv%lu" : "__xdiv%lu",(unsigned long)n_bytes); break;
- case '%':         funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,src_unsigned ? "__xumod%lu" : "__xdiv%lu",(unsigned long)n_bytes); break;
- default:          funloc.ml_sym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xmul%lu",(unsigned long)n_bytes); break;
+ case TOK_SHL:     funsym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xshl%lu",(unsigned long)n_bytes); break;
+ case TOK_SHR:     funsym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xshr%lu",(unsigned long)n_bytes); break;
+ case TOK_RANGLE3: funsym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xsar%lu",(unsigned long)n_bytes); break;
+ case '/':         funsym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,src_unsigned ? "__xudiv%lu" : "__xdiv%lu",(unsigned long)n_bytes); break;
+ case '%':         funsym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,src_unsigned ? "__xumod%lu" : "__xdiv%lu",(unsigned long)n_bytes); break;
+ default:          funsym = DCCUnit_NewSymf(DCC_SYMFLAG_NONE,"__xmul%lu",(unsigned long)n_bytes); break;
  }
- DCCDisp_LocCll(&funloc);
+ DCCDisp_SymCll(funsym);
  cleanup.sa_off = 2*DCC_TARGET_SIZEOF_POINTER;
  cleanup.sa_sym = NULL;
  DCCDisp_AddReg(&cleanup,DCC_RR_XSP);
@@ -177,10 +173,10 @@ DCCDisp_LargeMemBinMem(tok_t op,
 #ifdef LARGEMEM_STACK_LLONG
  if (dst_bytes == LARGEMEM_STACK_LLONG) {
   uint8_t kill_mask = 0xff & ~(1 << (dst->ml_reg&DCC_RI_MASK));
-  if (src->ml_reg != DCC_RC_CONST) kill_mask &= ~(1 << (src->ml_reg&DCC_RI_MASK));
+  if (!DCC_RC_ISCONST(src->ml_reg)) kill_mask &= ~(1 << (src->ml_reg&DCC_RI_MASK));
   DCCVStack_KillInt(kill_mask);
-  if (dst->ml_reg != DCC_RC_CONST &&
-     !DCC_ASMREG_ISPROTECTED(dst->ml_reg&DCC_RI_MASK)) {
+  if (!DCC_RC_ISCONST(dst->ml_reg) &&
+      !DCC_ASMREG_ISPROTECTED(dst->ml_reg&DCC_RI_MASK)) {
    /* Must safe the destination register across the call. */
    if ((dst->ml_reg&DCC_RI_MASK) != DCC_ASMREG_EAX &&
        (dst->ml_reg&DCC_RI_MASK) != DCC_ASMREG_EDX) {
@@ -267,7 +263,7 @@ DCCDisp_LargeRegsBinMems(tok_t op, rc_t src, rc_t src2,
   DCCDisp_RegPush(src|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8);
   DCCDisp_MemPush(dst,LARGEMEM_STACK_LLONG);
   DCCVStack_KillInt(~(uint8_t)((1 << (src&DCC_RI_MASK))|
-                               (src2 == DCC_RC_CONST ? 0 :
+                               (DCC_RC_ISCONST(src2) ? 0 :
                                 1 << (src2&DCC_RI_MASK))));
   DCCDisp_LargeBinLLong(op,src_unsigned);
   DCCDisp_RegsBinMems('=',DCC_RR_XAX,DCC_RR_XDX,dst,LARGEMEM_STACK_LLONG,1);

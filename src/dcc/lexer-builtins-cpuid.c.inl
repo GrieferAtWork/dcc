@@ -42,7 +42,7 @@ DCC_DECL_BEGIN
 #define CPUINFO_SYMNAME                      "__cpu_info"
 #define CPUINFO_SYMFLAG                     (DCC_SYMFLAG_WEAK|DCC_SYMFLAG_HIDDEN)
 #define CPUINFO_GETSYM()                     DCCUnit_NewSyms(CPUINFO_SYMNAME,CPUINFO_SYMFLAG)
-#define CPUINFO_SIZEOF                       41
+#define CPUINFO_SIZEOF                       36
 #define CPUINFO_ALIGNOF                      4
 #define CPUINFO_OFFSETOF_CPUID1_EAX          0
 #define CPUINFO_OFFSETOF_CPUID1_EBX          4
@@ -51,12 +51,10 @@ DCC_DECL_BEGIN
 #define CPUINFO_OFFSETOF_CPUID7_EBX          16
 #define CPUINFO_OFFSETOF_CPUID7_EDX          20
 #define CPUINFO_OFFSETOF_CPUID7_ECX          24
-#define CPUINFO_OFFSETOF_CPUID0_EAX          28
+#define CPUINFO_OFFSETOF_CPUID0_EAX          28 /* NOTE: Aka. the cpuid-max field. */
 #define CPUINFO_OFFSETOF_CPUID0_EBX          32
-#define CPUINFO_OFFSETOF_CPUID0_EDX          36
-#define CPUINFO_OFFSETOF_CPUID0_ECX          40
-#define CPUINFO_OFFSETOF_ZERO               (CPUINFO_OFFSETOF_CPUID0_ECX+1)
 #define CPUINFO_OFFSETOF_VENDOR              CPUINFO_OFFSETOF_CPUID0_EBX
+#define CPUINFO_OFFSETOF_MAXID               CPUINFO_OFFSETOF_CPUID0_EAX
 #define CPUINFO_SIZEOF_VENDOR                13
 
 /* ECX CPU features */
@@ -236,7 +234,7 @@ DCCParse_BuiltinCPUInit(void) {
 
  /* Check if CPU info was already initialized. */
  val.sa_off = 0;
- info.ml_off = CPUINFO_OFFSETOF_CPUID0_EBX;
+ info.ml_off = CPUINFO_OFFSETOF_CPUID0_EAX;
  DCCDisp_CstBinMem('?',&val,&info,4,1);
  DCCDisp_SymJcc(DCC_TEST_NE,nocpuid);
 
@@ -268,8 +266,6 @@ DCCParse_BuiltinCPUInit(void) {
  t_putb(0x0f),t_putb(0xa2); /* cpuid */
  info.ml_off = CPUINFO_OFFSETOF_CPUID0_EAX,DCCDisp_RegMovMem(EAX,&info);
  info.ml_off = CPUINFO_OFFSETOF_CPUID0_EBX,DCCDisp_RegMovMem(EBX,&info);
- info.ml_off = CPUINFO_OFFSETOF_CPUID0_EDX,DCCDisp_RegMovMem(EDX,&info);
- info.ml_off = CPUINFO_OFFSETOF_CPUID0_ECX,DCCDisp_RegMovMem(ECX,&info);
 
  /* Invoke cpuid for level '0x1' */
  DCCDisp_IntMovReg(0x1,EAX);
@@ -385,7 +381,7 @@ PRIVATE void query_model(enum cpu_model model) {
  if unlikely(!sym_done) goto done;
  cpuinfo.ml_reg = DCC_RC_CONST;
  cpuinfo.ml_sym = CPUINFO_GETSYM();
- cpuinfo.ml_off = CPUINFO_OFFSETOF_CPUID0_EBX;
+ cpuinfo.ml_off = CPUINFO_OFFSETOF_VENDOR;
  /* Step #1: Confirm the CPU signature. */
  val.sa_off = (model >= CPU_AMD)
   ? VEND('A','u','t','h')
@@ -502,14 +498,14 @@ DCCParse_BuiltinCPUQuery(void) {
    /* Confirm if 'cpuid' is even supported by
     * checking if we've read a vendor name. */
    info_mask             = 0xffffffff;
-   info_slot.sv_const.it = CPUINFO_OFFSETOF_CPUID0_EBX;
+   info_slot.sv_const.it = CPUINFO_OFFSETOF_VENDOR;
    goto lookup;
   }
 #endif /* EXT_CPUID_HAS */
 #if EXT_CPUID_MAX
   if (IS_NAME("cpuid-max")) {
    /* Return the greatest allowed CPU identifier. */
-   info_slot.sv_const.it = CPUINFO_OFFSETOF_CPUID0_EAX;
+   info_slot.sv_const.it = CPUINFO_OFFSETOF_MAXID;
    vpush(&info_slot);
    goto done;
   }
@@ -570,25 +566,148 @@ done:
  if (info_name) TPPString_Decref(info_name);
 }
 
+#define CPU_VENDORSIZE (3*4+1)
+#define CPU_BRANDSIZE  (3*4*4+1)
+
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_BuiltinCPUVendor(void) {
- struct DCCStackValue val;
- assert(TOK == KWD___builtin_cpu_vendor);
- /* char (&__builtin_cpu_vendor(void))[...]; */
+ struct DCCStackValue val; int must_pop_return;
+ struct DCCSym *nosup_sym,*done_sym;
+ struct DCCMemLoc return_data;
+ int want_brand = TOK == KWD___builtin_cpu_brand;
+ target_siz_t string_size = want_brand ? CPU_BRANDSIZE : CPU_VENDORSIZE;
+ assert(TOK == KWD___builtin_cpu_vendor ||
+        TOK == KWD___builtin_cpu_brand);
+ /* char (&__builtin_cpu_brand([char *buf]))[...]; */
  YIELD();
  DCCParse_ParPairBegin();
+ if (DCCParse_IsExpr()) {
+  DCCParse_Expr1(),vused(),vcast_pt(DCCTYPE_CHAR,0);
+  if (TOK == ',') { YIELD(); DCCParse_ExprDiscard(); }
+ } else {
+  vxalloca_n(string_size); /* ret */
+ }
+ nosup_sym = DCCUnit_AllocSym();
+ done_sym  = DCCUnit_AllocSym();
+ if unlikely(!nosup_sym || !done_sym) goto end;
+
  val.sv_ctype.t_base = NULL;
- val.sv_ctype.t_type = DCCTYPE_BUILTIN|DCCTYPE_CHAR;
- DCCType_MkArray(&val.sv_ctype,CPUINFO_SIZEOF_VENDOR/DCC_TARGET_SIZEOF_CHAR);
+ val.sv_ctype.t_type = DCCTYPE_BUILTIN|DCCTYPE_IB4|DCCTYPE_UNSIGNED;
  if (TPPLexer_Current->l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
      val.sv_ctype.t_type |= DCCTYPE_UNSIGNED;
- val.sv_const.it = CPUINFO_OFFSETOF_VENDOR;
+ val.sv_const.it = CPUINFO_OFFSETOF_CPUID1_EAX;
  val.sv_flags    = DCC_SFLAG_LVALUE|DCC_SFLAG_RVALUE|DCC_SFLAG_DO_WUNUSED;
  val.sv_reg      = DCC_RC_CONST;
  val.sv_reg2     = DCC_RC_CONST;
  val.sv_sym      = CPUINFO_GETSYM();
+ DCCVStack_KillAll(0);
+ vpush(&val);   /* ret, <CPUID_MAX> */
+ vpushs(nosup_sym); /* ret, <CPUID_MAX>, nosup */
+ vgen1('&');    /* ret, <CPUID_MAX>, &nosup */
+ vjcc(1);       /* ret */
+
+ if (want_brand) {
+  /* Check for extended cpuid values. */
+  DCCDisp_IntMovReg(0x80000000,EAX);
+  t_putb(0x0f),t_putb(0xa2); /* cpuid */
+  { struct DCCSymAddr cst_val = {0x80000004,NULL};
+    DCCDisp_CstBinReg('?',&cst_val,EAX,1);
+  }
+  DCCDisp_SymJcc(DCC_TEST_B,nosup_sym);
+ }
+
+ /* cpuid for a brand-string is supported. */
+ DCCDisp_RegPush(DCC_RR_XBX);
+ if (vbottom->sv_flags&DCC_SFLAG_LVALUE) {
+  return_data.ml_off = vbottom->sv_const.offset;
+  return_data.ml_sym = vbottom->sv_sym;
+  return_data.ml_reg = vbottom->sv_reg;
+  /* Must load the return pointer into a register unaffected by 'cpuid'. */
+  DCCDisp_RegPush(DCC_RR_XDI);
+  DCCDisp_MemMovReg(&return_data,DCC_RR_XDI);
+  return_data.ml_off = 0;
+  return_data.ml_sym = NULL;
+  return_data.ml_reg = DCC_RR_XDI;
+  must_pop_return    = 1;
+ } else {
+  return_data.ml_off = vbottom->sv_const.offset;
+  return_data.ml_sym = vbottom->sv_sym;
+  return_data.ml_reg = vbottom->sv_reg;
+  must_pop_return    = 0;
+  /* Special case: Because of the push above, we must adjust the
+   *               indirection offset of an ESP-offset target. */
+  if (!DCC_RC_ISCONST(return_data.ml_reg) &&
+      (return_data.ml_reg&DCC_RI_MASK) == DCC_ASMREG_ESP)
+       return_data.ml_off += DCC_TARGET_SIZEOF_GP_REGISTER;
+ }
+
+ if (want_brand) {
+  DCCDisp_IntMovReg(0x80000002,EAX);
+  t_putb(0x0f),t_putb(0xa2); /* cpuid */
+  DCCDisp_RegMovMem(EAX,&return_data),return_data.ml_off += 4;
+  DCCDisp_RegMovMem(EBX,&return_data),return_data.ml_off += 4;
+  DCCDisp_RegMovMem(ECX,&return_data),return_data.ml_off += 4;
+  DCCDisp_RegMovMem(EDX,&return_data),return_data.ml_off += 4;
+  DCCDisp_IntMovReg(0x80000003,EAX);
+  t_putb(0x0f),t_putb(0xa2); /* cpuid */
+  DCCDisp_RegMovMem(EAX,&return_data),return_data.ml_off += 4;
+  DCCDisp_RegMovMem(EBX,&return_data),return_data.ml_off += 4;
+  DCCDisp_RegMovMem(ECX,&return_data),return_data.ml_off += 4;
+  DCCDisp_RegMovMem(EDX,&return_data),return_data.ml_off += 4;
+  DCCDisp_IntMovReg(0x80000004,EAX);
+  t_putb(0x0f),t_putb(0xa2); /* cpuid */
+  DCCDisp_RegMovMem(EAX,&return_data),return_data.ml_off += 4;
+  DCCDisp_RegMovMem(EBX,&return_data),return_data.ml_off += 4;
+  DCCDisp_RegMovMem(ECX,&return_data),return_data.ml_off += 4;
+  DCCDisp_RegMovMem(EDX,&return_data),return_data.ml_off += 4;
+ } else {
+  DCCDisp_IntMovReg(0,EAX);
+  t_putb(0x0f),t_putb(0xa2); /* cpuid */
+  DCCDisp_RegMovMem(EBX,&return_data),return_data.ml_off += 4;
+  DCCDisp_RegMovMem(EDX,&return_data),return_data.ml_off += 4;
+  DCCDisp_RegMovMem(ECX,&return_data),return_data.ml_off += 4;
+ }
+ {
+  struct DCCSymAddr term = {'\0',NULL};
+  DCCDisp_CstMovMem(&term,&return_data,DCC_TARGET_SIZEOF_CHAR);
+ }
+
+ if (must_pop_return) DCCDisp_PopReg(return_data.ml_reg);
+ DCCDisp_PopReg(DCC_RR_XBX);
+ vpushs(done_sym); /* ret, done */
+ vgen1('&');       /* ret, &done */
+ vjmp();           /* ret */
+
+ t_defsym(nosup_sym);
+ /* cpuid for a brand-string is unsupported.
+  * >> Fill the used buffer with '\0'-characters.
+  * NOTE: 'ret' must be duplicated around this block
+  *        so-as to keep it synchronized with the return
+  *        value of the other block.
+  *     >> Without said dup, the expression itself might return a conditionally
+  *        temporary buffer (that's likely '0xcccccccc'; aka. uninitialized). */
+ vdup(0);                  /* ret */
+ vpushi(DCCTYPE_INT,'\0'); /* ret, dret, '\0' */
+ vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,string_size); /* ret, dret, '\0', 49 */
+ vxmemset();               /* ret, dret */
+ vpop(0);
+
+ t_defsym(done_sym);
+
+ /* Return an array type.
+  * Using this, the user can figure out the brand size at compile-time:
+  * >> char buf[sizeof(__builtin_cpu_brand())];
+  * >> printf("brand = %s\n",__builtin_cpu_brand(buf));
+  */
+ { struct DCCType return_type = {DCCTYPE_CHAR,NULL};
+   DCCType_MkArray(&return_type,string_size);
+   DCCType_MkPointer(&return_type);
+   vcast(&return_type,1);
+   DCCType_Quit(&return_type);
+   vgen1('*');
+ }
+end:;
  DCCParse_ParPairEnd();
- vpush(&val);
 }
 
 #else

@@ -104,8 +104,8 @@ DRT_U_FetchText(void DRT_USER *addr) {
  EVENT.ue_text.te_size_total = 0;
  DRT_U_WaitEvent(DRT_EVENT_MIRROR_TEXT);
  return EVENT.ue_text.te_relc_ok ||
-        EVENT.ue_text.te_size_ok ||
-        EVENT.ue_text.te_size_total;
+        EVENT.ue_text.te_size_ok/* ||
+        EVENT.ue_text.te_size_total*/;
 }
 INTERN int DRT_USER
 DRT_U_FetchData(void DRT_USER *addr, size_t size) {
@@ -124,7 +124,7 @@ DRT_U_FetchRelo(void DRT_USER *addr, size_t size) {
 }
 
 
-INTERN target_bool_t
+INTERN target_bool_t DRT_USER
 DRT_U_Addr2line(void DRT_USER *ip, target_lc_t *info) {
  EVENT.ue_a2l.ae_addr = ip;
  DRT_U_WaitEvent(DRT_EVENT_ADDR2LINE);

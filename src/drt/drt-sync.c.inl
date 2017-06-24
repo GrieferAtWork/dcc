@@ -472,9 +472,9 @@ DCCSection_RTMirrorData(struct DCCSection *__restrict self,
  text     = self == unit.u_curr ? &unit.u_tbuf : &self->sc_dat.sd_text;
  htext    = text->tb_begin;
  sec_size = (target_siz_t)(text->tb_max-htext);
- if (addr+size >= sec_size) return 0;
+ if (addr+size >= sec_size) return DRT_SYNC_FAULT;
  utext = DCCSection_RTAlloc(self,pa_addr,pa_addrend-pa_addr,1);
- if unlikely(utext == DRT_VERROR) return 0;
+ if unlikely(utext == DRT_VERROR) return DRT_SYNC_FAULT;
  utext = self->sc_dat.sd_rt.rs_vaddr;
  assert(pagei_idx <= pagei_end);
  for (; pagei_idx != pagei_end; ++pagei_idx) {
@@ -513,10 +513,10 @@ DCCSection_RTMirrorData(struct DCCSection *__restrict self,
  }
  DCCSection_RTDoneWrite(self,pa_addr,pa_addrend-pa_addr);
  *psize_ok = size_ok; /* Intentionally only set here! */
- return 1;
+ return DRT_SYNC_OK;
 fail:
  DCCSection_RTDoneWrite(self,pa_addr,pa_addrend-pa_addr);
- return 0;
+ return DRT_SYNC_UNRESOLVED;
 }
 
 PUBLIC int DCC_ATTRIBUTE_FASTCALL DRT_H_Sync(int warn_failure) {
@@ -560,7 +560,6 @@ load_text:
    single_instruction = 1;
    goto load_text;
   }
-unresolved:
   result = DRT_SYNC_UNRESOLVED;
  } break;
 
@@ -572,15 +571,17 @@ unresolved:
    result = DRT_SYNC_FAULT;
    goto post;
   }
-  if (DCCSection_RTMirrorData(sec,
-                             (target_ptr_t)((uintptr_t)EVENT.ue_data.de_addr-
-                                            (uintptr_t)sec->sc_dat.sd_rt.rs_vaddr),
-                              EVENT.ue_data.de_size,
-                             &EVENT.ue_data.de_size,warn_failure)) {
-   result = DRT_SYNC_OK;
+  result = DCCSection_RTMirrorData(sec,
+                                  (target_ptr_t)((uintptr_t)EVENT.ue_data.de_addr-
+                                                 (uintptr_t)sec->sc_dat.sd_rt.rs_vaddr),
+                                   EVENT.ue_data.de_size,
+                                  &EVENT.ue_data.de_size,warn_failure);
+  if (result != DRT_SYNC_UNRESOLVED) {
+   if (result == DRT_SYNC_FAULT)
+       EVENT.ue_data.de_size = (size_t)-1;
    goto post;
   }
-  goto unresolved;
+  break;
 
  {
   struct A2lState s;
