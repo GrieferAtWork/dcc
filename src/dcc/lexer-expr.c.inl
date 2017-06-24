@@ -1219,6 +1219,8 @@ outside_function:
  case KWD___sync_neg: case KWD___sync_fetch_and_neg: case KWD___sync_neg_and_fetch:
  case KWD___sync_not: case KWD___sync_fetch_and_not: case KWD___sync_not_and_fetch:
  case KWD___sync_lock_release: DCCParse_SyncUnary(); break;
+  /* DRT builtins */
+ case KWD___builtin_fetchsym: DCCParse_BuiltinFetchSym(); break;
 
  case KWD__Generic: DCCParse_ExprGeneric(); break;
 
@@ -1806,7 +1808,7 @@ DCCFUN int DCC_PARSE_CALL
 DCCParse_IsExpr(void) {
  switch (TOK) {
  if (DCC_MACRO_FALSE) { case KWD_if: if (!HAS(EXT_IFELSE_IN_EXPR)) break; }
- case '%': case TOK_LAND: case '.': case KWD___extension__:
+ case '%': case TOK_LAND: case '.': /*case KWD___extension__:*/
  case TOK_INT: case TOK_CHAR: case TOK_FLOAT: case TOK_STRING:
  case '+': case '-': case '*': case '&': case '~': case '!':
  case '(': case TOK_INC: case TOK_DEC: goto yes;

@@ -995,6 +995,41 @@ DCCParse_BuiltinNoop(void) {
  vpushi(DCCTYPE_INT,0);
 }
 
+
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_BuiltinFetchSym(void) {
+ /* void __builtin_fetchsym(char const *name); */
+ assert(TOK == KWD___builtin_fetchsym);
+ YIELD();
+ DCCParse_ParPairBegin();
+ if (!TPP_ISSTRING(TOK))
+  WARN(W_BUILTIN_FETCHSYM_EXPECTED_STRING);
+ else {
+  struct TPPString *name = DCCParse_String();
+  if (name) {
+#if DCC_CONFIG_HAVE_DRT
+   if (DRT_ENABLED()) {
+    struct DCCMemLoc   symloc;
+    struct TPPKeyword *sym_name;
+    /* Probe for a symbol named 'name'. */
+    if ((sym_name = TPPLexer_LookupKeyword(name->s_text,name->s_size,1)) != NULL &&
+        (symloc.ml_sym = DCCUnit_NewSym(sym_name,DCC_SYMFLAG_NONE)) != NULL) {
+     symloc.ml_off = 0;
+     symloc.ml_reg = DCC_RC_CONST;
+#ifndef __INTELLISENSE__
+     DCCDisp_Probe_(&symloc,1);
+#endif
+    }
+   }
+#endif /* DCC_CONFIG_HAVE_DRT */
+   TPPString_Decref(name);
+  }
+ }
+ DCCParse_ParPairEnd();
+ vpushv();
+}
+
+
 DCC_DECL_END
 
 #ifndef __INTELLISENSE__

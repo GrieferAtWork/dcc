@@ -136,6 +136,16 @@ DEF_TPP_BUILTIN(__builtin_constant_p)
  * NOTE: Also available in TPP expressions. */
 DEF_TPP_BUILTIN(__builtin_choose_expr)
 
+/* This builtin in ignored when used in regular code, but when used in DRT
+ * mode, it will force a symbol addressable by a given name to be fetched.
+ * >> void __builtin_fetchsym(char const *name);
+ * NOTE: The 'name' argument must be a compile-time string expression.
+ * There should technically be no situation when this builtin is required,
+ * but it can be used to create artificial relocation dependencies and
+ * force the DRT runtime to suspend until a given symbol has been defined,
+ * thereby aiding the presentation factor of such a unique feature. */
+DEF_TPP_BUILTIN(__builtin_fetchsym)
+
 /* Allocate dynamic memory on the stack. */
 DEF_BUILTIN(__builtin_alloca)
 DEF_BUILTIN(__builtin_alloca_with_align)
@@ -1193,6 +1203,7 @@ DEF_WARNING(W_BUILTIN_MEMCMP_POINTERS_ALWAYS_EQUAL,(WG_QUALITY),WSTATE_WARN,WARN
 DEF_WARNING(W_BUILTIN_RETURN_ADDRESS_CONST_LEVEL,(WG_VALUE),WSTATE_WARN,WARNF("__builtin_return_address/__builtin_frame_address expect a constant integral as argument"))
 DEF_WARNING(W_BUILTIN_RETURN_ADDRESS_NEG_LEVEL,(WG_VALUE),WSTATE_WARN,WARNF("__builtin_return_address/__builtin_frame_address expect a positive integral as argument"))
 DEF_WARNING(W_BUILTIN_CPU_EXPECTED_STRING,(WG_VALUE),WSTATE_WARN,WARNF("Expected string after __builtin_cpu_(is|supports), but got " TOK_S,TOK_A))
+DEF_WARNING(W_BUILTIN_FETCHSYM_EXPECTED_STRING,(WG_VALUE),WSTATE_WARN,WARNF("Expected string after __builtin_fetchsym, but got " TOK_S,TOK_A))
 DEF_WARNING(W_UNSUPPORTED_CAS_SIZE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Type " Q("%s") " has an unsupported CAS size"))
 #undef TYPE_WARNING
 #ifdef DECLARE_WARNING_MESSAGES

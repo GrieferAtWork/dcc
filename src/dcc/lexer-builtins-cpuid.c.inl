@@ -473,7 +473,7 @@ DCCParse_BuiltinCPUQuery(void) {
  query_feature = TOK == KWD___builtin_cpu_supports;
  YIELD();
  DCCParse_ParPairBegin();
- if (TOK == TOK_STRING)
+ if (TPP_ISSTRING(TOK))
   info_name = DCCParse_String();
  else {
   WARN(W_BUILTIN_CPU_EXPECTED_STRING);

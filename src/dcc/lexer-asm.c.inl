@@ -556,7 +556,7 @@ LEXPRIV void DCC_PARSE_CALL
 DCCIAsmOps_ParseClobber(struct DCCIAsmOps *__restrict self) {
  for (;;) {
   struct TPPString *clobber;
-  if (TOK != TOK_STRING) {
+  if (!TPP_ISSTRING(TOK)) {
    WARN(W_IASM_EXPECTED_STRING_FOR_CLOBBER);
    clobber = NULL;
   } else {
@@ -1070,7 +1070,7 @@ DCCIAsmOps_Store(struct DCCIAsmOps *__restrict self) {
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_AsmWithConstraints(/*ref*/struct TPPString *asmtext, int has_paren) {
  struct TPPString *new_asmtext;
-#define HAS_OP() (TOK != ':' && (has_paren ? TOK != ')' : (TOK == TOK_STRING || TOK == '[')))
+#define HAS_OP() (TOK != ':' && (has_paren ? TOK != ')' : (TPP_ISSTRING(TOK) || TOK == '[')))
  struct DCCIAsmOps ops;
  size_t n_values;
  DCCIAsmOps_Init(&ops);
@@ -1083,7 +1083,7 @@ DCCParse_AsmWithConstraints(/*ref*/struct TPPString *asmtext, int has_paren) {
    if (HAS_OP()) DCCIAsmOps_ParseAll(&ops,0);
    if (TOK == ':') {
     YIELD();
-    if (has_paren ? TOK != ')' : (TOK == TOK_STRING))
+    if (has_paren ? TOK != ')' : TPP_ISSTRING(TOK))
         DCCIAsmOps_ParseClobber(&ops);
    }
   }

@@ -24,9 +24,9 @@
 #include <dcc/unit.h>
 
 
-/* 
+/*
  * How does DCC manage to execute C code _while_ it is still compiling said code?
- * 
+ *
  * Answering that question will take a while, so I'm going to break down the
  * answer into different segments covering various problems (and solutions).
  * NOTE: For the duration of this explanation I will refer to the
@@ -56,8 +56,8 @@
  *   nature by running '$ dcc --tok -E -', which will launch DCC in tokenized
  *   preprocessor-mode, with the input file set to STDIN, meaning you can write 
  *   to your hearts content with the only buffering being line-buffering.
- * 
- * 
+ *
+ *
  * Parser:
  *   Building ontop of a non-blocking preprocessor, anything but a 
  *   non-blocking Parser should seem more complicated than exactly
@@ -294,7 +294,7 @@
  *   >>     TRIGGER_SYMBOL_DEFINED("add");
  *   >>     return x+y;
  *   >> }
- *      
+ *
  *   One problem not currently handled is the following:  
  *   >> extern int x[6];
  *   >> int *px = &x[3];
@@ -306,12 +306,12 @@
  *   >> }
  *   >> 
  *   >> int x[6] = { 2,1,6,3,42,17 };
- *   
+ *
  *   The naïve solution implemented by DCC is to recursively look at
  *   the definition of a symbol during DRT relocations, considering
  *   its size and address to recursively wait for any other
  *   symbols it may be referring to.
- *   
+ *
  *   But getting back to a simpler problem: How does DRT
  *   know when to wait for more code in its own function?
  *   After all: there isn't anything to dereference when
@@ -323,7 +323,7 @@
  *   >>     printf("Hello Griefer\n");
  *   >>     return 0;
  *   >> }
- *   
+ *
  *   The answer to this is quite simple and has to do with the default
  *   initialization of DRT memory, which is a simple memset() with '0xf4' bytes.
  *   On i386+, this refers to the 'hlt' instruction, an opcode that is rarely

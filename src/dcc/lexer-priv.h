@@ -200,6 +200,9 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinCType(void);             /* int __bu
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinNoop(void);              /* int __builtin_noop(...),__noop(...); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMinMax(void);            /* auto __builtin_min(...),__builtin_max(...); */
 
+/* DRT */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinFetchSym(void);          /* void __builtin_fetchsym(char const *name); */
+
 
 INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_vfun(struct DCCSym *__restrict sym);  /* void sym(); */
 INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_vpfun(struct DCCSym *__restrict sym); /* void *sym(); */

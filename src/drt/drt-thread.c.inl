@@ -74,7 +74,9 @@ DRT_U_W32ExceptionHandler(EXCEPTION_RECORD *ExceptionRecord, PVOID EstablisherFr
    }
 #if 0 /* TODO: This isn't working yet. */
    {
-    /* Wait for symbol relocations within the current instruction. */
+    /* Wait for symbol relocations within the current instruction.
+     * >> TODO: What about relocations to the same symbol in upcoming addresses?
+     */
     uintptr_t eip_end = (uintptr_t)x86_instrlen((uint8_t const *)eip);
     if (DRT_U_FetchRelo((void *)eip,(size_t)(eip_end-eip)))
         return ExceptionContinueExecution;

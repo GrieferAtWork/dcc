@@ -60,7 +60,7 @@ DCCAllocRange_New(target_ptr_t addr,
  * >> Since symbol size can be set from assembly using the '.size' directive,
  *    we must make sure that out-of-bounds symbol sizes don't cause undefined
  *    behavior, but are warned about instead.
- * NOTE: In addition, this function handles the even of
+ * NOTE: In addition, this function handles the event of
  *      'self' being the currently selected section. */
 LOCAL void
 DCCSection_DSafeFree(struct DCCSection *__restrict self,

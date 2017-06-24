@@ -926,7 +926,7 @@ DCCParse_StaticAssert(void) {
  DCCParse_ParPairBegin();
  DCCParse_CExpr2(1,&val);
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- if (TOK == TOK_STRING) message = DCCParse_String();
+ if (TPP_ISSTRING(TOK)) message = DCCParse_String();
  else WARN(W_STATIC_ASSERT_EXPECTED_STRING),message = NULL;
  /* Check to confirm that the asserted condition is true. */
  if (!val.e_int && !val.e_sym)
