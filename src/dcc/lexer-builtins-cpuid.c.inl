@@ -249,12 +249,12 @@ DCCParse_BuiltinCPUInit(void) {
  t_putb(0x9c);                /* pushfd */
  t_putb(0x58+DCC_ASMREG_EAX); /* pop %eax */
  val.sa_off = (target_off_t)CPUID_BIT;
- DCCDisp_CstBinReg('^',&val,EAX,1);
+ DCCDisp_CstBinReg('^',&val,EAX,1); /* Flip the CPUID bit. */
  t_putb(0x50+DCC_ASMREG_EAX); /* push %eax */
  t_putb(0x9d);                /* popfd */
  t_putb(0x9c);                /* pushfd */
  t_putb(0x58+DCC_ASMREG_ECX); /* pop %ecx */
- /* When the 'CPUID_BIT' or 'EAX' and 'ECX' is equal, cpuid is supported. */
+ /* When the 'CPUID_BIT' of 'EAX' and 'ECX' is equal, cpuid is supported. */
  DCCDisp_CstBinReg('&',&val,EAX,1);
  DCCDisp_CstBinReg('&',&val,ECX,1);
  DCCDisp_RegBinReg('?',ECX,EAX,1);

@@ -183,13 +183,21 @@ done_register:;
   else def_imm: op->ao_type |= DCC_ASMOP_IMM_32;
 #endif
  } else {
+  int has_expr = 0;
   op->ao_type |= DCC_ASMOP_EA;
   op->ao_shift = 0;
   /* TODO: segment-offset pair. */
   op->ao_val.sa_off = 0;
-  if (TOK != '(') DCCParse_AsmExpr(&op->ao_val);
-  if (!op->ao_val.sa_sym && TOK == '(') {
+  if (TOK != '(') DCCParse_AsmExpr(&op->ao_val),has_expr = 1;
+  if (/*!op->ao_val.sa_sym &&*/ TOK == '(') {
    YIELD();
+   if (TOK != '%' && !has_expr) {
+    DCCParse_AsmExpr(&op->ao_val);
+    if (TOK != ')') WARN(W_EXPECTED_RPAREN);
+    else YIELD();
+    if (TOK != '(') goto done_ind;
+    YIELD();
+   }
    if (TOK != ',') op->ao_reg = asm_parse_register();
    if (TOK == ',') {
     YIELD();
@@ -205,6 +213,7 @@ done_register:;
    if (TOK != ')') WARN(W_EXPECTED_RPAREN);
    else YIELD();
   }
+done_ind:
   if (op->ao_reg == -1 && op->ao_reg2 == -1) {
    /* Without any registers, this is merely an ADDR operand. */
    op->ao_type |= DCC_ASMOP_ADDR;

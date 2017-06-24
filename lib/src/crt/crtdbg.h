@@ -19,7 +19,7 @@
 #pragma once
 
 #ifndef NDEBUG
-#define CRTDBG_INIT_CHKSTK  0xcd
-#define CRTDBG_INIT_ALLOCA  0xad
+#define CRTDBG_INIT_CHKSTK  0xcc
+#define CRTDBG_INIT_ALLOCA  0xac
 #endif
 

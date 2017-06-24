@@ -108,12 +108,16 @@ DCCAttrDecl_Merge(struct DCCAttrDecl *__restrict self,
      (rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) !=
      (self->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY)) {
   /* Warn about miss-matched ELF visibility. */
-  WARN(W_ATTRIBUTE_MERGE_VISIBILITY,
-       elfvis_names[(rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) >> ELFVISNAME_SHIFT],
-       elfvis_names[(self->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) >> ELFVISNAME_SHIFT]);
-  if ((rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) >
-      (self->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY)) {
-   self->a_flags &= ~(DCC_ATTRFLAG_MASK_VISIBILITY);
+  if (self->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) {
+   WARN(W_ATTRIBUTE_MERGE_VISIBILITY,
+        elfvis_names[(rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) >> ELFVISNAME_SHIFT],
+        elfvis_names[(self->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) >> ELFVISNAME_SHIFT]);
+   if ((rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY) >
+       (self->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY)) {
+    self->a_flags &= ~(DCC_ATTRFLAG_MASK_VISIBILITY);
+    self->a_flags |= (rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY);
+   }
+  } else {
    self->a_flags |= (rhs->a_flags&DCC_ATTRFLAG_MASK_VISIBILITY);
   }
  }

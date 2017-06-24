@@ -34,7 +34,6 @@
 DCC_DECL_BEGIN
 
 
-#ifdef _MSC_VER
 #if !!(DCC_HOST_CPUF&DCC_CPUF_X86_64)
 #define XCX rcx
 #define XDX rdx
@@ -42,6 +41,7 @@ DCC_DECL_BEGIN
 #define XCX ecx
 #define XDX edx
 #endif
+#ifdef _MSC_VER
 INTERN void DRT_USER __declspec(naked)
 DCC_ATTRIBUTE_FASTCALL DRT_U_ProbeN(void DRT_USER *p, size_t n) {
  (void)p; (void)n;
@@ -51,11 +51,19 @@ DCC_ATTRIBUTE_FASTCALL DRT_U_ProbeN(void DRT_USER *p, size_t n) {
  __asm popfd;
  __asm ret;
 }
-#undef XCX
-#undef XCX
 #else
-#error TODO
+INTERN void DRT_USER __attribute__((__naked__))
+DCC_ATTRIBUTE_FASTCALL DRT_U_ProbeN(void DRT_USER *p, size_t n) {
+ /* TODO: Test all the bytes! */
+ __asm__("pushfl\n"
+         "testl $0, (%" DCC_PP_STR(XCX) ")\n"
+         "popfl\n"
+         "ret\n");
+ __builtin_unreachable();
+}
 #endif
+#undef XDX
+#undef XCX
 
 
 
