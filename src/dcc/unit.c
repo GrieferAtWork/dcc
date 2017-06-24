@@ -719,8 +719,8 @@ DCCSym_DefAddr(struct DCCSym *__restrict self,
       load_addr = *symaddr;
  else load_addr.sa_off += symaddr->sa_off;
  assert(load_addr.sa_sym);
- if (load_addr.sa_sym->sy_sec) {
-  DCCSym_Define(self,load_addr.sa_sym->sy_sec,
+ if (DCCSym_ISDEFINED(load_addr.sa_sym)) {
+  DCCSym_Define(self,DCCSym_SECTION(load_addr.sa_sym),
                (target_ptr_t)(load_addr.sa_sym->sy_addr+
                               load_addr.sa_off),0,1);
  } else {
@@ -1082,7 +1082,7 @@ DCCSection_ResolveDisp(struct DCCSection *__restrict self) {
   struct DCCSymAddr symaddr;
   /* We're only resolving relocations pointing back into our section. */
   if (!DCCSym_LoadAddr(iter->r_sym,&symaddr,1) ||
-       symaddr.sa_sym->sy_sec != self) goto next;
+       DCCSym_SECTION(symaddr.sa_sym) != self) goto next;
   rel_addr  = base_address+iter->r_addr;
   rel_value = symaddr.sa_off+symaddr.sa_sym->sy_addr;
   switch (iter->r_type) {
@@ -1139,7 +1139,9 @@ DCCSection_Reloc(struct DCCSection *__restrict self, int resolve_weak) {
          iter->r_addr);
    }
    rel_value = base_address+iter->r_addr;
-  } else if (DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
+  } else if ((assert(symaddr.sa_sym),
+              assert(DCCSym_ISDEFINED(symaddr.sa_sym)),
+              DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec))) {
    rel_value = base_address+symaddr.sa_off+symaddr.sa_sym->sy_addr+iter->r_addr;
   } else {
    assertf(DCCSection_HASBASE(symaddr.sa_sym->sy_sec),
@@ -2425,6 +2427,8 @@ DCCUnit_SetCurr(struct DCCSection *sec) {
          sizeof(struct DCCTextBuf));
  }
  if ((unit.u_curr = sec) != NULL) {
+  assertf(!DCCSection_ISIMPORT(sec),
+          "Cannot select an import section as text target");
   memcpy(&unit.u_tbuf,&sec->sc_dat.sd_text,
          sizeof(struct DCCTextBuf));
  }

@@ -959,7 +959,8 @@ DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict val,
  assert(CHECK_WIDTH(width));
  if ((compiler.c_flags&DCC_COMPILER_FLAG_SINIT) && dst->ml_sym) {
   struct DCCSymAddr target_addr;
-  if (DCCSym_LoadAddr(dst->ml_sym,&target_addr,0)) {
+  if (DCCSym_LoadAddr(dst->ml_sym,&target_addr,0) &&
+     !DCCSection_ISIMPORT(target_addr.sa_sym->sy_sec)) {
    struct DCCSection *target_sec;
    uint8_t *target_data;
    /* Directly write to target memory (at compile-time).

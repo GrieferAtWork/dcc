@@ -1088,8 +1088,8 @@ DCCA2l_LookupAdr(struct A2lState *__restrict result,
  /* Load the symbol address. (NOTE: Weak aliases are evaluated, too) */
  if unlikely(!DCCSym_LoadAddr(adr->sa_sym,&full_addr,1)) goto fail;
  assert(full_addr.sa_sym);
- assert(!full_addr.sa_sym->sy_alias);
- if unlikely(DCCSym_ISFORWARD(full_addr.sa_sym)) goto fail;
+ assert(DCCSym_ISDEFINED(full_addr.sa_sym));
+ if unlikely(DCCSection_ISIMPORT(full_addr.sa_sym->sy_sec)) goto fail;
  /* Calculate the full symbol address by adding everything together. */
  full_addr.sa_off += adr->sa_off;
  if (!DCCSym_ISSECTION(adr->sa_sym))

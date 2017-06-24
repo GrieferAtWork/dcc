@@ -953,7 +953,8 @@ pe_mk_writefile(stream_t fd) {
  }
  /* Figure out the address of the entry point. */
  { struct DCCSymAddr entryaddr;
-   if (!DCCSym_LoadAddr(pe.pe_entry,&entryaddr,1)) {
+   if (!DCCSym_LoadAddr(pe.pe_entry,&entryaddr,1) ||
+        DCCSection_ISIMPORT(entryaddr.sa_sym->sy_sec)) {
     WARN(W_LINKER_MISSING_ENTRY_POINT,pe.pe_entry->sy_name->k_name);
     /* TODO: What if the text section is empty? */
     entryaddr.sa_sym = &linker.l_text->sc_start;

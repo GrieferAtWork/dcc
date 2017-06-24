@@ -78,16 +78,19 @@ INTDEF struct TPPStringEmpty tpp_empty_string;
  /* f_textfile.f_newguard    */NULL}}\
 }
 
-PUBLIC struct TPPFile TPPFile_Cmd    = SPECIAL_FILE("CMD",22846089lu);
+PUBLIC struct TPPFile TPPFile_Cmd    = SPECIAL_FILE("CMD",22846089ul);
 #if __SIZEOF_SIZE_T__ == 4
-PUBLIC struct TPPFile TPPFile_Merge  = SPECIAL_FILE("MERGE",147485999lu);
-PUBLIC struct TPPFile TPPFile_Linker = SPECIAL_FILE("LINKER",2160376288lu);
+PUBLIC struct TPPFile TPPFile_Merge  = SPECIAL_FILE("MERGE",147485999ul);
+PUBLIC struct TPPFile TPPFile_Linker = SPECIAL_FILE("LINKER",2160376288ul);
 #elif __SIZEOF_SIZE_T__ == 8
-PUBLIC struct TPPFile TPPFile_Merge  = SPECIAL_FILE("MERGE",1627940091183llu);
-PUBLIC struct TPPFile TPPFile_Linker = SPECIAL_FILE("LINKER",426909024696800llu);
+PUBLIC struct TPPFile TPPFile_Merge  = SPECIAL_FILE("MERGE",1627940091183ull);
+PUBLIC struct TPPFile TPPFile_Linker = SPECIAL_FILE("LINKER",426909024696800ull);
 #else
 #   error FIXME
 #endif
+#if DCC_CONFIG_HAVE_DRT
+DCCDAT struct TPPFile TPPFile_DRT    = SPECIAL_FILE("DRT",22916589ul);
+#endif /* DCC_CONFIG_HAVE_DRT */
 
 
 #ifndef __INTELLISENSE__

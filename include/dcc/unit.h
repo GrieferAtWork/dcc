@@ -297,6 +297,7 @@ union{
 #define DCCSym_ISDEFINED(self) ((self)->sy_sec != NULL)
 #define DCCSym_ISALIAS(self)   ((self)->sy_alias != NULL)
 #define DCCSym_ISFORWARD(self) ((self)->sy_sec == NULL && (self)->sy_alias == NULL)
+#define DCCSym_ISIMPSYM(self)  ((self)->sy_sec && DCCSection_ISIMPORT((self)->sy_sec))
 
 #define DCCSym_Incref(self)    (void)(++(self)->sy_refcnt)
 #define DCCSym_Decref(self)    (void)(DCC_ASSERT((self)->sy_refcnt),--(self)->sy_refcnt || (_DCCSym_Delete(self),0))

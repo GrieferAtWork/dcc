@@ -92,6 +92,10 @@ DRT_CheckSymbolReferences(struct DCCSym *__restrict sym,
  if (sym_acc < sym_end) {
   struct DCCRel *rel_iter,*rel_end; size_t relc;
   struct DCCSection *sec = symaddr.sa_sym->sy_sec;
+  /* v Shouldn't happen because import symbols usually have a size of
+   *   ZERO(0), but there is no guaranty that that will always be the
+   *   case. */
+  if unlikely(DCCSection_ISIMPORT(sec)) return 1;
   /* Make sure that the address range from
    * 'rel_value..sym_end' doesn't contain unresolved relocations. */
   rel_iter = DCCSection_GetRel(sec,sym_acc,
@@ -164,7 +168,7 @@ DRT_ResolveRel(uint8_t DRT_USER *__restrict uaddr,
      if unlikely(!DCCSym_LoadAddr(base_sym,&base_addr,1)) goto missing_reference;
      assert(base_addr.sa_sym);
      assert(DCCSym_ISDEFINED(base_addr.sa_sym));
-     if (DCCSection_ISIMPORT(base_addr.sa_sym->sy_sec)) {
+     if (DCCSection_ISIMPORT(DCCSym_SECTION(base_addr.sa_sym))) {
       /* Most likely case: Load an import symbol. */
       void *import_sym = DCCSection_DLImport(base_addr.sa_sym->sy_sec,
                                              base_addr.sa_sym->sy_name->k_name);

@@ -588,7 +588,9 @@ DCCVStack_Scas(uint32_t flags) {
     struct DCCSymAddr cc_ptr;
     if (DCCSym_LoadAddr(VS_PTR->sv_sym,&cc_ptr,0)) {
      assert(cc_ptr.sa_sym);
-     assert(cc_ptr.sa_sym->sy_sec);
+     assert(DCCSym_ISDEFINED(cc_ptr.sa_sym));
+     if (DCCSection_ISIMPORT(DCCSym_SECTION(cc_ptr.sa_sym)))
+         goto no_compiletime;
      /* Make sure the section is readable, but not writable! */
      if ((VS_PTR->sv_sym->sy_sec->sc_start.sy_flags&
          (DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W)) ==
@@ -598,8 +600,8 @@ DCCVStack_Scas(uint32_t flags) {
       target_siz_t cc_ptr_vsize;
       cc_ptr.sa_off += VS_PTR->sv_const.offset;
       cc_ptr.sa_off += cc_ptr.sa_sym->sy_addr;
-      cc_ptr_data = DCCSection_TryGetText(cc_ptr.sa_sym->sy_sec,cc_ptr.sa_off,
-                                         &cc_ptr_msize,&cc_ptr_vsize);
+      cc_ptr_data    = DCCSection_TryGetText(cc_ptr.sa_sym->sy_sec,cc_ptr.sa_off,
+                                            &cc_ptr_msize,&cc_ptr_vsize);
       if (cc_ptr_data) {
        /* Full compile-time search. */
        void *cc_locptr;

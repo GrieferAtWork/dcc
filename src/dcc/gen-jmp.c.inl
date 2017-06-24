@@ -131,7 +131,7 @@ DCCDisp_TargetJmp(struct jmpop const *__restrict op,
   DCCDisp_ProbeSym(&used_addr,1);
   if (DCCSym_LoadAddr(used_addr.sa_sym,&symaddr,0)) {
    if (DCCSym_SECTION(symaddr.sa_sym) == unit.u_curr) {
-    off_iter = symaddr.sa_off;
+    off_iter  = symaddr.sa_off;
     off_iter += symaddr.sa_sym->sy_addr-
      (t_addr+/* Worst cast for immediate value */DCC_TARGET_SIZEOF_POINTER+
              /* Leaway for opcode bytes. */      4);

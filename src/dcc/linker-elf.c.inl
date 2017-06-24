@@ -749,10 +749,9 @@ LOCAL int elf_wantrel(struct DCCRel const *__restrict rel) {
  struct DCCSymAddr symaddr;
  assert(rel),assert(rel->r_sym);
  if (!DCCSym_LoadAddr(rel->r_sym,&symaddr,0)) return 1;
- if (symaddr.sa_sym->sy_alias) return 1;
- if (symaddr.sa_sym->sy_sec &&
-     DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) return 1;
- return 0;
+ assert(symaddr.sa_sym);
+ assert(DCCSym_ISDEFINED(symaddr.sa_sym));
+ return DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec);
 }
 LOCAL int elf_wantpicrel(struct DCCRel const *__restrict rel) {
  assert(rel);
@@ -1389,7 +1388,8 @@ elf_mk_outfile(stream_t fd) {
  {
   struct DCCSymAddr entryaddr;
   assert(elf.elf_entry);
-  if (!DCCSym_LoadAddr(elf.elf_entry,&entryaddr,1)) {
+  if (!DCCSym_LoadAddr(elf.elf_entry,&entryaddr,1) ||
+       DCCSection_ISIMPORT(entryaddr.sa_sym->sy_sec)) {
    WARN(W_LINKER_MISSING_ENTRY_POINT,elf.elf_entry->sy_name->k_name);
    /* TODO: What if the text section is empty? */
    entryaddr.sa_sym = &linker.l_text->sc_start;

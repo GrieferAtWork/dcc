@@ -139,7 +139,8 @@ DCCMemLoc_CompilerAddr_impl(struct DCCMemLoc const *__restrict l,
  if ((compiler.c_flags&DCC_COMPILER_FLAG_SINIT) &&
       DCCMEMLOC_ISMEMOFF_S(l)) {
   struct DCCSymAddr symaddr;
-  if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0)) {
+  if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0) &&
+     !DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
    uint8_t *target_data;
    struct DCCSection *target_sec;
    assert(symaddr.sa_sym->sy_sec);
@@ -172,7 +173,8 @@ DCCMemLoc_CompilerData_impl(struct DCCMemLoc const *__restrict l,
                             void **update_ptr, size_t n_bytes) {
  if (DCCMEMLOC_ISMEMOFF_S(l)) {
   struct DCCSymAddr symaddr;
-  if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0)) {
+  if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0) &&
+     !DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
    uint8_t *target_data;
    struct DCCSection *target_sec;
    assert(symaddr.sa_sym->sy_sec);
@@ -235,7 +237,8 @@ DCCMemLoc_CompilerText(struct DCCMemLoc const *__restrict l,
                        size_t n_bytes) {
  if (DCCMEMLOC_ISMEMOFF_S(l)) {
   struct DCCSymAddr symaddr;
-  if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0)) {
+  if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0) &&
+     !DCCSection_ISIMPORT(symaddr.sa_sym->sy_sec)) {
    uint8_t *target_data;
    struct DCCSection *target_sec;
    assert(symaddr.sa_sym->sy_sec);

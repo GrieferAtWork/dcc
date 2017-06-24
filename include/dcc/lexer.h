@@ -43,6 +43,9 @@ DCC_DECL_BEGIN
 DCCDAT struct TPPFile TPPFile_Cmd;
 DCCDAT struct TPPFile TPPFile_Merge;
 DCCDAT struct TPPFile TPPFile_Linker;
+#if DCC_CONFIG_HAVE_DRT
+DCCDAT struct TPPFile TPPFile_DRT;
+#endif
 
 #ifdef __INTELLISENSE__
 DCCDAT struct TPPKeyword TPPKeyword_Empty;

@@ -466,7 +466,8 @@ no_reloc_diff:
       v->sa_sym = NULL;
      } else if (DCCSym_SECTION(lhs_addr.sa_sym) &&
                 DCCSym_SECTION(lhs_addr.sa_sym) ==
-                DCCSym_SECTION(rhs_addr.sa_sym)) {
+                DCCSym_SECTION(rhs_addr.sa_sym) &&
+               !DCCSection_ISIMPORT(DCCSym_SECTION(lhs_addr.sa_sym))) {
       /* Special case: Difference between two defined symbols from the same section. */
       v->sa_off += (lhs_addr.sa_off+lhs_addr.sa_sym->sy_addr)-
                    (rhs_addr.sa_off+rhs_addr.sa_sym->sy_addr);

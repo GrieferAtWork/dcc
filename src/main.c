@@ -368,13 +368,6 @@ int main(int argc, char *argv[]) {
    if (!OK) break;
    ++argv,--argc;
   }
-#if DCC_CONFIG_HAVE_DRT
-  /* Serve all remaining DRT synchronizations. */
-  if (DRT_ENABLED()) {
-   if (OK) DRT_SyncAll();
-   goto end;
-  }
-#endif /* DCC_CONFIG_HAVE_DRT */
  } break;
 
  }
@@ -382,6 +375,19 @@ int main(int argc, char *argv[]) {
  /* Emit dummy dependency strings. */
  if (preproc.p_depfd != TPP_STREAM_INVALID)
      DCCPreprocessor_DepDummy();
+
+#if DCC_CONFIG_HAVE_DRT
+ /* Serve all remaining DRT synchronizations. */
+ if (DRT_ENABLED()) {
+  tpp_clrfile();
+  if (OK) {
+   TPPLexer_PushFile(&TPPFile_DRT);
+   DRT_SyncAll();
+   tpp_clrfile();
+  }
+  goto end;
+ }
+#endif /* DCC_CONFIG_HAVE_DRT */
 
  tpp_clrfile();
 
@@ -420,54 +426,6 @@ int main(int argc, char *argv[]) {
   }
  }
  tpp_clrfile();
-
-#if 0 /* TODO: Direct execution mode. */
- {
-  struct DCCSection *sec;
-  struct DCCSym *entry_sym;
-  void(*entry)(void);
-
-  /* Ugly hack to get minimal stdio in tests. */
-  def("printf",(target_ptr_t)(uintptr_t)(void *)&printf);
-  //def("printf",(void *)0xDEADBEEF);
-
-  /* Search for an entry point. */
-  entry_sym = DCCUnit_GetSyms("__start");
-  if (!entry_sym) {
-   fprintf(stderr,"Entry point not found (Defaulting to start of .text)\n");
-   entry_sym = &unit.u_text->sc_start;
-   dcc_dump_symbols();
-  }
-
-  DCCSym_Incref(entry_sym);
-  DCCUnit_ClearUnused();
-  DCCUnit_ClearUnusedLibs();
-  DCCSym_Decref(entry_sym);
-
-  DCCUnit_ENUMSEC(sec) DCCSection_SetBase(sec);
-  if (!OK) goto end;
-  DCCUnit_ENUMSEC(sec) DCCSection_Reloc(sec);
-  if (!OK) goto end;
-
-  {
-   struct DCCSymAddr entryaddr;
-   if (!DCCSym_LoadAddr(entry_sym,&entryaddr,1)) {
-    fprintf(stderr,"Entry point not found (Defaulting to start of .text)\n");
-    entryaddr.sa_sym = &unit.u_text->sc_start;
-    entryaddr.sa_off = 0;
-    dcc_dump_symbols();
-   }
-   if (!OK) goto end;
-
-   assert(DCCSym_SECTION(entryaddr.sa_sym));
-   *(void **)&entry = (void *)(entryaddr.sa_off+entryaddr.sa_sym->sy_addr+
-                               DCCSection_BASE(DCCSym_SECTION(entryaddr.sa_sym)));
-  }
-
-  /* Execute the generated code. */
-  (*entry)();
- }
-#endif
 
 end:
  if (!OK) { fprintf(stderr,"A fatal error caused dcc to abort!\n"); }
