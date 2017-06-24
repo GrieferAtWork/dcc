@@ -727,11 +727,10 @@ next:
   /* Begin a new dialect block.
    * NOTE: Since DCC implements AT&T syntax, we
    *       always parse only the first dialect block. */
-  if (flush_start != iter-1) {
-   stringwriter_write(&writer,flush_start,
-                     (size_t)((iter-1)-flush_start));
-   flush_start = iter;
-  }
+  if (flush_start != iter-1)
+      stringwriter_write(&writer,flush_start,
+                        (size_t)((iter-1)-flush_start));
+  flush_start = iter;
   if (iter[-1] == '{') goto next;
   if (dialect_depth) {
    if (iter[-1] == '|') {
@@ -739,7 +738,8 @@ next:
     /* Scan until the next '|' or '}', recursively resolving '{' ... '}' pairs */
     for (;;) {
      char ch = *iter++;
-          if (ch == '{') ++recursion;
+          if (ch == '%') { if (iter != end) ++iter; } /* Escape the next character. */
+     else if (ch == '{') ++recursion;
      else if (ch == '}') { if (!recursion) { --dialect_depth; break; } --recursion; }
      else if (ch == '|') { if (!recursion) { break; } }
      else if (!ch && iter-1 == end) goto done;

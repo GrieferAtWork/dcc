@@ -566,8 +566,8 @@ done:
  if (info_name) TPPString_Decref(info_name);
 }
 
-#define CPU_VENDORSIZE (3*4+1)
-#define CPU_BRANDSIZE  (3*4*4+1)
+#define CPU_VENDORSIZE   (3*4+1)
+#define CPU_BRANDSIZE  (4*3*4+1)
 
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_BuiltinCPUVendor(void) {
@@ -667,9 +667,8 @@ DCCParse_BuiltinCPUVendor(void) {
   DCCDisp_RegMovMem(EDX,&return_data),return_data.ml_off += 4;
   DCCDisp_RegMovMem(ECX,&return_data),return_data.ml_off += 4;
  }
- {
-  struct DCCSymAddr term = {'\0',NULL};
-  DCCDisp_CstMovMem(&term,&return_data,DCC_TARGET_SIZEOF_CHAR);
+ { struct DCCSymAddr term = {'\0',NULL};
+   DCCDisp_CstMovMem(&term,&return_data,DCC_TARGET_SIZEOF_CHAR);
  }
 
  if (must_pop_return) DCCDisp_PopReg(return_data.ml_reg);

@@ -136,10 +136,10 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - <code>void \_\_builtin\_cpu\_init(void);</code>
     - <code>int \_\_builtin\_cpu\_is(char const *cpuname);</code>
     - <code>int \_\_builtin\_cpu\_supports(char const *feature);</code>
-    - <code>char (&\_\_builtin\_cpu\_vendor([char *buf]))[?];</code>
-    - <code>char (&\_\_builtin\_cpu\_brand([char *buf]))[?];</code>
+    - <code>char (&\_\_builtin\_cpu\_vendor(char *buf = \_\_builtin\_alloca(sizeof(\_\_builtin\_cpu\_vendor()))))[?];</code>
+    - <code>char (&\_\_builtin\_cpu\_brand(char *buf = \_\_builtin\_alloca(sizeof(\_\_builtin\_cpu\_brand()))))[?];</code>
       - Returns a target-specific <code>'\\0'</code>-terminated string describing the brand/vendor name of the host CPU. The length of the returned string is always constant and known at compile-time.
-      - An optional buffer argument of at least <code>sizeof(\_\_builtin\_cpu\_(vendor\|brand)())</code> bytes may be specified, and if omitted, a new buffer allocated using <code>\_\_builtin\_alloca</code> is returned.
+      - <code>\_\_builtin\_cpu\_init</code> is required to be called first, and if the string cannot be determined at runtime, the returned string is filled with all <code>'\\0'</code>-characters.
     - <code>uint16\_t \_\_builtin\_bswap16(uint16\_t x);</code>
     - <code>uint32\_t \_\_builtin\_bswap32(uint32\_t x);</code>
     - <code>uint64\_t \_\_builtin\_bswap64(uint64\_t x);</code>
