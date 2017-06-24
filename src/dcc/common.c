@@ -49,7 +49,31 @@ INTERN void dcc_voutf(char const *fmt, va_list args) {
 #ifndef __DCC_VERSION__
  OutputDebugStringA(buffer);
 #endif
+#ifdef _MSC_VER
+ /* Try not to use locking IO because of the following:
+  * input.c:
+  * >> #include <stdio.h>
+  * >> int main() {
+  * >>     fprintf(stderr,"Hello world\n");
+  * >> #warning "Compiler warning message"
+  * >>     return 0;
+  * >> }
+  * When running the above in DRT mode, a data sync may be triggered
+  * while DRT execution in inside 'printf()', following printf() trying
+  * to access the potentially unsynchronized string "Hello World\n".
+  * If that happens, DRT will hold onto the the 'stderr' file lock
+  * in a way that could potentially result in a deadlock if the
+  * compiler thread attempts to acquire the same lock.
+  *
+  * TODO: A more permanent solution for this problem is to never
+  *       make use of stdio anywhere within the compiler, meaning
+  *       that all existing uses should probably be replaced
+  *       with lower-level APIs such as dprintf/write/WriteFile.
+  */
+ _fwrite_nolock(buffer,sizeof(char),strlen(buffer),stderr);
+#else
  fwrite(buffer,sizeof(char),strlen(buffer),stderr);
+#endif
 }
 INTERN void dcc_outf(char const *fmt, ...) {
  va_list args;

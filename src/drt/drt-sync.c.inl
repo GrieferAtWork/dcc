@@ -283,6 +283,8 @@ DRT_FindUserSection(void DRT_USER *addr) {
  return result;
 }
 
+extern void dcc_outf(char const *fmt, ...);
+
 PRIVATE target_siz_t
 DCCSection_RawMirrorData(struct DCCSection *__restrict self,
                          target_ptr_t addr,
@@ -354,6 +356,10 @@ more:
 commit_mirror:
  assert(mirror_size <= size);
  size_ok += mirror_size;
+/*
+ dcc_outf("MIRROR(%p ... %p)\n",
+          utext+addr,utext+addr+(mirror_size-1));
+*/
  if (addr+mirror_size > htext_alloc) {
   size_t copy_size = addr >= htext_alloc ? 0u : htext_alloc-addr;
   memcpy(utext+addr,htext+addr,copy_size);
@@ -456,21 +462,25 @@ DCCSection_RTMirrorData(struct DCCSection *__restrict self,
  target_ptr_t pa_addr    = (addr)&~(DCC_TARGET_PAGESIZE-1);
  target_ptr_t pa_addrend = (addrend+(DCC_TARGET_PAGESIZE-1))&~(DCC_TARGET_PAGESIZE-1);
  target_siz_t size_ok    = 0;
+ target_siz_t sec_size;
  size_t pagei_idx = pa_addr/DCC_TARGET_PAGESIZE;
  size_t pagei_end = pa_addrend/DCC_TARGET_PAGESIZE;
+ //if (self == unit.u_string/* && pa_addr >= 0x1000*/)
+ //    DCC_BREAKPOINT();
  assert(self);
  assert(!DCCSection_ISIMPORT(self));
- text  = self == unit.u_curr ? &unit.u_tbuf : &self->sc_dat.sd_text;
+ text     = self == unit.u_curr ? &unit.u_tbuf : &self->sc_dat.sd_text;
+ htext    = text->tb_begin;
+ sec_size = (target_siz_t)(text->tb_max-htext);
+ if (addr+size >= sec_size) return 0;
  utext = DCCSection_RTAlloc(self,pa_addr,pa_addrend-pa_addr,1);
  if unlikely(utext == DRT_VERROR) return 0;
  utext = self->sc_dat.sd_rt.rs_vaddr;
- htext = text->tb_begin;
  assert(pagei_idx <= pagei_end);
- while (pagei_idx != pagei_end) {
+ for (; pagei_idx != pagei_end; ++pagei_idx) {
   if (!DCCRTSection_PAGE_ISUSABLE(&self->sc_dat.sd_rt,pagei_idx)) {
    struct DCCRel *rel_iter,*rel_end; size_t relc;
-   target_off_t page_off   = pagei_idx*DCC_TARGET_PAGESIZE;
-   target_ptr_t page_addr  = pa_addr+page_off;
+   target_ptr_t page_addr  = pagei_idx*DCC_TARGET_PAGESIZE;
    target_siz_t page_vsize = (target_siz_t)(text->tb_max-htext);
    if (page_addr >= page_vsize) break;
    page_vsize -= page_addr;
@@ -500,7 +510,6 @@ DCCSection_RTMirrorData(struct DCCSection *__restrict self,
     }
    }
   }
-  ++pagei_idx;
  }
  DCCSection_RTDoneWrite(self,pa_addr,pa_addrend-pa_addr);
  *psize_ok = size_ok; /* Intentionally only set here! */

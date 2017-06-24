@@ -73,23 +73,26 @@ INTERN void DRT_USER DRT_U_WaitEvent(uint32_t code) {
    ExitThread(1);
   }
  } else {
-#if 1
-  /* Flush various global buffers before starting to wait. */
+#if 0 /*< Don't do this to prevent deadlocks after a sync was triggered inside of printf() & friends. */
+  /* Flush various global buffers before starting to wait.
+   * >> To be honest, this is mainly done to ensure
+   *    the printf() example working flawlessly. */
   fflush(stdout);
   fflush(stderr);
 #endif
   if (WaitForSingleObject(drt.rt_event.ue_sem,INFINITE) == WAIT_FAILED) {
-   fprintf(stderr,"Failed to wait for DRT event\n");
-   exit(1);
+   fprintf(stderr,"Failed to wait for DRT event (%d)\n",GetLastError());
+   ExitThread(1);
   }
  }
 }
 
 INTERN int DRT_USER
 DRT_U_FetchText(void DRT_USER *addr) {
- drt.rt_event.ue_text.te_addr    = addr;
- drt.rt_event.ue_text.te_relc_ok = 0;
- drt.rt_event.ue_text.te_size_ok = 0;
+ drt.rt_event.ue_text.te_addr       = addr;
+ drt.rt_event.ue_text.te_relc_ok    = 0;
+ drt.rt_event.ue_text.te_size_ok    = 0;
+ drt.rt_event.ue_text.te_size_total = 0;
  DRT_U_WaitEvent(DRT_EVENT_MIRROR_TEXT);
  return drt.rt_event.ue_text.te_relc_ok ||
         drt.rt_event.ue_text.te_size_ok ||

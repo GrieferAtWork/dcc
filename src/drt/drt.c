@@ -269,7 +269,7 @@ DCCSection_RTAlloc(struct DCCSection *__restrict self,
  result = self->sc_dat.sd_rt.rs_vaddr+addr;
  if unlikely(!size) return result; /* Handle special case: empty range. */
  page_min = (addr)/DCC_TARGET_PAGESIZE;
- page_max = (addr+size)/DCC_TARGET_PAGESIZE;
+ page_max = (addr+(size-1))/DCC_TARGET_PAGESIZE;
  assert(page_min <= page_max);
  if (page_max*DCC_TARGET_PAGESIZE >= drt.rt_maxsection) {
   /* Once a section grows larger than the predefined maximum,
