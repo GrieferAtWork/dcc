@@ -370,7 +370,15 @@
  *       But DRT requires code like this:
  *       >> testb $0, my_func // Probe the existance of 'my_func'
  *       >> call my_func
- *       The same goes for jmp/jcc instructions.
+ *       The same goes for jmp/jcc instructions and any other assembly
+ *       instruction that uses a symbol as a ready-only operand, most
+ *       notably 'lea', but also less obvious uses, such as 'add'
+ *       >> movl %esp, %eax
+ *       >> addl $my_sym, %eax // This is wrong. - 'my_sym' isn't probed.
+ *       Correct:
+ *       >> movl %esp, %eax
+ *       >> testb $0, my_sym   // Make sure the symbol is defined before using it.
+ *       >> addl $my_sym, %eax
  */
 
 

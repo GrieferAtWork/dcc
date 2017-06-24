@@ -575,6 +575,7 @@ DCCDisp_DoCstMovMem(struct DCCSymAddr const *__restrict val,
                     width_t width) {
  /* mov $symaddr, offset(%reg) */
  assert(CHECK_WIDTH(width));
+ DCCDisp_ProbeSym(val,1);
  DCCDisp_X86Segp(dst->ml_reg);
  if (width == 2) t_putb(0x66);
  if (width == 1) t_putb(0xc6);
@@ -898,6 +899,7 @@ PUBLIC void
 DCCDisp_CstMovRegRaw(struct DCCSymAddr const *__restrict val, rc_t dst) {
  uint8_t opno;
  assert(val);
+ DCCDisp_ProbeSym(val,1);
  if ((dst&(DCC_RC_I16|DCC_RC_I32)) == DCC_RC_I16) t_putb(0x66);
  /* mov $symaddr, %reg */
  opno = (dst&DCC_RC_I16) ? 0xb8 : 0xb0;
@@ -1020,6 +1022,7 @@ DCCDisp_CstPush(struct DCCSymAddr const *__restrict val,
   DCCDisp_CstMovMem(val,&esp_loc,1);
   return;
  }
+ DCCDisp_ProbeSym(val,1);
  if (width == 2) t_putb(0x66);
  t_putb(0x68);
  DCCDisp_SymAddr(val,width);

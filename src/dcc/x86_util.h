@@ -87,7 +87,6 @@ DCC_DECL_BEGIN
 #define CHECK_WIDTH(w) ((w) == 1 || (w) == 2 || (w) == 4)
 #endif
                            
-LOCAL target_ptr_t reg_max(rc_t reg);
 LOCAL target_off_t DCCDisp_PutAddrRel(struct DCCSymAddr const *__restrict addr, rel_t rel_size);
 LOCAL target_off_t DCCDisp_PutDispRel(struct DCCSymAddr const *__restrict addr, rel_t rel_size);
 

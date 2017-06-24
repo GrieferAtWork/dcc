@@ -712,6 +712,7 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
   {
   case '*':
    if (dst&(DCC_RC_I32|DCC_RC_I16)) {
+    DCCDisp_ProbeSym(val,1);
     /* 16/32-bit mul. */
     if (!(dst&DCC_RC_I32)) t_putb(0x66);
     if (!val->sa_sym && val->sa_off == (int8_t)val->sa_off) {
@@ -770,6 +771,7 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
   case TOK_SHL:
   case TOK_SHR:
   case TOK_RANGLE3:
+   DCCDisp_ProbeSym(val,1);
    /* Generate the shift instruction. */
    if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    if (!val->sa_sym && val->sa_off == 1) {
@@ -785,6 +787,7 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
 
   { /* test */
   case 't':
+   DCCDisp_ProbeSym(val,1);
    if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
    if ((dst&DCC_RI_MASK) == DCC_ASMREG_EAX) {
     t_putb(0xa8+!!(dst&DCC_RC_I16));
@@ -802,6 +805,7 @@ DCCDisp_CstBinReg(tok_t op, struct DCCSymAddr const *__restrict val,
   return;
  }
  /* *op symaddr, %reg */
+ DCCDisp_ProbeSym(val,1);
  if ((dst&(DCC_RC_I16|DCC_RC_I3264)) == DCC_RC_I16) t_putb(0x66);
  if ((dst&DCC_RI_MASK) == DCC_ASMREG_EAX) {
   t_putb(bin_op->bo_r_rm8+4+!!(dst&DCC_RC_I16));
@@ -851,6 +855,7 @@ DCCDisp_CstBinMem(tok_t op,
     temp &= ~(DCC_RC_I16);
    } else {
     /* imulw/l $imm8/16/32, offset(%dst), %temp */
+    DCCDisp_ProbeSym(val,1);
     DCCDisp_X86Segp(dst->ml_reg);
     if (width == 2) t_putb(0x66);
     if (!val->sa_sym && val->sa_off == (int8_t)val->sa_off) t_putb(0x6b),width = 1;
@@ -901,6 +906,7 @@ DCCDisp_CstBinMem(tok_t op,
   case TOK_SHR:
   case TOK_RANGLE3:
    /* Generate the shift instruction. */
+   DCCDisp_ProbeSym(val,1);
    DCCDisp_X86Segp(dst->ml_reg);
    if (width == 2) t_putb(0x66);
    if (!val->sa_sym && val->sa_off == 1) {
@@ -916,6 +922,7 @@ DCCDisp_CstBinMem(tok_t op,
 
   { /* test */
   case 't':
+   DCCDisp_ProbeSym(val,1);
    DCCDisp_X86Segp(dst->ml_reg);
    if (width == 2) t_putb(0x66);
    t_putb(0xf6+(width >= 2));
@@ -928,6 +935,7 @@ DCCDisp_CstBinMem(tok_t op,
   return;
  }
  /* *op symaddr, offset(%dst) */
+ DCCDisp_ProbeSym(val,1);
  DCCDisp_X86Segp(dst->ml_reg);
  if (width == 2) t_putb(0x66);
  if (width == 1) {
@@ -1762,6 +1770,7 @@ DCCDisp_LeaReg(struct DCCMemLoc const *__restrict addr,
   DCCDisp_RegMovReg(addr->ml_reg,dst,1);
   DCCDisp_AddReg(&addr->ml_sad,dst);
  } else {
+  DCCDisp_Probe(addr,1);
   /*DCCDisp_X86Segp(addr->ml_reg);*/
   if (!(dst&DCC_RC_I3264)) t_putb(0x66);
   t_putb(0x8d);

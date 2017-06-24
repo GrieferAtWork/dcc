@@ -56,12 +56,16 @@ DCCFUN void DCCDisp_SymDisp(struct DCCSymAddr const *__restrict expr, DCC(width_
  */
 #ifdef __INTELLISENSE__
 DCCFUN void DCCDisp_Probe(struct DCCMemLoc const *__restrict addr, size_t n_bytes);
+DCCFUN void DCCDisp_ProbeSym(struct DCCSymAddr const *__restrict addr, size_t n_bytes);
 #else
-#define DCCDisp_Probe(addr,n_bytes) (DRT_ENABLED() ? DCCDisp_Probe_(addr,n_bytes) : (void)0)
+#define DCCDisp_Probe(addr,n_bytes)    (DRT_ENABLED() ? DCCDisp_Probe_(addr,n_bytes) : (void)0)
+#define DCCDisp_ProbeSym(addr,n_bytes) (DRT_ENABLED() ? DCCDisp_ProbeSym_(addr,n_bytes) : (void)0)
 DCCFUN void DCCDisp_Probe_(struct DCCMemLoc const *__restrict addr, size_t n_bytes);
+DCCFUN void DCCDisp_ProbeSym_(struct DCCSymAddr const *__restrict addr, size_t n_bytes);
 #endif
 #else /* DCC_CONFIG_HAVE_DRT */
-#define DCCDisp_Probe(addr,n_bytes) (void)0
+#define DCCDisp_Probe(addr,n_bytes)    (void)0
+#define DCCDisp_ProbeSym(addr,n_bytes) (void)0
 #endif /* !DCC_CONFIG_HAVE_DRT */
 
 /* If known, translate the memory location 'l' into its compile-time

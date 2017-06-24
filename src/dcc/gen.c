@@ -51,6 +51,15 @@ PRIVATE void DCCDisp_SymDisp64(struct DCCSymAddr const *__restrict expr);
 
 #if DCC_CONFIG_HAVE_DRT
 PUBLIC void
+DCCDisp_ProbeSym_(struct DCCSymAddr const *__restrict addr,
+                  size_t n_bytes) {
+ struct DCCMemLoc mloc;
+ assert(addr);
+ mloc.ml_reg = DCC_RC_CONST;
+ mloc.ml_sad = *addr;
+ DCCDisp_Probe_(&mloc,n_bytes);
+}
+PUBLIC void
 DCCDisp_Probe_(struct DCCMemLoc const *__restrict addr,
                size_t n_bytes) {
  /* ECX = 'addr'; [EDX = 'n_bytes']; */
@@ -273,17 +282,6 @@ DCCDisp_X86PutSegmentPrefix(rc_t memrc) {
 }
 #endif /* I_X86 */
 
-
-LOCAL target_ptr_t reg_max(rc_t reg) {
- target_ptr_t result;
-#ifdef DCC_RC_I64
- if (reg&DCC_RC_I64) result = (target_ptr_t)0xffffffffffffffffull; else
-#endif
-      if (reg&DCC_RC_I32) result = (target_ptr_t)0xfffffffful;
- else if (reg&DCC_RC_I16) result = (target_ptr_t)0xfffful;
- else                     result = (target_ptr_t)0xfful;
- return result;
-}
 
 LOCAL target_off_t
 DCCDisp_PutAddrRel(struct DCCSymAddr const *__restrict addr, rel_t rel) {
