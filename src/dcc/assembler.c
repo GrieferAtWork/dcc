@@ -192,9 +192,14 @@ done_register:;
   if (/*!op->ao_val.sa_sym &&*/ TOK == '(') {
    YIELD();
    if (TOK != '%' && !has_expr) {
+    /* Rever the token to the '(' to allow for proper parenthesis in here. */
+    assert(TOKEN.t_begin >= TOKEN.t_file->f_begin);
+    assert(TOKEN.t_begin <= TOKEN.t_file->f_end);
+    /* The next YIELD() will parse the current token again. */
+    TOKEN.t_file->f_pos = TOKEN.t_begin;
+    TOKEN.t_id = '('; /* Insert a fake '('-token. */
+
     DCCParse_AsmExpr(&op->ao_val);
-    if (TOK != ')') WARN(W_EXPECTED_RPAREN);
-    else YIELD();
     if (TOK != '(') goto done_ind;
     YIELD();
    }

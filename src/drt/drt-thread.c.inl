@@ -136,7 +136,11 @@ struct DRTStartupInfo {
 PRIVATE DWORD WINAPI
 DRT_ThreadEntry(struct DRTStartupInfo *info) {
  struct DCPUState initcpu = info->si_cpu;
+#ifdef __DCC_VERSION__
+#define tib   ((NT_TIB *)__extension__ %fs:0x18)
+#else
  NT_TIB *tib = (NT_TIB *)__readfsdword(0x18);
+#endif
  //EXCEPTION_REGISTRATION_RECORD root_handler;
  void **u_stack;
  /* Reserve part of the DRT thread's stack for internal use. */
@@ -179,6 +183,7 @@ DRT_ThreadEntry(struct DRTStartupInfo *info) {
  
  /* Switch to the given CPU state. */
  DRT_SetCPUState(&initcpu);
+#undef tib
 }
 
 

@@ -201,22 +201,25 @@ PUBLIC __attribute__((__naked__)) DCC_ATTRIBUTE_NORETURN
 void DRT_SetCPUState(struct DCPUState const *__restrict state) {
 #if !!(DCC_HOST_CPUF&DCC_CPUF_X86_64)
 #   define LEVEL "r"
+#   define PFX   "q"
 #else
 #   define LEVEL "e"
+#   define PFX   "l"
 #endif
- __asm__("push " DCC_PP_STR(DCPUSTATE_OFFSETOF_EFREG+DCPUEFREGISTER_OFFSETOF_FLAGS) "(%%" LEVEL "ax)\n\t"
-         "popfd\n\t"
-         "mov " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_CX) "(%%" LEVEL "ax), %%" LEVEL "cx\n\t"
-         "mov " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_DX) "(%%" LEVEL "ax), %%" LEVEL "dx\n\t"
-         "mov " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_BX) "(%%" LEVEL "ax), %%" LEVEL "bx\n\t"
-         "mov " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_SP) "(%%" LEVEL "ax), %%" LEVEL "sp\n\t"
-         "mov " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_BP) "(%%" LEVEL "ax), %%" LEVEL "bp\n\t"
-         "mov " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_SI) "(%%" LEVEL "ax), %%" LEVEL "si\n\t"
-         "mov " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_DI) "(%%" LEVEL "ax), %%" LEVEL "di\n\t"
-         "push " DCC_PP_STR(DCPUSTATE_OFFSETOF_IPREG+DCPUIPREGISTER_OFFSETOF_IP) "(%%" LEVEL "ax)\n\t"
-         "mov " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_AX) "(%%" LEVEL "ax), %%" LEVEL "ax\n\t"
+ __asm__("push" PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_EFREG+DCPUEFREGISTER_OFFSETOF_FLAGS) "(%%" LEVEL "ax)\n\t"
+         "popf" PFX "\n\t"
+         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_CX) "(%%" LEVEL "ax), %%" LEVEL "cx\n\t"
+         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_DX) "(%%" LEVEL "ax), %%" LEVEL "dx\n\t"
+         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_BX) "(%%" LEVEL "ax), %%" LEVEL "bx\n\t"
+         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_SP) "(%%" LEVEL "ax), %%" LEVEL "sp\n\t"
+         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_BP) "(%%" LEVEL "ax), %%" LEVEL "bp\n\t"
+         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_SI) "(%%" LEVEL "ax), %%" LEVEL "si\n\t"
+         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_DI) "(%%" LEVEL "ax), %%" LEVEL "di\n\t"
+         "push" PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_IPREG+DCPUIPREGISTER_OFFSETOF_IP) "(%%" LEVEL "ax)\n\t"
+         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_AX) "(%%" LEVEL "ax), %%" LEVEL "ax\n\t"
          "ret\n\t"
          : : "a" (state) : "cc", "memory");
+#undef PFX
 #undef LEVEL
  __builtin_unreachable();
 }
