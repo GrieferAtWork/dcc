@@ -37,7 +37,7 @@
 DCC_DECL_BEGIN
 
 #define DRT_U_STACKRESERVE 0x1000 /* Amount of user-stack bytes to reserve for DRT itself. */
-#define DRT_U_FILLER       0xf4   /* hlt - Will raise a GP because DCC isn't meant to run in kernel space. */
+#define DRT_U_FILLER       0xf4   /* hlt - Will raise a #GP because DCC isn't meant to run in kernel space. */
 
 
 INTDEF void DRT_USER DRT_U_WaitEvent(uint32_t code);

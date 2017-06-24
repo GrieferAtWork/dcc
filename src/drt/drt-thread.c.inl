@@ -74,16 +74,16 @@ DRT_U_W32ExceptionHandler(EXCEPTION_RECORD *ExceptionRecord, PVOID EstablisherFr
    }
 #if 0 /* TODO: This isn't working yet. */
    {
-    /* Wait for symbol relocations within the current instruction.
-     * NOTE: These relocations must be mirrored globally, meaning
-     *       that any other existing relocation against every symbol
-     *       either directly, or indirectly referred to by said
-     *       instruction must be relocated _everywhere_ */
+    /* Wait for symbol relocations within the current instruction. */
     uintptr_t eip_end = (uintptr_t)x86_instrlen((uint8_t const *)eip);
     if (DRT_U_FetchRelo((void *)eip,(size_t)(eip_end-eip)))
         return ExceptionContinueExecution;
    }
 #else
+   /* This basically does the same, but does unnecessary checks
+    * for mirroring data & doesn't guaranty to capture at least
+    * one instruction in the event that said instruction was
+    * already mirrored. */
    if (DRT_U_FetchText((void *)eip))
        return ExceptionContinueExecution;
 #endif

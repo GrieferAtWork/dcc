@@ -1018,10 +1018,10 @@ DCCIAsmOps_Store(struct DCCIAsmOps *__restrict self) {
        ml.ml_sym = NULL;
       }
            if (type_size == 1) DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_I8,&ml);
-      else if (type_size == 2) DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_I16,&ml);
-      else if (type_size == 4) DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_I32,&ml);
+      else if (type_size == 2) DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_I16|DCC_RC_I8,&ml);
+      else if (type_size == 4) DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_I32|DCC_RC_I16|DCC_RC_I8,&ml);
 #ifdef DCC_RC_I64
-      else if (type_size == 8) DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_I64,&ml);
+      else if (type_size == 8) DCCDisp_RegMovMem(iter->ao_reg|DCC_RC_I3264|DCC_RC_I16|DCC_RC_I8,&ml);
 #endif
       else if (iter->ao_reg2 >= 0) {
        DCCDisp_RegsBinMems('=',

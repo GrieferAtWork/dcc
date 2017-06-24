@@ -56,9 +56,15 @@ DCCDisp_Probe_(struct DCCMemLoc const *__restrict addr,
  /* ECX = 'addr'; [EDX = 'n_bytes']; */
  struct DCCSymAddr val;
  int push_regs = 0;
+ assert(addr);
+ /* Don't probe global addresses, or addresses
+  * that aren't offset from a symbol. */
+ if (!addr->ml_sym ||
+      addr->ml_sym->sy_sec == &DCCSection_Abs)
+      return;
+ if (!n_bytes) return;
 #define PUSH_ECX 0x01
 #define PUSH_EDX 0x02
- if (!n_bytes) return;
  if (n_bytes == 1 ||
      n_bytes == 2 ||
      n_bytes == 4

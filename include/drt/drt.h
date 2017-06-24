@@ -344,6 +344,9 @@
  *   for retrieving the absolute symbol address that can be used for
  *   linking relocation against an import section.
  *
+ *   PE indirections ('__imp_*' symbols) can simple be fixed using
+ *   compiler-allocated fixed-address pointers (s.a.: 'DRT_AllocPEIndirection()')
+ *
  *   RESTRICTIONS:
  *     - DRT is currently limited to a single thread, and even though
  *       it is quite possible to extend this limit, user-code must
@@ -360,6 +363,14 @@
  *       that produced when DRT is disabled ('-d' is not passed on
  *       the commandline), as well as the inability to output DRT
  *       code, as well as generate an ELF/PE executable.
+ *     - Using inline assembly to call a function becomes
+ *       illegal, as no target probing code is generated:
+ *       You'd write this:
+ *       >> call my_func
+ *       But DRT requires code like this:
+ *       >> testb $0, my_func // Probe the existance of 'my_func'
+ *       >> call my_func
+ *       The same goes for jmp/jcc instructions.
  */
 
 
