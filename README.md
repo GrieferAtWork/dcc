@@ -1,6 +1,6 @@
 # dcc - Direct C Compiler
 
-A <b>C99 compliant</b> C compiler with extensions implementing many extensions and features, as well as arbirary-length integer arithmetic.
+A <b>C99 compliant</b> C compiler with additions implementing many extensions and features, as well as arbirary-precision integer arithmetic.
 
 The main feature that differentiates this compiler from others, is its ability to directly read, preprocess, tokenize, parse, assemble and link c source code, all at the same time, in a way allowing you to <b>execute C code</b> in an environment similar to that of an <b>interactive commandline</b>. If you are interested in how this is achieved, take a look at <code>/include/drt/drt.h</code>
 
@@ -17,16 +17,18 @@ Development on DCC started on <b>17.04.2017</b>, eversince then being the usual 
 ## Current state:
 Note that DCC is still fairly early in its development, meaning that anything can still change and that more features will be added eventually.
   - Link against windows PE binaries/libraries (<b>\*.dll</b>).
-  - Statically link against PE binaries (as is clone everything from a <b>\*.dll</b>)
+  - Statically link against PE binaries (as in: clone everything from a <b>\*.dll</b>)
   - Dynamically/Statically link against ELF binaries/libraries/object files (<b>\*</b>, <b>\*.so</b>, <b>\*.o</b>)
   - Output windows PE binary/library (<b>\*.exe</b>, <b>\*.dll</b>).
   - Output linux ELF binary/library (<b>\*</b>, <b>\*.so</b>).
   - Output ELF relocatable object files (<b>\*.o</b>)
-  - Process and merge multiple source-/object files/static libraries.
+  - Process and merge (link) multiple source-/object files/static libraries.
   - Compiling DCC is only tested and working in Visual Studio.
   - Full STD-C compliance up to C99.
   - Full AT&T assembly support with many GNU assembler extensions (see below).
   - Full ELF binary target support.
+  - Fully working live execution of C source code.
+  - DCC can compile itself with single-indirection (due to few remaining bugs, the resulting binary cannot compile itself again, yet can compile simpler C programs)
 
 ## Planned features:
   - Support for X86-64/AMD64 CPU architectures.
