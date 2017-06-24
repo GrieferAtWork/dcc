@@ -86,6 +86,20 @@ DRT_FaultRel(uint8_t DRT_USER *__restrict uaddr,
 INTDEF void DRT_ThreadExit(void);
 
 
+typedef struct {
+ char DRT_USER const *lc_path; /*< [0..1] Path of the associated source file (Don't print when NULL). */
+ char DRT_USER const *lc_file; /*< [0..1] File name of the associated source file. */
+ char DRT_USER const *lc_name; /*< [0..1] Name of the surrounding function symbol. */
+ void                *lc_pad1[1];
+ target_int_t         lc_line; /*< 1-based source line, or ZERO(0) when unknown. */
+ target_int_t         lc_col;  /*< 1-based source column, or ZERO(0) when unknown. */
+ void                *lc_pad2[2];
+} target_lc_t;
+
+/* The function that '_addr2line' from <dcc.h> is linked against in DRT mode. */
+INTDEF target_bool_t DRT_U_Addr2line(void DRT_USER *ip, target_lc_t *info);
+
+
 DCC_DECL_END
 #endif /* DCC_CONFIG_HAVE_DRT */
 

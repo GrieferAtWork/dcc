@@ -44,7 +44,12 @@ typedef struct {
  * @return: 0:   The given IP could not be found.
  * @return: !0:  Successfully queried information about IP. */
 extern _Bool _addr2line(void *__ip, lc_t *__info)
-	__asm__("__dcc_dbg_addr2line");
+#ifdef __DRT__
+	__asm__("__drt_dbg_addr2line")
+#else
+	__asm__("__dcc_dbg_addr2line")
+#endif
+;
 
 
 /* 64-bit arithmetic runtime functions. */

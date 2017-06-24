@@ -520,10 +520,11 @@ fail:
 }
 
 PUBLIC int DCC_ATTRIBUTE_FASTCALL DRT_H_Sync(int warn_failure) {
+#define EVENT   drt.rt_event
  uint32_t code; int result;
  struct DCCSection *sec;
  assert(drt.rt_flags&DRT_FLAG_STARTED);
- code = drt.rt_event.ue_code;
+ code = EVENT.ue_code;
  MEMORY_BARRIER();
  switch (code) {
 
@@ -532,7 +533,7 @@ PUBLIC int DCC_ATTRIBUTE_FASTCALL DRT_H_Sync(int warn_failure) {
   int single_instruction;
  case DRT_EVENT_MIRROR_TEXT:
   single_instruction = 0;
-  sec = DRT_FindUserSection(drt.rt_event.ue_text.te_addr);
+  sec = DRT_FindUserSection(EVENT.ue_text.te_addr);
   if unlikely(!sec) {
    /* Invalid address. */
    result = DRT_SYNC_FAULT;
@@ -540,16 +541,16 @@ PUBLIC int DCC_ATTRIBUTE_FASTCALL DRT_H_Sync(int warn_failure) {
   }
 load_text:
   DCCSection_RTMirrorText(sec,
-                         (target_ptr_t)((uintptr_t)drt.rt_event.ue_text.te_addr-
+                         (target_ptr_t)((uintptr_t)EVENT.ue_text.te_addr-
                                         (uintptr_t)sec->sc_dat.sd_rt.rs_vaddr),
-                         &drt.rt_event.ue_text.te_relc_ok,&relc_no,
-                         &drt.rt_event.ue_text.te_size_ok,
-                         &drt.rt_event.ue_text.te_size_total,
+                         &EVENT.ue_text.te_relc_ok,&relc_no,
+                         &EVENT.ue_text.te_size_ok,
+                         &EVENT.ue_text.te_size_total,
                           warn_failure,single_instruction);
   /* If data was read or everything was already read to begin with, post the results. */
-  if (drt.rt_event.ue_text.te_relc_ok ||
-      drt.rt_event.ue_text.te_size_ok ||
-     (drt.rt_event.ue_text.te_size_total && !relc_no)) {
+  if (EVENT.ue_text.te_relc_ok ||
+      EVENT.ue_text.te_size_ok ||
+     (EVENT.ue_text.te_size_total && !relc_no)) {
    result = DRT_SYNC_OK;
    goto post;
   }
@@ -564,22 +565,64 @@ unresolved:
  } break;
 
  case DRT_EVENT_MIRROR_DATA:
-  sec = DRT_FindUserSection(drt.rt_event.ue_data.de_addr);
+  sec = DRT_FindUserSection(EVENT.ue_data.de_addr);
   if unlikely(!sec) {
    /* Invalid address. */
-   drt.rt_event.ue_data.de_size = (size_t)-1;
+   EVENT.ue_data.de_size = (size_t)-1;
    result = DRT_SYNC_FAULT;
    goto post;
   }
   if (DCCSection_RTMirrorData(sec,
-                             (target_ptr_t)((uintptr_t)drt.rt_event.ue_data.de_addr-
+                             (target_ptr_t)((uintptr_t)EVENT.ue_data.de_addr-
                                             (uintptr_t)sec->sc_dat.sd_rt.rs_vaddr),
-                              drt.rt_event.ue_data.de_size,
-                             &drt.rt_event.ue_data.de_size,warn_failure)) {
+                              EVENT.ue_data.de_size,
+                             &EVENT.ue_data.de_size,warn_failure)) {
    result = DRT_SYNC_OK;
    goto post;
   }
   goto unresolved;
+
+ {
+  struct A2lState s;
+  struct DCCSymAddr a2l_addr;
+  struct DCCSection *sec_dbgstr;
+  char DRT_USER *dbgstr_base;
+ case DRT_EVENT_ADDR2LINE:
+  sec = DRT_FindUserSection(EVENT.ue_a2l.ae_addr);
+  if unlikely(!sec) {
+   /* Invalid address. */
+   EVENT.ue_a2l.ae_addr = DRT_EVENT_ADDR2LINE_FAULT;
+   result = DRT_SYNC_FAULT;
+   goto post;
+  }
+  a2l_addr.sa_sym = &sec->sc_start;
+  a2l_addr.sa_off = ((uint8_t DRT_USER *)EVENT.ue_a2l.ae_addr-
+                                         sec->sc_dat.sd_rt.rs_vaddr);
+  /* Lookup compile-time A2L debug information about the requested address. */
+  if (!DCCA2l_LookupAdr(&s,&a2l_addr))
+       EVENT.ue_a2l.ae_addr = DRT_EVENT_ADDR2LINE_FAULT;
+  else EVENT.ue_a2l.ae_addr = sec->sc_dat.sd_rt.rs_vaddr+s.s_addr;
+  sec_dbgstr = unit.u_dbgstr;
+  if unlikely(!sec_dbgstr) sec_dbgstr = DCCUnit_GetSecs(A2L_STRING_SECTION);
+  dbgstr_base = sec_dbgstr && !DCCSection_ISIMPORT(sec_dbgstr)
+              ? (char DRT_USER *)sec_dbgstr->sc_dat.sd_rt.rs_vaddr : NULL;
+  /* Translate A2L information into DRT event results. */
+  EVENT.ue_a2l.ae_path = NULL;
+  EVENT.ue_a2l.ae_file = NULL;
+  EVENT.ue_a2l.ae_name = NULL;
+  EVENT.ue_a2l.ae_line = 0;
+  EVENT.ue_a2l.ae_col  = 0;
+  if (s.s_features&A2L_STATE_HASLINE) EVENT.ue_a2l.ae_line = s.s_line+1;
+  if (s.s_features&A2L_STATE_HASCOL ) EVENT.ue_a2l.ae_col  = s.s_col+1;
+  if (dbgstr_base) {
+   if (s.s_features&A2L_STATE_HASPATH) EVENT.ue_a2l.ae_path = dbgstr_base+s.s_path;
+   if (s.s_features&A2L_STATE_HASFILE) EVENT.ue_a2l.ae_file = dbgstr_base+s.s_file;
+   if (s.s_features&A2L_STATE_HASNAME) EVENT.ue_a2l.ae_name = dbgstr_base+s.s_name;
+  }
+  /* Post results. */
+  result = DRT_SYNC_OK;
+  goto post;
+ }
 
  default:
   result = DRT_SYNC_NONE;
@@ -588,13 +631,14 @@ unresolved:
  return result;
 post:
  if unlikely(!OK) return DRT_SYNC_UNRESOLVED;
- drt.rt_event.ue_code = DRT_EVENT_NONE;
+ EVENT.ue_code = DRT_EVENT_NONE;
  MEMORY_BARRIER();
  if (!(drt.rt_flags&DRT_FLAG_JOINING)) {
-  ReleaseSemaphore(drt.rt_event.ue_sem,1,NULL);
+  ReleaseSemaphore(EVENT.ue_sem,1,NULL);
  }
  return result;
 }
+#undef EVENT
 
 PUBLIC int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(void) {
  int error;

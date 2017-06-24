@@ -1783,6 +1783,14 @@ PUBLIC struct DCCSection DCCSection_Abs = {
  /* sc_dat.sd_a2l.d_chunka  */0,
  /* sc_dat.sd_a2l.d_chunkc  */0,
  /* sc_dat.sd_a2l.d_chunkv  */NULL},
+#if DCC_CONFIG_HAVE_DRT
+ /* sc_dat.sd_rt                   */{
+ /* sc_dat.sd_rt.rs_vaddr          */NULL,
+ /* sc_dat.sd_rt.rs_pagea          */0,
+ /* sc_dat.sd_rt.rs_pagev          */NULL,
+ /* sc_dat.sd_rt.rs_mtext          */{
+ /* sc_dat.sd_rt.rs_mtext.fd_begin */NULL}},
+#endif /* DCC_CONFIG_HAVE_DRT */
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
  /* sc_dat.sd_elflnk        */NULL,
 #endif /* DCC_TARGET_BIN == DCC_BINARY_ELF */

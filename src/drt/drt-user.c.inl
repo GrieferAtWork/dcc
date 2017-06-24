@@ -66,11 +66,12 @@ DCC_ATTRIBUTE_FASTCALL DRT_U_ProbeN(void DRT_USER *p, size_t n) {
 #undef XCX
 
 
+#define EVENT drt.rt_event
 
 INTERN void DRT_USER DRT_U_WaitEvent(uint32_t code) {
- assert(drt.rt_event.ue_code == DRT_EVENT_NONE);
+ assert(EVENT.ue_code == DRT_EVENT_NONE);
  assert(code                 != DRT_EVENT_NONE);
- drt.rt_event.ue_code = code;
+ EVENT.ue_code = code;
  MEMORY_BARRIER();
  if (drt.rt_flags&DRT_FLAG_JOINING2) {
   /* The compiler thread is no more. - We're in charge now! */
@@ -88,7 +89,7 @@ INTERN void DRT_USER DRT_U_WaitEvent(uint32_t code) {
   fflush(stdout);
   fflush(stderr);
 #endif
-  if (WaitForSingleObject(drt.rt_event.ue_sem,INFINITE) == WAIT_FAILED) {
+  if (WaitForSingleObject(EVENT.ue_sem,INFINITE) == WAIT_FAILED) {
    fprintf(stderr,"Failed to wait for DRT event (%d)\n",GetLastError());
    ExitThread(1);
   }
@@ -97,30 +98,50 @@ INTERN void DRT_USER DRT_U_WaitEvent(uint32_t code) {
 
 INTERN int DRT_USER
 DRT_U_FetchText(void DRT_USER *addr) {
- drt.rt_event.ue_text.te_addr       = addr;
- drt.rt_event.ue_text.te_relc_ok    = 0;
- drt.rt_event.ue_text.te_size_ok    = 0;
- drt.rt_event.ue_text.te_size_total = 0;
+ EVENT.ue_text.te_addr       = addr;
+ EVENT.ue_text.te_relc_ok    = 0;
+ EVENT.ue_text.te_size_ok    = 0;
+ EVENT.ue_text.te_size_total = 0;
  DRT_U_WaitEvent(DRT_EVENT_MIRROR_TEXT);
- return drt.rt_event.ue_text.te_relc_ok ||
-        drt.rt_event.ue_text.te_size_ok ||
-        drt.rt_event.ue_text.te_size_total;
+ return EVENT.ue_text.te_relc_ok ||
+        EVENT.ue_text.te_size_ok ||
+        EVENT.ue_text.te_size_total;
 }
 INTERN int DRT_USER
 DRT_U_FetchData(void DRT_USER *addr, size_t size) {
- drt.rt_event.ue_data.de_addr = addr;
- drt.rt_event.ue_data.de_size = size;
+ EVENT.ue_data.de_addr = addr;
+ EVENT.ue_data.de_size = size;
  DRT_U_WaitEvent(DRT_EVENT_MIRROR_DATA);
- return /*drt.rt_event.ue_data.de_size &&*/
-        drt.rt_event.ue_data.de_size != (size_t)-1;
+ return /*EVENT.ue_data.de_size &&*/
+        EVENT.ue_data.de_size != (size_t)-1;
 }
 INTERN int DRT_USER
 DRT_U_FetchRelo(void DRT_USER *addr, size_t size) {
- drt.rt_event.ue_relo.re_addr = addr;
- drt.rt_event.ue_relo.re_size = size;
+ EVENT.ue_relo.re_addr = addr;
+ EVENT.ue_relo.re_size = size;
  DRT_U_WaitEvent(DRT_EVENT_MIRROR_RELO);
- return drt.rt_event.ue_relo.re_size != 0;
+ return EVENT.ue_relo.re_size != 0;
 }
+
+
+INTERN target_bool_t
+DRT_U_Addr2line(void DRT_USER *ip, target_lc_t *info) {
+ EVENT.ue_a2l.ae_addr = ip;
+ DRT_U_WaitEvent(DRT_EVENT_ADDR2LINE);
+ if (info) {
+  info->lc_path = EVENT.ue_a2l.ae_path;
+  info->lc_file = EVENT.ue_a2l.ae_file;
+  info->lc_name = EVENT.ue_a2l.ae_name;
+  info->lc_line = EVENT.ue_a2l.ae_line;
+  info->lc_col  = EVENT.ue_a2l.ae_col;
+ }
+ return (EVENT.ue_a2l.ae_addr != DRT_EVENT_ADDR2LINE_FAULT) &&
+        (EVENT.ue_a2l.ae_addr != DRT_EVENT_ADDR2LINE_NOINFO);
+}
+
+
+#undef EVENT
+
 
 DCC_DECL_END
 #endif /* DCC_CONFIG_HAVE_DRT */

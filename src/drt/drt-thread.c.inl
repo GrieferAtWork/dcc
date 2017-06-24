@@ -137,7 +137,7 @@ PRIVATE DWORD WINAPI
 DRT_ThreadEntry(struct DRTStartupInfo *info) {
  struct DCPUState initcpu = info->si_cpu;
 #ifdef __DCC_VERSION__
-#define tib   ((NT_TIB *)__extension__ %fs:0x18)
+#define tib   ((NT_TIB *)__extension__ %fs:0)
 #else
  NT_TIB *tib = (NT_TIB *)__readfsdword(0x18);
 #endif
@@ -217,6 +217,16 @@ DRT_Start(struct DCCSym *__restrict entry_point,
                 (target_ptr_t)&stub_secinfo,
                  sizeof(stub_secinfo),
                  DCC_COMPILER_ALIGNOF(stub_secinfo));
+  }
+ }
+
+ {
+  /* Define the DRT-mode version for '_addr2line' from <dcc.h> */
+  struct DCCSym *a2l_callback;
+  a2l_callback = DCCUnit_NewSyms("__drt_dbg_addr2line",DCC_SYMFLAG_NONE);
+  if (a2l_callback && DCCSym_ISFORWARD(a2l_callback)) {
+   DCCSym_Define(a2l_callback,&DCCSection_Abs,
+                (target_ptr_t)&DRT_U_Addr2line,0,1);
   }
  }
 

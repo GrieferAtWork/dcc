@@ -615,12 +615,55 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 #define DCC_TARGET_MIN_U(b)  DCC_PRIVATE_PP_CAT(DCC_TARGET_MIN_U,b)
 #define DCC_TARGET_MAX_U(b)  DCC_PRIVATE_PP_CAT(DCC_TARGET_MAX_U,b)
 
-
-typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_POINTER),    _t) DCC(target_off_t);
+/* Target descriptor types. */
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_PTRDIFF_T),  _t) DCC(target_off_t);
 typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_POINTER),    _t) DCC(target_ptr_t);
 typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_SIZE_T),     _t) DCC(target_siz_t);
 typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_GP_REGISTER),_t) DCC(target_reg_t);
 typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_IMM_MAX),    _t) DCC(target_imm_t);
+
+/* Other types. */
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_BOOL),_t) DCC(target_bool_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_WCHAR_T),_t) DCC(target_wchar_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_WINT_T),_t) DCC(target_wint_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_SIG_ATOMIC_T),_t) DCC(target_sig_atomic_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_BYTE),_t) DCC(target_byte_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_BYTE),_t) DCC(target_ubyte_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_WORD),_t) DCC(target_word_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_WORD),_t) DCC(target_uword_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_CHAR),_t) DCC(target_char_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_CHAR),_t) DCC(target_uchar_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_SHORT),_t) DCC(target_short_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_SHORT),_t) DCC(target_ushort_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_INT),_t) DCC(target_int_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INT),_t) DCC(target_uint_t);
+#if defined(__SIZEOF_LONG__) && (__SIZEOF_LONG__ == DCC_TARGET_SIZEOF_LONG)
+typedef long          DCC(target_long_t);
+typedef unsigned long DCC(target_ulong_t);
+#else
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_LONG),_t) DCC(target_long_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_LONG),_t) DCC(target_ulong_t);
+#endif
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_LONG_LONG),_t) DCC(target_llong_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_LONG_LONG),_t) DCC(target_ullong_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_INT_LEAST8_T),_t) DCC(target_int_least8_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_INT_LEAST16_T),_t) DCC(target_int_least16_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_INT_LEAST32_T),_t) DCC(target_int_least32_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_INT_LEAST64_T),_t) DCC(target_int_least64_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INT_LEAST8_T),_t) DCC(target_uint_least8_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INT_LEAST16_T),_t) DCC(target_uint_least16_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INT_LEAST32_T),_t) DCC(target_uint_least32_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INT_LEAST64_T),_t) DCC(target_uint_least64_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_INT_FAST8_T),_t) DCC(target_int_fast8_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_INT_FAST16_T),_t) DCC(target_int_fast16_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_INT_FAST32_T),_t) DCC(target_int_fast32_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_INT_FAST64_T),_t) DCC(target_int_fast64_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INT_FAST8_T),_t) DCC(target_uint_fast8_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INT_FAST16_T),_t) DCC(target_uint_fast16_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INT_FAST32_T),_t) DCC(target_uint_fast32_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INT_FAST64_T),_t) DCC(target_uint_fast64_t);
+typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_INTMAX_T),_t) DCC(target_intmax_t);
+typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INTMAX_T),_t) DCC(target_uintmax_t);
 
 
 /* Register class/descriptor:

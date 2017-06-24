@@ -513,28 +513,44 @@ typedef sem_t     DCC(semaphore_t);
 #define DRT_EVENT_MIRROR_TEXT 0x00000001 /*< Load text. */
 #define DRT_EVENT_MIRROR_DATA 0x00000002 /*< Load data. */
 #define DRT_EVENT_MIRROR_RELO 0x00000003 /*< TODO: Missing: Load relocations. */
+#define DRT_EVENT_ADDR2LINE   0x00000004 /*< Load debug address information (NOTE: Addressing non-mirrored memory causes weak undefined behavior). */
 
 struct DRTUserEvent {
  DCC(semaphore_t)   ue_sem;  /*< Semaphore that the user-thread may wait for when  */
  /*atomic*/uint32_t ue_code; /*< Event code (One of 'DRT_EVENT_*'). */
  union{
   struct { /* DRT_EVENT_MIRROR_TEXT */
-   void  *te_addr;       /*< [in]  Start of text data to fetch. */
-   size_t te_relc_ok;    /*< [out] Amount of newly loaded relocations. */
-   size_t te_size_ok;    /*< [out] Amount of newly loaded text bytes. */
-   size_t te_size_total; /*< [out] Total amount of bytes that were checked. */
+   void DRT_USER *te_addr; /*< [in]  Start of text data to fetch. */
+   size_t te_relc_ok;      /*< [out] Amount of newly loaded relocations. */
+   size_t te_size_ok;      /*< [out] Amount of newly loaded text bytes. */
+   size_t te_size_total;   /*< [out] Total amount of bytes that were checked. */
   } ue_text;
   struct { /* DRT_EVENT_MIRROR_DATA */
-   void  *de_addr;    /*< [in]  Start of text data to fetch. */
-   size_t de_size;    /*< [in]  Min amount of bytes to try and mirror (may not be ZERO(0)). 
-                       *  [out] Amount of successfully loaded bytes (Or ZERO(0) if a faulty address was given).
-                       *        When this field is '(size_t)-1' upon exit, an invalid pointer was given. */
+   void DRT_USER *de_addr; /*< [in]  Start of text data to fetch. */
+   size_t de_size;         /*< [in]  Min amount of bytes to try and mirror (may not be ZERO(0)). 
+                            *  [out] Amount of successfully loaded bytes (Or ZERO(0) if a faulty address was given).
+                            *        When this field is '(size_t)-1' upon exit, an invalid pointer was given. */
   } ue_data;
   struct { /* DRT_EVENT_MIRROR_RELO */
-   void  *re_addr;    /*< [in]  Start of memory to scan for unresolved relocations. */
-   size_t re_size;    /*< [in]  Amount of bytes to scan.
-                       *  [out] Amount of bytes that were scanned. */
+   void DRT_USER *re_addr; /*< [in]  Start of memory to scan for unresolved relocations. */
+   size_t         re_size; /*< [in]  Amount of bytes to scan.
+                            *  [out] Amount of bytes that were scanned. */
   } ue_relo;
+  struct { /* DRT_EVENT_ADDR2LINE */
+#define DRT_EVENT_ADDR2LINE_FAULT   ((void DRT_USER *)(uintptr_t)-1)
+#define DRT_EVENT_ADDR2LINE_NOINFO  ((void DRT_USER *)(uintptr_t)-2)
+   void DRT_USER       *ae_addr; /*< [in]  Absolute Address to query.
+                                  *  [out] Set to 'DRT_EVENT_ADDR2LINE_FAULT' if a non-user address was passed.
+                                  *        Set of 'DRT_EVENT_ADDR2LINE_NOINFO' if debug information could be found.
+                                  *        Otherwise set to the address of the effective A2L capture point for below information. */
+   /* NOTE: Even when set, any of the strings below may not have been mirrored yet,
+    *       meaning that the contained string data will be copied upon first access. */
+   char DRT_USER const *ae_path; /*< [out][0..1] Path of the associated source file (Don't print when NULL). */
+   char DRT_USER const *ae_file; /*< [out][0..1] File name of the associated source file. */
+   char DRT_USER const *ae_name; /*< [out][0..1] Name of the surrounding function symbol. */
+   DCC(target_int_t)    ae_line; /*< 1-based source line, or ZERO(0) when unknown. */
+   DCC(target_int_t)    ae_col;  /*< 1-based source column, or ZERO(0) when unknown. */
+  } ue_a2l;
  };
 };
 
