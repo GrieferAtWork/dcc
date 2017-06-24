@@ -739,10 +739,10 @@ next:
     for (;;) {
      char ch = *iter++;
           if (ch == '%') { if (iter != end) ++iter; } /* Escape the next character. */
-     else if (ch == '{') ++recursion;
+     else if (ch == '{') { ++recursion; }
      else if (ch == '}') { if (!recursion) { --dialect_depth; break; } --recursion; }
      else if (ch == '|') { if (!recursion) { break; } }
-     else if (!ch && iter-1 == end) { --iter; goto done; }
+     else if (!ch && iter-1 == end) { --iter; flush_start = iter; goto done; }
     }
     flush_start = iter;
     goto next;
