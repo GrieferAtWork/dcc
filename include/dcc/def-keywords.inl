@@ -977,7 +977,6 @@ WGROUP(WG_EXTENSIONS,"extensions",WSTATE_DISABLED)                       /*< Ena
 WGROUP(WG_FIXED_LENGTH_INTEGER_TYPES,"fixed-length-integer-types",WSTATE_ERROR) /*< Warn about use of __int(8|16|32|64) */
 WGROUP(WG_AUTO_IN_TYPE_EXPRESSIONS,"auto-in-type-expressions",WSTATE_ERROR) /*< Warn about use of 'auto' to refer to '__auto_type' in type expressions, besides describing automatic storage. */
 WGROUP(WG_ASM_REGISTERS_IN_EXPRESSIONS,"asm-registers-in-expressions",WSTATE_ERROR) /*< Warn about use of 'int x = %eax;' */
-WGROUP(WG_ASM_ADDRESS_IN_EXPRESSIONS,"asm-address-in-expressions",WSTATE_ERROR) /*< Warn about use of 'void *here = .;' */
 WGROUP(WG_EXPRESSION_STATEMENTS,"expression-statements",WSTATE_ERROR)    /*< Warn about use of 'int x = ({ int y = 42; y*2; });' */
 WGROUP(WG_LABEL_EXPRESSIONS,"label-expressions",WSTATE_ERROR)            /*< Warn about use of 'goto *(p + 42);' */
 WGROUP(WG_CONSTANT_CASE,"constant-case-expressions",WSTATE_ERROR)        /*< Warn about non-constant case expressions. */
@@ -1447,7 +1446,6 @@ DEF_WARNING(W_OLD_STYLE_FUNCTION_UNNAMED_ARGUMENT,(WG_SYNTAX),WSTATE_WARN,WARNF(
 DEF_WARNING(W_OLD_STYLE_FUNCTION_EXPECTED_ARGUMENT_KEYWORD,(WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword in old-style argument list, but got " TOK_S,TOK_A))
 DEF_WARNING(W_OLD_STYLE_INITIALIZER_ASSIGNMENT,(WG_OLD_VARIABLE_INIT),WSTATE_WARN,WARNF("Old-style variable initialization is used; consider placing " Q("=") " before the initial value"))
 DEF_WARNING(W_EXT_ASM_REGISTERS_IN_EXPRESSIONS,(WG_ASM_REGISTERS_IN_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using assembly registers in expressions is a dcc extension (prepend " Q("__extension__") ")"))
-DEF_WARNING(W_EXT_ASM_ADDRESS_IN_EXPRESSIONS,(WG_ASM_ADDRESS_IN_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using " Q(".") " in expressions is a dcc extension (prepend " Q("__extension__") ")"))
 DEF_WARNING(W_EXT_GOTO_EXPRESSIONS,(WG_LABEL_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using expressions after " Q("goto") " is a gcc extension (prepend " Q("__extension__") ")"))
 DEF_WARNING(W_EXT_LABEL_EXPRESSIONS,(WG_LABEL_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using labels in expressions is a gcc extension (prepend " Q("__extension__") ")"))
 DEF_WARNING(W_EXT_EXPRESSION_STATEMENTS,(WG_EXPRESSION_STATEMENTS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Hiding statements in expressions is a gcc extension (prepend " Q("__extension__") ")"))

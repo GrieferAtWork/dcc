@@ -1649,15 +1649,11 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
         !lhs->sv_sym && !lhs->sv_const.it) {
      if (lhs->sv_flags&DCC_SFLAG_TEST_XCMP) {
       test_t t = DCC_SFLAG_GTTEST(lhs->sv_flags);
-      int val; /* -2, -1, 0, 1, 2 */
+      int val = (int)rhs->sv_const.it; /* One of: -2, -1, 0, 1, 2 */
            if (rhs->sv_sym || rhs->sv_const.it >= 2) val = 2;
-      else if (rhs->sv_const.it == 0)                val = 0;
-      else if (rhs->sv_const.it == 1)                val = 1;
-      else if (rhs->sv_const.it == -1)               val = -1;
-      else assert(rhs->sv_const.it <= -2),           val = -2;
+      else if (rhs->sv_const.it <  -2)               val = -2;
       /* compare xcmp operand with constant. */
       switch (val) {
-      /* TODO: Special handling for all the other cases! */
 
       case -2:
        if (op == TOK_EQUAL)         goto xcmp_cfalse;

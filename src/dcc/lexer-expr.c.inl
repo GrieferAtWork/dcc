@@ -927,24 +927,6 @@ pushval:
  } break;
 
  {
- case '.':
-  if (!force_extensions)
-       WARN(W_EXT_ASM_ADDRESS_IN_EXPRESSIONS);
-  YIELD();
-  /* Push the current text address. */
-#if 1 /* Use an anonymous symbol to allow for relocation. */
-  {
-   struct DCCSym *sym = DCCUnit_AllocSym();
-   sym ? vpushs(sym),t_defsym(sym)
-       : DCCVStack_PushAddr(unit.u_curr,t_addr); /* fallback... */
-  }
-#else
-  DCCVStack_PushAddr(unit.u_curr,t_addr);
-#endif
-  vgen1('&');
- } break;
-
- {
   tok_t t;
  case '+':
  case '-':
@@ -1815,7 +1797,7 @@ DCCFUN int DCC_PARSE_CALL
 DCCParse_IsExpr(void) {
  switch (TOK) {
  if (DCC_MACRO_FALSE) { case KWD_if: if (!HAS(EXT_IFELSE_IN_EXPR)) break; }
- case '%': case TOK_LAND: case '.': /*case KWD___extension__:*/
+ case '%': case TOK_LAND: /*case KWD___extension__:*/
  case TOK_INT: case TOK_CHAR: case TOK_FLOAT: case TOK_STRING:
  case '+': case '-': case '*': case '&': case '~': case '!':
  case '(': case TOK_INC: case TOK_DEC: goto yes;
