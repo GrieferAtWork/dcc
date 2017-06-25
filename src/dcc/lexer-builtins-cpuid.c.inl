@@ -762,11 +762,11 @@ DCCParse_BuiltinCPUVendor(void) {
   *        value of the other block.
   *     >> Without said dup, the expression itself might return a conditionally
   *        temporary buffer (that's likely '0xcccccccc'; aka. uninitialized). */
- vdup(0);                  /* ret */
+ vdup(1);                  /* ret */
  vpushi(DCCTYPE_INT,'\0'); /* ret, dret, '\0' */
  vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,string_size); /* ret, dret, '\0', 49 */
  vx_memset();               /* ret, dret */
- vpop(0);
+ vpop(1);
 
  t_defsym(done_sym);
 

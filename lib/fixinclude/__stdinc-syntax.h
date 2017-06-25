@@ -541,6 +541,11 @@ char *__builtin_strnrchr(char const *s, int c, __SIZE_TYPE__ max);
 char *__builtin_strnchrnul(char const *s, int c, __SIZE_TYPE__ max);
 char *__builtin_strnrchrnul(char const *s, int c, __SIZE_TYPE__ max);
 
+char *__builtin_strcat(char *__restrict dst, char const *__restrict src);
+char *__builtin_strcpy(char *__restrict dst, char const *__restrict src);
+char *__builtin_strncat(char *__restrict dst, char const *__restrict src, __SIZE_TYPE__ max);
+char *__builtin_strncpy(char *__restrict dst, char const *__restrict src, __SIZE_TYPE__ max);
+
 int __builtin_iscntrl(int ch);
 int __builtin_isblank(int ch);
 int __builtin_isspace(int ch);

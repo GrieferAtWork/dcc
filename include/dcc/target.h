@@ -455,8 +455,8 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 #define DCC_TARGET_RT_HAVE_MEMREND     0 /* void  *memrend(void const *p, int c, size_t s); */
 #define DCC_TARGET_RT_HAVE_STROFF      0 /* size_t stroff(char const *s, int c); */
 #define DCC_TARGET_RT_HAVE_STRROFF     0 /* size_t strroff(char const *s, int c); */
-#define DCC_TARGET_RT_HAVE_STRCHR      0 /* char  *strchr(char const *s, int c); */
-#define DCC_TARGET_RT_HAVE_STRRCHR     0 /* char  *strrchr(char const *s, int c); */
+#define DCC_TARGET_RT_HAVE_STRCHR      1 /* char  *strchr(char const *s, int c); */
+#define DCC_TARGET_RT_HAVE_STRRCHR     1 /* char  *strrchr(char const *s, int c); */
 #define DCC_TARGET_RT_HAVE_STRCHRNUL   0 /* char  *strchrnul(char const *s, int c); */
 #define DCC_TARGET_RT_HAVE_STRRCHRNUL  0 /* char  *strrchrnul(char const *s, int c); */
 #define DCC_TARGET_RT_HAVE_STRNOFF     0 /* size_t strnoff(char const *s, int c, size_t max); */
@@ -465,10 +465,15 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 #define DCC_TARGET_RT_HAVE_STRNRCHR    0 /* char  *strnrchr(char const *s, int c, size_t max); */
 #define DCC_TARGET_RT_HAVE_STRNCHRNUL  0 /* char  *strnchrnul(char const *s, int c, size_t max); */
 #define DCC_TARGET_RT_HAVE_STRNRCHRNUL 0 /* char  *strnrchrnul(char const *s, int c, size_t max); */
+#define DCC_TARGET_RT_HAVE_STRCPY      1 /* char  *strcat(char *dst, char const *src); */
+#define DCC_TARGET_RT_HAVE_STRCAT      1 /* char  *strchr(char *dst, char const *src); */
 
 /* NOTE: For full functionality, the runtime should implement at least:
  *    >> void *memchr(void const *p, int c, size_t s);
- *    >> void *memrchr(void const *p, int c, size_t s); */
+ *    >> void *memrchr(void const *p, int c, size_t s);
+ *    >> char *strncat(char *dst, char const *src, size_t max);
+ *    >> char *strnchr(char *dst, char const *src, size_t max);
+ */
 
 
 

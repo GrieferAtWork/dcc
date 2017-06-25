@@ -279,6 +279,12 @@ DEF_BUILTIN(__builtin_strnrchr)    /* char  *__builtin_strnrchr(char const *s, i
 DEF_BUILTIN(__builtin_strnchrnul)  /* char  *__builtin_strnchrnul(char const *s, int c, size_t max); */
 DEF_BUILTIN(__builtin_strnrchrnul) /* char  *__builtin_strnrchrnul(char const *s, int c, size_t max); */
 
+/* WARNING: The order of the following keywords encodes functionality. */
+DEF_BUILTIN(__builtin_strcpy)  /* char *__builtin_strcpy(char *dst, char const *src); */
+DEF_BUILTIN(__builtin_strcat)  /* char *__builtin_strcat(char *dst, char const *src); */
+DEF_BUILTIN(__builtin_strncpy) /* char *__builtin_strncpy(char *dst, char const *src, size_t max); */
+DEF_BUILTIN(__builtin_strncat) /* char *__builtin_strncat(char *dst, char const *src, size_t max); */
+
 /* Builtin character trait functions.
  * WARNING: The order of these is important! */
 DEF_BUILTIN(__builtin_iscntrl)

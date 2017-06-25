@@ -47,6 +47,14 @@ DCCVStack_PushSym_vpfun(struct DCCSym *__restrict sym) {
  DCCType_Quit(&type);
 }
 INTERN void DCC_VSTACK_CALL
+DCCVStack_PushSym_cpfun(struct DCCSym *__restrict sym) {
+ struct DCCType type = {DCCTYPE_CHAR,NULL};
+ DCCType_MkPointer(&type);
+ DCCType_MkOldFunc(&type);
+ vpushst(&type,sym);
+ DCCType_Quit(&type);
+}
+INTERN void DCC_VSTACK_CALL
 DCCVStack_PushSym_stdcall_vpfun(struct DCCSym *__restrict sym) {
  struct DCCType type = {DCCTYPE_VOID,NULL};
  DCCType_MkPointer(&type);
@@ -411,13 +419,10 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Memcpy(int may_overlap) {
  assert(vsize >= 3);
  /* dst, src, size */
- if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE) &&
-       vbottom->sv_reg == DCC_RC_CONST &&
-      !vbottom->sv_sym) {
-  struct DCCMemLoc src_loc,dst_loc;
-  target_siz_t copy_size = (target_siz_t)vbottom->sv_const.offset;
-  int compiletime_overlap;
-  if (!copy_size) {
+ if (DCCSTACKVALUE_ISCONST_INT(vbottom)) {
+  struct DCCMemLoc src_loc,dst_loc; int compiletime_overlap;
+  target_siz_t copy_size = (target_siz_t)DCCSTACKVALUE_GTCONST_INT(vbottom);
+  if (copy_size == 0) {
    /* Special case: Empty copy/move. */
 fix_stack:
    vpop(1);  /* dst, src */
@@ -497,21 +502,6 @@ dcc_memrchr(void const *p, int c, size_t n) {
 #define VS_CHAR (&vbottom[1])
 #define VS_SIZE (&vbottom[0])
 
-/* TODO: Make use of the following functions.
- * >> size_t stroff(char const *s, int c);
- * >> size_t strroff(char const *s, int c);
- * >> char  *strchr(char const *s, int c);
- * >> char  *strrchr(char const *s, int c);
- * >> char  *strchrnul(char const *s, int c);
- * >> char  *strrchrnul(char const *s, int c);
- * >> size_t strnoff(char const *s, int c, size_t max);
- * >> size_t strnroff(char const *s, int c, size_t max);
- * >> char  *strnchr(char const *s, int c, size_t max);
- * >> char  *strnrchr(char const *s, int c, size_t max);
- * >> char  *strnchrnul(char const *s, int c, size_t max);
- * >> char  *strnrchrnul(char const *s, int c, size_t max); */
-
-
 LOCAL int DCC_VSTACK_CALL
 DCCVStack_Scas_Strnlen(uint32_t flags) {
  struct DCCSym *funsym;
@@ -581,7 +571,6 @@ DCCVStack_Scas(uint32_t flags) {
  tyid_t pointer_type = (flags&DCC_VSTACK_SCAS_FLAG_NUL) ? DCCTYPE_VOID : DCCTYPE_USERCHAR;
  assert(vsize >= 3);
  /* ptr, char, size */
- assert(vsize >= 2);
  if (flags&DCC_VSTACK_SCAS_FLAG_NUL) {
   /* string-mode is enabled.
    * >> When the string itself is known at compile-time,
@@ -809,10 +798,10 @@ no_compiletime:
 #if 0 /* This is already performed below! */
   /* Try to call memend/memrend */
   if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
-     ? ((flags&DCC_VSTACK_SCAS_FLAG_REV)
+     ? (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
      ? GET_SYM(DCC_TARGET_RT_HAVE_STRNCHR,"strnchr")
      : GET_SYM(DCC_TARGET_RT_HAVE_STRNRCHR,"strnrchr"))
-     : ((flags&DCC_VSTACK_SCAS_FLAG_REV)
+     : (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
      ? DCCUnit_NewSyms("memchr",DCC_SYMFLAG_NONE)
      : DCCUnit_NewSyms("memrchr",DCC_SYMFLAG_NONE))) != NULL) {
    DCCVStack_PushSym_vpfun(funsym);
@@ -825,10 +814,10 @@ no_compiletime:
  } else {
   /* Try to call memend/memrend */
   if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
-     ? ((flags&DCC_VSTACK_SCAS_FLAG_REV)
+     ? (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
      ? GET_SYM(DCC_TARGET_RT_HAVE_STRNCHRNUL,"strnchrnul")
      : GET_SYM(DCC_TARGET_RT_HAVE_STRNRCHRNUL,"strnrchrnul"))
-     : ((flags&DCC_VSTACK_SCAS_FLAG_REV)
+     : (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
      ? GET_SYM(DCC_TARGET_RT_HAVE_MEMEND,"memend")
      : GET_SYM(DCC_TARGET_RT_HAVE_MEMREND,"memrend"))) != NULL) {
    DCCVStack_PushSym_vpfun(funsym);
@@ -964,11 +953,109 @@ again:
   flags &= ~(DCC_VSTACK_SCAS_FLAG_NULL);
   goto again;
  }
-
 #undef VS_SIZE
 #undef VS_CHAR
 #undef VS_PTR
 }
+
+
+#define VS_DST   (&vbottom[2])
+#define VS_SRC   (&vbottom[1])
+#define VS_MAX   (&vbottom[0])
+PUBLIC void DCC_VSTACK_CALL DCCVStack_Strcpy(int append) {
+ struct DCCSym *funsym;
+ assert(vsize >= 3);
+ /* Optimizations:
+  * >> strncpy(p,get_text(),0);          --> p;
+  * >> strncat(p,get_text(),0);          --> p;
+  * >> strncpy(p,"foo",constant_x);      --> strncpy(p,"foo",min(3,constant_x));
+  * >> strncat(p,"foo",constant_x);      --> strncat(p,"foo",min(3,constant_x));
+  * >> strncpy(p,"foo",3);               --> memcpy(p,"foo",4);
+  * >> strncat(p,"foo",3);               --> memcpy(strend(p),"foo",4),p;
+  * >> strncpy(p,get_text(),(size_t)-1); --> strcpy(p,get_text());
+  * >> strncat(p,get_text(),(size_t)-1); --> strcat(p,get_text());
+  */
+ if (DCCSTACKVALUE_ISCONST_INT(VS_MAX)) {
+  size_t maxlen = (size_t)DCCSTACKVALUE_GTCONST_INT(VS_MAX);
+  if (!maxlen) { vpop(1); vpop(1); return; }
+  if (DCCSTACKVALUE_ISCONST_XVAL(VS_SRC) && VS_SRC->sv_sym) {
+   struct DCCSymAddr cc_ptr;
+   void *cc_ptr_data; size_t cc_ptr_msize;
+   if (!DCCSym_LoadAddr(VS_SRC->sv_sym,&cc_ptr,0)) goto no_const_src;
+   assert(cc_ptr.sa_sym);
+   assert(DCCSym_ISDEFINED(cc_ptr.sa_sym));
+   if (DCCSection_ISIMPORT(DCCSym_SECTION(cc_ptr.sa_sym)))
+       goto no_const_src;
+   /* Make sure the section is readable, but not writable! */
+   if ((VS_SRC->sv_sym->sy_sec->sc_start.sy_flags&
+       (DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W)) !=
+       (DCC_SYMFLAG_SEC_R)) goto no_const_src;
+   cc_ptr.sa_off += VS_SRC->sv_const.offset;
+   cc_ptr.sa_off += cc_ptr.sa_sym->sy_addr;
+   cc_ptr_data    = DCCSection_TryGetText(cc_ptr.sa_sym->sy_sec,cc_ptr.sa_off,
+                                         &cc_ptr_msize,NULL);
+   if (!cc_ptr_data) goto no_const_src;
+   cc_ptr_msize = strnlen((char *)cc_ptr_data,cc_ptr_msize);
+   if (DCCSection_Hasrel(cc_ptr.sa_sym->sy_sec,cc_ptr.sa_off,
+                         cc_ptr_msize+1)) goto no_const_src;
+   vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,(int_t)cc_ptr_msize); /* dst, src, size, strlen(src) */
+   vx_min();  /* dst, src, min(size,strlen(src)) */
+   if unlikely(!DCCSTACKVALUE_ISCONST_INT(VS_MAX)) goto default_fallback;
+   maxlen = (size_t)DCCSTACKVALUE_GTCONST_INT(VS_MAX);
+   /* Both 'src' and 'max' are known at compile-time. - Compile using 'memcpy'. */
+   if (append) {
+                 /* dst, src, size */
+    vrrot(3);    /* src, size, dst */
+    vdup(1);     /* src, size, dst, ddst */
+    vswap();     /* src, size, ddst, dst */
+    vx_strend(); /* src, size, ddst, strend(dst) */
+    vlrot(4);    /* strend(dst), src, size, ddst */
+    vlrot(4);    /* ddst, strend(dst), src, size */
+   }
+   vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,1);
+   vnorval();
+   vgen1(TOK_INC); /* Include the terminating  */
+   if (cc_ptr_msize != maxlen) {
+    /* Replace the source operand with a statically
+     * allocated copy containing the proper terminator byte. */
+             /* dst, src, size */
+    vswap(); /* dst, size, src */
+    vpop(1); /* dst, size */
+    vpushstr((char *)cc_ptr_data,maxlen);
+             /* dst, size, srcA */
+    vprom(); /* dst, size, srcZ (Promote Array to Zero-terminated) */
+    vswap(); /* dst, srcZ, size */
+   }
+   vx_memcpy();  /* [ddst], ret */
+   if (append) vpop(1); /* ddst */
+   return;
+  }
+no_const_src:
+  if (maxlen == (size_t)-1) {
+   funsym = append ? GET_SYM(DCC_TARGET_RT_HAVE_STRCAT,"strcat")
+                   : GET_SYM(DCC_TARGET_RT_HAVE_STRCPY,"strcpy");
+   if (funsym) {
+    vpop(1);
+    funsym ? DCCVStack_PushSym_cpfun(funsym)
+           : vpushv(); /* dst, src, strcpy */
+    vlrot(3);          /* strcpy, dst, src */
+    vcall(2);          /* ret */
+    return;
+   }
+  }
+ }
+default_fallback:
+ /* Fallback: Call strncpy/strncat */
+ funsym = DCCUnit_NewSyms(append ? "strncat" : "strncpy",
+                          DCC_SYMFLAG_DEFAULT);
+ funsym ? DCCVStack_PushSym_cpfun(funsym)
+        : vpushv(); /* dst, src, max, strncpy */
+ vlrot(4);          /* strncpy, dst, src, max */
+ vcall(3);          /* ret */
+}
+#undef VS_MAX
+#undef VS_SRC
+#undef VS_DST
 
 
 

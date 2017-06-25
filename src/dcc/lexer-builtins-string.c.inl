@@ -108,6 +108,7 @@ DCCParse_BuiltinStrlen(void) {
  DCCParse_ParPairEnd();
 }
 
+#define DCC_SCAS_FLAG_CHAR      0x40000000 /*< Expect character pointers as arguments. */
 #define DCC_SCAS_FLAG_UNLIMITED 0x80000000 /*< Don't parse a 3rd argument specifying the max amount of bytes to search, but assume (size_t)-1. */
 #define DCC_SCAS_MASK_VSTACK    0x00ffffff /*< Mask for flags to pass to the v-stack's 'DCCVStack_Scas' function. */
 
@@ -123,18 +124,18 @@ PRIVATE uint32_t scas_mode[] = {
  /* [SCAS_MODE(KWD___builtin_rawmemlen)]   = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMLEN,
  /* [SCAS_MODE(KWD___builtin_rawmemrchr)]  = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMCHR,
  /* [SCAS_MODE(KWD___builtin_rawmemrlen)]  = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMLEN,
- /* [SCAS_MODE(KWD___builtin_stroff)]      = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNOFF,
- /* [SCAS_MODE(KWD___builtin_strroff)]     = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNROFF,
- /* [SCAS_MODE(KWD___builtin_strchr)]      = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNCHR,
- /* [SCAS_MODE(KWD___builtin_strrchr)]     = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNRCHR,
- /* [SCAS_MODE(KWD___builtin_strchrnul)]   = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNCHRNUL,
- /* [SCAS_MODE(KWD___builtin_strrchrnul)]  = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNRCHRNUL,
- /* [SCAS_MODE(KWD___builtin_strnoff)]     = */DCC_VSTACK_SCAS_STRNOFF,
- /* [SCAS_MODE(KWD___builtin_strnroff)]    = */DCC_VSTACK_SCAS_STRNROFF,
- /* [SCAS_MODE(KWD___builtin_strnchr)]     = */DCC_VSTACK_SCAS_STRNCHR,
- /* [SCAS_MODE(KWD___builtin_strnrchr)]    = */DCC_VSTACK_SCAS_STRNRCHR,
- /* [SCAS_MODE(KWD___builtin_strnchrnul)]  = */DCC_VSTACK_SCAS_STRNCHRNUL,
- /* [SCAS_MODE(KWD___builtin_strnrchrnul)] = */DCC_VSTACK_SCAS_STRNRCHRNUL,
+ /* [SCAS_MODE(KWD___builtin_stroff)]      = */DCC_SCAS_FLAG_CHAR|DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNOFF,
+ /* [SCAS_MODE(KWD___builtin_strroff)]     = */DCC_SCAS_FLAG_CHAR|DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNROFF,
+ /* [SCAS_MODE(KWD___builtin_strchr)]      = */DCC_SCAS_FLAG_CHAR|DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNCHR,
+ /* [SCAS_MODE(KWD___builtin_strrchr)]     = */DCC_SCAS_FLAG_CHAR|DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNRCHR,
+ /* [SCAS_MODE(KWD___builtin_strchrnul)]   = */DCC_SCAS_FLAG_CHAR|DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNCHRNUL,
+ /* [SCAS_MODE(KWD___builtin_strrchrnul)]  = */DCC_SCAS_FLAG_CHAR|DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNRCHRNUL,
+ /* [SCAS_MODE(KWD___builtin_strnoff)]     = */DCC_SCAS_FLAG_CHAR|DCC_VSTACK_SCAS_STRNOFF,
+ /* [SCAS_MODE(KWD___builtin_strnroff)]    = */DCC_SCAS_FLAG_CHAR|DCC_VSTACK_SCAS_STRNROFF,
+ /* [SCAS_MODE(KWD___builtin_strnchr)]     = */DCC_SCAS_FLAG_CHAR|DCC_VSTACK_SCAS_STRNCHR,
+ /* [SCAS_MODE(KWD___builtin_strnrchr)]    = */DCC_SCAS_FLAG_CHAR|DCC_VSTACK_SCAS_STRNRCHR,
+ /* [SCAS_MODE(KWD___builtin_strnchrnul)]  = */DCC_SCAS_FLAG_CHAR|DCC_VSTACK_SCAS_STRNCHRNUL,
+ /* [SCAS_MODE(KWD___builtin_strnrchrnul)] = */DCC_SCAS_FLAG_CHAR|DCC_VSTACK_SCAS_STRNRCHRNUL,
 };
 
 LEXPRIV void DCC_PARSE_CALL
@@ -145,7 +146,11 @@ DCCParse_BuiltinScas(void) {
  mode = scas_mode[SCAS_MODE(TOK)];
  YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1(),vcast_pt(DCCTYPE_VOID|DCCTYPE_CONST,0),vused();
+ DCCParse_Expr1();
+ vcast_pt((mode&DCC_SCAS_FLAG_CHAR)
+          ? DCCTYPE_USERCHAR|DCCTYPE_CONST
+          : DCCTYPE_VOID|DCCTYPE_CONST,0);
+ vused();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
  DCCParse_Expr1(),vcast_t(DCCTYPE_INT,0),vused();
  /* In unlimited-mode, simply use (size_t)-1 for size.
@@ -162,6 +167,35 @@ DCCParse_BuiltinScas(void) {
  if (TOK == ',') YIELD(),DCCParse_ExprDiscard();
  DCCParse_ParPairEnd();
 }
+
+LEXPRIV void DCC_PARSE_CALL
+DCCParse_BuiltinStrcpy(void) {
+ tok_t mode = TOK; /* ... (Various string scanning builtins); */
+ assert(mode == KWD___builtin_strcpy || mode == KWD___builtin_strncpy ||
+        mode == KWD___builtin_strcat || mode == KWD___builtin_strncat);
+ YIELD();
+ DCCParse_ParPairBegin();
+ DCCParse_Expr1();
+ vcast_pt(DCCTYPE_USERCHAR,0);
+ vused();
+ if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
+ DCCParse_Expr1();
+ vcast_pt(DCCTYPE_USERCHAR|DCCTYPE_CONST,0);
+ vused();
+ if (mode >= KWD___builtin_strncpy) {
+  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
+  DCCParse_Expr1();
+  vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0);
+  vused();
+ } else {
+  vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1);
+ }
+ /* HINT: Every second mode is strcat (aka. append). */
+ DCCVStack_Strcpy((mode-KWD___builtin_strcpy)&1);
+ if (TOK == ',') YIELD(),DCCParse_ExprDiscard();
+ DCCParse_ParPairEnd();
+}
+
 
 
 DCC_DECL_END

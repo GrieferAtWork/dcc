@@ -1585,8 +1585,18 @@ DCCSection_DAllocMem(struct DCCSection *__restrict self,
  }
 
 alloc_normal:
- result = DCCSection_DAlloc(self,size,align,offset);
- secdat = DCCSection_GetText(self,result,mem_size);
+ if unlikely((uint8_t *)memory >= self->sc_dat.sd_text.tb_begin &&
+             (uint8_t *)memory <  self->sc_dat.sd_text.tb_end) {
+  /* Be careful to update the given memory point
+   * if it is apart of this section's memory. */
+  *(uintptr_t *)&memory -= (uintptr_t)self->sc_dat.sd_text.tb_begin;
+  result = DCCSection_DAlloc(self,size,align,offset);
+  secdat = DCCSection_GetText(self,result,mem_size);
+  *(uintptr_t *)&memory += (uintptr_t)self->sc_dat.sd_text.tb_begin;
+ } else {
+  result = DCCSection_DAlloc(self,size,align,offset);
+  secdat = DCCSection_GetText(self,result,mem_size);
+ }
  if likely(secdat) memcpy(secdat,memory,mem_size);
  /* No need to merge. - If we're here that wouldn't do any good! */
  //result = DCCSection_DMerge(self,result,size,align);

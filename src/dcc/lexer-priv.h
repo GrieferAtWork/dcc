@@ -179,9 +179,10 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinExtractReturnAddr(void); /* void *__
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemcpy(void);            /* void *__builtin_memcpy(void *dst, void const *src, size_t size),__builtin_memmove(void *dst, void const *src, size_t size); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemset(void);            /* void *__builtin_memset(void *dst, int byte, size_t size); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMemcmp(void);            /* int __builtin_memcmp(void const *a, void const *b, size_t size); */
-LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinStrcmp(void);            /* int __builtin_strcmp(char const *a, char const *b); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinStrlen(void);            /* size_t __builtin_strlen(char const *str),__builtin_strnlen(char const *str, size_t max); */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinScas(void);              /* ... (Various string scanning builtins); */
+LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinStrcpy(void);            /* char *__builtin_strcpy(char *dst, char const *src),__builtin_strncpy(char *dst, char const *src, size_t max);
+                                                                      * char *__builtin_strcat(char *dst, char const *src),__builtin_strncat(char *dst, char const *src, size_t max); */
 
 /* DYNAMIC MEMORY */
 LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinMalloc(void);            /* void *__builtin_malloc(size_t n_bytes),__builtin_calloc(size_t count, size_t n_bytes); */
@@ -206,6 +207,7 @@ LEXDECL void DCC_PARSE_CALL DCCParse_BuiltinFetchSym(void);          /* void __b
 
 INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_vfun(struct DCCSym *__restrict sym);  /* void sym(); */
 INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_vpfun(struct DCCSym *__restrict sym); /* void *sym(); */
+INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_cpfun(struct DCCSym *__restrict sym); /* char *sym(); */
 INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_ifun(struct DCCSym *__restrict sym);  /* int sym(); */
 INTDEF void DCC_VSTACK_CALL DCCVStack_PushSym_szfun(struct DCCSym *__restrict sym); /* size_t sym(); */
 

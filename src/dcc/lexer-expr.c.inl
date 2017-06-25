@@ -1180,6 +1180,8 @@ outside_function:
  case KWD___builtin_strrchrnul: case KWD___builtin_strnoff: case KWD___builtin_strnroff:
  case KWD___builtin_strnchr: case KWD___builtin_strnrchr: case KWD___builtin_strnchrnul:
  case KWD___builtin_strnrchrnul: DCCParse_BuiltinScas(); break;
+ case KWD___builtin_strcpy: case KWD___builtin_strncpy:
+ case KWD___builtin_strcat: case KWD___builtin_strncat: DCCParse_BuiltinStrcpy(); break;
   /* Builtin ctype operations. */
  case KWD___builtin_iscntrl: case KWD___builtin_isblank:
  case KWD___builtin_isspace: case KWD___builtin_isupper:

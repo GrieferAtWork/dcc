@@ -706,6 +706,9 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Memset(void);
 /* [-3, +1]: push(memcpy|memmove(vbottom[2],vbottom[1],vbottom[0])); */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Memcpy(int may_overlap);
 
+/* [-2, +1]: push(strncpy(vbottom[2],vbottom[1],vbottom[0]));
+ *           push(strncat(vbottom[2],vbottom[1],vbottom[0])); */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_Strcpy(int append);
 
 #ifdef DCC_PRIVATE_API
 #ifdef __INTELLISENSE__
@@ -735,6 +738,7 @@ extern struct DCCStackValue *vbottom;
 #define vdup       DCCVStack_Dup
 #define vrcopy     DCCVStack_ReplaceCopy
 #define vrval()   (void)(vbottom->sv_flags |= DCC_SFLAG_RVALUE)
+#define vnorval() (void)(vbottom->sv_flags &= ~(DCC_SFLAG_RVALUE))
 #define vused()   (void)(vbottom->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED))
 #define vwunused()(void)(vbottom->sv_flags |= DCC_SFLAG_DO_WUNUSED)
 #define vlrot      DCCVStack_LRot
@@ -806,6 +810,10 @@ DCC_LOCAL void vcast_t(DCC(tyid_t) id, int explicit_cast) {
 #define vx_strrchr()    (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_strnrchr())
 #define vx_strchrnul()  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_strnchrnul())
 #define vx_strrchrnul() (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_strnrchrnul())
+#define vx_strncpy()     DCCVStack_Strcpy(0)
+#define vx_strncat()     DCCVStack_Strcpy(1)
+#define vx_strcpy()     (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_strncpy())
+#define vx_strcat()     (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_strncat())
 #define vx_memcmp        DCCVStack_Memcmp
 #define vx_memset        DCCVStack_Memset
 #define vx_memcpy()      DCCVStack_Memcpy(0)

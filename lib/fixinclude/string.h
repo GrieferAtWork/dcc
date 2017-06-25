@@ -50,6 +50,10 @@ typedef __SIZE_TYPE__ size_t;
 #define memchr(p,c,s)         __builtin_memchr((p),(c),(s))
 #define strchr(s,c)           __builtin_strchr((s),(c))
 #define strrchr(s,c)          __builtin_strrchr((s),(c))
+#define strcat(dst,src)       __builtin_strcat((dst),(src))
+#define strcpy(dst,src)       __builtin_strcpy((dst),(src))
+#define strncat(dst,src,max)  __builtin_strncat((dst),(src),(max))
+#define strncpy(dst,src,max)  __builtin_strncpy((dst),(src),(max))
 
 /* Additional memory functions offered by DCC as extension.
  * NOTE: A 'character' is always as 'byte'!
