@@ -1659,6 +1659,114 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
       switch (val) {
       /* TODO: Special handling for all the other cases! */
 
+      case -2:
+       if (op == TOK_EQUAL)         goto xcmp_cfalse;
+       if (op == TOK_NOT_EQUAL)     goto xcmp_ctrue;
+       if (op == TOK_LOWER)         goto xcmp_cfalse;
+       if (op == TOK_LOWER_EQUAL)   goto xcmp_cfalse;
+       if (op == TOK_GREATER_EQUAL) goto xcmp_ctrue;
+       assert(op == TOK_GREATER);   goto xcmp_ctrue;
+       break;
+
+      case 2:
+       if (op == TOK_EQUAL)         goto xcmp_cfalse;
+       if (op == TOK_NOT_EQUAL)     goto xcmp_ctrue;
+       if (op == TOK_LOWER)         goto xcmp_ctrue;
+       if (op == TOK_LOWER_EQUAL)   goto xcmp_ctrue;
+       if (op == TOK_GREATER_EQUAL) goto xcmp_cfalse;
+       assert(op == TOK_GREATER);   goto xcmp_cfalse;
+       break;
+
+      case -1:
+       if (op == TOK_EQUAL) {
+        /* 'memcmp() == -1' >> a <  b --> -1 == -1 --> 1
+         *                  >> a == b -->  0 == -1 --> 0
+         *                  >> a >  b -->  1 == -1 --> 0 */
+        goto xcmp_mirror;
+       }
+       if (op == TOK_NOT_EQUAL) {
+        /* 'memcmp() != -1' >> a <  b --> -1 != -1 --> 0
+         *                  >> a == b -->  0 != -1 --> 1
+         *                  >> a >  b -->  1 != -1 --> 1 */
+        goto xcmp_oreq;
+       }
+       if (op == TOK_LOWER) {
+        /* 'memcmp() < -1' >> a <  b --> -1 < -1 --> 0
+         *                 >> a == b -->  0 < -1 --> 0
+         *                 >> a >  b -->  1 < -1 --> 0 */
+        goto xcmp_cfalse;
+       }
+       if (op == TOK_LOWER_EQUAL) {
+        /* 'memcmp() <= -1' >> a <  b --> -1 <= -1 --> 1
+         *                  >> a == b -->  0 <= -1 --> 0
+         *                  >> a >  b -->  1 <= -1 --> 0 */
+        goto xcmp_mirror;
+       }
+       if (op == TOK_GREATER_EQUAL) {
+        /* 'memcmp() >= -1' >> a <  b --> -1 >= -1 --> 1
+         *                  >> a == b -->  0 >= -1 --> 1
+         *                  >> a >  b -->  1 >= -1 --> 1 */
+        goto xcmp_ctrue;
+       }
+       assert(op == TOK_GREATER); {
+        /* 'memcmp() > -1' >> a <  b --> -1 > -1 --> 0
+         *                 >> a == b -->  0 > -1 --> 1
+         *                 >> a >  b -->  1 > -1 --> 1 */
+        goto xcmp_oreq;
+       }
+       break;
+
+      case 1:
+       if (op == TOK_EQUAL) {
+        /* 'memcmp() == 1' >> a <  b --> -1 == 1 --> 0
+         *                 >> a == b -->  0 == 1 --> 0
+         *                 >> a >  b -->  1 == 1 --> 1 */
+        goto xcmp_inherit;
+       }
+       if (op == TOK_NOT_EQUAL) {
+        /* 'memcmp() != 1' >> a <  b --> -1 != 1 --> 1
+         *                 >> a == b -->  0 != 1 --> 1
+         *                 >> a >  b -->  1 != 1 --> 0 */
+        goto xcmp_mirror_oreq;
+       }
+       if (op == TOK_LOWER) {
+        /* 'memcmp() < 1' >> a <  b --> -1 < 1 --> 1
+         *                >> a == b -->  0 < 1 --> 1
+         *                >> a >  b -->  1 < 1 --> 0 */
+        goto xcmp_mirror_oreq;
+       }
+       if (op == TOK_LOWER_EQUAL) {
+        /* 'memcmp() <= 1' >> a <  b --> -1 <= 1 --> 1
+         *                 >> a == b -->  0 <= 1 --> 1
+         *                 >> a >  b -->  1 <= 1 --> 1 */
+xcmp_ctrue:
+        /* All ones --> Convert to a constant true. */
+        lhs->sv_flags    = DCC_SYMFLAG_NONE;
+        lhs->sv_reg      = DCC_RC_CONST;
+        lhs->sv_reg2     = DCC_RC_CONST;
+        lhs->sv_const.it = 1;
+        goto end_cmp;
+       }
+       if (op == TOK_GREATER_EQUAL) {
+        /* 'memcmp() >= 1' >> a <  b --> -1 >= 1 --> 0
+         *                 >> a == b -->  0 >= 1 --> 0
+         *                 >> a >  b -->  1 >= 1 --> 1 */
+        goto xcmp_inherit;
+       }
+       assert(op == TOK_GREATER); {
+        /* 'memcmp() > 1' >> a <  b --> -1 > 1 --> 0
+         *                >> a == b -->  0 > 1 --> 0
+         *                >> a >  b -->  1 > 1 --> 0 */
+xcmp_cfalse:
+        /* All zeroes --> Convert to a constant false. */
+        lhs->sv_flags    = DCC_SYMFLAG_NONE;
+        lhs->sv_reg      = DCC_RC_CONST;
+        lhs->sv_reg2     = DCC_RC_CONST;
+        lhs->sv_const.it = 0;
+        goto end_cmp;
+       }
+       break;
+
       case 0:
        /* Most likely case: 'memcmp() == 0' / 'memcmp() != 0' */
        if (op == TOK_EQUAL || op == TOK_NOT_EQUAL) {
@@ -1667,12 +1775,13 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
         goto end_cmp;
        }
        if (op == TOK_LOWER) {
-        /* 'memcmp() < 0' >> a <  b --> -1 < 0 --> 1
+        /* 'memcmp() < 0' >> a <  b --> -1 < 0 --> 1 //< ... Up here.
          *                >> a == b -->  0 < 0 --> 0
          *                >> a >  b -->  1 < 0 --> 0
          * mirror because this bit moves:^ */
+xcmp_mirror:
         t = DCC_TEST_MIRROR(t);
-mk_test:
+xcmp_inherit:
         lhs->sv_flags = DCC_SFLAG_MKTEST(t);
         lhs->sv_reg   = DCC_RC_CONST;
         lhs->sv_reg2  = DCC_RC_CONST;
@@ -1683,21 +1792,23 @@ mk_test:
          *                 >> a == b -->  0 <= 0 --> 1 //< oreq, because this bit must be set
          *                 >> a >  b -->  1 <= 0 --> 0
          * mirror because this bit moves: ^ */
-        t = DCC_TEST_OREQ(DCC_TEST_MIRROR(t));
-        goto mk_test;
+xcmp_mirror_oreq:
+        t = DCC_TEST_MIRROR(t);
+xcmp_oreq:
+        t = DCC_TEST_OREQ(t);
+        goto xcmp_inherit;
        }
        if (op == TOK_GREATER_EQUAL) {
         /* 'memcmp() >= 0' >> a <  b --> -1 >= 0 --> 0
          *                 >> a == b -->  0 >= 0 --> 1 //< oreq, because this bit must be set
          *                 >> a >  b -->  1 >= 0 --> 1 */
-        t = DCC_TEST_OREQ(t);
-        goto mk_test;
+        goto xcmp_oreq;
        }
        assert(op == TOK_GREATER); {
         /* 'memcmp() > 0' >> a <  b --> -1 > 0 --> 0
          *                >> a == b -->  0 > 0 --> 0
          *                >> a >  b -->  1 > 0 --> 1 */
-        goto mk_test; /* Nothing to do here, just delete the xcmp bit. */
+        goto xcmp_inherit; /* Nothing to do here, just delete the xcmp bit. */
        }
        break;
       default: break;
@@ -1845,10 +1956,12 @@ mk_test:
    target->sv_sym = NULL;
   }
 end_cmp:
-  DCCType_Quit(&target->sv_ctype);
   /* Compare operations always return a boolean. */
+  if (target->sv_ctype.t_base) {
+   DCCDecl_Decref(target->sv_ctype.t_base);
+   target->sv_ctype.t_base = NULL;
+  }
   target->sv_ctype.t_type = DCCTYPE_BOOL;
-  target->sv_ctype.t_base = NULL;
 #undef rhs
 #undef lhs
   return;
