@@ -48,6 +48,8 @@ typedef __SIZE_TYPE__ size_t;
 #define strnlen(str,maxlen)   __builtin_strnlen((str),(maxlen))
 
 #define memchr(p,c,s)         __builtin_memchr((p),(c),(s))
+#define strchr(s,c)           __builtin_strchr((s),(c))
+#define strrchr(s,c)          __builtin_strrchr((s),(c))
 
 /* Additional memory functions offered by DCC as extension.
  * NOTE: A 'character' is always as 'byte'!
@@ -74,6 +76,13 @@ typedef __SIZE_TYPE__ size_t;
  *                                    before returning NULL, and depending
  *                                    on its implementation, may not even
  *                                    be able to return NULL for that reason!
+ * // Builtin string helper functions
+ * >> __str(r)off(s,c)         --> Same as __mem(r)len(s,c,strlen(s))
+ * >> __str(r)chr(s,c)         --> Same as __mem(r)chr(s,c,strlen(s))
+ * >> __str(r)chrnul(s,c)      --> Same as __mem(r)end(s,c,strlen(s))
+ * >> __strn(r)off(s,c,max)    --> Same as __mem(r)len(s,c,strnlen(s,max))
+ * >> __strn(r)chr(s,c,max)    --> Same as __mem(r)chr(s,c,strnlen(s,max))
+ * >> __strn(r)chrnul(s,c,max) --> Same as __mem(r)end(s,c,strnlen(s,max))
  */
 #define __memrchr(p,c,s)      __builtin_memrchr((p),(c),(s))
 #define __strend(str)         __builtin_rawmemlen((str),'\0')
@@ -86,11 +95,23 @@ typedef __SIZE_TYPE__ size_t;
 #define __rawmemlen(p,c)      __builtin_rawmemlen((p),(c))
 #define __rawmemrchr(p,c)     __builtin_rawmemrchr((p),(c))
 #define __rawmemrlen(p,c)     __builtin_rawmemrlen((p),(c))
+#define __stroff(s,c)         __builtin_stroff((s),(c))
+#define __strroff(s,c)        __builtin_strroff((s),(c))
+#define __strchrnul(s,c)      __builtin_strchrnul((s),(c))
+#define __strrchrnul(s,c)     __builtin_strrchrnul((s),(c))
+#define __strnoff(s,c,max)    __builtin_strnoff((s),(c),(max))
+#define __strnroff(s,c,max)   __builtin_strnroff((s),(c),(max))
+#define __strnchr(s,c,max)    __builtin_strnchr((s),(c),(max))
+#define __strnrchr(s,c,max)   __builtin_strnrchr((s),(c),(max))
+#define __strnchrnul(s,c,max) __builtin_strnchrnul((s),(c),(max))
+#define __strnrchrnul(s,c,max) __builtin_strnrchrnul((s),(c),(max))
 
 #if defined(_GNU_SOURCE) || defined(_DCC_SOURCE)
 #   define memrchr(p,c,s)     __builtin_memrchr((p),(c),(s))
 #   define rawmemchr(p,c)     __builtin_rawmemchr((p),(c))
+#   define strchrnul(s,c)     __builtin_strchrnul((s),(c))
 #endif
+
 
 #ifdef _DCC_SOURCE /* Enable DCC extension functions. */
 #   define strend(str)        __builtin_rawmemlen((str),'\0')
@@ -102,6 +123,15 @@ typedef __SIZE_TYPE__ size_t;
 #   define rawmemlen(p,c)     __builtin_rawmemlen((p),(c))
 #   define rawmemrchr(p,c)    __builtin_rawmemrchr((p),(c))
 #   define rawmemrlen(p,c)    __builtin_rawmemrlen((p),(c))
+#   define stroff(s,c)        __builtin_stroff((s),(c))
+#   define strroff(s,c)       __builtin_strroff((s),(c))
+#   define strrchrnul(s,c)    __builtin_strrchrnul((s),(c))
+#   define strnoff(s,c,max)   __builtin_strnoff((s),(c),(max))
+#   define strnroff(s,c,max)  __builtin_strnroff((s),(c),(max))
+#   define strnchr(s,c,max)   __builtin_strnchr((s),(c),(max))
+#   define strnrchr(s,c,max)  __builtin_strnrchr((s),(c),(max))
+#   define strnchrnul(s,c,max) __builtin_strnchrnul((s),(c),(max))
+#   define strnrchrnul(s,c,max) __builtin_strnrchrnul((s),(c),(max))
 #endif
 
 #ifdef __KOS__
@@ -119,6 +149,6 @@ typedef __SIZE_TYPE__ size_t;
 #endif /* __KOS__ */
 
 #ifdef _GNU_SOURCE
-#   define ffsl(x)  __builtin_ffsl((x))
-#   define ffsll(x) __builtin_ffsll((x))
+#   define ffsl(x)            __builtin_ffsl((x))
+#   define ffsll(x)           __builtin_ffsll((x))
 #endif

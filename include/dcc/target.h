@@ -441,18 +441,31 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 
 
 /* Optional functions that DCC can assume to always be provided by the runtime. */
-#define DCC_TARGET_RT_HAVE_STRLEN     1 /* size_t strlen(char const *s); */
-#define DCC_TARGET_RT_HAVE_STRNLEN    1 /* size_t strnlen(char const *s, size_t max); */
-#define DCC_TARGET_RT_HAVE_STREND     0 /* char *strend(char const *s); */
-#define DCC_TARGET_RT_HAVE_STRNEND    0 /* char *strnend(char const *s, size_t max); */
-#define DCC_TARGET_RT_HAVE_RAWMEMLEN  0 /* size_t rawmemlen(void const *p, int c); */
-#define DCC_TARGET_RT_HAVE_RAWMEMRLEN 0 /* size_t rawmemrlen(void const *p, int c); */
-#define DCC_TARGET_RT_HAVE_RAWMEMCHR  0 /* void *rawmemchr(void const *p, int c); */
-#define DCC_TARGET_RT_HAVE_RAWMEMRCHR 0 /* void *rawmemrchr(void const *p, int c); */
-#define DCC_TARGET_RT_HAVE_MEMLEN     0 /* size_t memlen(void const *p, int c, size_t s); */
-#define DCC_TARGET_RT_HAVE_MEMRLEN    0 /* size_t memrlen(void const *p, int c, size_t s); */
-#define DCC_TARGET_RT_HAVE_MEMEND     0 /* void *memend(void const *p, int c, size_t s); */
-#define DCC_TARGET_RT_HAVE_MEMREND    0 /* void *memrend(void const *p, int c, size_t s); */
+#define DCC_TARGET_RT_HAVE_STRLEN      1 /* size_t strlen(char const *s); */
+#define DCC_TARGET_RT_HAVE_STRNLEN     1 /* size_t strnlen(char const *s, size_t max); */
+#define DCC_TARGET_RT_HAVE_STREND      0 /* char  *strend(char const *s); */
+#define DCC_TARGET_RT_HAVE_STRNEND     0 /* char  *strnend(char const *s, size_t max); */
+#define DCC_TARGET_RT_HAVE_RAWMEMLEN   0 /* size_t rawmemlen(void const *p, int c); */
+#define DCC_TARGET_RT_HAVE_RAWMEMRLEN  0 /* size_t rawmemrlen(void const *p, int c); */
+#define DCC_TARGET_RT_HAVE_RAWMEMCHR   0 /* void  *rawmemchr(void const *p, int c); */
+#define DCC_TARGET_RT_HAVE_RAWMEMRCHR  0 /* void  *rawmemrchr(void const *p, int c); */
+#define DCC_TARGET_RT_HAVE_MEMLEN      0 /* size_t memlen(void const *p, int c, size_t s); */
+#define DCC_TARGET_RT_HAVE_MEMRLEN     0 /* size_t memrlen(void const *p, int c, size_t s); */
+#define DCC_TARGET_RT_HAVE_MEMEND      0 /* void  *memend(void const *p, int c, size_t s); */
+#define DCC_TARGET_RT_HAVE_MEMREND     0 /* void  *memrend(void const *p, int c, size_t s); */
+#define DCC_TARGET_RT_HAVE_STROFF      0 /* size_t stroff(char const *s, int c); */
+#define DCC_TARGET_RT_HAVE_STRROFF     0 /* size_t strroff(char const *s, int c); */
+#define DCC_TARGET_RT_HAVE_STRCHR      0 /* char  *strchr(char const *s, int c); */
+#define DCC_TARGET_RT_HAVE_STRRCHR     0 /* char  *strrchr(char const *s, int c); */
+#define DCC_TARGET_RT_HAVE_STRCHRNUL   0 /* char  *strchrnul(char const *s, int c); */
+#define DCC_TARGET_RT_HAVE_STRRCHRNUL  0 /* char  *strrchrnul(char const *s, int c); */
+#define DCC_TARGET_RT_HAVE_STRNOFF     0 /* size_t strnoff(char const *s, int c, size_t max); */
+#define DCC_TARGET_RT_HAVE_STRNROFF    0 /* size_t strnroff(char const *s, int c, size_t max); */
+#define DCC_TARGET_RT_HAVE_STRNCHR     0 /* char  *strnchr(char const *s, int c, size_t max); */
+#define DCC_TARGET_RT_HAVE_STRNRCHR    0 /* char  *strnrchr(char const *s, int c, size_t max); */
+#define DCC_TARGET_RT_HAVE_STRNCHRNUL  0 /* char  *strnchrnul(char const *s, int c, size_t max); */
+#define DCC_TARGET_RT_HAVE_STRNRCHRNUL 0 /* char  *strnrchrnul(char const *s, int c, size_t max); */
+
 /* NOTE: For full functionality, the runtime should implement at least:
  *    >> void *memchr(void const *p, int c, size_t s);
  *    >> void *memrchr(void const *p, int c, size_t s); */

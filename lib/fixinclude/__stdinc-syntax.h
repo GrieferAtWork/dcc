@@ -528,6 +528,18 @@ void *__builtin_rawmemchr(void const *p, int c);
 __SIZE_TYPE__ __builtin_rawmemlen(void const *p, int c);
 void *__builtin_rawmemrchr(void const *p, int c);
 __SIZE_TYPE__ __builtin_rawmemrlen(void const *p, int c);
+__SIZE_TYPE__ __builtin_stroff(char const *s, int c);
+__SIZE_TYPE__ __builtin_strroff(char const *s, int c);
+char *__builtin_strchr(char const *s, int c);
+char *__builtin_strrchr(char const *s, int c);
+char *__builtin_strchrnul(char const *s, int c);
+char *__builtin_strrchrnul(char const *s, int c);
+__SIZE_TYPE__ __builtin_strnoff(char const *s, int c, __SIZE_TYPE__ max);
+__SIZE_TYPE__ __builtin_strnroff(char const *s, int c, __SIZE_TYPE__ max);
+char *__builtin_strnchr(char const *s, int c, __SIZE_TYPE__ max);
+char *__builtin_strnrchr(char const *s, int c, __SIZE_TYPE__ max);
+char *__builtin_strnchrnul(char const *s, int c, __SIZE_TYPE__ max);
+char *__builtin_strnrchrnul(char const *s, int c, __SIZE_TYPE__ max);
 
 int __builtin_iscntrl(int ch);
 int __builtin_isblank(int ch);

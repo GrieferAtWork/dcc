@@ -1171,11 +1171,15 @@ outside_function:
  case KWD___builtin_calloc: DCCParse_BuiltinMalloc(); break;
  case KWD___builtin_realloc: DCCParse_BuiltinRealloc(); break;
  case KWD___builtin_free: DCCParse_BuiltinFree(); break;
-  /* Builtin string scanners. */
+  /* Builtin string scanning functions. */
  case KWD___builtin_memchr: case KWD___builtin_memlen: case KWD___builtin_memend:
  case KWD___builtin_memrchr: case KWD___builtin_memrlen: case KWD___builtin_memrend:
- case KWD___builtin_rawmemchr: case KWD___builtin_rawmemlen:
- case KWD___builtin_rawmemrchr: case KWD___builtin_rawmemrlen: DCCParse_BuiltinScas(); break;
+ case KWD___builtin_rawmemchr: case KWD___builtin_rawmemlen: case KWD___builtin_rawmemrchr:
+ case KWD___builtin_rawmemrlen: case KWD___builtin_stroff: case KWD___builtin_strroff:
+ case KWD___builtin_strchr: case KWD___builtin_strrchr: case KWD___builtin_strchrnul:
+ case KWD___builtin_strrchrnul: case KWD___builtin_strnoff: case KWD___builtin_strnroff:
+ case KWD___builtin_strnchr: case KWD___builtin_strnrchr: case KWD___builtin_strnchrnul:
+ case KWD___builtin_strnrchrnul: DCCParse_BuiltinScas(); break;
   /* Builtin ctype operations. */
  case KWD___builtin_iscntrl: case KWD___builtin_isblank:
  case KWD___builtin_isspace: case KWD___builtin_isupper:

@@ -653,8 +653,23 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_MinMax(DCC(tok_t) mode);
  * >> char  *strnend(char const *s, size_t max); // non-standard
  * >> size_t memlen(void const *p, int c, size_t s); // non-standard
  * >> size_t memrlen(void const *p, int c, size_t s); // non-standard
+ * >> void  *memend(void const *p, int c, size_t s); // non-standard
+ * >> void  *memrend(void const *p, int c, size_t s); // non-standard
  * >> size_t rawmemlen(void const *p, int c); // non-standard
- * >> size_t rawmemrlen(void const *p, int c); // non-standard */
+ * >> size_t rawmemrlen(void const *p, int c); // non-standard
+ * >> size_t stroff(char const *s, int c); // non-standard
+ * >> size_t strroff(char const *s, int c); // non-standard
+ * >> char  *strchr(char const *s, int c);
+ * >> char  *strrchr(char const *s, int c);
+ * >> char  *strchrnul(char const *s, int c);
+ * >> char  *strrchrnul(char const *s, int c); // non-standard
+ * >> size_t strnoff(char const *s, int c, size_t max); // non-standard
+ * >> size_t strnroff(char const *s, int c, size_t max); // non-standard
+ * >> char  *strnchr(char const *s, int c, size_t max);
+ * >> char  *strnrchr(char const *s, int c, size_t max);
+ * >> char  *strnchrnul(char const *s, int c, size_t max); // non-standard
+ * >> char  *strnrchrnul(char const *s, int c, size_t max); // non-standard
+ */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Scas(uint32_t flags);
 
 #define DCC_VSTACK_SCAS_FLAG_NONE 0x00000000
@@ -662,14 +677,25 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Scas(uint32_t flags);
 #define DCC_VSTACK_SCAS_FLAG_NULL 0x00000002 /*< Return NULL when the character was not found (Ignored when 'DCC_VSTACK_SCAS_FLAG_SIZE' is set).
                                               *  When not set, return one element past the last search character. */
 #define DCC_VSTACK_SCAS_FLAG_REV  0x00000004 /*< Search in reverse, starting at 'ptr+(size-1)' and ending with 'ptr' (both inclusive). */
+#define DCC_VSTACK_SCAS_FLAG_NUL  0x00000008 /*< The first '\0'-byte encountered terminates scanning prematurely.
+                                              *  NOTE: This flag also changes the input/return type from 'void [const] *' to 'char [const] *' */
 
 /* Pre-generated scas flag sets for generic memory scanning functions. */
-#define DCC_VSTACK_SCAS_MEMCHR   (DCC_VSTACK_SCAS_FLAG_NULL)
-#define DCC_VSTACK_SCAS_MEMEND   (DCC_VSTACK_SCAS_FLAG_NONE)
-#define DCC_VSTACK_SCAS_MEMLEN   (DCC_VSTACK_SCAS_FLAG_SIZE)
-#define DCC_VSTACK_SCAS_MEMRCHR  (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_NULL)
-#define DCC_VSTACK_SCAS_MEMREND  (DCC_VSTACK_SCAS_FLAG_REV)
-#define DCC_VSTACK_SCAS_MEMRLEN  (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_SIZE)
+#define DCC_VSTACK_SCAS_MEMCHR      (DCC_VSTACK_SCAS_FLAG_NULL)
+#define DCC_VSTACK_SCAS_MEMEND      (DCC_VSTACK_SCAS_FLAG_NONE)
+#define DCC_VSTACK_SCAS_MEMLEN      (DCC_VSTACK_SCAS_FLAG_SIZE)
+#define DCC_VSTACK_SCAS_MEMRCHR     (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_NULL)
+#define DCC_VSTACK_SCAS_MEMREND     (DCC_VSTACK_SCAS_FLAG_REV)
+#define DCC_VSTACK_SCAS_MEMRLEN     (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_SIZE)
+
+/* Generic string scanning functions. (Scanning fails when '\0' bytes are encountered) */
+#define DCC_VSTACK_SCAS_STRNOFF     (DCC_VSTACK_SCAS_FLAG_SIZE|DCC_VSTACK_SCAS_FLAG_NUL)
+#define DCC_VSTACK_SCAS_STRNROFF    (DCC_VSTACK_SCAS_FLAG_SIZE|DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_NUL)
+#define DCC_VSTACK_SCAS_STRNCHR     (DCC_VSTACK_SCAS_FLAG_NULL|DCC_VSTACK_SCAS_FLAG_NUL)
+#define DCC_VSTACK_SCAS_STRNRCHR    (DCC_VSTACK_SCAS_FLAG_NULL|DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_NUL)
+#define DCC_VSTACK_SCAS_STRNCHRNUL  (DCC_VSTACK_SCAS_FLAG_NUL)
+#define DCC_VSTACK_SCAS_STRNRCHRNUL (DCC_VSTACK_SCAS_FLAG_REV|DCC_VSTACK_SCAS_FLAG_NUL)
+
 
 /* [-3, +1]: push(memcmp(vbottom[2],vbottom[1],vbottom[0])); */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Memcmp(void);
@@ -679,7 +705,6 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Memset(void);
 
 /* [-3, +1]: push(memcpy|memmove(vbottom[2],vbottom[1],vbottom[0])); */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Memcpy(int may_overlap);
-
 
 
 #ifdef DCC_PRIVATE_API
@@ -727,38 +752,12 @@ extern struct DCCStackValue *vbottom;
 #define vbitfldf   DCCVStack_Bitfldf
 #define vsubscript DCCVStack_Subscript
 
-/* VStack extension short names. */
-#define vxmin()         DCCVStack_MinMax('<')
-#define vxmax()         DCCVStack_MinMax('>')
-#define vxminmax        DCCVStack_MinMax
-#define vxalloca        DCCVStack_Alloca
-#define vxalloca_n(n)  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,n),vxalloca())
-#define vxbswap         DCCVStack_BSwap
-#define vxclz()         DCCVStack_Scanner(KWD___builtin_clz)
-#define vxffs()         DCCVStack_Scanner(KWD___builtin_ffs)
-#define vxmemchr()      DCCVStack_Scas(DCC_VSTACK_SCAS_MEMCHR)
-#define vxmemend()      DCCVStack_Scas(DCC_VSTACK_SCAS_MEMEND)
-#define vxmemlen()      DCCVStack_Scas(DCC_VSTACK_SCAS_MEMLEN)
-#define vxmemrchr()     DCCVStack_Scas(DCC_VSTACK_SCAS_MEMRCHR)
-#define vxmemrend()     DCCVStack_Scas(DCC_VSTACK_SCAS_MEMREND)
-#define vxmemrlen()     DCCVStack_Scas(DCC_VSTACK_SCAS_MEMRLEN)
-#define vxrawmemchr()  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vxmemend())
-#define vxrawmemrchr() (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vxmemrend())
-#define vxrawmemlen()  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vxmemlen())
-#define vxrawmemrlen() (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vxmemrlen())
-#define vxstrlen()     (vpushi(DCCTYPE_CHAR,'\0'),vxrawmemlen())
-#define vxstrnlen()    (vpushi(DCCTYPE_CHAR,'\0'),vswap(),vxmemlen())
-#define vxstrend()     (vpushi(DCCTYPE_CHAR,'\0'),vxrawmemchr())
-#define vxstrnend()    (vpushi(DCCTYPE_CHAR,'\0'),vswap(),vxmemend())
-#define vxmemcmp        DCCVStack_Memcmp
-#define vxmemset        DCCVStack_Memset
-#define vxmemcpy()      DCCVStack_Memcpy(0)
-#define vxmemmove()     DCCVStack_Memcpy(1)
-
+/* VStack promotion helpers. */
 #define vprom()    DCCStackValue_Promote(vbottom)
 #define vpromi()   DCCStackValue_PromoteInt(vbottom)
 #define vpromi2()  DCCVStack_PromInt2()
 
+/* VStack casting helpers. */
 #define vcast_pt(id,explicit_cast) \
  vcast((id)&DCCTYPE_CONST ? &DCCType_BuiltinConstPointers[(id)&15]\
                           : &DCCType_BuiltinPointers     [(id)&15]\
@@ -770,6 +769,48 @@ DCC_LOCAL void vcast_t(DCC(tyid_t) id, int explicit_cast) {
  t.t_base = NULL;
  vcast(&t,explicit_cast);
 }
+
+
+/* VStack extension short names. */
+#define vx_min()         DCCVStack_MinMax('<')
+#define vx_max()         DCCVStack_MinMax('>')
+#define vx_minmax        DCCVStack_MinMax
+#define vx_alloca        DCCVStack_Alloca
+#define vx_alloca_n(n)  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,n),vx_alloca())
+#define vx_bswap         DCCVStack_BSwap
+#define vx_clz()         DCCVStack_Scanner(KWD___builtin_clz)
+#define vx_ffs()         DCCVStack_Scanner(KWD___builtin_ffs)
+#define vx_memchr()      DCCVStack_Scas(DCC_VSTACK_SCAS_MEMCHR)
+#define vx_memend()      DCCVStack_Scas(DCC_VSTACK_SCAS_MEMEND)
+#define vx_memlen()      DCCVStack_Scas(DCC_VSTACK_SCAS_MEMLEN)
+#define vx_memrchr()     DCCVStack_Scas(DCC_VSTACK_SCAS_MEMRCHR)
+#define vx_memrend()     DCCVStack_Scas(DCC_VSTACK_SCAS_MEMREND)
+#define vx_memrlen()     DCCVStack_Scas(DCC_VSTACK_SCAS_MEMRLEN)
+#define vx_rawmemchr()  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_memend())
+#define vx_rawmemrchr() (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_memrend())
+#define vx_rawmemlen()  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_memlen())
+#define vx_rawmemrlen() (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_memrlen())
+#define vx_strlen()     (vpushi(DCCTYPE_CHAR,'\0'),vx_rawmemlen())
+#define vx_strnlen()    (vpushi(DCCTYPE_CHAR,'\0'),vswap(),vx_memlen())
+#define vx_strend()     (vpushi(DCCTYPE_CHAR,'\0'),vx_rawmemchr())
+#define vx_strnend()    (vpushi(DCCTYPE_CHAR,'\0'),vswap(),vx_memend())
+#define vx_strnoff()     DCCVStack_Scas(DCC_VSTACK_SCAS_STRNOFF)
+#define vx_strnroff()    DCCVStack_Scas(DCC_VSTACK_SCAS_STRNROFF)
+#define vx_strnchr()     DCCVStack_Scas(DCC_VSTACK_SCAS_STRNCHR)
+#define vx_strnrchr()    DCCVStack_Scas(DCC_VSTACK_SCAS_STRNRCHR)
+#define vx_strnchrnul()  DCCVStack_Scas(DCC_VSTACK_SCAS_STRNCHRNUL)
+#define vx_strnrchrnul() DCCVStack_Scas(DCC_VSTACK_SCAS_STRNRCHRNUL)
+#define vx_stroff()     (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_strnoff())
+#define vx_strroff()    (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_strnroff())
+#define vx_strchr()     (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_strnchr())
+#define vx_strrchr()    (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_strnrchr())
+#define vx_strchrnul()  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_strnchrnul())
+#define vx_strrchrnul() (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_strnrchrnul())
+#define vx_memcmp        DCCVStack_Memcmp
+#define vx_memset        DCCVStack_Memset
+#define vx_memcpy()      DCCVStack_Memcpy(0)
+#define vx_memmove()     DCCVStack_Memcpy(1)
+
 
 /* Query the is-const state of vbottom.
  * NOTE: Due to relocation, there is a difference

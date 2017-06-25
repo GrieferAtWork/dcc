@@ -256,16 +256,28 @@ DEF_BUILTIN(__builtin_strnlen)
 
 /* Builtin memory scanning functions.
  * WARNING: The order of these is important! */
-DEF_BUILTIN(__builtin_memchr)     /* void  *__builtin_memchr(void const *p, int c, size_t s); */
-DEF_BUILTIN(__builtin_memlen)     /* size_t __builtin_memlen(void const *p, int c, size_t s); */
-DEF_BUILTIN(__builtin_memend)     /* void  *__builtin_memend(void const *p, int c, size_t s); */
-DEF_BUILTIN(__builtin_memrchr)    /* void  *__builtin_memrchr(void const *p, int c, size_t s); */
-DEF_BUILTIN(__builtin_memrlen)    /* size_t __builtin_memrlen(void const *p, int c, size_t s); */
-DEF_BUILTIN(__builtin_memrend)    /* void  *__builtin_memrend(void const *p, int c, size_t s); */
-DEF_BUILTIN(__builtin_rawmemchr)  /* void  *__builtin_rawmemchr(void const *p, int c); */
-DEF_BUILTIN(__builtin_rawmemlen)  /* size_t __builtin_rawmemlen(void const *p, int c); */
-DEF_BUILTIN(__builtin_rawmemrchr) /* void  *__builtin_rawmemrchr(void const *p, int c); */
-DEF_BUILTIN(__builtin_rawmemrlen) /* size_t __builtin_rawmemrlen(void const *p, int c); */
+DEF_BUILTIN(__builtin_memchr)      /* void  *__builtin_memchr(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_memlen)      /* size_t __builtin_memlen(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_memend)      /* void  *__builtin_memend(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_memrchr)     /* void  *__builtin_memrchr(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_memrlen)     /* size_t __builtin_memrlen(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_memrend)     /* void  *__builtin_memrend(void const *p, int c, size_t s); */
+DEF_BUILTIN(__builtin_rawmemchr)   /* void  *__builtin_rawmemchr(void const *p, int c); */
+DEF_BUILTIN(__builtin_rawmemlen)   /* size_t __builtin_rawmemlen(void const *p, int c); */
+DEF_BUILTIN(__builtin_rawmemrchr)  /* void  *__builtin_rawmemrchr(void const *p, int c); */
+DEF_BUILTIN(__builtin_rawmemrlen)  /* size_t __builtin_rawmemrlen(void const *p, int c); */
+DEF_BUILTIN(__builtin_stroff)      /* size_t __builtin_stroff(char const *s, int c); */
+DEF_BUILTIN(__builtin_strroff)     /* size_t __builtin_strroff(char const *s, int c); */
+DEF_BUILTIN(__builtin_strchr)      /* char  *__builtin_strchr(char const *s, int c); */
+DEF_BUILTIN(__builtin_strrchr)     /* char  *__builtin_strrchr(char const *s, int c); */
+DEF_BUILTIN(__builtin_strchrnul)   /* char  *__builtin_strchrnul(char const *s, int c); */
+DEF_BUILTIN(__builtin_strrchrnul)  /* char  *__builtin_strrchrnul(char const *s, int c); */
+DEF_BUILTIN(__builtin_strnoff)     /* size_t __builtin_strnoff(char const *s, int c, size_t max); */
+DEF_BUILTIN(__builtin_strnroff)    /* size_t __builtin_strnroff(char const *s, int c, size_t max); */
+DEF_BUILTIN(__builtin_strnchr)     /* char  *__builtin_strnchr(char const *s, int c, size_t max); */
+DEF_BUILTIN(__builtin_strnrchr)    /* char  *__builtin_strnrchr(char const *s, int c, size_t max); */
+DEF_BUILTIN(__builtin_strnchrnul)  /* char  *__builtin_strnchrnul(char const *s, int c, size_t max); */
+DEF_BUILTIN(__builtin_strnrchrnul) /* char  *__builtin_strnrchrnul(char const *s, int c, size_t max); */
 
 /* Builtin character trait functions.
  * WARNING: The order of these is important! */
@@ -1214,6 +1226,8 @@ DEF_WARNING(W_BUILTIN_MEMCMP_POINTERS_ALWAYS_EQUAL,(WG_QUALITY),WSTATE_WARN,WARN
 DEF_WARNING(W_BUILTIN_RETURN_ADDRESS_CONST_LEVEL,(WG_VALUE),WSTATE_WARN,WARNF("__builtin_return_address/__builtin_frame_address expect a constant integral as argument"))
 DEF_WARNING(W_BUILTIN_RETURN_ADDRESS_NEG_LEVEL,(WG_VALUE),WSTATE_WARN,WARNF("__builtin_return_address/__builtin_frame_address expect a positive integral as argument"))
 DEF_WARNING(W_BUILTIN_CPU_EXPECTED_STRING,(WG_VALUE),WSTATE_WARN,WARNF("Expected string after __builtin_cpu_(is|supports), but got " TOK_S,TOK_A))
+DEF_WARNING(W_BUILTIN_CPU_UNKNOWN_FEATURE,(WG_QUALITY),WSTATE_WARN,{ char *g = ARG(char *); WARNF("Unknown feature " Q("%s") " for " Q("__builtin_cpu_supports") " (Did you mean " Q("%s") "?)",g,ARG(char *)); })
+DEF_WARNING(W_BUILTIN_CPU_UNKNOWN_MODEL,(WG_QUALITY),WSTATE_WARN,{ char *g = ARG(char *); WARNF("Unknown brand/model " Q("%s") " for " Q("__builtin_cpu_is") " (Did you mean " Q("%s") "?)",g,ARG(char *)); })
 DEF_WARNING(W_BUILTIN_FETCHSYM_EXPECTED_STRING,(WG_VALUE),WSTATE_WARN,WARNF("Expected string after __builtin_fetchsym, but got " TOK_S,TOK_A))
 DEF_WARNING(W_UNSUPPORTED_CAS_SIZE,(WG_TYPE),WSTATE_WARN,TYPE_WARNING("Type " Q("%s") " has an unsupported CAS size"))
 #undef TYPE_WARNING

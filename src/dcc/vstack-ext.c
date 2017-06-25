@@ -497,6 +497,21 @@ dcc_memrchr(void const *p, int c, size_t n) {
 #define VS_CHAR (&vbottom[1])
 #define VS_SIZE (&vbottom[0])
 
+/* TODO: Make use of the following functions.
+ * >> size_t stroff(char const *s, int c);
+ * >> size_t strroff(char const *s, int c);
+ * >> char  *strchr(char const *s, int c);
+ * >> char  *strrchr(char const *s, int c);
+ * >> char  *strchrnul(char const *s, int c);
+ * >> char  *strrchrnul(char const *s, int c);
+ * >> size_t strnoff(char const *s, int c, size_t max);
+ * >> size_t strnroff(char const *s, int c, size_t max);
+ * >> char  *strnchr(char const *s, int c, size_t max);
+ * >> char  *strnrchr(char const *s, int c, size_t max);
+ * >> char  *strnchrnul(char const *s, int c, size_t max);
+ * >> char  *strnrchrnul(char const *s, int c, size_t max); */
+
+
 LOCAL int DCC_VSTACK_CALL
 DCCVStack_Scas_Strnlen(uint32_t flags) {
  struct DCCSym *funsym;
@@ -563,9 +578,42 @@ DCCVStack_Scas_Strlen(uint32_t flags, target_siz_t ct_size) {
 PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Scas(uint32_t flags) {
  struct DCCSym *funsym;
+ tyid_t pointer_type = (flags&DCC_VSTACK_SCAS_FLAG_NUL) ? DCCTYPE_VOID : DCCTYPE_USERCHAR;
  assert(vsize >= 3);
  /* ptr, char, size */
  assert(vsize >= 2);
+ if (flags&DCC_VSTACK_SCAS_FLAG_NUL) {
+  /* string-mode is enabled.
+   * >> When the string itself is known at compile-time,
+   *    replace the max-length value with the minimum
+   *    of it and the string's actual length. */
+  struct DCCSymAddr cc_ptr;
+  void *cc_ptr_data; size_t cc_ptr_msize;
+  if (!DCCSTACKVALUE_ISCONST_XVAL(VS_PTR) || !VS_PTR->sv_sym) goto default_scas;
+  /* Don't try to reduce the size value if it isn't known at compile-time.
+   * If we attempted to do so anyways, we'd just degrade out performance... */
+  if (!DCCSTACKVALUE_ISCONST_INT(VS_SIZE)) goto default_scas;
+  if (!DCCSym_LoadAddr(VS_PTR->sv_sym,&cc_ptr,0)) goto default_scas;
+  assert(cc_ptr.sa_sym);
+  assert(DCCSym_ISDEFINED(cc_ptr.sa_sym));
+  if (DCCSection_ISIMPORT(DCCSym_SECTION(cc_ptr.sa_sym)))
+      goto default_scas;
+  /* Make sure the section is readable, but not writable! */
+  if ((VS_PTR->sv_sym->sy_sec->sc_start.sy_flags&
+      (DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W)) !=
+      (DCC_SYMFLAG_SEC_R)) goto default_scas;
+  cc_ptr.sa_off += VS_PTR->sv_const.offset;
+  cc_ptr.sa_off += cc_ptr.sa_sym->sy_addr;
+  cc_ptr_data    = DCCSection_TryGetText(cc_ptr.sa_sym->sy_sec,cc_ptr.sa_off,
+                                        &cc_ptr_msize,NULL);
+  if (!cc_ptr_data) goto default_scas;
+  cc_ptr_msize = strnlen((char *)cc_ptr_data,cc_ptr_msize);
+  if (DCCSection_Hasrel(cc_ptr.sa_sym->sy_sec,cc_ptr.sa_off,
+                        cc_ptr_msize+1)) goto default_scas;
+  vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,(int_t)cc_ptr_msize); /* ptr, char, size, strlen(ptr) */
+  vx_min();  /* ptr, char, min(size,strlen(ptr)) */
+ }
+default_scas:
  if (DCCSTACKVALUE_ISCONST_INT(VS_SIZE)) {
   /* Size is known at compile-time. */
   target_siz_t ct_size;
@@ -577,113 +625,108 @@ DCCVStack_Scas(uint32_t flags) {
    if (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
        vpop(1),vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,0);
    else if (flags&DCC_VSTACK_SCAS_FLAG_NULL)
-       vpop(1),vpushc(&DCCType_BuiltinPointers[DCCTYPE_VOID],0);
-   else vcast_pt(DCCTYPE_VOID,1);
+       vpop(1),vpushc(&DCCType_BuiltinPointers[pointer_type],0);
+   else vcast_pt(pointer_type,1);
    return;
   }
   if (DCCSTACKVALUE_ISCONST_INT(VS_CHAR)) {
    /* The search size & character is known at compile-time. */
-   int cc_char;
+   int cc_char,is_oob_search;
+   struct DCCSymAddr cc_ptr;
+   void *cc_ptr_data,*cc_locptr;
+   size_t cc_ptr_msize,search_size;
+   target_siz_t cc_ptr_vsize;
    cc_char = (int)(uint8_t)DCCSTACKVALUE_GTCONST_INT(VS_CHAR);
-   if (DCCSTACKVALUE_ISCONST_XVAL(VS_PTR) && VS_PTR->sv_sym) {
-    struct DCCSymAddr cc_ptr;
-    if (DCCSym_LoadAddr(VS_PTR->sv_sym,&cc_ptr,0)) {
-     assert(cc_ptr.sa_sym);
-     assert(DCCSym_ISDEFINED(cc_ptr.sa_sym));
-     if (DCCSection_ISIMPORT(DCCSym_SECTION(cc_ptr.sa_sym)))
-         goto no_compiletime;
-     /* Make sure the section is readable, but not writable! */
-     if ((VS_PTR->sv_sym->sy_sec->sc_start.sy_flags&
-         (DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W)) ==
-         (DCC_SYMFLAG_SEC_R)) {
-      void        *cc_ptr_data;
-      size_t       cc_ptr_msize;
-      target_siz_t cc_ptr_vsize;
-      cc_ptr.sa_off += VS_PTR->sv_const.offset;
-      cc_ptr.sa_off += cc_ptr.sa_sym->sy_addr;
-      cc_ptr_data    = DCCSection_TryGetText(cc_ptr.sa_sym->sy_sec,cc_ptr.sa_off,
-                                            &cc_ptr_msize,&cc_ptr_vsize);
-      if (cc_ptr_data) {
-       /* Full compile-time search. */
-       void *cc_locptr;
-       size_t search_size = (size_t)ct_size;
-       int is_oob_search = 0;
-       if (search_size > cc_ptr_msize) {
-        search_size   = cc_ptr_msize;
-        is_oob_search = (cc_char == 0 && cc_ptr_vsize > cc_ptr_msize);
-       }
-       if (is_oob_search && (flags&DCC_VSTACK_SCAS_FLAG_REV)) {
-        /* In reverse search mode, the first ZERO-character
-         * is the last out-of-bounds pointer! */
-        assert(!cc_char);
-        if (ct_size > cc_ptr_vsize)
-            ct_size = cc_ptr_vsize;
-        cc_locptr = (void *)((uintptr_t)cc_ptr_data+(size_t)ct_size);
-       } else {
-        cc_locptr = (flags&DCC_VSTACK_SCAS_FLAG_REV)
-           ? memrchr(cc_ptr_data,cc_char,search_size)
-           :  memchr(cc_ptr_data,cc_char,search_size);
-        /* For failed ZERO-searches, the first out-of-bounds
-         * character (if apart), is the queried pointer. */
-        if (!cc_locptr && is_oob_search)
-             cc_locptr = (void *)((uintptr_t)cc_ptr_data+cc_ptr_msize);
-       }
-       if (cc_locptr) {
-        target_siz_t cc_ptr_offset;
-        /* Managed to find the character.
-         * Simply return the pointer/offset to that character.
-         * NOTE: For the pointer case, we return a symbol-pointer
-         *       offset from PTR, as this way   */
-        cc_ptr_offset = (target_siz_t)((uintptr_t)cc_locptr-
-                                       (uintptr_t)cc_ptr_data);
-        /* Make sure there are no relocations between the symbol and '+=cc_ptr_offset' */
-        if (DCCSection_Hasrel(cc_ptr.sa_sym->sy_sec,cc_ptr.sa_off,
-                              cc_ptr_offset)) goto no_compiletime;
-        /* Either push '(size_t)cc_ptr_offset' or '(void *)(ptr+cc_ptr_offset)' */
-        vpop(1); /* ptr, char */
-        vpop(1); /* ptr */
-        if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
-         vpop(1); /* . */
-         vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,cc_ptr_offset);
-                  /* size */
-        } else {
-         vbottom->sv_const.offset += cc_ptr_offset;
-        }
-       } else if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
-        /* Only keep 'size' on the stack (in a memlen-style way). */
-        vswap(); /* ptr, size, char */
-        vpop(1); /* ptr, size */
-        vswap(); /* size, ptr */
-        vpop(1); /* size */
-        vrval(); /* rsize */
-       } else if (flags&DCC_VSTACK_SCAS_FLAG_NULL) {
-        /* We're supposed to return NULL for this case! */
-        vpop(1); /* ptr, char */
-        vpop(1); /* ptr */
-        vpop(1); /* . */
-        vpushc(&DCCType_BuiltinPointers[DCCTYPE_VOID],0);
-       } else {
-        /* Return a pointer after the last character searched (memend-style) */
-        if (flags&DCC_VSTACK_SCAS_FLAG_REV) {
-         vpop(1); /* ptr, char */
-         vpop(1); /* ptr */
-         vcast_t(DCCTYPE_INTPTR|DCCTYPE_UNSIGNED,1);
-         vgen1(TOK_DEC);
-        } else {
-         vswap();    /* ptr, size, char */
-         vpop(1);    /* ptr, size */
-         vswap();    /* size, ptr */
-         vcast_t(DCCTYPE_INTPTR|DCCTYPE_UNSIGNED,1);
-         vswap();    /* ptr, size */
-         vgen2('+'); /* ptr+size */
-        }
-        vcast_pt(DCCTYPE_VOID,1);
-       }
-       return;
-      }
-     }
-    }
+   if (!DCCSTACKVALUE_ISCONST_XVAL(VS_PTR) || !VS_PTR->sv_sym) goto no_compiletime;
+   if (!DCCSym_LoadAddr(VS_PTR->sv_sym,&cc_ptr,0)) goto no_compiletime;
+   assert(cc_ptr.sa_sym);
+   assert(DCCSym_ISDEFINED(cc_ptr.sa_sym));
+   if (DCCSection_ISIMPORT(DCCSym_SECTION(cc_ptr.sa_sym)))
+       goto no_compiletime;
+   /* Make sure the section is readable, but not writable! */
+   if ((VS_PTR->sv_sym->sy_sec->sc_start.sy_flags&
+       (DCC_SYMFLAG_SEC_R|DCC_SYMFLAG_SEC_W)) !=
+       (DCC_SYMFLAG_SEC_R)) goto no_compiletime;
+   cc_ptr.sa_off += VS_PTR->sv_const.offset;
+   cc_ptr.sa_off += cc_ptr.sa_sym->sy_addr;
+   cc_ptr_data    = DCCSection_TryGetText(cc_ptr.sa_sym->sy_sec,cc_ptr.sa_off,
+                                         &cc_ptr_msize,&cc_ptr_vsize);
+   if (!cc_ptr_data) goto no_compiletime;
+   /* Full compile-time search. */
+   search_size = (size_t)ct_size;
+   is_oob_search = 0;
+   if (search_size > cc_ptr_msize) {
+    search_size   = cc_ptr_msize;
+    is_oob_search = (cc_char == 0 && cc_ptr_vsize > cc_ptr_msize);
    }
+   if (is_oob_search && (flags&DCC_VSTACK_SCAS_FLAG_REV)) {
+    /* In reverse search mode, the first ZERO-character
+     * is the last out-of-bounds pointer! */
+    assert(!cc_char);
+    if (ct_size > cc_ptr_vsize)
+        ct_size = cc_ptr_vsize;
+    cc_locptr = (void *)((uintptr_t)cc_ptr_data+(size_t)ct_size);
+   } else {
+    cc_locptr = (flags&DCC_VSTACK_SCAS_FLAG_REV)
+       ? memrchr(cc_ptr_data,cc_char,search_size)
+       :  memchr(cc_ptr_data,cc_char,search_size);
+    /* For failed ZERO-searches, the first out-of-bounds
+     * character (if apart), is the queried pointer. */
+    if (!cc_locptr && is_oob_search)
+         cc_locptr = (void *)((uintptr_t)cc_ptr_data+cc_ptr_msize);
+   }
+   if (cc_locptr) {
+    target_siz_t cc_ptr_offset;
+    /* Managed to find the character.
+     * Simply return the pointer/offset to that character.
+     * NOTE: For the pointer case, we return a symbol-pointer
+     *       offset from PTR, as this way   */
+    cc_ptr_offset = (target_siz_t)((uintptr_t)cc_locptr-
+                                   (uintptr_t)cc_ptr_data);
+    /* Make sure there are no relocations between the symbol and '+=cc_ptr_offset' */
+    if (DCCSection_Hasrel(cc_ptr.sa_sym->sy_sec,cc_ptr.sa_off,
+                          cc_ptr_offset)) goto no_compiletime;
+    /* Either push '(size_t)cc_ptr_offset' or '(void *)(ptr+cc_ptr_offset)' */
+    vpop(1); /* ptr, char */
+    vpop(1); /* ptr */
+    if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
+     vpop(1); /* . */
+     vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,cc_ptr_offset);
+              /* size */
+    } else {
+     vbottom->sv_const.offset += cc_ptr_offset;
+    }
+   } else if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
+    /* Only keep 'size' on the stack (in a memlen-style way). */
+    vswap(); /* ptr, size, char */
+    vpop(1); /* ptr, size */
+    vswap(); /* size, ptr */
+    vpop(1); /* size */
+    vrval(); /* rsize */
+   } else if (flags&DCC_VSTACK_SCAS_FLAG_NULL) {
+    /* We're supposed to return NULL for this case! */
+    vpop(1); /* ptr, char */
+    vpop(1); /* ptr */
+    vpop(1); /* . */
+    vpushc(&DCCType_BuiltinPointers[pointer_type],0);
+   } else {
+    /* Return a pointer after the last character searched (memend-style) */
+    if (flags&DCC_VSTACK_SCAS_FLAG_REV) {
+     vpop(1); /* ptr, char */
+     vpop(1); /* ptr */
+     vcast_t(DCCTYPE_INTPTR|DCCTYPE_UNSIGNED,1);
+     vgen1(TOK_DEC);
+    } else {
+     vswap();    /* ptr, size, char */
+     vpop(1);    /* ptr, size */
+     vswap();    /* size, ptr */
+     vcast_t(DCCTYPE_INTPTR|DCCTYPE_UNSIGNED,1);
+     vswap();    /* ptr, size */
+     vgen2('+'); /* ptr+size */
+    }
+    vcast_pt(pointer_type,1);
+   }
+   return;
 no_compiletime:
    if (!cc_char && !(flags&DCC_VSTACK_SCAS_FLAG_REV)) {
     /* Generate a str(n)len/str(n)end function calls. */
@@ -694,9 +737,15 @@ no_compiletime:
   if (ct_size == (target_siz_t)-1) {
    /* Try to generate calls to 'rawmemchr'/'rawmemrchr'/'rawmemlen'/'rawmemrlen' */
    if (!(flags&DCC_VSTACK_SCAS_FLAG_REV)) {
-    if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
+    if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
+       ? (        (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
+       ? GET_SYM(DCC_TARGET_RT_HAVE_STROFF,"stroff")
+       : (        (flags&DCC_VSTACK_SCAS_FLAG_NULL)
+       ? GET_SYM(DCC_TARGET_RT_HAVE_STRCHR,"strchr")
+       : GET_SYM(DCC_TARGET_RT_HAVE_STRCHRNUL,"strchrnul")))
+       : (        (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
        ? GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMLEN,"rawmemlen")
-       : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMCHR,"rawmemchr")) != NULL) {
+       : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMCHR,"rawmemchr"))) != NULL) {
      vpop(1); /* ptr, char */
      (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
       ? DCCVStack_PushSym_szfun(funsym)
@@ -706,9 +755,15 @@ no_compiletime:
      return;
     }
    } else {
-    if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
+    if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
+       ? (        (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
+       ? GET_SYM(DCC_TARGET_RT_HAVE_STRROFF,"strroff")
+       : (        (flags&DCC_VSTACK_SCAS_FLAG_NULL)
+       ? GET_SYM(DCC_TARGET_RT_HAVE_STRRCHR,"strrchr")
+       : GET_SYM(DCC_TARGET_RT_HAVE_STRRCHRNUL,"strrchrnul")))
+       : (        (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
        ? GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMRLEN,"rawmemrlen")
-       : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMRCHR,"rawmemrchr")) != NULL) {
+       : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMRCHR,"rawmemrchr"))) != NULL) {
                /* ptr, char, size */
      vrrot(3); /* char, size, ptr */
      vcast_t(DCCTYPE_INTPTR|DCCTYPE_UNSIGNED,1);
@@ -737,9 +792,13 @@ no_compiletime:
 
  if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
   /* Try to call memlen/memrlen */
-  if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_REV)
+  if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
+     ? (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
+     ? GET_SYM(DCC_TARGET_RT_HAVE_STRNOFF,"strnoff")
+     : GET_SYM(DCC_TARGET_RT_HAVE_STRNROFF,"strnroff"))
+     : (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
      ? GET_SYM(DCC_TARGET_RT_HAVE_MEMLEN,"memlen")
-     : GET_SYM(DCC_TARGET_RT_HAVE_MEMRLEN,"memrlen")) != NULL) {
+     : GET_SYM(DCC_TARGET_RT_HAVE_MEMRLEN,"memrlen"))) != NULL) {
    DCCVStack_PushSym_szfun(funsym);
              /* ptr, char, size, mem(r)len */
    vlrot(4); /* mem(r)len, ptr, char, size */
@@ -747,10 +806,31 @@ no_compiletime:
    return;
   }
  } else if (flags&DCC_VSTACK_SCAS_FLAG_NULL) {
+#if 0 /* This is already performed below! */
   /* Try to call memend/memrend */
-  if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_REV)
+  if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
+     ? ((flags&DCC_VSTACK_SCAS_FLAG_REV)
+     ? GET_SYM(DCC_TARGET_RT_HAVE_STRNCHR,"strnchr")
+     : GET_SYM(DCC_TARGET_RT_HAVE_STRNRCHR,"strnrchr"))
+     : ((flags&DCC_VSTACK_SCAS_FLAG_REV)
+     ? DCCUnit_NewSyms("memchr",DCC_SYMFLAG_NONE)
+     : DCCUnit_NewSyms("memrchr",DCC_SYMFLAG_NONE))) != NULL) {
+   DCCVStack_PushSym_vpfun(funsym);
+             /* ptr, char, size, mem(r)end */
+   vlrot(4); /* mem(r)len, ptr, char, size */
+   vcall(3); /* ret. */
+   return;
+  }
+#endif
+ } else {
+  /* Try to call memend/memrend */
+  if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
+     ? ((flags&DCC_VSTACK_SCAS_FLAG_REV)
+     ? GET_SYM(DCC_TARGET_RT_HAVE_STRNCHRNUL,"strnchrnul")
+     : GET_SYM(DCC_TARGET_RT_HAVE_STRNRCHRNUL,"strnrchrnul"))
+     : ((flags&DCC_VSTACK_SCAS_FLAG_REV)
      ? GET_SYM(DCC_TARGET_RT_HAVE_MEMEND,"memend")
-     : GET_SYM(DCC_TARGET_RT_HAVE_MEMREND,"memrend")) != NULL) {
+     : GET_SYM(DCC_TARGET_RT_HAVE_MEMREND,"memrend"))) != NULL) {
    DCCVStack_PushSym_vpfun(funsym);
              /* ptr, char, size, mem(r)end */
    vlrot(4); /* mem(r)len, ptr, char, size */
@@ -759,9 +839,27 @@ no_compiletime:
   }
  }
 
- /* Fallback: Call memchr/memrchr */
- funsym = DCCUnit_NewSyms((flags&DCC_VSTACK_SCAS_FLAG_REV) ?
-                          "memrchr" : "memchr",DCC_SYMFLAG_NONE);
+ if (flags&DCC_VSTACK_SCAS_FLAG_NUL) {
+  funsym = (flags&DCC_VSTACK_SCAS_FLAG_REV)
+          ? GET_SYM(DCC_TARGET_RT_HAVE_STRNCHR,"strnchr")
+          : GET_SYM(DCC_TARGET_RT_HAVE_STRNRCHR,"strnrchr");
+  if (!funsym) {
+   /* Manually call strnlen & use its return value as minimum operand. */
+   /* >> strnchr(p,c,s); --> memchr(p,c,strnlen(p,s)); */
+                 /* str, char, size */
+   vrrot(3);     /* char, size, str */
+   vdup(1);      /* char, size, str, str */
+   vlrot(4);     /* str, char, size, str */
+   vswap();      /* str, char, str, size */
+   vx_strnlen(); /* str, char, min_size */
+   DCCVStack_Scas(flags&~(DCC_VSTACK_SCAS_FLAG_NUL));
+   return;
+  }
+ } else {
+  /* Fallback: Call memchr/memrchr */
+  funsym = DCCUnit_NewSyms((flags&DCC_VSTACK_SCAS_FLAG_REV) ?
+                           "memrchr" : "memchr",DCC_SYMFLAG_NONE);
+ }
  /* Generate with inline code calling either 'memchr' or 'memrchr'
   * NOTE: This is why DCC assumes that the runtime be implementing at least these! */
 again:
@@ -789,7 +887,7 @@ again:
   vdup(1);  /* char, size, ptr, dptr */
   vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,1);
   vgen1(TOK_DEC); /* char, size, ptr, dptr-1 */
-  vcast_pt(DCCTYPE_VOID,1);
+  vcast_pt(pointer_type,1);
   vlrot(4); /* dptr-1, char, size, ptr */
   vlrot(3); /* dptr-1, ptr, char, size */
   if (DCC_MACRO_FALSE) {
@@ -807,7 +905,7 @@ again:
    vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,1);
    vrrot(3); /* char, ptr, size, dsize, dptr */
    vgen2('+'); /* char, ptr, size, dsize+dptr */
-   vcast_pt(DCCTYPE_VOID,1);
+   vcast_pt(pointer_type,1);
    vlrot(4); /* dsize+dptr, char, ptr, size */
    vswap();  /* dsize+dptr, char, size, ptr */
    vlrot(3); /* dsize+dptr, ptr, char, size */

@@ -113,23 +113,35 @@ DCCParse_BuiltinStrlen(void) {
 
 #define SCAS_MODE(name) ((name)-KWD___builtin_memchr)
 PRIVATE uint32_t scas_mode[] = {
- /* [SCAS_MODE(KWD___builtin_memchr)]     = */DCC_VSTACK_SCAS_MEMCHR,
- /* [SCAS_MODE(KWD___builtin_memlen)]     = */DCC_VSTACK_SCAS_MEMLEN,
- /* [SCAS_MODE(KWD___builtin_memend)]     = */DCC_VSTACK_SCAS_MEMEND,
- /* [SCAS_MODE(KWD___builtin_memrchr)]    = */DCC_VSTACK_SCAS_MEMRCHR,
- /* [SCAS_MODE(KWD___builtin_memrlen)]    = */DCC_VSTACK_SCAS_MEMRLEN,
- /* [SCAS_MODE(KWD___builtin_memrend)]    = */DCC_VSTACK_SCAS_MEMREND,
- /* [SCAS_MODE(KWD___builtin_rawmemchr)]  = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMCHR,
- /* [SCAS_MODE(KWD___builtin_rawmemlen)]  = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMLEN,
- /* [SCAS_MODE(KWD___builtin_rawmemrchr)] = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMCHR,
- /* [SCAS_MODE(KWD___builtin_rawmemrlen)] = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMLEN,
+ /* [SCAS_MODE(KWD___builtin_memchr)]      = */DCC_VSTACK_SCAS_MEMCHR,
+ /* [SCAS_MODE(KWD___builtin_memlen)]      = */DCC_VSTACK_SCAS_MEMLEN,
+ /* [SCAS_MODE(KWD___builtin_memend)]      = */DCC_VSTACK_SCAS_MEMEND,
+ /* [SCAS_MODE(KWD___builtin_memrchr)]     = */DCC_VSTACK_SCAS_MEMRCHR,
+ /* [SCAS_MODE(KWD___builtin_memrlen)]     = */DCC_VSTACK_SCAS_MEMRLEN,
+ /* [SCAS_MODE(KWD___builtin_memrend)]     = */DCC_VSTACK_SCAS_MEMREND,
+ /* [SCAS_MODE(KWD___builtin_rawmemchr)]   = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMCHR,
+ /* [SCAS_MODE(KWD___builtin_rawmemlen)]   = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMLEN,
+ /* [SCAS_MODE(KWD___builtin_rawmemrchr)]  = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMCHR,
+ /* [SCAS_MODE(KWD___builtin_rawmemrlen)]  = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_MEMLEN,
+ /* [SCAS_MODE(KWD___builtin_stroff)]      = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNOFF,
+ /* [SCAS_MODE(KWD___builtin_strroff)]     = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNROFF,
+ /* [SCAS_MODE(KWD___builtin_strchr)]      = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNCHR,
+ /* [SCAS_MODE(KWD___builtin_strrchr)]     = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNRCHR,
+ /* [SCAS_MODE(KWD___builtin_strchrnul)]   = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNCHRNUL,
+ /* [SCAS_MODE(KWD___builtin_strrchrnul)]  = */DCC_SCAS_FLAG_UNLIMITED|DCC_VSTACK_SCAS_STRNRCHRNUL,
+ /* [SCAS_MODE(KWD___builtin_strnoff)]     = */DCC_VSTACK_SCAS_STRNOFF,
+ /* [SCAS_MODE(KWD___builtin_strnroff)]    = */DCC_VSTACK_SCAS_STRNROFF,
+ /* [SCAS_MODE(KWD___builtin_strnchr)]     = */DCC_VSTACK_SCAS_STRNCHR,
+ /* [SCAS_MODE(KWD___builtin_strnrchr)]    = */DCC_VSTACK_SCAS_STRNRCHR,
+ /* [SCAS_MODE(KWD___builtin_strnchrnul)]  = */DCC_VSTACK_SCAS_STRNCHRNUL,
+ /* [SCAS_MODE(KWD___builtin_strnrchrnul)] = */DCC_VSTACK_SCAS_STRNRCHRNUL,
 };
 
 LEXPRIV void DCC_PARSE_CALL
 DCCParse_BuiltinScas(void) {
  uint32_t mode; /* ... (Various string scanning builtins); */
  assert(TOK >= KWD___builtin_memchr &&
-        TOK <= KWD___builtin_rawmemrlen);
+        TOK <= KWD___builtin_strnrchrnul);
  mode = scas_mode[SCAS_MODE(TOK)];
  YIELD();
  DCCParse_ParPairBegin();

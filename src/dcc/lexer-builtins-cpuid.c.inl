@@ -30,6 +30,10 @@
 
 DCC_DECL_BEGIN
 
+INTDEF size_t /* from 'tpp.c' */
+fuzzy_match(char const *__restrict a, size_t alen,
+            char const *__restrict b, size_t blen);
+
 #if DCC_TARGET_HASI(I_X86)
 
 /* Additional support for feature detection. */
@@ -329,6 +333,39 @@ enum cpu_model {
  CPU_AMD_BTVER2,
 };
 
+struct modelname { enum cpu_model m_cpu; char m_name[16]; };
+PRIVATE struct modelname const cpu_model_names[] = {
+ {CPU_INTEL_PENTIUM,       "pentium"},
+ {CPU_INTEL_ATOM,          "atom"},
+ {CPU_INTEL_CORE2,         "core2"},
+ {CPU_INTEL_COREI7,        "corei7"},
+ {CPU_INTEL_NEHALEM,       "nehalem"},
+ {CPU_INTEL_WESTMERE,      "westmere"},
+ {CPU_INTEL_SANDYBRIDGE,   "sandybridge"},
+#if EXT_INTEL_CPU
+ {CPU_INTEL_BONELL,        "bonell"},
+ {CPU_INTEL_SILVERMONT,    "silvermont"},
+ {CPU_INTEL_KNL,           "knl"},
+ {CPU_INTEL_IVYBRIDGE,     "ivybridge"},
+ {CPU_INTEL_HASWELL,       "haswell"},
+ {CPU_INTEL_BROADWELL,     "broadwell"},
+ {CPU_INTEL_SKYLAKE,       "skylake"},
+ {CPU_INTEL_SKYLAKE_AVX512,"skylake-avx512"},
+#endif
+ {CPU_AMD_AMDFAM10H,       "amdfam10h"},
+ {CPU_AMD_BARCELONA,       "barcelona"},
+ {CPU_AMD_SHANGHAI,        "shanghai"},
+ {CPU_AMD_ISTANBUL,        "istanbul"},
+ {CPU_AMD_BTVER1,          "btver1"},
+ {CPU_AMD_AMDFAM15H,       "amdfam15h"},
+ {CPU_AMD_BDVER1,          "bdver1"},
+ {CPU_AMD_BDVER2,          "bdver2"},
+ {CPU_AMD_BDVER3,          "bdver3"},
+ {CPU_AMD_BTVER2,          "btver2"},
+ {CPU_UNKNOWN,{0}},
+};
+
+
 struct model { enum cpu_model m_cpu; uint8_t const *m_numv; };
 PRIVATE uint8_t const numv_intel_atom[]   = {0xc1,0x62,0}; /* ATOM */
 PRIVATE uint8_t const numv_intel_core2[]  = {0x71,0xd1,0xf0,0};
@@ -368,6 +405,64 @@ PRIVATE struct model const intel_model_nums[] = {
 #endif /* EXT_INTEL_CPU */
  {CPU_UNKNOWN,NULL},
 };
+
+
+LOCAL char const *
+likely_model_or_vendor(char const *name, size_t name_size) {
+ char const *result = NULL;
+ struct vendor const *viter = vendors;
+ struct modelname const *miter = cpu_model_names;
+ size_t distance = (size_t)-1,new_distance;
+ for (; viter->v_name; ++viter) {
+  new_distance = fuzzy_match(viter->v_name,strlen(viter->v_name),
+                             name,name_size);
+  if (new_distance < distance) {
+   result   = viter->v_name;
+   distance = new_distance;
+  }
+ }
+ for (; miter->m_cpu != CPU_UNKNOWN; ++miter) {
+  new_distance = fuzzy_match(miter->m_name,strlen(miter->m_name),
+                             name,name_size);
+  if (new_distance < distance) {
+   result   = miter->m_name;
+   distance = new_distance;
+  }
+ }
+ return result;
+}
+
+LOCAL char const *
+likely_feature(char const *name, size_t name_size) {
+ char const *result = NULL;
+ struct feature const *iter = features;
+ size_t distance = (size_t)-1,new_distance;
+ for (; iter->f_name; ++iter) {
+  new_distance = fuzzy_match(iter->f_name,strlen(iter->f_name),
+                             name,name_size);
+  if (new_distance < distance) {
+   result   = iter->f_name;
+   distance = new_distance;
+  }
+ }
+#define CHECK_FEATURE(s) \
+ { char const *_s = (s); \
+   new_distance = fuzzy_match(_s,DCC_COMPILER_STRLEN(s),name,name_size); \
+   if (new_distance < distance) { \
+    result   = _s; \
+    distance = new_distance; \
+   } \
+ }
+#if EXT_CPUID_HAS
+ CHECK_FEATURE("cpuid");
+#endif /* EXT_CPUID_HAS */
+#if EXT_CPUID_MAX
+ CHECK_FEATURE("cpuid-max");
+#endif /* EXT_CPUID_MAX */
+#undef CHECK_FEATURE
+ return result;
+}
+
 
 
 PRIVATE void query_model(enum cpu_model model) {
@@ -510,47 +605,29 @@ DCCParse_BuiltinCPUQuery(void) {
    goto done;
   }
 #endif /* EXT_CPUID_MAX */
+  /* Emit a -Wquality warning suggesting a likely match. */
+  WARN(W_BUILTIN_CPU_UNKNOWN_FEATURE,info_name->s_text,
+       likely_feature(info_name->s_text,info_name->s_size));
  } else {
-  struct vendor const *iter;
-  enum cpu_model model = CPU_UNKNOWN;
-  for (iter = vendors; iter->v_name; ++iter) {
-   if (!strcmp(iter->v_name,info_name->s_text)) {
-    info_mask             = iter->v_sign;
+  struct vendor const *viter;
+  struct modelname const *miter;
+  for (viter = vendors; viter->v_name; ++viter) {
+   if (!strcmp(viter->v_name,info_name->s_text)) {
+    info_mask             = viter->v_sign;
     info_slot.sv_const.it = CPUINFO_OFFSETOF_CPUID0_EBX;
     info_mode             = TOK_EQUAL;
     goto lookup;
    }
   }
-       if (IS_NAME("pentium")) model = CPU_INTEL_PENTIUM;
-  else if (IS_NAME("atom")) model = CPU_INTEL_ATOM;
-  else if (IS_NAME("core2")) model = CPU_INTEL_CORE2;
-  else if (IS_NAME("corei7")) model = CPU_INTEL_COREI7;
-  else if (IS_NAME("nehalem")) model = CPU_INTEL_NEHALEM;
-  else if (IS_NAME("westmere")) model = CPU_INTEL_WESTMERE;
-  else if (IS_NAME("sandybridge")) model = CPU_INTEL_SANDYBRIDGE;
-#if EXT_INTEL_CPU
-  else if (IS_NAME("bonell")) model = CPU_INTEL_BONELL;
-  else if (IS_NAME("silvermont")) model = CPU_INTEL_SILVERMONT;
-  else if (IS_NAME("knl")) model = CPU_INTEL_KNL;
-  else if (IS_NAME("ivybridge")) model = CPU_INTEL_IVYBRIDGE;
-  else if (IS_NAME("haswell")) model = CPU_INTEL_HASWELL;
-  else if (IS_NAME("broadwell")) model = CPU_INTEL_BROADWELL;
-  else if (IS_NAME("skylake")) model = CPU_INTEL_SKYLAKE;
-  else if (IS_NAME("skylake-avx512")) model = CPU_INTEL_SKYLAKE_AVX512;
-#endif
-  else if (IS_NAME("amdfam10h")) model = CPU_AMD_AMDFAM10H;
-  else if (IS_NAME("barcelona")) model = CPU_AMD_BARCELONA;
-  else if (IS_NAME("shanghai")) model = CPU_AMD_SHANGHAI;
-  else if (IS_NAME("istanbul")) model = CPU_AMD_ISTANBUL;
-  else if (IS_NAME("btver1")) model = CPU_AMD_BTVER1;
-  else if (IS_NAME("amdfam15h")) model = CPU_AMD_AMDFAM15H;
-  else if (IS_NAME("bdver1")) model = CPU_AMD_BDVER1;
-  else if (IS_NAME("bdver2")) model = CPU_AMD_BDVER2;
-  else if (IS_NAME("bdver3")) model = CPU_AMD_BDVER3;
-  else if (IS_NAME("btver2")) model = CPU_AMD_BTVER2;
-  else goto unsupported;
-  query_model(model);
-  goto done;
+  for (miter = cpu_model_names; miter->m_cpu != CPU_UNKNOWN; ++miter) {
+   if (!strcmp(miter->m_name,info_name->s_text)) {
+    query_model(miter->m_cpu);
+    goto done;
+   }
+  }
+  /* Emit a -Wquality warning suggesting a likely match. */
+  WARN(W_BUILTIN_CPU_UNKNOWN_MODEL,info_name->s_text,
+       likely_model_or_vendor(info_name->s_text,info_name->s_size));
  }
 unsupported:
  vpushi(DCCTYPE_IB4|DCCTYPE_UNSIGNED,0);
@@ -585,7 +662,7 @@ DCCParse_BuiltinCPUVendor(void) {
   DCCParse_Expr1(),vused(),vcast_pt(DCCTYPE_CHAR,0);
   if (TOK == ',') { YIELD(); DCCParse_ExprDiscard(); }
  } else {
-  vxalloca_n(string_size); /* ret */
+  vx_alloca_n(string_size); /* ret */
  }
  nosup_sym = DCCUnit_AllocSym();
  done_sym  = DCCUnit_AllocSym();
@@ -688,7 +765,7 @@ DCCParse_BuiltinCPUVendor(void) {
  vdup(0);                  /* ret */
  vpushi(DCCTYPE_INT,'\0'); /* ret, dret, '\0' */
  vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,string_size); /* ret, dret, '\0', 49 */
- vxmemset();               /* ret, dret */
+ vx_memset();               /* ret, dret */
  vpop(0);
 
  t_defsym(done_sym);

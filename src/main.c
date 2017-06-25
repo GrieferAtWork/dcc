@@ -18,6 +18,7 @@
  */
 #ifndef GUARD_MAIN_C
 #define GUARD_MAIN_C 1
+#define _BSD_SOURCE 1 /* fchmod() */
 
 #include <dcc/assembler.h>
 #include <dcc/compiler.h>
@@ -30,6 +31,10 @@
 
 #include <string.h>
 #include <stdio.h>
+
+#if !!(DCC_HOST_OS&DCC_OS_F_UNIX)
+#include <sys/stat.h>
+#endif
 
 #include "dcc/cmd.h"
 
@@ -430,6 +435,10 @@ int main(int argc, char *argv[]) {
    stream_t s_out;
    s_out = s_openw(preproc.p_outfile);
    DCCLinker_Make(s_out); /* Generate the binary. */
+#if !!(DCC_HOST_OS&DCC_OS_F_UNIX)
+   /* Actualy make the generated executable executable ('-rwxr-xr-x') */
+   if (OK) fchmod(s_out,0755);
+#endif
    s_close(s_out);
   }
  }
