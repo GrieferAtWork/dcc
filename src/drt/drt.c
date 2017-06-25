@@ -18,6 +18,7 @@
  */
 #ifndef GUARD_DRT_DRT_C
 #define GUARD_DRT_DRT_C 1
+#define _GNU_SOURCE 1 /* For 'REG_xxx' constants used by 'ucontext_t' */
 
 #include <dcc/common.h>
 #include <dcc/target.h>
@@ -30,10 +31,9 @@
 
 #include "drt.h"
 
-#if DCC_HOST_OS == DCC_OS_WINDOWS
-#   include <dcc_winmin.h>
-#else
-#   include <sys/mman.h>
+#if !!(DCC_HOST_OS&DCC_OS_F_UNIX)
+#include <sys/mman.h>
+#include <signal.h>
 #endif
 
 DCC_DECL_BEGIN
@@ -85,7 +85,7 @@ PUBLIC void
 DRT_VFree(void DRT_USER *vaddr, size_t n_bytes) {
  VirtualFree(vaddr,n_bytes,MEM_DECOMMIT);
 }
-#else
+#elif !!(DCC_HOST_OS&DCC_OS_F_UNIX)
 #ifndef PROT_NONE
 #define PROT_NONE 0
 #endif
@@ -103,7 +103,7 @@ DRT_VFree(void DRT_USER *vaddr, size_t n_bytes) {
 #define HAVE_MPROTECT
 #endif
 
-PRIVATE DWORD const mall_prot[] = {
+PRIVATE int const mall_prot[] = {
  /* [PROT(0)]                                                     = */PROT_NONE,
 #ifdef HAVE_MPROTECT
  /* [PROT(DCC_SYMFLAG_SEC_R)]                                     = */PROT_READ,
@@ -154,6 +154,8 @@ PUBLIC void
 DRT_VFree(void DRT_USER *vaddr, size_t n_bytes) {
  munmap(vaddr,n_bytes);
 }
+#else
+#error FIXME
 #endif
 
 
@@ -197,8 +199,8 @@ void DRT_SetCPUState(struct DCPUState const *__restrict state) {
 #undef LOAD_STATE
 #pragma warning(pop)
 #else
-PUBLIC __attribute__((__naked__)) DCC_ATTRIBUTE_NORETURN
-void DRT_SetCPUState(struct DCPUState const *__restrict state) {
+PUBLIC DCC_ATTRIBUTE_NORETURN
+void DRT_SetCPUState(struct DCPUState const *__restrict state);
 #if !!(DCC_HOST_CPUF&DCC_CPUF_X86_64)
 #   define LEVEL "r"
 #   define PFX   "q"
@@ -206,23 +208,23 @@ void DRT_SetCPUState(struct DCPUState const *__restrict state) {
 #   define LEVEL "e"
 #   define PFX   "l"
 #endif
- __asm__("push" PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_EFREG+DCPUEFREGISTER_OFFSETOF_FLAGS) "(%%" LEVEL "ax)\n\t"
-         "popf" PFX "\n\t"
-         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_CX) "(%%" LEVEL "ax), %%" LEVEL "cx\n\t"
-         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_DX) "(%%" LEVEL "ax), %%" LEVEL "dx\n\t"
-         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_BX) "(%%" LEVEL "ax), %%" LEVEL "bx\n\t"
-         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_SP) "(%%" LEVEL "ax), %%" LEVEL "sp\n\t"
-         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_BP) "(%%" LEVEL "ax), %%" LEVEL "bp\n\t"
-         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_SI) "(%%" LEVEL "ax), %%" LEVEL "si\n\t"
-         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_DI) "(%%" LEVEL "ax), %%" LEVEL "di\n\t"
-         "push" PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_IPREG+DCPUIPREGISTER_OFFSETOF_IP) "(%%" LEVEL "ax)\n\t"
-         "mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_AX) "(%%" LEVEL "ax), %%" LEVEL "ax\n\t"
-         "ret\n\t"
-         : : "a" (state) : "cc", "memory");
+__asm__("DRT_SetCPUState:"
+        "    mov"  PFX " " DCC_PP_STR(__SIZEOF_POINTER__) "(%" LEVEL "bp), %" LEVEL "ax\n"
+        "    push" PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_EFREG+DCPUEFREGISTER_OFFSETOF_FLAGS) "(%" LEVEL "ax)\n"
+        "    popf" PFX "\n"
+        "    mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_CX) "(%" LEVEL "ax), %" LEVEL "cx\n"
+        "    mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_DX) "(%" LEVEL "ax), %" LEVEL "dx\n"
+        "    mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_BX) "(%" LEVEL "ax), %" LEVEL "bx\n"
+        "    mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_SP) "(%" LEVEL "ax), %" LEVEL "sp\n"
+        "    mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_BP) "(%" LEVEL "ax), %" LEVEL "bp\n"
+        "    mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_SI) "(%" LEVEL "ax), %" LEVEL "si\n"
+        "    mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_DI) "(%" LEVEL "ax), %" LEVEL "di\n"
+        "    push" PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_IPREG+DCPUIPREGISTER_OFFSETOF_IP) "(%" LEVEL "ax)\n"
+        "    mov"  PFX " " DCC_PP_STR(DCPUSTATE_OFFSETOF_GPREG+DCPUGPREGISTER_OFFSETOF_AX) "(%" LEVEL "ax), %" LEVEL "ax\n"
+        "    ret\n"
+        ".size DRT_SetCPUState, . - DRT_SetCPUState\n");
 #undef PFX
 #undef LEVEL
- __builtin_unreachable();
-}
 #endif
 #else
 #error FIXME
@@ -247,9 +249,7 @@ PUBLIC void DCCSection_RTQuit(struct DCCSection *__restrict self) {
 #else
  {
   void DRT_USER *addr; size_t size;
-  DCCRTSECTION_FOREACH_BEGIN(&self->sc_dat.sd_rt,
-                             DCC_RT_PAGEATTR_ALLOC,
-                             addr,size) {
+  DCCRTSECTION_FOREACH_BEGIN(&self->sc_dat.sd_rt,0x3,addr,size) {
    DRT_VFree(addr,size);
   }
   DCCRTSECTION_FOREACH_END;
@@ -368,14 +368,14 @@ DCCSection_RTDoneWrite(struct DCCSection *__restrict self,
       (void *)(DCCRTSection_BYTEADDR(&self->sc_dat.sd_rt,addr)+(size-1)),
       (int)GetLastError());
  }
-#if DCC_HOST_OS == DCC_OS_WINDOWS
+#ifndef NO_FlushInstructionCache
  if (self->sc_start.sy_flags&DCC_SYMFLAG_SEC_X) {
   /* Flush the instruction cache after writing to an executable section. */
   FlushInstructionCache(GetCurrentProcess(),
                         DCCRTSection_BYTEADDR(&self->sc_dat.sd_rt,addr),
                         size);
  }
-#endif /* OS_F_WINDOWS */
+#endif /* !NO_FlushInstructionCache */
 }
 
 
@@ -390,9 +390,17 @@ PUBLIC void DRT_Init(void) {
 PUBLIC void DRT_Quit(void) {
  if (drt.rt_flags&DRT_FLAG_STARTED) {
   /* Destroy the RT thread. */
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
   TerminateThread(drt.rt_thread,42);
   CloseHandle(drt.rt_thread);
-  CloseHandle(drt.rt_event.ue_sem);
+#else
+  if (!(drt.rt_flags&DRT_FLAG_JOINING2)) {
+   pthread_cancel(drt.rt_thread);
+   pthread_kill(drt.rt_thread,SIGINT); /* Try to send an interrupt?s */
+   pthread_detach(drt.rt_thread); /* If it's still running, just give up... */
+  }
+#endif
+  DCC_semaphore_quit(drt.rt_event.ue_sem);
   /* Just in case the drt thread still had a pending
    * event set, clear that even to prevent any false
    * detection of a DRT synchronization point. */

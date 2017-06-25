@@ -469,8 +469,14 @@ PREDEFINED_MACRO_IF(__PIE__,HAS(EXT_SYSTEM_MACROS) && (linker.l_flags&DCC_LINKER
 PREDEFINED_MACRO(__DCC_VERSION__,DCC_PP_STR(DCC_COMPILER_VERSION))
 
 #if DCC_CONFIG_HAVE_DRT
-/* Define a preprocessor symbol '__DRT__' when compiling in direct mode. */
+/* Define a preprocessor symbol '__DRT__' when compiling in direct mode.
+ * NOTE: The symbol recursively describes a larger number to detect
+ *       DRT self-hosting/recursion depth (if that is even possible). */
+#ifdef __DRT__
+PREDEFINED_MACRO_IF(__DRT__,DRT_ENABLED(),TPP_PP_STR(__TPP_EVAL(__DRT__+1)))
+#else
 PREDEFINED_MACRO_IF(__DRT__,DRT_ENABLED(),"1")
+#endif
 #endif /* DCC_CONFIG_HAVE_DRT */
 
 #if DCC_TARGET_BIN == DCC_BINARY_ELF

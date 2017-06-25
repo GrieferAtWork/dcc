@@ -27,13 +27,15 @@
 #include <string.h>
 
 #if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
-#include <dcc_winmin.h>
+#   include <dcc_winmin.h>
+#elif !!(DCC_HOST_OS&DCC_OS_F_UNIX)
+#   include <unistd.h>
 #endif
 
 #ifdef _MSC_VER
-#include <malloc.h>
+#   include <malloc.h>
 #else
-#include <alloca.h>
+#   include <alloca.h>
 #endif
 
 #ifndef PATH_MAX
@@ -288,8 +290,10 @@ again:
  if (p != buffer) DCC_Free(p);
 }
 
-#define INTPATH_MAXTRAIL 16
 
+#endif
+
+#define INTPATH_MAXTRAIL 16
 struct inttrail { char t[INTPATH_MAXTRAIL]; };
 
 static struct inttrail const
@@ -311,9 +315,14 @@ incint_trails[INCINT_TRIAL_COUNT+1] = {
 
 LOCAL void linker_add_intpath_self(void) {
  char *mbuf = NULL,buf[1024],*path = buf,*iter,*lastslash;
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
  DWORD newbuflen,buflen = sizeof(buf);
+#elif !!(DCC_HOST_OS&DCC_OS_F_UNIX)
+ ssize_t newbuflen,buflen = sizeof(buf);
+#endif
  struct inttrail const *trail_iter,*inc_trail_iter;
  struct TPPString **inc_dst;
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
  for (;;) {
   /* XXX: Add support for 'DllMain' */
   newbuflen  = GetModuleFileNameA(NULL,path,buflen);
@@ -322,8 +331,27 @@ LOCAL void linker_add_intpath_self(void) {
   mbuf = path = (char *)realloc(mbuf,(buflen *= 2)*sizeof(char));
   if unlikely(!mbuf) {nomem: TPPLexer_SetErr(); return; }
  }
+#elif !!(DCC_HOST_OS&DCC_OS_F_UNIX)
+ for (;;) {
+  newbuflen = readlink("/proc/self/exe",path,buflen);
+  if unlikely(newbuflen < 0) {
+   path[0] = '.';
+   path[1] = '\0';
+   newbuflen = 1+(INTPATH_MAXTRAIL*2);
+   break;
+  }
+  newbuflen += (INTPATH_MAXTRAIL*2);
+  if (newbuflen < buflen) break;
+  mbuf = path = (char *)realloc(mbuf,(buflen *= 2)*sizeof(char));
+  if unlikely(!mbuf) {nomem: TPPLexer_SetErr(); return; }
+ }
+#else
+#   error FIXME
+#endif
  for (iter = path,lastslash = NULL; *iter; ++iter) {
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
   if (*iter == '\\') *iter = '/';
+#endif /* DCC_OS_F_WINDOWS */
   if (*iter == '/') lastslash = iter;
  }
  if (lastslash) {
@@ -333,8 +361,8 @@ LOCAL void linker_add_intpath_self(void) {
   lastslash = path+(newbuflen-(INTPATH_MAXTRAIL*2));
  }
  if ((lastslash-path) > 4 &&
-    !memcmp(lastslash-4,"/bin",4*sizeof(char))
-     ) lastslash -= 4;
+     !memcmp(lastslash-4,"/bin",4*sizeof(char)))
+      lastslash -= 4;
  buflen = lastslash-path;
  inc_dst = (struct TPPString **)realloc(TPPLexer_Current->l_syspaths.il_pathv,
                                        (TPPLexer_Current->l_syspaths.il_pathc+
@@ -360,12 +388,11 @@ LOCAL void linker_add_intpath_self(void) {
                    TPPLexer_Current->l_syspaths.il_pathc);
  free(mbuf);
 }
-#endif
 
 PUBLIC void
 DCCLinker_AddSysPaths(char const *__restrict outfile_or_basefile) {
-#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS) && !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
-#define DCC_LINKER_HAVE_OSSPEC
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS) && \
+    !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
  /* For compatibility with windows dll-path resolution,
   * the following locations must be searched by DCC (in that order):
   *    1. <output-directory-of-executable> (binary-output-mode)
@@ -387,24 +414,21 @@ DCCLinker_AddSysPaths(char const *__restrict outfile_or_basefile) {
     free(pathcopy);
    }
  }
- /* Setup the default list of internal library paths. */
+#elif !!(DCC_HOST_OS&DCC_OS_F_UNIX) && \
+      !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
+ /* TODO: This can be done better! */
+ { char buffer[] = "/usr/lib";
+   DCCLibPaths_DoAddLibPathNow(&linker.l_paths,buffer,
+                              (sizeof(buffer)/sizeof(char))-1);
+ }
+#if 0
+ { char buffer[] = "/usr/include";
+   TPPLexer_AddIncludePath(buffer,(sizeof(buffer)/sizeof(char))-1);
+ }
+#endif
+#endif
+ /* Setup the default list of internal library paths & the fixinclude folder. */
  linker_add_intpath_self();
-#endif
-#if !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
-#endif
-#ifndef DCC_LINKER_HAVE_OSSPEC
- struct TPPString **syspathv;
-#define /*SystemIncludePath*/SIP(x) DCCLibPaths_DoAddLibPath(self,path,pathsize)
-#define /*SystemLibraryPath*/SLP(x) DCCLibPaths_DoAddLibPath(&linker.l_intpaths,path,pathsize)
-#define /*  UserLibraryPath*/ULP(x) DCCLibPaths_DoAddLibPath(&linker.l_paths,path,pathsize)
- syspathv = (struct TPPString **)DCC_Realloc(TPPLexer_Current->l_syspaths.il_pathv,
-                                             TPPLexer_Current->l_syspaths.il_pathc*
-                                             sizeof(struct TPPString *),0);
- if unlikely(!syspathv) return;
- /* TODO */
- TPPString_Incref(str);
-#endif
-#undef DCC_LINKER_HAVE_OSSPEC
 }
 
 

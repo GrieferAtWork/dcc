@@ -18,6 +18,7 @@
  */
 #ifndef GUARD_DCC_VSTACK_EXT_C
 #define GUARD_DCC_VSTACK_EXT_C 1
+#define _GNU_SOURCE /* enable 'memrchr' */
 
 #include <dcc/common.h>
 #include <dcc/vstack.h>

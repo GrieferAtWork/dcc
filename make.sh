@@ -1,7 +1,8 @@
 #!/bin/bash
 
-CC="gcc"
+CC="gcc -pthread"
 F=("-g" "-Iinclude" "-DDCC_PRIVATE_API")
+LF=""
 out_bin="bin/dcc"
 obj_path="build/dcc"
 
@@ -11,7 +12,6 @@ if [ -f "$CC_DDC" ]; then
 	CC="$CC_DDC";
 	obj_path="build/ddd"
 	out_bin="bin/ddd.exe"
-	F+=("-DDCC_PRIVATE_API")
 	F+=("-D_VA_LIST_DEFINED")
 	F+=("-D__SSE2__")
 	F+=("-ID:/cygwin32/usr/include/w32api")
@@ -19,10 +19,11 @@ elif [ -f "$CC_DCC" ]; then
 	CC="$CC_DCC";
 	obj_path="build/ddc"
 	out_bin="bin/ddc.exe"
-	F+=("-DDCC_PRIVATE_API")
 	F+=("-D_VA_LIST_DEFINED")
 	F+=("-D__SSE2__")
 	F+=("-ID:/cygwin32/usr/include/w32api")
+else
+	LF="$LF -ldl"
 fi
 
 build() { echo "$obj_path/$1"; }
@@ -73,8 +74,8 @@ src src/dcc/*.c
 src src/drt/*.c
 src lib/src/a2l/addr2line-common.c
 
-echo $CC -g -o "$out_bin" "${object_list[@]}"
-$CC -g -o "$out_bin" "${object_list[@]}"
+echo $CC -g -o "$out_bin" "${object_list[@]}" $LF
+$CC -g -o "$out_bin" "${object_list[@]}" $LF
 
 
 

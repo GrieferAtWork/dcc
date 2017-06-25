@@ -386,6 +386,7 @@
 #include <stdint.h>
 #ifndef _WIN32
 #include <pthread.h>
+#include <semaphore.h>
 #endif
 
 DCC_DECL_BEGIN
@@ -498,14 +499,24 @@ struct DCPUState {
 };
 
 
-#ifdef _WIN32
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
 typedef void     *DCC(thread_t);
-typedef DWORD     DCC(threadid_t);
+typedef uint32_t  DCC(threadid_t);
 typedef void     *DCC(semaphore_t);
+#define DCC_semaphore_init(sem,initial) \
+     (((sem) = CreateSemaphoreA(NULL,(initial),0x1000,NULL)) != NULL)
+#define DCC_semaphore_quit(sem)  CloseHandle(sem)
+#define DCC_semaphore_post(sem)  ReleaseSemaphore(sem,1,NULL)
+#define DCC_semaphore_wait(sem) (WaitForSingleObject(sem,INFINITE) != WAIT_FAILED)
 #define DRT_HAVE_THREAD_ID
 #else
 typedef pthread_t DCC(thread_t);
 typedef sem_t     DCC(semaphore_t);
+#define DCC_semaphore_init(sem,initial) \
+       (sem_init(&(sem),0,initial) >= 0)
+#define DCC_semaphore_quit(sem)  sem_destroy(&(sem))
+#define DCC_semaphore_post(sem)  sem_post(&(sem))
+#define DCC_semaphore_wait(sem) (sem_wait(&(sem)) >= 0)
 #endif
 
 
@@ -664,6 +675,8 @@ DRT_SetCPUState(struct DCPUState const *__restrict state);
  * With that in mind, 'DRT_SyncAll' will also eventually join()
  * the user-thread, meaning that it should only be called once
  * all input files have been compiled.
+ * @param: exitcode: When non-NULL, filled with the exit code of the DRT user function.
+ *          WARNING: This argument is ignored if DRT sync fails due to 'DRT_SYNC_UNRESOLVED'
  * @return: DRT_SYNC_NONE:       No data was synchronized.
  * @return: DRT_SYNC_OK:         Data was synchronized.
  * @return: DRT_SYNC_UNRESOLVED: Failed to synchronize data due to undefined symbols / missing data.
@@ -671,12 +684,13 @@ DRT_SetCPUState(struct DCPUState const *__restrict state);
  */
 #ifdef __INTELLISENSE__
 DCCFUN int DRT_Sync(void);
-DCCFUN int DRT_SyncAll(void);
+DCCFUN int DRT_SyncAll(DCC(target_int_t) *exitcode);
 #else
 DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_Sync(int warn_failure);
-DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(void);
-#define DRT_Sync()    (DRT_STARTED() ? DRT_H_Sync(0) : 0)
-#define DRT_SyncAll() (DRT_STARTED() ? DRT_H_SyncAll() : 0)
+DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(DCC(target_int_t) *exitcode);
+#define DRT_Sync()            (DRT_STARTED() ? DRT_H_Sync(0) : 0)
+#define DRT_SyncAll(exitcode) (DRT_STARTED() ? DRT_H_SyncAll(exitcode) : \
+                              ((exitcode) ? (void)(*(exitcode) = 0) : (void)0,DRT_SYNC_NONE))
 #endif
 #define DRT_SYNC_NONE       0
 #define DRT_SYNC_OK         1

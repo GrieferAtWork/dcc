@@ -34,10 +34,29 @@
 #   define MEMORY_BARRIER() __asm__ __volatile__("" : : : "memory");
 #endif
 
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
+#   include <dcc_winmin.h>
+#else
+#   include <errno.h>
+#   include <pthread.h>
+#   define GetLastError()               errno
+#   define ExitThread(code)             pthread_exit((void *)(code))
+#if __has_include(<asm/cachectl.h>) || \
+    defined(HAVE_ASM_CACHECTL) || \
+    defined(HAVE_INCLUDE_ASM_CACHECTL)
+#   include <asm/cachectl.h>
+#   define FlushInstructionCache(h,p,s) cacheflush(p,s,ICACHE)
+#else
+#   define NO_FlushInstructionCache
+#   define FlushInstructionCache(h,p,s) (void)0
+#endif
+#endif
+
+
 DCC_DECL_BEGIN
 
 DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_Sync(int warn_failure);
-DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(void);
+DCCFUN int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(target_int_t *exitcode);
 
 /* Find and return the address associated with the given user-section address 'addr'. */
 INTDEF struct DCCSection *DRT_FindUserSection(void DRT_USER *addr);

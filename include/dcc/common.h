@@ -392,8 +392,10 @@ DCCFUN void  DCC_Free(void *p);
 
 #if DCC_DEBUG && !defined(__INTELLISENSE__)
 DCCFUN void *DCC_dbg_realloc(void *p, size_t s, char const *f, int l);
+#ifdef _MSC_VER
 #undef realloc
 #define realloc(p,s) DCC_dbg_realloc(p,s,__FILE__,__LINE__)
+#endif
 #endif
 
 /* Emit warnings about failed allocations

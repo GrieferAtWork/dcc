@@ -67,13 +67,15 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Support for GCC-style inline assembly: <code>\_\_asm\_\_("ret")</code>.
   - Support for MSVC fixed-length integer types: <code>\_\_int(8|16|32|64)</code>.
   - Support for GCC <code>\_\_auto\_type</code> (as well as special interpretation of <code>auto</code> when not used as storage class. - <code>auto int x = 42</code> auto is storage class; <code>auto y = 10;</code> auto denotes automatic type deduction).
-  - Support for C99 variable-length arrays: <code>int x = 10; int y[x*2]; assert(sizeof(x) == 80);</code>.
+  - Support for C99 variable-length arrays: <code>int x = 10; int y[x*2]; assert(sizeof(y) == 80);</code>.
   - Support for old (pre-STDC: K&R-C) function declarations/implementations.
   - Support for new (post-STDC: C90+) function declarations/implementations.
   - Support for floating-point types (Assembly generator is not implemented yet).
   - Support for GCC x86 segment address space (<code>\_\_seg_fs</code>/<code>\_\_seg_gs</code>)
+  - Debugging aids for pre-initializing local variables with <code>0xCC</code> bytes and memory allocated using <code>alloca</code> with <code>0xAC</code>.
   - Inherited from assembly: Named register identifiers.
     - <code>int x = %eax;</code> (CPU-specific, on i386 compiles to <code>mov %eax, x</code>).
+    - <code>int x = *(int *)%fs:0x18;</code> (Can also be used to access segment register, on i386 compiles to <code>movl %fs:(0x18), x</code>).
   - Inherited from assembly: Get current text address.
     - <code>void *p = .;</code> (Evaluates to the current text address with <code>void *</code> typing).
   - Use label names in expressions:
@@ -86,7 +88,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Split between struct/union/enum, declaration and label namespaces:<code>foo: struct foo foo; // Valid code and 3 different 'foo'</code>
   - Support for unnamed struct/union inlining:
     - <code>union foo { \_\_int32 x; struct { \_\_int16 a,b; }; };</code>
-      - <code>offsetof(union foo.x) == 0</code>, <code>offsetof(union foo.a) == 0</code>, <code>offsetof(union foo.b) == 2</code>
+      - <code>offsetof(union foo,x) == 0</code>, <code>offsetof(union foo,a) == 0</code>, <code>offsetof(union foo,b) == 2</code>
   - Support for builtin functions offering special compile-time optimizations, or functionality (Every builtin can be queried with <code>\_\_has\_builtin(...)</code>):
     - <code>char const (&\_\_builtin\_typestr(type\_or\_expr t))[];</code>
       - Accepting arguments just like 'sizeof', return a human-readable representation of the [expression's] type as a compile-time array of characters allocated in the '.string' section.
@@ -96,7 +98,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
     - <code>void \_\_builtin\_unreachable(void) \_\_attribute\_\_((noreturn));</code>
     - <code>void \_\_builtin\_trap(void) \_\_attribute\_\_((noreturn));</code>
     - <code>void \_\_builtin\_breakpoint(void);</code>
-      - Emit a CPU-specific instruction to break into a debugging environment
+      - Emit a CPU-specific instruction to break into a debugging environment, or do nothing if the target CPU doesn't allow for such an instruction
     - <code>void *\_\_builtin\_alloca(size\_t s);</code>
     - <code>void *\_\_builtin\_alloca\_with\_align(size\_t s, size\_t a);</code>
     - <code>void \_\_builtin\_assume(expr x),\_\_assume(expr x);</code>

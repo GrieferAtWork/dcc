@@ -193,6 +193,10 @@ static void load_stdlib(void) {
  }
 }
 
+int get_a(void) { return 10; }
+
+
+
 int main(int argc, char *argv[]) {
  int result = 0;
 #if DCC_CONFIG_HAVE_DRT
@@ -381,8 +385,10 @@ int main(int argc, char *argv[]) {
  if (DRT_ENABLED()) {
   tpp_clrfile();
   if (OK) {
+   target_int_t exitcode;
    TPPLexer_PushFile(&TPPFile_DRT);
-   DRT_SyncAll();
+   if (DRT_SyncAll(&exitcode) != DRT_SYNC_UNRESOLVED)
+       result = exitcode; /* Return the exitcode of the DRT thread. */
    tpp_clrfile();
   }
   goto end;

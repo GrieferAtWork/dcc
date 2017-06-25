@@ -45,22 +45,28 @@ DCC_DECL_BEGIN
 INTERN void DRT_USER __declspec(naked)
 DCC_ATTRIBUTE_FASTCALL DRT_U_ProbeN(void DRT_USER *p, size_t n) {
  (void)p; (void)n;
- __asm pushfd;
  /* TODO: Test all the bytes! */
+ __asm pushfd;
  __asm test dword ptr [XCX], 0x0;
  __asm popfd;
  __asm ret;
 }
 #else
-INTERN void DRT_USER __attribute__((__naked__))
-DCC_ATTRIBUTE_FASTCALL DRT_U_ProbeN(void DRT_USER *p, size_t n) {
- /* TODO: Test all the bytes! */
- __asm__("pushfl\n"
-         "testl $0, (%" DCC_PP_STR(XCX) ")\n"
-         "popfl\n"
-         "ret\n");
- __builtin_unreachable();
-}
+INTERN void DRT_USER DCC_ATTRIBUTE_FASTCALL
+DRT_U_ProbeN(void DRT_USER *p, size_t n);
+
+#if defined(__ELF__) || \
+  (!defined(__PE__) && (DCC_HOST_OS != DCC_OS_WINDOWS))
+__asm__(".global DRT_U_ProbeN\n");
+__asm__(".hidden DRT_U_ProbeN\n");
+#endif
+__asm__("DRT_U_ProbeN:\n"
+        /* TODO: Test all the bytes! */
+        "    pushfl\n"
+        "    testl $0, (%" DCC_PP_STR(XCX) ")\n"
+        "    popfl\n"
+        "    ret\n"
+        ".size DRT_U_ProbeN, . - DRT_U_ProbeN\n");
 #endif
 #undef XDX
 #undef XCX
@@ -89,8 +95,8 @@ INTERN void DRT_USER DRT_U_WaitEvent(uint32_t code) {
   fflush(stdout);
   fflush(stderr);
 #endif
-  if (WaitForSingleObject(EVENT.ue_sem,INFINITE) == WAIT_FAILED) {
-   fprintf(stderr,"Failed to wait for DRT event (%d)\n",GetLastError());
+  if (!DCC_semaphore_wait(EVENT.ue_sem)) {
+   fprintf(stderr,"Failed to wait for DRT event (%d)\n",(int)GetLastError());
    ExitThread(1);
   }
  }

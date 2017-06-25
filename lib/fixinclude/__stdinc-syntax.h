@@ -550,6 +550,18 @@ void *__builtin_extract_return_addr(void *mangled_frame_addr);
 void *__builtin_frob_return_address(void *unmangled_frame_addr);
 int   __builtin_noop(...);
 
+void   __builtin_cpu_init(void);
+_Bool  __builtin_cpu_is(char const *name);
+int    __builtin_cpu_supports(char const *feature);
+#if defined(__i386__) || defined(__x86_64__)
+char (&__builtin_cpu_vendor(void))[13];
+char (&__builtin_cpu_brand(void))[49];
+char (&__builtin_cpu_vendor(char buf[13]))[13];
+char (&__builtin_cpu_brand(char buf[49]))[49];
+#else
+#error FIXME
+#endif
+
 template<class type> void __sync_inc(type volatile *ptr, type value, ...);
 template<class type> void __sync_dec(type volatile *ptr, type value, ...);
 template<class type> void __sync_neg(type volatile *ptr, type value, ...);

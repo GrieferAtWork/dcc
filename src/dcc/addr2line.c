@@ -54,7 +54,7 @@ A2L_NAME(a2l_setarg)(a2l_op_t *code, a2l_arg_t arg) {
 PRIVATE a2l_op_t *
 a2l_exec1(struct A2lState *__restrict state,
           a2l_op_t const *__restrict code) {
- a2l_exec(state,state,&code,A2L_CAPTURE_ONE);
+ a2l_exec(state,state,(a2l_op_t const **)&code,A2L_CAPTURE_ONE);
  return (a2l_op_t *)code;
 }
 
@@ -724,7 +724,8 @@ DCCA2lChunk_DeleteRange(struct DCCA2lChunk *__restrict self,
          ,self->c_smin.s_addr
          ,self->c_smax.s_addr);
   if (state.s_addr < addr+size)
-      a2l_exec(&state,&state,(a2l_op_t const **)&code,addr+size);
+      a2l_exec(&state,&state,
+              (a2l_op_t const **)&code,addr+size);
   assertf(code >  self->c_code_begin &&
           code <= self->c_code_pos,
           "delete_begin        = %p\n"

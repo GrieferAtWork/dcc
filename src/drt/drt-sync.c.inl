@@ -638,14 +638,14 @@ post:
  if unlikely(!OK) return DRT_SYNC_UNRESOLVED;
  EVENT.ue_code = DRT_EVENT_NONE;
  MEMORY_BARRIER();
- if (!(drt.rt_flags&DRT_FLAG_JOINING)) {
-  ReleaseSemaphore(EVENT.ue_sem,1,NULL);
- }
+ if (!(drt.rt_flags&DRT_FLAG_JOINING))
+       DCC_semaphore_post(EVENT.ue_sem);
  return result;
 }
 #undef EVENT
 
-PUBLIC int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(void) {
+PUBLIC int DCC_ATTRIBUTE_FASTCALL
+DRT_H_SyncAll(DCC(target_int_t) *exitcode) {
  int error;
  assert(drt.rt_flags&DRT_FLAG_STARTED);
  drt.rt_flags |= DRT_FLAG_JOINING;
@@ -660,13 +660,21 @@ PUBLIC int DCC_ATTRIBUTE_FASTCALL DRT_H_SyncAll(void) {
   /* The semaphore event wasn't posted because 'DRT_FLAG_JOINING' was already set. */
   drt.rt_flags |= DRT_FLAG_JOINING2;
   MEMORY_BARRIER();
-  ReleaseSemaphore(drt.rt_event.ue_sem,1,NULL);
+  DCC_semaphore_post(drt.rt_event.ue_sem);
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
   WaitForSingleObject(drt.rt_thread,INFINITE);
+  if (exitcode) {
+   DWORD code;
+   if (!GetExitCodeThread(drt.rt_thread,&code))
+        code = (DWORD)-1; /* ??? */
+   *exitcode = code;
+  }
+#else
+#endif
  } else {
   drt.rt_flags &= ~(DRT_FLAG_JOINING);
   MEMORY_BARRIER();
  }
-
  return error;
 }
 
