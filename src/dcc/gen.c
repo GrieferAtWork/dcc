@@ -516,6 +516,79 @@ DCCDisp_SignMirrorMem(struct DCCMemLoc const *__restrict dst,
  }
 }
 
+
+
+/* Mirror test operator: '<' --> '>', '<=' --> '>=', but '==' --> '==' */
+PUBLIC test_t const DCCDisp_TestMirror[16] = {
+ /* [DCC_TEST_O ] = */DCC_TEST_O,  /* [  ] test: overflow (OF=1). */
+ /* [DCC_TEST_NO] = */DCC_TEST_NO, /* [  ] test: not overflow (OF=0). */
+ /* [DCC_TEST_B ] = */DCC_TEST_A,  /* [< ] test: below (CF=1). */
+ /* [DCC_TEST_AE] = */DCC_TEST_BE, /* [>=] test: above or equal (CF=0). */
+ /* [DCC_TEST_E ] = */DCC_TEST_E,  /* [==] test: equal (ZF=1). */
+ /* [DCC_TEST_NE] = */DCC_TEST_NE, /* [!=] test: not equal (ZF=0). */
+ /* [DCC_TEST_BE] = */DCC_TEST_AE, /* [<=] test: below or equal (CF=1 or ZF=1). */
+ /* [DCC_TEST_A ] = */DCC_TEST_B,  /* [> ] test: above (CF=0 and ZF=0). */
+ /* [DCC_TEST_S ] = */DCC_TEST_S,  /* [  ] test: sign (SF=1). */
+ /* [DCC_TEST_NS] = */DCC_TEST_NS, /* [  ] test: not sign (SF=0). */
+ /* [DCC_TEST_PE] = */DCC_TEST_PE, /* [  ] test: parity even (PF=1). */
+ /* [DCC_TEST_PO] = */DCC_TEST_PO, /* [  ] test: parity odd (PF=0). */
+ /* [DCC_TEST_L ] = */DCC_TEST_G,  /* [< ] test: less (SF<>OF). */
+ /* [DCC_TEST_GE] = */DCC_TEST_LE, /* [>=] test: greater or equal (SF=OF). */
+ /* [DCC_TEST_LE] = */DCC_TEST_GE, /* [<=] test: less or equal (ZF=1 or SF<>OF). */
+ /* [DCC_TEST_G ] = */DCC_TEST_L,  /* [> ] test: greater (ZF=0 and SF=OF). */
+};
+PUBLIC test_t const DCCDisp_TestOrEq[16] = {
+ /* [DCC_TEST_O ] = */DCC_TEST_O,  /* [  ] test: overflow (OF=1). */
+ /* [DCC_TEST_NO] = */DCC_TEST_NO, /* [  ] test: not overflow (OF=0). */
+ /* [DCC_TEST_B ] = */DCC_TEST_BE, /* [< ] test: below (CF=1). */
+ /* [DCC_TEST_AE] = */DCC_TEST_AE, /* [>=] test: above or equal (CF=0). */
+ /* [DCC_TEST_E ] = */DCC_TEST_E,  /* [==] test: equal (ZF=1). */
+ /* [DCC_TEST_NE] = */DCC_TEST_NE, /* [!=] test: not equal (ZF=0). */
+ /* [DCC_TEST_BE] = */DCC_TEST_BE, /* [<=] test: below or equal (CF=1 or ZF=1). */
+ /* [DCC_TEST_A ] = */DCC_TEST_AE, /* [> ] test: above (CF=0 and ZF=0). */
+ /* [DCC_TEST_S ] = */DCC_TEST_S,  /* [  ] test: sign (SF=1). */
+ /* [DCC_TEST_NS] = */DCC_TEST_NS, /* [  ] test: not sign (SF=0). */
+ /* [DCC_TEST_PE] = */DCC_TEST_PE, /* [  ] test: parity even (PF=1). */
+ /* [DCC_TEST_PO] = */DCC_TEST_PO, /* [  ] test: parity odd (PF=0). */
+ /* [DCC_TEST_L ] = */DCC_TEST_LE, /* [< ] test: less (SF<>OF). */
+ /* [DCC_TEST_GE] = */DCC_TEST_GE, /* [>=] test: greater or equal (SF=OF). */
+ /* [DCC_TEST_LE] = */DCC_TEST_LE, /* [<=] test: less or equal (ZF=1 or SF<>OF). */
+ /* [DCC_TEST_G ] = */DCC_TEST_GE, /* [> ] test: greater (ZF=0 and SF=OF). */
+};
+
+PUBLIC void
+DCCDisp_ScxReg(test_t t, rc_t reg) {
+ rc_t tmp;
+ assert(reg&DCC_RC_MASK);
+ /* >> mov               $-1,  %tmp
+  * >> setcc(t)          %reg
+  * >> cmovcc(mirror(t)) %tmp, %reg
+  */
+ tmp = DCCVStack_GetRegOf(reg&DCC_RC_MASK,(uint8_t)~(1 << reg&DCC_RI_MASK));
+ DCCDisp_IntMovReg(-1,tmp);
+ DCCDisp_SccReg(t,reg);
+ DCCDisp_RegCMovReg(DCC_TEST_MIRROR(t),tmp,reg,1);
+}
+PUBLIC void
+DCCDisp_ScxMem(test_t t, struct DCCMemLoc const *__restrict dst,
+               target_siz_t n) {
+ struct DCCSym *skip_sym;
+ struct DCCSymAddr minus_one;
+ /* >>     setcc(t)            !dst
+  * >>     jcc(not(mirror(t))) 1f
+  * >>     mov                 $-1, !dst
+  * >> 1: */
+ skip_sym = DCCUnit_AllocSym();
+ if unlikely(!skip_sym) return;
+ DCCDisp_SccMem(t,dst,n);
+ DCCDisp_SymJcc(DCC_TEST_NOT(DCC_TEST_MIRROR(t)),skip_sym);
+ minus_one.sa_off = -1;
+ minus_one.sa_sym = NULL;
+ DCCDisp_CstMovMem(&minus_one,dst,n);
+ t_defsym(skip_sym);
+}
+
+
 #define EFLAGS_CF  (1 << 0) /* Carry flag */
 #define EFLAGS_PF  (2 << 0) /* Parity flag */
 #define EFLAGS_AF  (4 << 0) /* Adjust flag */

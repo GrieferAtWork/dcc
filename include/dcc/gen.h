@@ -148,7 +148,9 @@ DCCFUN void DCCDisp_CstMovReg(struct DCCSymAddr const *__restrict val, DCC(rc_t)
 DCCFUN void DCCDisp_CstMovRegRaw(struct DCCSymAddr const *__restrict val, DCC(rc_t) dst);
 
 /* lea !val, !dst (Set 'n' bytes of memory at 'dst' to an address from 'val')
- * NOTE: If static initialization is enabled, memory may be moved at compile-time. */
+ * NOTE: If static initialization is enabled, memory may be moved at compile-time.
+ * TODO: This function must be able to handle more than just a bus-width in 'dst'!
+ *       It's even already being used in such a way, so compiler crashes can happen with this! */
 DCCFUN void DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict val,
                               struct DCCMemLoc  const *__restrict dst,
                               DCC(width_t) width);
@@ -274,8 +276,12 @@ DCCFUN void DCCDisp_LeaMem(struct DCCMemLoc const *__restrict addr,
 typedef uint8_t DCC(test_t);
 
 #if DCC_TARGET_HASI(I_X86)
-#define DCC_TEST_NBIT     1
-#define DCC_TEST_NOT(x) ((x)^DCC_TEST_NBIT)
+#define DCC_TEST_NBIT        1
+#define DCC_TEST_NOT(x)    ((x)^DCC_TEST_NBIT)
+#define DCC_TEST_MIRROR(x)   DCCDisp_TestMirror[x]
+#define DCC_TEST_OREQ(x)     DCCDisp_TestOrEq[x]
+DCCDAT DCC(test_t) const DCCDisp_TestMirror[16]; /* Mirror '<' --> '>', etc. */
+DCCDAT DCC(test_t) const DCCDisp_TestOrEq[16];   /* Convert the test to include <or-equal> (if not possible, return the original test) */
 
 #define DCC_TEST_O    0x0 /* test: overflow (OF=1). */
 #define DCC_TEST_NO   0x1 /* test: not overflow (OF=0). */
@@ -342,6 +348,22 @@ DCCFUN void DCCDisp_MemCMovReg(DCC(test_t) t, struct DCCMemLoc const *__restrict
  *       areas, as any overflow must manually be set to ZERO(0). */
 DCCFUN void DCCDisp_SccReg(DCC(test_t) t, DCC(rc_t) reg);
 DCCFUN void DCCDisp_SccMem(DCC(test_t) t, struct DCCMemLoc const *__restrict dst,
+                           DCC(target_siz_t) n);
+/* Similar to 'DCCDisp_SccReg'/'DCCDisp_SccMem', but the test is mapped as follows:
+ * >>      if (EFLAGS:DCC_TEST_MIRROR(t)) dst = -1;
+ * >> else if (EFLAGS:t)                  dst =  1;
+ * >> else                                dst =  0;
+ * Using this, e.g.: '__builtin_memcmp()' can be
+ * implemented without the need of a return register.
+ * NOTE: The generated code may also be behave like this:
+ * >>      if (EFLAGS:t)                  dst =  1;
+ * >> else if (EFLAGS:DCC_TEST_MIRROR(t)) dst = -1;
+ * >> else                                dst =  0;
+ * In other words: If 't == DCC_TEST_MIRROR(t)', the result
+ *                 is undefined for the TRUE(1) case.
+ */
+DCCFUN void DCCDisp_ScxReg(DCC(test_t) t, DCC(rc_t) reg);
+DCCFUN void DCCDisp_ScxMem(DCC(test_t) t, struct DCCMemLoc const *__restrict dst,
                            DCC(target_siz_t) n);
 
 /* mov $cst, %dst (Simply a proxy for 'DCCDisp_CstMovReg') */

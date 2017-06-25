@@ -288,7 +288,7 @@ DCCVStack_Memcmp(void) {
  assert(vsize >= 3);
  /* a, b, size */
  if (DCCSTACKVALUE_ISCONST_INT(vbottom)) {
-  struct DCCMemLoc a_loc,b_loc; rc_t resreg,tempreg;
+  struct DCCMemLoc a_loc,b_loc;
   target_siz_t cmp_size = (target_siz_t)vbottom->sv_const.offset;
   if (!cmp_size) {
    /* Special case: Empty copy/move. */
@@ -338,27 +338,37 @@ fix_stack:
   /* Dispense compiler-generated memcpy() instructions. */
   DCCDisp_MemBinMem('?',&a_loc,cmp_size,
                         &b_loc,cmp_size,1);
-  vpop(1); /* a */
-  vpop(1); /* . */
-  resreg = DCCVStack_GetReg(DCC_RC_IN(DCC_TARGET_SIZEOF_INT),1);
-  /* Clear the result register. */
-  { struct DCCSymAddr val = {0,NULL};
-    DCCDisp_CstMovRegRaw(&val,resreg);
+#if 1
+  vpushxt(DCC_TEST_G); /* a, b, xt(g) */
+  vlrot(3);            /* xt(g), a, b */
+  vpop(1);             /* xt(g), a */
+  vpop(1);             /* xt(g) */
+#else
+  {
+   rc_t resreg,tempreg;
+   vpop(1); /* a */
+   vpop(1); /* . */
+   resreg = DCCVStack_GetReg(DCC_RC_IN(DCC_TARGET_SIZEOF_INT),1);
+   /* Clear the result register. */
+   { struct DCCSymAddr val = {0,NULL};
+     DCCDisp_CstMovRegRaw(&val,resreg);
+   }
+   /* push the result register. */
+   vpushr(resreg);
+   vrval();
+   /* Allocate a second temporary register.
+    * NOTE: Only do so after we've pushed the result register,
+    *       so-as to prevent the same register from being allocated. */
+   tempreg = DCCVStack_GetReg(DCC_RC_IN(DCC_TARGET_SIZEOF_INT),1);
+   { struct DCCSymAddr val = {-1,NULL};
+     /* Store 0/1 in the result register when 'a > b'. */
+     DCCDisp_SccReg(DCC_TEST_G,resreg&~(DCC_RC_I3264|DCC_RC_I16));
+     /* Return -1 if 'a < b' */
+     DCCDisp_CstMovRegRaw(&val,tempreg);
+     DCCDisp_RegCMovReg(DCC_TEST_L,tempreg,resreg,1);
+   }
   }
-  /* push the result register. */
-  vpushr(resreg);
-  vrval();
-  /* Allocate a second temporary register.
-   * NOTE: Only do so after we've pushed the result register,
-   *       so-as to prevent the same register from being allocated. */
-  tempreg = DCCVStack_GetReg(DCC_RC_IN(DCC_TARGET_SIZEOF_INT),1);
-  { struct DCCSymAddr val = {-1,NULL};
-    /* Store 0/1 in the result register when 'a > b'. */
-    DCCDisp_SccReg(DCC_TEST_G,resreg&~(DCC_RC_I3264|DCC_RC_I16));
-    /* Return -1 if 'a < b' */
-    DCCDisp_CstMovRegRaw(&val,tempreg);
-    DCCDisp_RegCMovReg(DCC_TEST_L,tempreg,resreg,1);
-  }
+#endif
  } else {
   struct DCCSym *funsym;
   funsym = DCCUnit_NewSyms("memcmp",DCC_SYMFLAG_NONE);
@@ -958,7 +968,6 @@ again:
 #undef VS_PTR
 }
 
-
 #define VS_DST   (&vbottom[2])
 #define VS_SRC   (&vbottom[1])
 #define VS_MAX   (&vbottom[0])
@@ -1012,7 +1021,7 @@ PUBLIC void DCC_VSTACK_CALL DCCVStack_Strcpy(int append) {
     vlrot(4);    /* strend(dst), src, size, ddst */
     vlrot(4);    /* ddst, strend(dst), src, size */
    }
-   vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,1);
+   //vcast_t(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,1);
    vnorval();
    vgen1(TOK_INC); /* Include the terminating  */
    if (cc_ptr_msize != maxlen) {
@@ -1056,8 +1065,6 @@ default_fallback:
 #undef VS_MAX
 #undef VS_SRC
 #undef VS_DST
-
-
 
 DCC_DECL_END
 

@@ -1442,7 +1442,7 @@ normal:
    } else {
     vpop(1);
    }
-   DCCVStack_PushTst(common_test);
+   vpusht(common_test);
   }
   if (sym) t_defsym(sym);
 #undef F_ANORET

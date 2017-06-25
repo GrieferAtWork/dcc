@@ -495,15 +495,24 @@ apply_masks:
   dest.ml_reg = target_reg;
   /* Store to global variable. */
   if (self->sv_flags&DCC_SFLAG_TEST) {
-   DCCDisp_SccMem((test_t)DCC_SFLAG_GTTEST(self->sv_flags),&dest,
-                  DCCType_Sizeof(&target->sv_ctype,NULL,1));
+   if (self->sv_flags&DCC_SFLAG_TEST_XCMP) {
+    DCCDisp_ScxMem((test_t)DCC_SFLAG_GTTEST(self->sv_flags),&dest,
+                    DCCType_Sizeof(&target->sv_ctype,NULL,1));
+   } else {
+    DCCDisp_SccMem((test_t)DCC_SFLAG_GTTEST(self->sv_flags),&dest,
+                    DCCType_Sizeof(&target->sv_ctype,NULL,1));
+   }
   } else {
    DCCStackValue_BinMem(self,'=',&dest,DCCType_Sizeof(&target->sv_ctype,NULL,1));
   }
  } else {
   /* Store in regular, old register. */
   if (self->sv_flags&DCC_SFLAG_TEST) {
-   DCCDisp_SccReg((test_t)DCC_SFLAG_GTTEST(self->sv_flags),target_reg);
+   if (self->sv_flags&DCC_SFLAG_TEST_XCMP) {
+    DCCDisp_ScxReg((test_t)DCC_SFLAG_GTTEST(self->sv_flags),target_reg);
+   } else {
+    DCCDisp_SccReg((test_t)DCC_SFLAG_GTTEST(self->sv_flags),target_reg);
+   }
    if (!DCC_RC_ISCONST(target->sv_reg2)) DCCDisp_IntMovReg(0,target->sv_reg2);
   } else {
    DCCStackValue_BinReg(self,'=',target->sv_reg,target->sv_reg2);
@@ -671,11 +680,15 @@ PUBLIC void DCC_VSTACK_CALL
 DCCStackValue_FixTest(struct DCCStackValue *__restrict self) {
  assert(self);
  if (self->sv_flags&DCC_SFLAG_TEST) {
-  test_t t = (test_t)((self->sv_flags&DCC_SFLAG_TEST_MASK) >> DCC_SFLAG_TEST_SHIFT);
-  self->sv_reg   = DCCVStack_GetReg(DCC_RC_I8,1);
-  self->sv_reg2  = DCC_RC_CONST;
-  self->sv_flags = DCC_SFLAG_NONE;
-  DCCDisp_SccReg(t,self->sv_reg);
+  symflag_t flags = self->sv_flags;
+  self->sv_reg    = DCCVStack_GetReg(DCC_RC_I8,1);
+  self->sv_reg2   = DCC_RC_CONST;
+  self->sv_flags  = DCC_SFLAG_NONE;
+  if (flags&DCC_SFLAG_TEST_XCMP) {
+   DCCDisp_ScxReg(DCC_SFLAG_GTTEST(flags),self->sv_reg);
+  } else {
+   DCCDisp_SccReg(DCC_SFLAG_GTTEST(flags),self->sv_reg);
+  }
  }
 }
 
@@ -1008,7 +1021,46 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
   /* Simple case: Just invert the test. */
   if (self->sv_flags&DCC_SFLAG_TEST) {
    /* Simply invert an existing test. */
-   self->sv_flags ^= (DCC_TEST_NBIT << DCC_SFLAG_TEST_SHIFT);
+   if (self->sv_flags&DCC_SFLAG_TEST_XCMP) {
+    /* Inverting an xcmp test is a bit more complicated. */
+    test_t t = DCC_SFLAG_GTTEST(self->sv_flags);
+    /* TODO: What about 'sv_sym'/'sv_const.it' offsets? */
+    if (t == DCC_TEST_A || t == DCC_TEST_B ||
+        t == DCC_TEST_G || t == DCC_TEST_L) {
+     /* >> a < b -->  1 --> !!1  --> 1
+      * >> a > b --> -1 --> !!-1 --> 1
+      * >> !(a < b || a > b) --> a >= b && a <= b --> a == b
+      * These tests must be replaced with a regular, old 'DCC_TEST_E'
+      * This makes even more sense when you consider the memcmp() case:
+      * >> if (!memcmp(a,b,42)) // Actually compares memory for equality.
+      */
+     self->sv_flags &= ~(DCC_SFLAG_TEST_MASK);
+     self->sv_flags |=  (DCC_TEST_E << DCC_SFLAG_TEST_SHIFT);
+    } else if (t == DCC_TEST_BE || t == DCC_TEST_AE ||
+               t == DCC_TEST_LE || t == DCC_TEST_GE) {
+     /* >> a <= b --> 1  --> !!1  --> 1
+      * >> a >= b --> -1 --> !!-1 --> 1
+      * >> !(a <= b || a >= b) --> a > b && a < b --> 0
+      * Inverting these kind of tests results in a constant false. */
+     if unlikely(self->sv_sym) { DCCSym_Decref(self->sv_sym); self->sv_sym = NULL; }
+     self->sv_flags    = DCC_SYMFLAG_NONE;
+     self->sv_const.it = 0;
+     self->sv_reg      = DCC_RC_CONST;
+     self->sv_reg2     = DCC_RC_CONST;
+     goto end_exclaim;
+    } else {
+     /* All other test are unaffected by mirroring, and
+      * with the fact that attempting to mirror them will either
+      * result in a '1' or '-1', both of which are non-ZERO,
+      * inverting those tests will simply downgrade them to
+      * a regular, non-cmp test. */
+     self->sv_flags &= ~(DCC_SFLAG_TEST_XCMP);
+     goto normal_fliptst;
+    }
+   } else {
+normal_fliptst:
+    self->sv_flags ^= (DCC_TEST_NBIT << DCC_SFLAG_TEST_SHIFT);
+   }
    goto end_exclaim;
   }
   /* Special optimization for '!%esp' and '!%ebp'
@@ -1205,9 +1257,11 @@ DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op) {
 end_exclaim:
  assert(op == '!');
  /* Make sure that 'operator !' returns a boolean. */
- DCCType_Quit(&self->sv_ctype);
+ if (self->sv_ctype.t_base) {
+  DCCDecl_Decref(self->sv_ctype.t_base);
+  self->sv_ctype.t_base = NULL;
+ }
  self->sv_ctype.t_type = DCCTYPE_BUILTIN|DCCTYPE_BOOL;
- self->sv_ctype.t_base = NULL;
 }
 
 
@@ -1579,7 +1633,7 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
 #define lhs  target
 #define rhs  self
   if (!(lhs->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST)) &&
-       DCC_RC_ISCONST(lhs->sv_reg)) {
+        DCC_RC_ISCONST(lhs->sv_reg)) {
    struct cmppair const *iter = compare_pairs;
    /* Lhs is a constant operand.
     * >> Swap the arguments to simply stuff further below! */
@@ -1593,56 +1647,112 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
    if (DCC_RC_ISCONST(rhs->sv_reg)) {
     if ((lhs->sv_flags&DCC_SFLAG_TEST) &&
         !lhs->sv_sym && !lhs->sv_const.it) {
-     /* The lhs operand is a test, and the rhs operand is a constant.
-      * Do some special optimizations for situation like this. */
+     if (lhs->sv_flags&DCC_SFLAG_TEST_XCMP) {
+      test_t t = DCC_SFLAG_GTTEST(lhs->sv_flags);
+      int val; /* -2, -1, 0, 1, 2 */
+           if (rhs->sv_sym || rhs->sv_const.it >= 2) val = 2;
+      else if (rhs->sv_const.it == 0)                val = 0;
+      else if (rhs->sv_const.it == 1)                val = 1;
+      else if (rhs->sv_const.it == -1)               val = -1;
+      else assert(rhs->sv_const.it <= -2),           val = -2;
+      /* compare xcmp operand with constant. */
+      switch (val) {
+      /* TODO: Special handling for all the other cases! */
+
+      case 0:
+       /* Most likely case: 'memcmp() == 0' / 'memcmp() != 0' */
+       if (op == TOK_EQUAL || op == TOK_NOT_EQUAL) {
+        DCCStackValue_Unary(lhs,'!'); /* == 0 */
+        if (op == TOK_NOT_EQUAL) DCCStackValue_Unary(lhs,'!');
+        goto end_cmp;
+       }
+       if (op == TOK_LOWER) {
+        /* 'memcmp() < 0' >> a <  b --> -1 < 0 --> 1
+         *                >> a == b -->  0 < 0 --> 0
+         *                >> a >  b -->  1 < 0 --> 0
+         * mirror because this bit moves:^ */
+        t = DCC_TEST_MIRROR(t);
+mk_test:
+        lhs->sv_flags = DCC_SFLAG_MKTEST(t);
+        lhs->sv_reg   = DCC_RC_CONST;
+        lhs->sv_reg2  = DCC_RC_CONST;
+        goto end_cmp;
+       }
+       if (op == TOK_LOWER_EQUAL) {
+        /* 'memcmp() <= 0' >> a <  b --> -1 <= 0 --> 1
+         *                 >> a == b -->  0 <= 0 --> 1 //< oreq, because this bit must be set
+         *                 >> a >  b -->  1 <= 0 --> 0
+         * mirror because this bit moves: ^ */
+        t = DCC_TEST_OREQ(DCC_TEST_MIRROR(t));
+        goto mk_test;
+       }
+       if (op == TOK_GREATER_EQUAL) {
+        /* 'memcmp() >= 0' >> a <  b --> -1 >= 0 --> 0
+         *                 >> a == b -->  0 >= 0 --> 1 //< oreq, because this bit must be set
+         *                 >> a >  b -->  1 >= 0 --> 1 */
+        t = DCC_TEST_OREQ(t);
+        goto mk_test;
+       }
+       assert(op == TOK_GREATER); {
+        /* 'memcmp() > 0' >> a <  b --> -1 > 0 --> 0
+         *                >> a == b -->  0 > 0 --> 0
+         *                >> a >  b -->  1 > 0 --> 1 */
+        goto mk_test; /* Nothing to do here, just delete the xcmp bit. */
+       }
+       break;
+      default: break;
+      }
+     } else {
+      /* The lhs operand is a test, and the rhs operand is a constant.
+       * Do some special optimizations for situation like this. */
 #define A_FF  0 /* if (0) */
 #define A_TT  1 /* if (1) */
 #define A_NOP 2 /* if (x == 10) */
 #define A_INV 3 /* if (!(x == 10)) */
 #define ACTION(tok,zero,one,two) ((tok) << 16 | (zero) << 4 | (one) << 2 | (two))
-     static int const actions[] = {
-      /* if ((x == 10) < 0)       --> if (0)
-       * if ((x == 10) < 1)       --> if (!(x == 10))
-       * if ((x == 10) < *n>=2*)  --> if (1) */
-      ACTION(TOK_LOWER,A_FF,A_INV,A_TT),
-      /* if ((x == 10) <= 0)      --> if (!(x == 10))
-       * if ((x == 10) <= 1)      --> if (1)
-       * if ((x == 10) <= *n>=2*) --> if (1) */
-      ACTION(TOK_LOWER_EQUAL,A_INV,A_TT,A_TT),
-      /* if ((x == 10) == 0)      --> if (!(x == 10))
-       * if ((x == 10) == 1)      --> if (x == 10)
-       * if ((x == 10) == *n>=2*) --> if (0) */
-      ACTION(TOK_EQUAL,A_INV,A_NOP,A_FF),
-      /* if ((x == 10) != 0)      --> if (x == 10)
-       * if ((x == 10) != 1)      --> if (!(x == 10))
-       * if ((x == 10) != *n>=2*) --> if (1) */
-      ACTION(TOK_NOT_EQUAL,A_NOP,A_INV,A_TT),
-      /* if ((x == 10) > 0)      --> if (x == 10)
-       * if ((x == 10) > 1)      --> if (0)
-       * if ((x == 10) > *n>=2*) --> if (0) */
-      ACTION(TOK_GREATER,A_NOP,A_FF,A_FF),
-      /* if ((x == 10) >= 0)      --> if (1)
-       * if ((x == 10) >= 1)      --> if (x == 10)
-       * if ((x == 10) >= *n>=2*) --> if (0) */
-      ACTION(TOK_GREATER_EQUAL,A_TT,A_NOP,A_FF),
-     };
-     int action = 0; /* Find the action associated with the operation. */
-     while ((tok_t)(actions[action] >> 16) != op) ++action;
-     action = actions[action] & 0x3f;
-          if (rhs->sv_sym || rhs->sv_const.it >= 2); /* two */
-     else if (rhs->sv_const.it == 1) action >>= 2;   /* one */
-     else                            action >>= 4;   /* zero */
-     action &= 3; /* Select the action mask. */
-     /* 'action' is not one of 'A_*' */
-     assert(lhs->sv_flags&DCC_SFLAG_TEST);
-     switch (action) {
+      static int const actions[] = {
+       /* if ((x == 10) < 0)       --> if (0)
+        * if ((x == 10) < 1)       --> if (!(x == 10))
+        * if ((x == 10) < *n>=2*)  --> if (1) */
+       ACTION(TOK_LOWER,A_FF,A_INV,A_TT),
+       /* if ((x == 10) <= 0)      --> if (!(x == 10))
+        * if ((x == 10) <= 1)      --> if (1)
+        * if ((x == 10) <= *n>=2*) --> if (1) */
+       ACTION(TOK_LOWER_EQUAL,A_INV,A_TT,A_TT),
+       /* if ((x == 10) == 0)      --> if (!(x == 10))
+        * if ((x == 10) == 1)      --> if (x == 10)
+        * if ((x == 10) == *n>=2*) --> if (0) */
+       ACTION(TOK_EQUAL,A_INV,A_NOP,A_FF),
+       /* if ((x == 10) != 0)      --> if (x == 10)
+        * if ((x == 10) != 1)      --> if (!(x == 10))
+        * if ((x == 10) != *n>=2*) --> if (1) */
+       ACTION(TOK_NOT_EQUAL,A_NOP,A_INV,A_TT),
+       /* if ((x == 10) > 0)      --> if (x == 10)
+        * if ((x == 10) > 1)      --> if (0)
+        * if ((x == 10) > *n>=2*) --> if (0) */
+       ACTION(TOK_GREATER,A_NOP,A_FF,A_FF),
+       /* if ((x == 10) >= 0)      --> if (1)
+        * if ((x == 10) >= 1)      --> if (x == 10)
+        * if ((x == 10) >= *n>=2*) --> if (0) */
+       ACTION(TOK_GREATER_EQUAL,A_TT,A_NOP,A_FF),
+      };
+      int action = 0; /* Find the action associated with the operation. */
+      while ((tok_t)(actions[action] >> 16) != op) ++action;
+      action = actions[action] & 0x3f;
+           if (rhs->sv_sym || rhs->sv_const.it >= 2); /* two */
+      else if (rhs->sv_const.it == 1) action >>= 2;   /* one */
+      else                            action >>= 4;   /* zero */
+      action &= 3; /* Select the action mask. */
+      /* 'action' is not one of 'A_*' */
+      assert(lhs->sv_flags&DCC_SFLAG_TEST);
+      switch (action) {
       case A_FF:
       case A_TT:
        /* Turn the test into a constant value. */
        lhs->sv_flags    = DCC_SFLAG_NONE;
        lhs->sv_reg      = DCC_RC_CONST;
        lhs->sv_reg2     = DCC_RC_CONST;
-       lhs->sv_sym      = NULL;
+       assert(!lhs->sv_sym);
        lhs->sv_const.it = action == A_TT ? 1 : 0;
        break;
       case A_INV:
@@ -1650,13 +1760,14 @@ DCCStackValue_Binary(struct DCCStackValue *__restrict self,
        lhs->sv_flags ^= (DCC_TEST_NBIT << DCC_SFLAG_TEST_SHIFT);
        break;
       default: break;
-     }
-     goto end_cmp;
+      }
+      goto end_cmp;
 #undef ACTION
 #undef A_INV
 #undef A_KEEP
 #undef A_TT
 #undef A_FF
+     }
     } else if (DCC_RC_ISCONST(lhs->sv_reg)) {
      struct DCCSymExpr temp;
      /* Constant expression on both sides. */
@@ -3128,12 +3239,12 @@ DCCVStack_PushCst(struct DCCType const *__restrict type, int_t v) {
 }
 
 PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushTst(uint8_t test) {
+DCCVStack_PushTst(sflag_t flags) {
  struct DCCStackValue slot;
- assert(test <= 0xf);
+ assert(flags&DCC_SFLAG_TEST);
  slot.sv_ctype.t_base = NULL;
- slot.sv_ctype.t_type = DCCTYPE_BOOL;
- slot.sv_flags        = DCC_SFLAG_RVALUE|DCC_SFLAG_MKTEST(test);
+ slot.sv_ctype.t_type = flags&DCC_SFLAG_TEST_XCMP ? DCCTYPE_INT : DCCTYPE_BOOL;
+ slot.sv_flags        = flags;
  slot.sv_reg          = DCC_RC_CONST;
  slot.sv_reg2         = DCC_RC_CONST;
  slot.sv_const.it     = 0;
@@ -4515,8 +4626,12 @@ DCCVStack_CastTst(uint8_t test) {
  assert(vsize >= 1);
  assert(test == DCC_TEST_Z || test == DCC_TEST_NZ);
  /* Make sure we're actually working with a test. */
- if (!(vbottom->sv_flags&DCC_SFLAG_TEST)) vgen1('!'),vgen1('!');
+ if (!(vbottom->sv_flags&DCC_SFLAG_TEST) ||
+       /* NOTE: Also make sure to fix xcmp tests! */
+      (vbottom->sv_flags&DCC_SFLAG_TEST_XCMP))
+       vgen1('!'),vgen1('!');
  if (!(vbottom->sv_flags&DCC_SFLAG_TEST)) return; /* Probably a constant expression. */
+ assert(!(vbottom->sv_flags&DCC_SFLAG_TEST_XCMP));
  old_test = DCC_SFLAG_GTTEST(vbottom->sv_flags);
  if (old_test != test) {
   /* Update the EFLAGS registers. */

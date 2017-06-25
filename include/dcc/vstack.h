@@ -307,7 +307,9 @@ union DCCConstValue {
                                              *  the difference between 'x+y' and 'x += y' (Simply set this flag for 'x' in 'x+y') */
 
 #define DCC_SFLAG_TEST           0x00000010 /*< The stack value is the result of a test. */
-#define DCC_SFLAG_TEST_MASK      0xf0000000 /*< Mask for test ids (One of 'DCC_TEST_*'). */
+#define DCC_SFLAG_TEST_BMASK     0xf0000000 /*< Mask for boolean test ids (One of 'DCC_TEST_*'). */
+#define DCC_SFLAG_TEST_MASK      0xf8000000 /*< Mask for any kind of test. */
+#define DCC_SFLAG_TEST_XCMP      0x08000000 /*< TODO: CMP-test bit (When set, evaluate to '1' if 'DCC_SFLAG_GTTEST()', '-1' if 'DCC_TEST_NOT(DCC_SFLAG_GTTEST())', or '0' otherwise). */
 #define DCC_SFLAG_TEST_SHIFT     28         /*< Shift for test ids. */
 #define DCC_SFLAG_MKTEST(t)     (DCC_SFLAG_TEST|(((t) << DCC_SFLAG_TEST_SHIFT)&DCC_SFLAG_TEST_MASK))
 #define DCC_SFLAG_GTTEST(f)     (((f)&DCC_SFLAG_TEST_MASK) >> DCC_SFLAG_TEST_SHIFT)
@@ -488,7 +490,7 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Push(struct DCCStackValue const *__restric
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushInt(DCC(tyid_t) type, DCC(int_t) v);             /* +1 ('type': 'DCCTYPE_*') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushFlt(DCC(tyid_t) type, DCC(float_t) v);           /* +1 ('type': 'DCCTYPE_*') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushCst(struct DCCType const *__restrict type, DCC(int_t) v); /* +1 */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_PushTst(uint8_t test);                               /* +1 ('test': Actually a 'test_t') */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_PushTst(DCC(sflag_t) flags);                         /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushMloc(struct DCCType const *__restrict type, struct DCCMemLoc *__restrict loc); /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushSym(struct DCCSym *__restrict sym);              /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushSymt(struct DCCType const *__restrict type, struct DCCSym *__restrict sym); /* +1 */
@@ -727,7 +729,8 @@ extern struct DCCStackValue *vbottom;
 #define vpushi     DCCVStack_PushInt
 #define vpushf     DCCVStack_PushFlt
 #define vpushc     DCCVStack_PushCst
-#define vpusht     DCCVStack_PushTst
+#define vpusht(t)  DCCVStack_PushTst(DCC_SFLAG_RVALUE|DCC_SFLAG_MKTEST(t))
+#define vpushxt(t) DCCVStack_PushTst(DCC_SFLAG_RVALUE|DCC_SFLAG_TEST_XCMP|DCC_SFLAG_MKTEST(t))
 #define vpushr     DCCVStack_PushReg
 #define vpushxr    DCCVStack_PushXReg
 #define vpushs     DCCVStack_PushSym

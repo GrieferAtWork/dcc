@@ -956,7 +956,6 @@ DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict val,
                   struct DCCMemLoc  const *__restrict dst,
                   width_t width) {
  assert(val),assert(dst);
- assert(CHECK_WIDTH(width));
  if ((compiler.c_flags&DCC_COMPILER_FLAG_SINIT) && dst->ml_sym) {
   struct DCCSymAddr target_addr;
   if (DCCSym_LoadAddr(dst->ml_sym,&target_addr,0) &&
