@@ -48,6 +48,7 @@ DCC_DECL_BEGIN
 
 #define DCC_PREPROCESSOR_FLAG_HELPINC     0x00000100 /*< Emit help about include paths. */
 #define DCC_PREPROCESSOR_FLAG_HELPLIB     0x00000200 /*< Emit help about library paths. */
+#define DCC_PREPROCESSOR_FLAG_HELPINT     0x00000300 /*< Emit help about internal paths. */
 #define DCC_PREPROCESSOR_MASK_HELP        0x00000300 /*< Mask for help flags. */
 
 #define DCC_PREPROCESSOR_FLAG_NOMAGICLF   0x00010000 /*< ["-fmagiclf"] Disable ~magic~ tokens for small line-shifts to prevent a #line being emit. */

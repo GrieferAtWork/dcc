@@ -29,7 +29,8 @@
 #if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
 #   include <dcc_winmin.h>
 #elif !!(DCC_HOST_OS&DCC_OS_F_UNIX)
-#   include <unistd.h>
+#   include <fcntl.h>  /* open() */
+#   include <unistd.h> /* readlink(), getpid() */
 #endif
 
 #ifdef _MSC_VER
@@ -416,22 +417,48 @@ DCCLinker_AddSysPaths(char const *__restrict outfile_or_basefile) {
  }
 #elif !!(DCC_HOST_OS&DCC_OS_F_UNIX) && \
       !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
- /* TODO: This can be done better! */
- { char buffer[] = "/usr/lib";
-   DCCLibPaths_DoAddLibPathNow(&linker.l_paths,buffer,
-                              (sizeof(buffer)/sizeof(char))-1);
- }
- { char buffer[] = "/usr/local/include";
-   TPPLexer_AddIncludePath(buffer,(sizeof(buffer)/sizeof(char))-1);
- }
- { char buffer[] = "/usr/include";
-   TPPLexer_AddIncludePath(buffer,(sizeof(buffer)/sizeof(char))-1);
- }
+ /* XXX: This can be done better, and not be hard-coded. */
+#define ADD_LIB_PATH(p) \
+do{ char buffer[] = p; \
+    DCCLibPaths_DoAddLibPathNow(&linker.l_paths,buffer, \
+                               (sizeof(buffer)/sizeof(char))-1);\
+}while(DCC_MACRO_FALSE)
+#define ADD_INC_PATH(p) \
+do{ char buffer[] = p; \
+    TPPLexer_AddIncludePath(buffer,(sizeof(buffer)/sizeof(char))-1);\
+}while(DCC_MACRO_FALSE)
+ /* Should these paths really always be added? */
+ ADD_LIB_PATH("/usr/lib");
+ ADD_LIB_PATH("/lib");
+ ADD_LIB_PATH("/usr/local/lib");
 #if !(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
- { char buffer[] = "/usr/include/" DCC_TARGET_TRIPLET;
-   TPPLexer_AddIncludePath(buffer,(sizeof(buffer)/sizeof(char))-1);
- }
+ { int fd;
+   if ((fd = open("/usr/lib/" DCC_TARGET_TRIPLET "/crti.o",O_RDONLY)) >= 0) {
+    close(fd);
+    ADD_LIB_PATH("/usr/lib/" DCC_TARGET_TRIPLET);
+    ADD_LIB_PATH("/lib/" DCC_TARGET_TRIPLET);
+    ADD_LIB_PATH("/usr/local/lib/" DCC_TARGET_TRIPLET);
+#if DCC_TARGET_SIZEOF_POINTER*DCC_TARGET_BITPERBYTE == 64
+   } else if ((fd = open("/usr/lib64/crti.o",O_RDONLY)) >= 0) {
+    close(fd);
+    ADD_LIB_PATH("/usr/lib64");
+    ADD_LIB_PATH("/lib64");
+    ADD_LIB_PATH("/usr/local/lib64");
 #endif
+   }
+ }
+#endif /* !DCC_OS_F_WINDOWS */
+#undef ADD_LIB_PATH
+#if !(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+ ADD_INC_PATH("/usr/include/" DCC_TARGET_TRIPLET);
+#endif /* !DCC_OS_F_WINDOWS */
+ ADD_INC_PATH("/usr/include");
+#if !(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+ ADD_INC_PATH("/usr/local/include/" DCC_TARGET_TRIPLET);
+#endif /* !DCC_OS_F_WINDOWS */
+ ADD_INC_PATH("/usr/local/include");
+#undef ADD_INC_PATH
+#undef ADD_LIB_PATH
 #endif
  /* Setup the default list of internal library paths & the fixinclude folder. */
  linker_add_intpath_self();

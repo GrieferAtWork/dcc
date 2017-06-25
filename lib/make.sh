@@ -1,7 +1,11 @@
 #!/bin/bash
 
-CC=dcc
-CC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
+CC="../bin/dcc"
+DCC_CC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
+if [ -f "$DCC_CC" ]; then
+	CC="$DCC_CC"
+fi
+
 DEPDIR=".deps"
 OBJDIR=".objs"
 

@@ -265,6 +265,7 @@ int main(int argc, char *argv[]) {
  if (!(linker.l_flags&DCC_LINKER_FLAG_NOSTDINC))
        DCCLinker_AddSysPaths(preproc.p_outfile);
  if (preproc.p_flags&DCC_PREPROCESSOR_MASK_HELP) {
+  uint32_t kind = preproc.p_flags&DCC_PREPROCESSOR_MASK_HELP;
   struct cmd hc;
   hc.c_argc  = 0;
   hc.c_argv  = NULL;
@@ -272,9 +273,10 @@ int main(int argc, char *argv[]) {
   hc.c_grp   = NULL;
   hc.c_state = 0;
   hc.c_id    = OPT_help;
-  hc.c_val   = (preproc.p_flags&DCC_PREPROCESSOR_FLAG_HELPINC) ? (char *)"include-paths" :
-               (preproc.p_flags&DCC_PREPROCESSOR_FLAG_HELPLIB) ? (char *)"library-paths" :
-                                                                 (char *)"";
+  hc.c_val   = (kind == DCC_PREPROCESSOR_FLAG_HELPINC) ? (char *)"include-paths" :
+               (kind == DCC_PREPROCESSOR_FLAG_HELPLIB) ? (char *)"library-paths" :
+               (kind == DCC_PREPROCESSOR_FLAG_HELPINT) ? (char *)"internal-paths" :
+                                                         (char *)"";
   exec_cmd(&hc,2);
  }
  if unlikely(!argc) WARN(W_LINKER_NO_INPUT_FILES);

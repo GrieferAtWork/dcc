@@ -509,6 +509,7 @@ done_std:;
    if (from_cmd == 2) goto help_def;
         if (!strcmp(v,"include-paths")) preproc.p_flags |= DCC_PREPROCESSOR_FLAG_HELPINC;
    else if (!strcmp(v,"library-paths")) preproc.p_flags |= DCC_PREPROCESSOR_FLAG_HELPLIB;
+   else if (!strcmp(v,"internal-paths")) preproc.p_flags |= DCC_PREPROCESSOR_FLAG_HELPINT;
    else help_def: dcc_help(v);
   }
   break;
