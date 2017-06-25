@@ -18,6 +18,7 @@
  */
 #ifndef GUARD_DCC_LEXER_C
 #define GUARD_DCC_LEXER_C 1
+#define _BSD_SOURCE 1 /* Enable usleep() */
 
 #include <dcc/common.h>
 #include <dcc/unit.h>
@@ -39,6 +40,14 @@
 #include <malloc.h>
 #else
 #include <alloca.h>
+#endif
+
+#if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
+#include <dcc_winmin.h> /* Sleep() */
+#define dcc_sleep(msecs) Sleep((DWORD)(msecs))
+#else
+#include <unistd.h> /* sleep() */
+#define dcc_sleep(msecs) usleep((useconds_t)(msecs)*1000)
 #endif
 
 DCC_DECL_BEGIN
@@ -357,11 +366,7 @@ PUBLIC int DCCParse_Pragma(void) {
     if (TPPLexer_Eval(&val)) {
      TPPConst_ToInt(&val);
      DRT_Sync();
-#ifdef _WIN32
-     Sleep((DWORD)val.c_data.c_int);
-#else
-     sleep((int)val.c_data.c_int);
-#endif
+     dcc_sleep(val.c_data.c_int);
     }
     if (TOK != ')') WARN(W_EXPECTED_LPAREN); else YIELD();
    }

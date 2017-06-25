@@ -124,52 +124,28 @@ PRIVATE char const dcc_version_text[] =
 DCC_PP_STR(DCC_API_VERSION) "/"
 DCC_PP_STR(DCC_COMPILER_VERSION)
 " - Direct C Compiler - "
-"Copyright (C) 2017 Griefer@Work "
-"["
-#if DCC_DEBUG
-"DEBUG|"
-#endif /* DCC_DEBUG */
-DCC_HOST_COMPILER
-#if defined(__TIME__) && defined(__DATE__)
-"|" __TIME__ " " __DATE__
-#endif
-"]["
-#if DCC_TARGET_CPUM == DCC_CPUM_I386
-"i386"
-#elif DCC_TARGET_CPUM == DCC_CPUM_I486
-"i486"
-#elif DCC_TARGET_CPUM == DCC_CPUM_I586
-"i586"
-#elif DCC_TARGET_CPUM == DCC_CPUM_I686
-"i686"
-#elif DCC_TARGET_HASF(F_X86_64)
-"x86-64"
-#else
-"UNKNOWN(" DCC_PP_STR(DCC_TARGET_CPUM) ")"
-#endif
-"|"
-#if DCC_TARGET_OS == DCC_OS_WINDOWS
-"windows"
-#elif DCC_TARGET_OS == DCC_OS_CYGWIN
-"cygwin"
-#elif DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
-"FreeBSD-kernel"
-#elif DCC_TARGET_OS == DCC_OS_FREEBSD
-"FreeBSD"
-#elif DCC_TARGET_OS == DCC_OS_LINUX
-"linux"
-#elif !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
-"unix"
-#else
-"UNKNOWN(" DCC_PP_STR(DCC_TARGET_OS) ")"
-#endif
-"|"
+"Copyright (C) 2017 Griefer@Work\n"
+"[" DCC_TARGET_TRIPLET "|"
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
 "elf"
 #elif DCC_TARGET_BIN == DCC_BINARY_PE
 "pe"
 #else
 "UNKNOWN(" DCC_PP_STR(DCC_TARGET_BIN) ")"
+#endif
+"]["
+#if DCC_DEBUG
+"DEBUG"
+#else
+"NDEBUG"
+#endif
+"|" DCC_HOST_COMPILER "|"
+#ifdef __TIME__
+__TIME__
+#endif
+" "
+#ifdef __DATE__
+__DATE__
 #endif
 "]\n\n";
 

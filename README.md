@@ -23,7 +23,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Output linux ELF binary/library (<b>\*</b>, <b>\*.so</b>).
   - Output ELF relocatable object files (<b>\*.o</b>)
   - Process and merge (link) multiple source-/object files/static libraries.
-  - Compiling DCC is only tested and working in Visual Studio.
+  - Compiling DCC is mainly tested and working on windows using Visual C or DCC itself. GCC and linux support is present, but may occasionally be broken.
   - Full STD-C compliance up to C99.
   - Full AT&T assembly support with many GNU assembler extensions (see below).
   - Full ELF binary target support.

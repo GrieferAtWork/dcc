@@ -191,9 +191,8 @@ DEF_BUILTIN(__builtin_cpu_supports)
 DEF_BUILTIN(__builtin_cpu_vendor)
 DEF_BUILTIN(__builtin_cpu_brand)
 
-DEF_K(__builtin_va_list) MACRO(KWD___builtin_va_list,1)
-KWD_FLAGS(KWD___builtin_va_list,TPP_KEYWORDFLAG_HAS_BUILTIN)
-BUILTIN_MACRO(KWD___builtin_va_list,"char*")
+DEF_BUILTIN(__gnuc_va_list)
+DEF_BUILTIN(__builtin_va_list)
 DEF_BUILTIN(__builtin_va_start)
 DEF_BUILTIN(__builtin_va_end)
 DEF_BUILTIN(__builtin_va_copy)
@@ -517,6 +516,8 @@ PREDEFINED_MACRO_IF(__linux__,HAS(EXT_SYSTEM_MACROS),"1")
 PREDEFINED_MACRO_IF(__FreeBSD_kernel__,HAS(EXT_SYSTEM_MACROS),"1")
 #elif DCC_TARGET_OS == DCC_OS_FREEBSD
 PREDEFINED_MACRO_IF(__FreeBSD__,HAS(EXT_SYSTEM_MACROS),"1")
+#elif DCC_TARGET_OS == DCC_OS_GNU
+PREDEFINED_MACRO_IF(__GNU__,HAS(EXT_SYSTEM_MACROS),"1")
 #elif DCC_TARGET_OS == DCC_OS_KOS
 PREDEFINED_MACRO_IF(__KOS__,HAS(EXT_SYSTEM_MACROS),"1")
 #endif

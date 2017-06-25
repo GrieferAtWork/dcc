@@ -902,18 +902,6 @@ again:
   goto next;
  } break;
 
- case KWD___auto_type:
-  if (flags&(F_INT|F_SIGN|F_WIDTH)) break;
-  assert(!(self->t_type&DCCTYPE_BASICMASK));
-  self->t_type |= (DCCTYPE_AUTO);
-  flags        |= (F_INT|F_SIGN|F_WIDTH);
-  if (flags&F_AUTO) {
-   /* A previous 'auto' was a storage modifier. */
-   WARN(W_TYPE_AUTO_STORAGE_ALREADY_BY_DEFAULT);
-   flags &= ~(F_AUTO);
-  }
-  goto next;
-
  /* Double-precision floating point modifier. */
  case KWD_double:
   if (flags&(F_INT|F_SIGN)) break;
@@ -1210,6 +1198,25 @@ again:
   }
   goto next_noyield;
  } break;
+
+ case KWD___gnuc_va_list:
+ case KWD___builtin_va_list:
+  if (flags&(F_INT|F_SIGN|F_WIDTH)) break;
+  *self  = DCCType_BuiltinPointers[DCCTYPE_CHAR];
+  flags |= (F_INT|F_SIGN|F_WIDTH);
+  goto next;
+
+ case KWD___auto_type:
+  if (flags&(F_INT|F_SIGN|F_WIDTH)) break;
+  assert(!(self->t_type&DCCTYPE_BASICMASK));
+  self->t_type |= (DCCTYPE_AUTO);
+  flags        |= (F_INT|F_SIGN|F_WIDTH);
+  if (flags&F_AUTO) {
+   /* A previous 'auto' was a storage modifier. */
+   WARN(W_TYPE_AUTO_STORAGE_ALREADY_BY_DEFAULT);
+   flags &= ~(F_AUTO);
+  }
+  goto next;
 
  default:
   if (TPP_ISKEYWORD(TOK) && !(flags&(F_INT|F_WIDTH))) {

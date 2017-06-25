@@ -74,6 +74,7 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 #define DCC_OS_FREEBSD        (0x00040000|DCC_OS_F_UNIX)
 #define DCC_OS_FREEBSD_KERNEL (0x00040000|DCC_OS_F_UNIX|DCC_OS_F_KERNEL)
 #define DCC_OS_KOS            (0x00050000|DCC_OS_F_UNIX)
+#define DCC_OS_GNU            (0x00060000|DCC_OS_F_UNIX)
 
 /* Known BINARY output format names.
  * NOTE: Does not affect recognized input formats, which
@@ -205,6 +206,8 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 #elif defined(__linux__) || \
       defined(__linux) || defined(linux)
 #   define DCC_HOST_OS DCC_OS_LINUX
+#elif defined(__GNU__)
+#   define DCC_HOST_OS DCC_OS_GNU
 #elif defined(__unix__) || defined(__unix) || \
       defined(unix) || defined(__ANDROID__) || \
       defined(__ANDROID) || defined(__android__) || \
@@ -243,26 +246,6 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 #define DCC_TARGET_ASMM(cpum)  (DCC_TARGET_CPUM >= DCC_CPU##cpum)
 #define DCC_TARGET_ASMF(cpuf) ((DCC_TARGET_CPUF &  DCC_CPU##cpuf)!=0)
 
-
-#ifndef DCC_TARGET_ELFINTERP
-/* Determine the apropriate target ELF interpreter name. */
-#if DCC_TARGET_BIN == DCC_BINARY_ELF
-#if DCC_TARGET_OS == DCC_OS_KOS
-/* KOS implements the runtime linker in
- * kernel-space, meaning no interpreter
- * is necessary. */
-/* #define DCC_TARGET_ELFINTERP <NOTHING> */
-#elif DCC_TARGET_OS == DCC_OS_FREEBSD
-#   define DCC_TARGET_ELFINTERP "/libexec/ld-elf.so.1"
-#elif DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
-#   define DCC_TARGET_ELFINTERP "/lib/ld.so.1"
-#elif DCC_TARGET_HASF(F_X86_64)
-#   define DCC_TARGET_ELFINTERP "/lib64/ld-linux-x86-64.so.2"
-#else
-#   define DCC_TARGET_ELFINTERP "/lib/ld-linux.so.2"
-#endif
-#endif
-#endif
 
 
 #   define DCC_TARGET_STACKDOWN            1 /* 0/1 indicating stack growth direction. */
@@ -473,6 +456,93 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 /* NOTE: For full functionality, the runtime should implement at least:
  *    >> void *memchr(void const *p, int c, size_t s);
  *    >> void *memrchr(void const *p, int c, size_t s); */
+
+
+
+
+
+#ifndef DCC_TARGET_ELFINTERP
+/* Determine the apropriate target ELF interpreter name. */
+#if DCC_TARGET_BIN == DCC_BINARY_ELF
+#if DCC_TARGET_OS == DCC_OS_KOS
+/* KOS implements the runtime linker in
+ * kernel-space, meaning no interpreter
+ * is necessary. */
+/* #define DCC_TARGET_ELFINTERP <NOTHING> */
+#elif DCC_TARGET_OS == DCC_OS_FREEBSD
+#   define DCC_TARGET_ELFINTERP "/libexec/ld-elf.so.1"
+#elif DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
+#   define DCC_TARGET_ELFINTERP "/lib/ld.so.1"
+#elif DCC_TARGET_HASF(F_X86_64)
+#   define DCC_TARGET_ELFINTERP "/lib64/ld-linux-x86-64.so.2"
+#else
+#   define DCC_TARGET_ELFINTERP "/lib/ld-linux.so.2"
+#endif
+#endif
+#endif /* !DCC_TARGET_ELFINTERP */
+
+#ifndef DCC_TARGET_TRIPLET_ARCH
+#if DCC_TARGET_HASF(F_X86_64)
+#   define DCC_TARGET_TRIPLET_ARCH "x86_64"
+#elif DCC_TARGET_HASM(M_I386)
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+#if DCC_TARGET_HASM(M_I686)
+#   define DCC_TARGET_TRIPLET_ARCH "i686"
+#elif DCC_TARGET_HASM(M_I586)
+#   define DCC_TARGET_TRIPLET_ARCH "i586"
+#elif DCC_TARGET_HASM(M_I486)
+#   define DCC_TARGET_TRIPLET_ARCH "i486"
+#else
+#   define DCC_TARGET_TRIPLET_ARCH "i386"
+#endif
+#endif /* DCC_OS_F_WINDOWS */
+#ifndef DCC_TARGET_TRIPLET_ARCH
+#   define DCC_TARGET_TRIPLET_ARCH "i386"
+#endif
+#else /* ... */
+#   define DCC_TARGET_TRIPLET_ARCH "unknown"
+#endif /* !... */
+#endif /* !DCC_TARGET_TRIPLET_ARCH */
+
+#ifndef DCC_TARGET_TRIPLET_OS
+#if DCC_TARGET_OS == DCC_OS_LINUX
+#   define DCC_TARGET_TRIPLET_OS "linux"
+#elif DCC_TARGET_OS == DCC_OS_FREEBSD || \
+      DCC_TARGET_OS == DCC_OS_FREEBSD_KERNEL
+#   define DCC_TARGET_TRIPLET_OS "kfreebsd"
+#elif DCC_TARGET_OS == DCC_OS_GNU
+#   define DCC_TARGET_TRIPLET_NO_OS 1
+#   define DCC_TARGET_TRIPLET_OS ""
+#elif !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+#if DCC_TARGET_SIZEOF_POINTER == 8
+#   define DCC_TARGET_TRIPLET_OS  "w64"
+#else
+#   define DCC_TARGET_TRIPLET_OS  "pc"
+#endif
+#else
+#   define DCC_TARGET_TRIPLET_OS "unknown"
+#endif
+#endif /* !DCC_TARGET_TRIPLET_OS */
+
+#ifndef DCC_TARGET_TRIPLET_ABI
+#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+#if DCC_TARGET_SIZEOF_POINTER == 8
+#   define DCC_TARGET_TRIPLET_ABI "cygwin"
+#else
+#   define DCC_TARGET_TRIPLET_ABI "mingw32"
+#endif
+#else
+#   define DCC_TARGET_TRIPLET_ABI "gnu"
+#endif
+#endif /* !DCC_TARGET_TRIPLET_ABI */
+
+#ifndef DCC_TARGET_TRIPLET
+#ifdef DCC_TARGET_TRIPLET_NO_OS
+#   define DCC_TARGET_TRIPLET DCC_TARGET_TRIPLET_ARCH "-" DCC_TARGET_TRIPLET_ABI
+#else
+#   define DCC_TARGET_TRIPLET DCC_TARGET_TRIPLET_ARCH "-" DCC_TARGET_TRIPLET_OS "-" DCC_TARGET_TRIPLET_ABI
+#endif
+#endif /* !DCC_TARGET_TRIPLET */
 
 
 #if DCC_TARGET_SIZEOF_CHAR == 1

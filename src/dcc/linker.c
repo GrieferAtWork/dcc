@@ -421,8 +421,14 @@ DCCLinker_AddSysPaths(char const *__restrict outfile_or_basefile) {
    DCCLibPaths_DoAddLibPathNow(&linker.l_paths,buffer,
                               (sizeof(buffer)/sizeof(char))-1);
  }
-#if 0
+ { char buffer[] = "/usr/local/include";
+   TPPLexer_AddIncludePath(buffer,(sizeof(buffer)/sizeof(char))-1);
+ }
  { char buffer[] = "/usr/include";
+   TPPLexer_AddIncludePath(buffer,(sizeof(buffer)/sizeof(char))-1);
+ }
+#if !(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+ { char buffer[] = "/usr/include/" DCC_TARGET_TRIPLET;
    TPPLexer_AddIncludePath(buffer,(sizeof(buffer)/sizeof(char))-1);
  }
 #endif
