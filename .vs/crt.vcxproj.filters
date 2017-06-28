@@ -192,6 +192,12 @@
     <ClInclude Include="..\lib\include\wchar.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\features.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\include\strings.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\lib\test\sizeof.c">

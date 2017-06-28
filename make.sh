@@ -6,8 +6,8 @@ LF=""
 out_bin="bin/dcc"
 obj_path="build/dcc"
 
-CC_DCC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
-CC_DDC="/cygdrive/e/c/dcc/dcc/bin/ddc.exe"
+#CC_DCC="/cygdrive/e/c/dcc/dcc/bin/dcc.exe"
+#CC_DDC="/cygdrive/e/c/dcc/dcc/bin/ddc.exe"
 if [ -f "$CC_DDC" ]; then
 	CC="$CC_DDC";
 	obj_path="build/ddd"

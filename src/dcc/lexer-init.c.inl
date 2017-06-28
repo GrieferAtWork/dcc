@@ -20,11 +20,11 @@
 #define GUARD_DCC_LEXER_INIT_C_INL 1
 
 #include <dcc/common.h>
-#include <dcc/vstack.h>
-#include <dcc/unit.h>
 #include <dcc/compiler.h>
-#include <dcc/lexer.h>
 #include <dcc/gen.h>
+#include <dcc/lexer.h>
+#include <dcc/unit.h>
+#include <dcc/vstack.h>
 
 #include "lexer-priv.h"
 #include "x86_util.h"

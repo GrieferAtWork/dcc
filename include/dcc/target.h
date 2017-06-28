@@ -33,6 +33,7 @@ enum{I_X86,};
 #endif
 
 /* Known CPU names. */
+#define DCC_CPUM_UNKNOWN     0
 #define DCC_CPUM_I386        1
 #define DCC_CPUM_I387        2
 #define DCC_CPUM_I486        3
@@ -167,9 +168,15 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
       defined(__THW_INTEL__) || defined(__INTEL__)
 #   define DCC_HOST_CPUI DCC_CPUI_X86
 #   define DCC_HOST_CPUM DCC_CPUM_I386
+#elif defined(__x86_64__) || defined(__x86_64)
+#   define DCC_HOST_CPUI DCC_CPUI_X86
+#   define DCC_HOST_CPUM DCC_CPUM_I686 /* ??? */
+#endif
+#ifndef DCC_HOST_CPUI
+#   define DCC_HOST_CPUI DCC_CPUI_UNKNOWN
 #endif
 #ifndef DCC_HOST_CPUM
-#   define DCC_HOST_CPUM DCC_CPUI_UNKNOWN
+#   define DCC_HOST_CPUM DCC_CPUM_UNKNOWN
 #endif
 #endif /* !DCC_HOST_CPUM */
 
@@ -440,7 +447,9 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 #define DCC_TARGET_PREFER_STR_WITHLEN 1
 
 
-/* Optional functions that DCC can assume to always be provided by the runtime. */
+/* Optional functions that DCC can assume to always be provided by the runtime.
+ * NOTE: These are only used in fallback code of __builtin_-functions.
+ * NOTE: Some of these functions are not standardized and may not be provided by _any_ runtime... */
 #define DCC_TARGET_RT_HAVE_STRLEN      1 /* size_t strlen(char const *s); */
 #define DCC_TARGET_RT_HAVE_STRNLEN     1 /* size_t strnlen(char const *s, size_t max); */
 #define DCC_TARGET_RT_HAVE_STREND      0 /* char  *strend(char const *s); */
@@ -763,8 +772,8 @@ typedef uint16_t DCC(rc_t);
  * within any one class that is not stored as part of the set. */
 typedef uint8_t DCC(rcset_t); /* TODO: Use this in more places! */
 
-#define DCC_RCSET_EMPTY   0
-#define DCC_RCSET_FULL    0xff
+#define DCC_RCSET_EMPTY        0
+#define DCC_RCSET_FULL         0xff
 #define DCC_RCSET_COM(x,y)   ((x)&(y)) /* common */
 #define DCC_RCSET_SUM(x,y)   ((x)|(y)) /* sum */
 #define DCC_RCSET_ADD(x,ri)  ((x)|(1 << (ri)))
@@ -785,11 +794,19 @@ typedef uint8_t DCC(rcset_t); /* TODO: Use this in more places! */
 #define DCC_CONFIG_HAVE_DRT 1
 #endif
 
-/* Disable DRT when not targeting the host CPU. */
-#if DCC_HOST_CPUM != DCC_TARGET_CPUM
+/* Disable DRT when not targeting an incompatible CPU. */
+#if  /* Make sure the host uses the same instruction set as the target. */\
+    (DCC_HOST_CPUI != DCC_TARGET_CPUI) || \
+     /* Make sure the host machine is at least as new as the target. */\
+    (DCC_HOST_CPUM <  DCC_TARGET_CPUM) || \
+     /* Make sure the host supports all target CPU features. */\
+   ((DCC_TARGET_CPUF&DCC_HOST_CPUF) != DCC_TARGET_CPUF) || \
+    (DCC_TARGET_CPUI == DCC_CPUI_X86 && \
+      (DCC_HOST_CPUF&DCC_CPUF_X86_64) != \
+      (DCC_TARGET_CPUF&DCC_CPUF_X86_64))
 #undef DCC_CONFIG_HAVE_DRT
 #define DCC_CONFIG_HAVE_DRT 0
-#endif /* DCC_HOST_CPUM != DCC_TARGET_CPUM */
+#endif
 
 
 #if DCC_CONFIG_HAVE_DRT

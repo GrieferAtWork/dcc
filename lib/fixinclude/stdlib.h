@@ -21,15 +21,17 @@
 
 #include <__stdinc.h>
 
+#if __has_include_next(<stdlib.h>)
 #pragma push_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
                          "realloc","cfree","memalign","aligned_alloc","pvalloc",\
                          "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
-#if __has_include_next(<stdlib.h>)
 #include_next <stdlib.h>
-#endif
 #pragma pop_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
                         "realloc","cfree","memalign","aligned_alloc","pvalloc",\
                         "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
+#elif defined(__INTELLISENSE__)
+#   include "../include/stdlib.h"
+#endif
 
 /* Fixed/optimized system header <stdlib.h> for DCC */
 #undef size_t

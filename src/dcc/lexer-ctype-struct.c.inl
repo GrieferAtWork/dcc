@@ -19,9 +19,10 @@
 #ifndef GUARD_DCC_LEXER_CTYPE_STRUCT_C_INL
 #define GUARD_DCC_LEXER_CTYPE_STRUCT_C_INL 1
 
+#include <dcc/common.h>
+#include <dcc/compiler.h>
 #include <dcc/lexer.h>
 #include <dcc/unit.h>
-#include <dcc/compiler.h>
 
 #include "lexer-priv.h"
 

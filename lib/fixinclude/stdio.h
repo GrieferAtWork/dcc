@@ -22,7 +22,9 @@
 #include <__stdinc.h>
 
 #if __has_include_next(<stdio.h>)
-#include_next <stdio.h>
+#   include_next <stdio.h>
+#elif defined(__INTELLISENSE__)
+#   include "../include/stdio.h"
 #endif
 
 /* Fixed/optimized system header <stdio.h> for DCC */

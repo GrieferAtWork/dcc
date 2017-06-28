@@ -1361,6 +1361,12 @@ DEF_WARNING(W_DECLARATION_CONTAINS_UNKNOWN_TYPE,(WG_SYNTAX),WSTATE_WARN,{
        tyrepr->s_text,TOK_A);
  TPPString_Decref(tyrepr);
 })
+DEF_WARNING(W_DECLARATION_CONTAINS_GUESSED_TYPE,(WG_SYNTAX),WSTATE_WARN,{
+ struct TPPString *tyrepr = DCCType_ToTPPString(ARG(struct DCCType *),NULL);
+ WARNF("Guessing " Q("%s") " for unknown type keyword " TOK_S " in declaration",
+       tyrepr->s_text,TOK_A);
+ TPPString_Decref(tyrepr);
+})
 DEF_WARNING(W_EXPRESSION_CONTAINS_STMT_KEYWORD,(WG_SYNTAX),WSTATE_WARN,WARNF("Encountered statement keyword " TOK_S " inside an expression",TOK_A))
 DEF_WARNING(W_EXPRESSION_CONTAINS_TYPE,(WG_SYNTAX),WSTATE_WARN,WARNF("Got type in expression"))
 DEF_WARNING(W_EXPRESSION_CONTAINS_UNKNOWN_KEYWORD,(WG_SYNTAX,WG_UNDEFINED),WSTATE_WARN,WARNF("Unknown identifier " Q("%s") " in expression",KWDNAME()))

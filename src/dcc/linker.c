@@ -20,8 +20,8 @@
 #define GUARD_DCC_LINKER_C 1
 
 #include <dcc/common.h>
-#include <dcc/target.h>
 #include <dcc/linker.h>
+#include <dcc/target.h>
 #include <dcc/unit.h>
 
 #include <string.h>
@@ -415,8 +415,9 @@ DCCLinker_AddSysPaths(char const *__restrict outfile_or_basefile) {
     free(pathcopy);
    }
  }
-#elif !!(DCC_HOST_OS&DCC_OS_F_UNIX) && \
-      !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
+#endif
+#if !!(DCC_HOST_OS&DCC_OS_F_UNIX) && \
+    !!(DCC_TARGET_OS&DCC_OS_F_UNIX)
  /* XXX: This can be done better, and not be hard-coded. */
 #define ADD_LIB_PATH(p) \
 do{ char buffer[] = p; \

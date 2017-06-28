@@ -21,10 +21,10 @@
 #define _BSD_SOURCE 1 /* Enable usleep() */
 
 #include <dcc/common.h>
-#include <dcc/unit.h>
+#include <dcc/compiler.h>
 #include <dcc/lexer.h>
 #include <dcc/linker.h>
-#include <dcc/compiler.h>
+#include <dcc/unit.h>
 
 #if DCC_DEBUG
 #include <drt/drt.h>
@@ -632,6 +632,7 @@ DCC_DECL_END
 #include "lexer-attributes.c.inl"
 #include "lexer-builtins.c.inl"
 #include "lexer-ctype.c.inl"
+#include "lexer-ctype-guess.c.inl"
 #include "lexer-ctype-struct.c.inl"
 #include "lexer-decl.c.inl"
 #include "lexer-expr.c.inl"

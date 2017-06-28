@@ -24,8 +24,12 @@
 __STRICT_ANSI_HEADER
 
 #if __has_include_next(<strings.h>)
-#include_next <strings.h>
+#   include_next <strings.h>
+#elif defined(__INTELLISENSE__)
+#   include "../include/strings.h"
 #endif
+
+#include <features.h>
 
 #if _SVID_SOURCE || _BSD_SOURCE || \
     _POSIX_C_SOURCE >= 200809L || \

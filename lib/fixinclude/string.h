@@ -29,6 +29,8 @@
 #pragma pop_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
                         "realloc","cfree","memalign","aligned_alloc","pvalloc",\
                         "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
+#elif defined(__INTELLISENSE__)
+#   include "../include/string.h"
 #endif
 
 /* Fixed/optimized system header <string.h> for DCC */
@@ -45,7 +47,13 @@ typedef __SIZE_TYPE__ size_t;
 #define memset(dst,byt,size)  __builtin_memset((dst),(byt),(size))
 #define memcmp(a,b,size)      __builtin_memcmp((a),(b),(size))
 #define strlen(str)           __builtin_strlen((str))
+
+#include <features.h>
+#if defined(__USE_DCC) || defined(_GNU_SOURCE) || \
+   (_XOPEN_SOURCE-0) >= 700 || \
+   (_POSIX_C_SOURCE-0) >= 200809L
 #define strnlen(str,maxlen)   __builtin_strnlen((str),(maxlen))
+#endif
 
 #define memchr(p,c,s)         __builtin_memchr((p),(c),(s))
 #define strchr(s,c)           __builtin_strchr((s),(c))
@@ -88,6 +96,7 @@ typedef __SIZE_TYPE__ size_t;
  * >> __strn(r)chr(s,c,max)    --> Same as __mem(r)chr(s,c,strnlen(s,max))
  * >> __strn(r)chrnul(s,c,max) --> Same as __mem(r)end(s,c,strnlen(s,max))
  */
+#define __strnlen(str,maxlen) __builtin_strnlen((str),(maxlen))
 #define __memrchr(p,c,s)      __builtin_memrchr((p),(c),(s))
 #define __strend(str)         __builtin_rawmemlen((str),'\0')
 #define __strnend(str,maxlen) __builtin_memlen((str),'\0',(maxlen))
@@ -110,14 +119,14 @@ typedef __SIZE_TYPE__ size_t;
 #define __strnchrnul(s,c,max) __builtin_strnchrnul((s),(c),(max))
 #define __strnrchrnul(s,c,max) __builtin_strnrchrnul((s),(c),(max))
 
-#if defined(_GNU_SOURCE) || defined(_DCC_SOURCE)
+#if defined(_GNU_SOURCE) || defined(__USE_DCC)
 #   define memrchr(p,c,s)     __builtin_memrchr((p),(c),(s))
 #   define rawmemchr(p,c)     __builtin_rawmemchr((p),(c))
 #   define strchrnul(s,c)     __builtin_strchrnul((s),(c))
 #endif
 
 
-#ifdef _DCC_SOURCE /* Enable DCC extension functions. */
+#ifdef __USE_DCC /* Enable DCC extension functions. */
 #   define strend(str)        __builtin_rawmemlen((str),'\0')
 #   define strnend(str,maxlen) __builtin_memlen((str),'\0',(maxlen))
 #   define memlen(p,c,s)      __builtin_memlen((p),(c),(s))

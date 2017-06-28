@@ -20,11 +20,11 @@
 #define GUARD_DCC_LEXER_EXPR_C_INL 1
 
 #include <dcc/common.h>
-#include <dcc/vstack.h>
-#include <dcc/unit.h>
 #include <dcc/compiler.h>
-#include <dcc/lexer.h>
 #include <dcc/gen.h>
+#include <dcc/lexer.h>
+#include <dcc/unit.h>
+#include <dcc/vstack.h>
 
 #include "lexer-priv.h"
 
@@ -1804,8 +1804,8 @@ DCCParse_IsExpr(void) {
  default:
   if (!TPP_ISKEYWORD(TOK)) break;
   /* Don't consider statement/type keywords part of expressions.
-   * NOTE: Yes: Even though they can (somewhat) be parsed inside,
-   *            types are _NOT_ considered allowed inside of expressions. */
+   * NOTE: Yes: Even though they can (somewhat) be parsed inside, types
+   *            are _NOT_ considered to be allowed inside of expressions. */
   if (DCC_ISSTMTKWD(TOK)) break;
 yes: return 1;
  }

@@ -90,6 +90,7 @@
     <None Include="..\src\dcc\lexer-builtins-string.c.inl" />
     <None Include="..\src\dcc\lexer-builtins-util.c.inl" />
     <None Include="..\src\dcc\lexer-builtins.c.inl" />
+    <None Include="..\src\dcc\lexer-ctype-guess.c.inl" />
     <None Include="..\src\dcc\lexer-ctype-struct.c.inl" />
     <None Include="..\src\dcc\lexer-ctype.c.inl" />
     <None Include="..\src\dcc\lexer-decl.c.inl" />

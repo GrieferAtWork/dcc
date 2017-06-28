@@ -89,7 +89,7 @@ struct [[__packed__]] __cpuinfo {
  * >> int __builtin_cpu_is(char const *cpuname);
  * >> int __builtin_cpu_supports(char const *feature);
  */
-extern struct __cpuinfo __cpu_info [[__weak__]];
+extern struct __cpuinfo __cpu_info [[__visbility__("hidden"),__weak__]];
 
 
 

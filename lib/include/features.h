@@ -74,11 +74,6 @@ __STRICT_ANSI_HEADER
 #undef __USE_FORTIFY_LEVEL
 #undef __KERNEL_STRICT_NAMES
 
-#undef __USE_DCC
-#ifdef _DCC_SOURCE /* Enable DCC extension functions. */
-# define __USE_DCC 1
-#endif
-
 #ifndef _LOOSE_KERNEL_NAMES
 # define __KERNEL_STRICT_NAMES
 #endif

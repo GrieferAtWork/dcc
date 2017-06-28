@@ -32,6 +32,25 @@ __STRICT_ANSI_HEADER
 
 #include <features.h>
 
-/* TODO */
+#ifdef __CRT_MSVC
+#pragma push_macro(undef,"threadlocaleinfostruct","threadmbcinfostruct")
+typedef struct __locale_struct {
+ struct threadlocaleinfostruct *__msvc_locinfo;
+ struct threadmbcinfostruct    *__msvc_mbcinfo;
+} *__locale_t;
+#pragma pop_macro("threadlocaleinfostruct","threadmbcinfostruct")
+#elif defined(__CRT_GLIBC)
+typedef struct __locale_struct {
+ struct __locale_data  *__locales[13];
+ __UINT16_TYPE__ const *__ctype_b;
+ __INT32_TYPE__ const  *__ctype_tolower;
+ __INT32_TYPE__ const  *__ctype_toupper;
+ char const            *__names[13];
+} *__locale_t;
+#else
+typedef int *__locale_t; /* ??? */
+#endif
+
+typedef __locale_t locale_t;
 
 #endif

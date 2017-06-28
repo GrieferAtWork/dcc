@@ -86,10 +86,11 @@ PUBLIC void DCC_VSTACK_CALL
 DCCVStack_Alloca(void) {
  assert(vsize >= 1);
  if (linker.l_flags&DCC_LINKER_FLAG_GENDEBUG) {
+  struct DCCSym *sym; int eax_mode;
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 pe_alloca:
 #endif
-  struct DCCSym *sym; int eax_mode = 0;
+  eax_mode = 0;
   DCCStackValue_FixBitfield(vbottom);
   DCCStackValue_FixTest(vbottom);
   if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE))

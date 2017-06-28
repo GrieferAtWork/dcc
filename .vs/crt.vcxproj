@@ -16,6 +16,7 @@
     <ClInclude Include="..\lib\fixinclude\ctype.h" />
     <ClInclude Include="..\lib\fixinclude\dcc.h" />
     <ClInclude Include="..\lib\fixinclude\endian.h" />
+    <ClInclude Include="..\lib\fixinclude\features.h" />
     <ClInclude Include="..\lib\fixinclude\iso646.h" />
     <ClInclude Include="..\lib\fixinclude\limits.h" />
     <ClInclude Include="..\lib\fixinclude\malloc.h" />
@@ -54,6 +55,7 @@
     <ClInclude Include="..\lib\include\stdio.h" />
     <ClInclude Include="..\lib\include\stdlib.h" />
     <ClInclude Include="..\lib\include\string.h" />
+    <ClInclude Include="..\lib\include\strings.h" />
     <ClInclude Include="..\lib\include\sys\dir.h" />
     <ClInclude Include="..\lib\include\sys\fcntl.h" />
     <ClInclude Include="..\lib\include\sys\stat.h" />
@@ -120,12 +122,12 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(ProjectDir)..\bin\</OutDir>
-    <IncludePath>$(ProjectDir)\..\lib\include;$(ProjectDir)\..\lib\fixinclude;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\..\lib\fixinclude;$(ProjectDir)\..\lib\include;$(IncludePath)</IncludePath>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
     <IntDir>$(ProjectDir)..\build\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>$(ProjectDir)\..\lib\include;$(ProjectDir)\..\lib\fixinclude;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\..\lib\fixinclude;$(ProjectDir)\..\lib\include;$(IncludePath)</IncludePath>
     <OutDir>$(ProjectDir)..\bin\</OutDir>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
     <IntDir>$(ProjectDir)..\build\$(Configuration)\</IntDir>

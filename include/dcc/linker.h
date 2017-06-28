@@ -220,7 +220,7 @@ DCCFUN int DCCLinker_DelLibPath(char *__restrict path, size_t pathsize);
  * @return: 0 : Either no paths were added, or a lexer error was set.
  * @return: * : The amount of added library paths. */
 DCCFUN size_t DCCLinker_AddLibPaths(char *__restrict list, size_t listsize);
-#if !!(DCC_TARGET_OS&DCC_OS_F_WINDOWS)
+#if DCC_TARGET_OS == DCC_OS_WINDOWS
 #   define DCCLINKER_PATHS_SEP ';'
 #else
 #   define DCCLINKER_PATHS_SEP ':'

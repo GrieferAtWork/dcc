@@ -31,7 +31,9 @@ __STRICT_ANSI_HEADER
 #pragma pop_macro(undef,"calloc","free","malloc","malloc_usable_size","mallopt",\
                         "realloc","cfree","memalign","aligned_alloc","pvalloc",\
                         "valloc","memdup","strdup","strndup","strdupf","vstrdupf")
-#endif /* <malloc.h> */
+#elif defined(__INTELLISENSE__)
+#   include "../include/malloc.h"
+#endif
 
 #ifdef alloca
 /* Re-define 'alloca'  */

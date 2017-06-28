@@ -263,6 +263,21 @@ DCCFUN struct TPPKeyword *DCC_PARSE_CALL DCCParse_CType(struct DCCType *__restri
 DCCFUN int                DCC_PARSE_CALL DCCParse_CTypePrefix(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);
 DCCFUN struct TPPKeyword *DCC_PARSE_CALL DCCParse_CTypeSuffix(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);
 
+/* Guess the meaning of a given CType.
+ * >> This function is used to try and interpret unknown
+ *    type keywords when encountered and knows of various
+ *    types used in system headers, such as more common
+ *    ones like 'size_t', but even more specific, and even
+ *    target-specific types, such as 'DWORD' or '__u8'
+ * NOTE: This function will not emit a warning for guess types. - The caller must do this!
+ * @return: 0: Failed to guess the intended type from 'name..+=size'
+ * @return: 1: Successfully guessed the intended type.
+ * HINT: In the event that FALSE(0) is returned, 'self' is still initialized to 'int'. */
+DCCFUN int DCC_PARSE_CALL
+DCCParse_CTypeGuess(struct DCCType *__restrict self,
+                    struct DCCAttrDecl *__restrict attr,
+                    char const *__restrict name, size_t size);
+
 /* Same as 'DCCParse_CType', but unknown keywords
  * are interpreted as 'int', as well as warned about. */
 DCCFUN struct TPPKeyword *DCC_PARSE_CALL

@@ -26,9 +26,8 @@ __STRICT_ANSI_HEADER
 #if __has_include_next(<endian.h>)
 #include_next <endian.h>
 #endif
-#if __has_include(<features.h>) || defined(__INTELLISENSE__)
+
 #include <features.h>
-#endif
 
 #define __LITTLE_ENDIAN    __ORDER_LITTLE_ENDIAN__
 #define __BIG_ENDIAN       __ORDER_BIG_ENDIAN__
@@ -55,7 +54,9 @@ __STRICT_ANSI_HEADER
 #endif
 
 #if defined(__USE_MISC) && !defined(__ASSEMBLER__)
+#if __has_include(<bits/byteswap.h>) || defined(__INTELLISENSE__)
 #	include <bits/byteswap.h>
+#endif
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #	define htobe16(x) __bswap_16(x)
 #	define htole16(x) (x)

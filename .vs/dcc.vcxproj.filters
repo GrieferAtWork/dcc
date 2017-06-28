@@ -322,5 +322,8 @@
     <None Include="..\src\drt\drt-thread.c.inl">
       <Filter>src\drt</Filter>
     </None>
+    <None Include="..\src\dcc\lexer-ctype-guess.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
   </ItemGroup>
 </Project>

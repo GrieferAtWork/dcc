@@ -180,7 +180,6 @@ struct DCCDecl;
 #define DCCTYPE_STATICWRITABLE(t) (!((t)&DCCTYPE_CONST || DCCTYPE_GROUP(t) == DCCTYPE_LVALUE))
 
 
-
 typedef uint32_t DCC(tyid_t); /*< Type id+flags ('DCCTYPE_*'). */
 struct DCCType {
 #ifdef __INTELLISENSE__
@@ -204,6 +203,13 @@ struct DCCType {
 #define DCCType_ISVLA(self) \
  (DCCTYPE_GROUP((self)->t_type) == DCCTYPE_ARRAY && \
  (assert((self)->t_base),(self)->t_base->d_kind == DCC_DECLKIND_VLA))
+
+#define DCCType_ALLOWSIGN(self) \
+ (((self)->t_type&(DCCTYPE_GROUPMASK|DCCTYPE_BASICMASK)) < DCCTYPE_FLOAT || \
+   (DCCTYPE_GROUP((self)->t_type) == DCCTYPE_STRUCTURE && \
+   (assert((self)->t_base),(self)->t_base->d_attr && \
+          ((self)->t_base->d_attr->a_specs&DCC_ATTRSPEC_ARITHMETIC))))
+
 
 
 /* Special builtin types describing the pointers to the 8 builtin types. */

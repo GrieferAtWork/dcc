@@ -20,28 +20,27 @@
 #pragma GCC system_header
 
 #include <__stdinc.h>
-#include <features.h>
 
-#if __has_include_next(<ctype.h>)
-#   include_next <ctype.h>
+#if __has_include_next(<features.h>)
+#   include_next <features.h>
 #elif defined(__INTELLISENSE__)
-#   include "../include/ctype.h"
+#   include "../include/features.h"
 #endif
 
-#define isalpha(ch)  __builtin_isalpha((ch))
-#define isupper(ch)  __builtin_isupper((ch))
-#define islower(ch)  __builtin_islower((ch))
-#define isdigit(ch)  __builtin_isdigit((ch))
-#define isxdigit(ch) __builtin_isxdigit((ch))
-#define isspace(ch)  __builtin_isspace((ch))
-#define ispunct(ch)  __builtin_ispunct((ch))
-#define isalnum(ch)  __builtin_isalnum((ch))
-#define isprint(ch)  __builtin_isprint((ch))
-#define isgraph(ch)  __builtin_isgraph((ch))
-#define iscntrl(ch)  __builtin_iscntrl((ch))
-#define toupper(ch)  __builtin_toupper((ch))
-#define tolower(ch)  __builtin_tolower((ch))
-#ifdef __USE_ISOC99
-#define isblank(ch)  __builtin_isblank((ch))
+/* Fixed/optimized system header <features.h> for DCC */
+
+#undef __USE_DCC
+
+/* '-Wextensions' is disabled by default, but enabled when any std
+ * other than 'dcc' has been selected (such as through '-std=c99')
+ * >> When using 'dcc' as std, enable DCC standard
+ *    library extensions through builtin functions. */
+#if !__has_warning("-Wextensions")
+#undef _DCC_SOURCE
+#define _DCC_SOURCE
+#endif
+
+#ifdef _DCC_SOURCE
+#define __USE_DCC
 #endif
 

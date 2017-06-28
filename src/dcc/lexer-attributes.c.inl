@@ -19,10 +19,11 @@
 #ifndef GUARD_DCC_LEXER_ATTRIBUTES_C_INL
 #define GUARD_DCC_LEXER_ATTRIBUTES_C_INL 1
 
-#include <dcc/lexer.h>
-#include <dcc/unit.h>
-#include <dcc/type.h>
+#include <dcc/common.h>
 #include <dcc/compiler.h>
+#include <dcc/lexer.h>
+#include <dcc/type.h>
+#include <dcc/unit.h>
 
 #include "lexer-priv.h"
 

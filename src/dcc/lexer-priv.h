@@ -20,8 +20,8 @@
 #define GUARD_DCC_LEXER_PRIV_H 1
 
 #include <dcc/common.h>
-#include <dcc/target.h>
 #include <dcc/lexer.h>
+#include <dcc/target.h>
 
 DCC_DECL_BEGIN
 

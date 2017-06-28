@@ -834,9 +834,9 @@ DCCSection_New(struct TPPKeyword const *__restrict name,
   if unlikely(!result) goto seterr;
   /* Mirror the name by default. */
   result->sc_imp.si_file = name;
-#if !DCC_DLERROR_IS_ZERO
+#if DCC_CONFIG_HAVE_DRT && !DCC_DLERROR_IS_ZERO
   result->sc_imp.si_dlrt = DCC_DLERROR;
-#endif
+#endif /* DCC_CONFIG_HAVE_DRT && !DCC_DLERROR_IS_ZERO */
  } else {
   result = (struct DCCSection *)calloc(1,DCCSECTION_SIZEOF_DAT);
   if unlikely(!result) goto seterr;

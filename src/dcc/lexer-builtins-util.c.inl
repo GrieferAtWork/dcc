@@ -20,11 +20,11 @@
 #define GUARD_DCC_LEXER_BUILTINS_UTIL_C_INL 1
 
 #include <dcc/common.h>
+#include <dcc/compiler.h>
+#include <dcc/gen.h>
 #include <dcc/lexer.h>
 #include <dcc/type.h>
 #include <dcc/vstack.h>
-#include <dcc/compiler.h>
-#include <dcc/gen.h>
 
 #include "lexer-priv.h"
 
