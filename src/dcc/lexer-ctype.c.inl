@@ -159,7 +159,7 @@ DCCParse_CTypeNewArgumentList(struct DCCDecl *__restrict funtydecl,
     YIELD();
     goto nextarg;
    }
-   opt_firstname = DCCParse_CTypeUnknown(&arg_type,&arg_attr);
+   opt_firstname = DCCParse_CTypeOnly(&arg_type,&arg_attr,1);
    opt_firsttype = &arg_type;
    opt_firstattr = &arg_attr;
    is_first      = 0;
@@ -370,7 +370,7 @@ DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl,
  for (;;) {
   struct DCCType type;
   struct DCCAttrDecl attr = DCCATTRDECL_INIT;
-  if (!DCCParse_CTypePrefix(&type,&attr)) {
+  if (!DCCParse_CTypeDeclBase(&type,&attr,0)) {
    if (is_first && empty_attr) DCCAttrDecl_Merge(empty_attr,&attr);
    DCCAttrDecl_Quit(&attr);
    break;
@@ -548,10 +548,37 @@ oldstyle_arglist:
     DCCParse_CTypeOldArgumentList(funtydecl,NULL,NULL);
     is_old_funimpl = 1;
    } else if ((firstarg_name = DCCParse_CType(&firstarg_type,&firstarg_attr)) != NULL) {
+newstyle_arglist:
     funtydecl->d_kind = DCC_DECLKIND_FUNCTION;
     DCCParse_CTypeNewArgumentList(funtydecl,&firstarg_type,firstarg_name,&firstarg_attr);
     DCCType_Quit(&firstarg_type);
    } else {
+    if (TPP_ISKEYWORD(TOK)) {
+     struct TPPFile    *next_file;
+     char              *next_tok;
+     struct TPPKeyword *next_kwd;
+     next_tok = peek_next_token(&next_file);
+     /* Special characters that are used for longer type names:
+      * >> int add(DWORD *); // We know exactly what this is, even when there isn't a type named 'DWORD' */
+     if (*next_tok == '*' || *next_tok == '&' ||
+         *next_tok == '(' || *next_tok == '[')
+         goto unknown_typename;
+     next_kwd = peek_keyword(next_file,next_tok,1);
+     if (next_kwd && !TPPKeyword_ISDEFINED(next_kwd)) {
+      int recognized_type;
+unknown_typename:
+      recognized_type = DCCParse_CTypeGuess(&firstarg_type,&firstarg_attr,
+                                            TOKEN.t_kwd->k_name,
+                                            TOKEN.t_kwd->k_size);
+      WARN(recognized_type ? W_DECLARATION_CONTAINS_GUESSED_TYPE
+                           : W_DECLARATION_CONTAINS_UNKNOWN_TYPE,
+                           &firstarg_type);
+      YIELD();
+      /* Parse a proper type suffix and argument name. */
+      firstarg_name = DCCParse_CTypeSuffix(&firstarg_type,&firstarg_attr);
+      goto newstyle_arglist;
+     }
+    }
     /* Fallback: Old-style argument list. */
     goto oldstyle_arglist;
    }
@@ -697,7 +724,7 @@ inner_endparen:
   } else if ((result = DCCParse_CType(&inner_type,&paren_attr)) != NULL) {
    struct DCCDecl *newfun_decl;
    /* A type is located inside the parenthesis. - This is case #1. */
-/*parcase_1:*/
+parcase_1:
    newfun_decl = DCCDecl_New(&TPPKeyword_Empty);
    if likely(newfun_decl) {
     newfun_decl->d_kind = DCC_DECLKIND_FUNCTION;
@@ -715,6 +742,35 @@ inner_endparen:
    DCCType_Quit(&inner_type);
    goto inner_endparen;
   } else if (TPP_ISKEYWORD(TOK)) {
+   struct TPPFile    *next_file;
+   char              *next_tok;
+   struct TPPKeyword *next_kwd;
+   /* Check for additional case:
+    * >> int add(DWORD x); // 'DWORD' was never defined as a type.
+    * This special check is only allowed when 'DWORD' is followed by an argument name.
+    * >> int add(DWORD); // Old-style function equivalent to 'int add(DWORD) int DWORD;' / 'int add(int DWORD)'
+    */
+   next_tok = peek_next_token(&next_file);
+   /* Special characters that are used for longer type names:
+    * >> int add(DWORD *); // We know exactly what this is, even when there isn't a type named 'DWORD' */
+   if (*next_tok == '*' || *next_tok == '&' ||
+       *next_tok == '(' || *next_tok == '[')
+       goto unknown_typename;
+   next_kwd = peek_keyword(next_file,next_tok,1);
+   if (next_kwd && !TPPKeyword_ISDEFINED(next_kwd)) {
+    int recognized_type;
+unknown_typename:
+    recognized_type = DCCParse_CTypeGuess(&inner_type,&paren_attr,
+                                          TOKEN.t_kwd->k_name,
+                                          TOKEN.t_kwd->k_size);
+    WARN(recognized_type ? W_DECLARATION_CONTAINS_GUESSED_TYPE
+                         : W_DECLARATION_CONTAINS_UNKNOWN_TYPE,
+                         &inner_type);
+    YIELD();
+    /* Parse a proper type suffix and argument name. */
+    result = DCCParse_CTypeSuffix(&inner_type,&paren_attr);
+    goto parcase_1;
+   }
    /* Ambiguity between cases #2 and #3.
     * >> When the next token is ',' this is case #3 for sure.
     * >> When the next token is ')' this is case #3 if an old-style argument list follows.
@@ -1088,7 +1144,7 @@ again:
   has_paren = (TOK == '(');
   if (has_paren) YIELD();
   memset(&typeof_attr,0,sizeof(typeof_attr));
-  DCCParse_CTypeOnly(self,&typeof_attr);
+  DCCParse_CTypeOnly(self,&typeof_attr,0);
   DCCType_ASSERT(self);
   if (has_paren) {
    if (TOK != ')') WARN(W_EXPECTED_RPAREN);
@@ -1276,29 +1332,11 @@ DCCParse_CType(struct DCCType *__restrict self,
  return result;
 }
 
-PUBLIC struct TPPKeyword *DCC_PARSE_CALL
-DCCParse_CTypeUnknown(struct DCCType *__restrict self,
-                      struct DCCAttrDecl *__restrict attr) {
- struct TPPKeyword *result;
- result = DCCParse_CType(self,attr);
- if unlikely(!result) {
-  assert(!self->t_base);
-  assert(self->t_type == DCCTYPE_INT);
-  if (TPP_ISKEYWORD(TOK)) {
-   /* Assume missing typedef. */
-   WARN(W_UNKNOWN_KEYWORD_IN_TYPE);
-   YIELD();
-   /* Parse a regular type-suffix. */
-   result = DCCParse_CTypeSuffix(self,attr);
-  }
- }
- return result;
-}
-
 
 PUBLIC struct TPPKeyword *DCC_PARSE_CALL
 DCCParse_CTypeOnly(struct DCCType *__restrict self,
-                   struct DCCAttrDecl *__restrict attr) {
+                   struct DCCAttrDecl *__restrict attr,
+                   int expecting_type) {
  struct TPPKeyword *result;
  assert(self);
  assert(attr);
@@ -1306,17 +1344,172 @@ DCCParse_CTypeOnly(struct DCCType *__restrict self,
  *        by this unless the caller set the NOCGEN flag. */
  result = DCCParse_CType(self,attr);
  if (!result) {
+  if (expecting_type) {
+   if (TPP_ISKEYWORD(TOK) &&
+       DCCParse_CTypeGuess(self,attr,
+                           TOKEN.t_kwd->k_name,
+                           TOKEN.t_kwd->k_size)) {
+    WARN(W_DECLARATION_CONTAINS_GUESSED_TYPE,self);
+    YIELD();
+    return DCCParse_CTypeSuffix(self,attr);
+   }
+   WARN(W_EXPECTED_TYPE_BUT_PARSING_EXPRESSION);
+  }
   pushf();
   /* Make sure no code is generated for the discarded expression. */
   compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
   DCCParse_Expr1();
   DCCType_InitCopy(self,&vbottom->sv_ctype);
+  result = vbottom->sv_sym
+         ? (struct TPPKeyword *)vbottom->sv_sym->sy_name
+         : &TPPKeyword_Empty;
   vpop(1);
   popf();
-  result = &TPPKeyword_Empty;
  }
  return result;
 }
+
+PUBLIC int DCC_PARSE_CALL
+DCCParse_CTypeDeclBase(struct DCCType *__restrict self,
+                       struct DCCAttrDecl *__restrict attr,
+                       int maybe_expression) {
+ int result;
+ assert(self);
+ assert(attr);
+ (void)maybe_expression;
+parse_prefix:
+ result = DCCParse_CTypePrefix(self,attr);
+ if (!result) {
+  struct DCCDecl *struct_decl;
+  struct TPPKeyword *next_kwd;
+  struct TPPFile *next_file; char *next_tok;
+  int recognized_type;
+  /* Better error handling for something like this:
+   * >> DWORD x = 42;
+   *    ^^^^^ - Never defined
+   * Currently, when appearing inside a function-scope,
+   * the compiler will take 'DWORD' and compile it as
+   * 'extern int DWORD();', before being annoyed that
+   * there is a ';' missing afterwards.
+   * #1 Handle this by first confirming that the
+   *    current token is a keyword that is not
+   *    part of the 'DCC_NS_LOCALS' namespace.
+   * #2 Following that, peek the text for the next
+   *    token and check if it only contains ALNUM
+   *    characters (as well as escaped linefeeds).
+   * #3 With the next token parsed as a keyword,
+   *    check if there is a macro defined under
+   *    the same name (If there is, stop).
+   * #4 Make sure that the following keyword can't appear
+   *    in an expression suffix (currently only '__pack' can)
+   * If all of the above succeed, it is _most_ likely
+   * that the current token is quite simply an unknown
+   * type name that we can warn about before compiling
+   * it as 'int', meaning that without an existing
+   * typedef for 'DWORD', the above expression will be
+   * compiled as 'int x = 42;' */
+  if (!TPP_ISKEYWORD(TOK)) goto end;
+  assert(TOKEN.t_kwd);
+  if (DCCCompiler_GetDecl(TOKEN.t_kwd,DCC_NS_LOCALS)) goto end;
+  next_tok = peek_next_token(&next_file);
+  next_kwd = peek_keyword(next_file,next_tok,1);
+  /* Check that the next token isn't a defined macro. */
+  if (!next_kwd) {
+#if 0
+   if (!maybe_expression) {
+    /* Inside of expression, we must parse like this to remain STD-C compliant:
+     * >> foo (y);
+     * Compiles as:
+     * >> extern int foo();
+     * >> extern int y();
+     * >> foo(y);
+     * But outside of expression (aka. in the global scope), there can
+     * be no expression, meaning we are free to parse it like this:
+     * >> int y; // Replace 'foo' with 'int' after failing to guess its typing.
+     */
+    if (*next_tok == '*' || *next_tok == '&' ||
+        *next_tok == ',' || *next_tok == ';' ||
+        *next_tok == '[') {
+     goto continue_error_handling;
+    }
+    if (*next_tok == '(') {
+     /* NOTE: We need to be careful about applying this behavior to
+      *       '(', because of old-style conventions of omitting the
+      *       '=' before variable initializers:
+      *    >> x  (foo);
+      *       Is this:
+      *    >> int x(foo) int foo;
+      *       Or is it:
+      *    >> extern int foo();
+      *    >> int x = (foo);
+      * This ambiguity is decided on a case-by-case basis that prefers
+      * deciding in favor of the former case (simply because I've
+      * never encountered any code that actually made use of the latter)
+      */
+
+
+    }
+   }
+#endif
+   goto end;
+  }
+  if (TPPKeyword_ISDEFINED(next_kwd)) goto end;
+  /* xxx: Any additional keywords that can appear after an expression must be added here! */
+  if (next_kwd->k_id == KWD___pack) goto end;
+//continue_error_handling:
+  /* As an additional check after all of the above,
+   * in the event that the original keyword _is_
+   * known as a type, but lacking a struct/union/enum prefix
+   * (which could easily happen when importing code from c++,
+   *  with the fact that DCC even supports l-values in mind),
+   * emit a different warning and automatically prepend the prefix. */
+  struct_decl = DCCCompiler_GetDecl(TOKEN.t_kwd,DCC_NS_STRUCT);
+  recognized_type = 0;
+  if (struct_decl) {
+   if (struct_decl->d_kind == DCC_DECLKIND_STRUCT ||
+       struct_decl->d_kind == DCC_DECLKIND_UNION) {
+    self->t_type = DCCTYPE_STRUCTURE;
+    self->t_base = struct_decl;
+    DCCDecl_Incref(struct_decl);
+    WARN(struct_decl->d_kind == DCC_DECLKIND_STRUCT
+         ? W_DECLARATION_TYPE_MISSES_PREFIX_STRUCT
+         : W_DECLARATION_TYPE_MISSES_PREFIX_UNION,
+         self);
+   } else if (struct_decl->d_kind == DCC_DECLKIND_ENUM) {
+    assert(self->t_type == DCCTYPE_INT);
+    assert(!self->t_base);
+    WARN(W_DECLARATION_TYPE_MISSES_PREFIX_ENUM,self);
+   } else goto default_unknown_type;
+   recognized_type = 1;
+  } else {
+default_unknown_type:
+   /* Check if we recognize the type's name from the C standard library. */
+   recognized_type = DCCParse_CTypeGuess(self,attr,
+                                         TOKEN.t_kwd->k_name,
+                                         TOKEN.t_kwd->k_size);
+   WARN(recognized_type ? W_DECLARATION_CONTAINS_GUESSED_TYPE
+                        : W_DECLARATION_CONTAINS_UNKNOWN_TYPE,self);
+  }
+  YIELD();
+  /* Special case: Parse the type again if the ~real~ keyword
+   *               following an unknown one inside a declaration
+   *               is exclusive to type declarations. */
+  if (DCC_ISTYPEKWD(TOKEN.t_id)) {
+   /* TODO: What about:
+    * >> [[arithmetic]] struct int128 { char v[16]; };
+    * >> 
+    * >> int128 unsigned x = 0; // The fallback parser for this still decides wrong.
+    * >> unsigned int128 x = 0; // The fallback parser will ignore the 'unsigned' in this.
+    */
+   if (!recognized_type) goto parse_prefix;
+  }
+  /* Indicate that a type base was parsed. */
+  result = 1;
+ }
+end:
+ return result;
+}
+
 
 DCC_DECL_END
 

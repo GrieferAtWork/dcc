@@ -936,22 +936,9 @@ DCCParse_StaticAssert(void) {
 }
 
 PUBLIC int DCC_PARSE_CALL DCCParse_DeclOrExpr(void) {
- int result = DCCParse_Decl();
+ int result = DCCParse_LocalDecl();
  if (!result) DCCParse_Expr();
  return result;
-}
-
-LEXPRIV int DCC_PARSE_CALL DCCParse_GlobalDecl(void) {
- struct DCCType base; int error;
- struct DCCAttrDecl attr = DCCATTRDECL_INIT;
- error = DCCParse_CTypePrefix(&base,&attr);
- DCCType_ASSERT(&base);
- /* 'base' already defaults to 'int'. */
- if (!error) WARN(W_EXPECTED_TYPE_FOR_DECLARATION);
- error = DCCParse_DeclWithBase(&base,&attr,error);
- DCCType_Quit(&base);
- DCCAttrDecl_Quit(&attr);
- return error;
 }
 
 PUBLIC void DCC_PARSE_CALL DCCParse_Global(void) {

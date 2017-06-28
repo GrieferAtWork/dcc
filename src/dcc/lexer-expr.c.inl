@@ -437,7 +437,7 @@ LEXPRIV int DCC_PARSE_CALL DCCParse_ExprType(void) {
  /* Parse a type prefix. - Don't parse a full type due to ambiguity between:
   * >> auto x = int(*)(int) (42); // This just looks weird. - Also: The '(*' is ambiguous
   */
- error = !!DCCParse_CTypePrefix(&type,&attr);
+ error = !!DCCParse_CTypeDeclBase(&type,&attr,1);
  if (!error) {
   if (TPP_ISKEYWORD(TOK)) {
    struct DCCDecl *tydecl;
@@ -564,10 +564,8 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprGeneric(void) {
   } else {
    struct DCCType     case_type;
    struct DCCAttrDecl case_attr = DCCATTRDECL_INIT;
-   struct TPPKeyword *type_name;
-   type_name = DCCParse_CTypeUnknown(&case_type,&case_attr);
+   DCCParse_CTypeOnly(&case_type,&case_attr,1);
    DCCAttrDecl_Quit(&case_attr);
-   if (!type_name) { WARN(W_GENERIC_EXPRESSION_EXPECTED_TYPE,&ctrl_type); continue; }
    is_target = DCCType_IsCompatible(&case_type,&ctrl_type,1);
    DCCType_Quit(&case_type);
   }

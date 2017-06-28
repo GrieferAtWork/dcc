@@ -179,14 +179,16 @@ DCCParse_AttrAlignas(struct DCCAttrDecl *__restrict self) {
   self->a_alias = NULL;
  }
  align_name = DCCParse_CType(&align_type,&align_attr);
- DCCAttrDecl_Quit(&align_attr);
  if (align_name) {
   DCCType_Sizeof(&align_type,&self->a_align,1);
   DCCType_Quit(&align_type);
  } else {
+  /* Parse the alignment as a constant expression. */
   self->a_align = (target_siz_t)DCCParse_CExpr(0);
  }
+ DCCAttrDecl_Quit(&align_attr);
  self->a_specs |= DCC_ATTRSPEC_FIXEDALIGN;
+ /* Warn if the alignment isn't a power-of-2 */
  if (self->a_align&(self->a_align-1))
      WARN(W_ATTRIBUTE_ALIGNED_EXPECTED_POWER_OF_TWO,self->a_align);
 }

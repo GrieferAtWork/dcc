@@ -173,7 +173,7 @@ again:
     * be forced to compile the statement as usual. */
    struct DCCAttrDecl follow_attr = DCCATTRDECL_INIT;
    struct DCCType follow_type;
-   if (DCCParse_CTypePrefix(&follow_type,&follow_attr)) {
+   if (DCCParse_CTypeDeclBase(&follow_type,&follow_attr,1)) {
     /* There is a real type located after the unknown keyword.
      * So with that in mind, emit a warning and begin using
      * that ~real~ type as base for all further declarations
@@ -215,7 +215,6 @@ DCCParse_OneDeclWithType(struct DCCType *__restrict decl_type,
  assert(decl_attr);
  assert(decl_name);
  DCCType_ASSERT(decl_type);
-
  if ((TOK == KWD_asm && HAS(EXT_SHORT_EXT_KEYWORDS)) ||
       TOK == KWD___asm || TOK == KWD___asm__) {
   struct TPPString *asmname_string;
@@ -412,7 +411,7 @@ end_nopush:
  return result;
 }
 
-LEXPRIV int DCC_PARSE_CALL
+PUBLIC int DCC_PARSE_CALL
 DCCParse_DeclWithBase(struct DCCType *__restrict base_type,
                       struct DCCAttrDecl *__restrict base_attr,
                       int has_real_base_type) {
@@ -430,107 +429,30 @@ DCCParse_DeclWithBase(struct DCCType *__restrict base_type,
  return result;
 }
 
-PUBLIC int DCC_PARSE_CALL DCCParse_Decl(void) {
+PUBLIC int DCC_PARSE_CALL DCCParse_LocalDecl(void) {
  struct DCCType base; int result;
  struct DCCAttrDecl attr = DCCATTRDECL_INIT;
-parse_prefix:
- result = DCCParse_CTypePrefix(&base,&attr);
- if (result) {
-got_prefix:
-  result = DCCParse_DeclWithBase(&base,&attr,1);
- } else {
-  struct DCCDecl *struct_decl;
-  struct TPPKeyword *next_kwd;
-  struct TPPFile *next_file; char *next_tok;
-  int recognized_type;
-  /* Better error handling for something like this:
-   * >> DWORD x = 42;
-   *    ^^^^^ - Never defined
-   * Currently, when appearing inside a function-scope,
-   * the compiler will take 'DWORD' and compile it as
-   * 'extern int DWORD();', before being annoyed that
-   * there is a ';' missing afterwards.
-   * #1 Handle this by first confirming that the
-   *    current token is a keyword that is not
-   *    part of the 'DCC_NS_LOCALS' namespace.
-   * #2 Following that, peek the text for the next
-   *    token and check if it only contains ALNUM
-   *    characters (as well as escaped linefeeds).
-   * #3 With the next token parsed as a keyword,
-   *    check if there is a macro defined under
-   *    the same name (If there is, stop).
-   * #4 Make sure that the following keyword can't appear
-   *    in an expression suffix (currently only '__pack' can)
-   * If all of the above succeed, it is _most_ likely
-   * that the current token is quite simply an unknown
-   * type name that we can warn about before compiling
-   * it as 'int', meaning that without an existing
-   * typedef for 'DWORD', the above expression will be
-   * compiled as 'int x = 42;' */
-  if (!TPP_ISKEYWORD(TOK)) goto end;
-  assert(TOKEN.t_kwd);
-  if (DCCCompiler_GetDecl(TOKEN.t_kwd,DCC_NS_LOCALS)) goto end;
-  next_tok = peek_next_token(&next_file);
-  next_kwd = peek_keyword(next_file,next_tok,1);
-  /* Check that the next token isn't a defined macro. */
-  if (!next_kwd || TPPKeyword_ISDEFINED(next_kwd)) goto end;
-  /* xxx: Any additional keywords that can appear after an expression must be added here! */
-  if (next_kwd->k_id == KWD___pack) goto end;
-
-  /* As an additional check after all of the above,
-   * in the event that the original keyword _is_
-   * known as a type, but lacking a struct/union/enum prefix
-   * (which could easily happen when importing code from c++,
-   *  with the fact that DCC even supports l-values in mind),
-   * emit a different warning and automatically prepend the prefix. */
-  struct_decl = DCCCompiler_GetDecl(TOKEN.t_kwd,DCC_NS_STRUCT);
-  recognized_type = 0;
-  if (struct_decl) {
-   if (struct_decl->d_kind == DCC_DECLKIND_STRUCT ||
-       struct_decl->d_kind == DCC_DECLKIND_UNION) {
-    base.t_type = DCCTYPE_STRUCTURE;
-    base.t_base = struct_decl;
-    DCCDecl_Incref(struct_decl);
-    WARN(struct_decl->d_kind == DCC_DECLKIND_STRUCT
-         ? W_DECLARATION_TYPE_MISSES_PREFIX_STRUCT
-         : W_DECLARATION_TYPE_MISSES_PREFIX_UNION,
-         &base);
-   } else if (struct_decl->d_kind == DCC_DECLKIND_ENUM) {
-    assert(base.t_type == DCCTYPE_INT);
-    assert(!base.t_base);
-    WARN(W_DECLARATION_TYPE_MISSES_PREFIX_ENUM,&base);
-   } else goto default_unknown_type;
-   recognized_type = 1;
-  } else {
-default_unknown_type:
-   /* Check if we recognize the type's name from the C standard library. */
-   recognized_type = DCCParse_CTypeGuess(&base,&attr,
-                                         TOKEN.t_kwd->k_name,
-                                         TOKEN.t_kwd->k_size);
-   WARN(recognized_type ? W_DECLARATION_CONTAINS_GUESSED_TYPE
-                        : W_DECLARATION_CONTAINS_UNKNOWN_TYPE,&base);
-  }
-  YIELD();
-  /* Special case: Parse the type again if the ~real~ keyword
-   *               following an unknown one inside a declaration
-   *               is exclusive to type declarations. */
-  if (DCC_ISTYPEKWD(TOKEN.t_id)) {
-   /* TODO: What about:
-    * >> [[arithmetic]] struct int128 { char v[16]; };
-    * >> 
-    * >> int128 unsigned x = 0; // The fallback parser for this still decides wrong.
-    * >> unsigned int128 x = 0; // The fallback parser will ignore the 'unsigned' in this.
-    */
-   if (!recognized_type) goto parse_prefix;
-  }
-  /* Continue parsing with the type  */
-  goto got_prefix;
- }
-end:
+ result = DCCParse_CTypeDeclBase(&base,&attr,1);
+ if (result) result = DCCParse_DeclWithBase(&base,&attr,1);
  DCCType_Quit(&base);
  DCCAttrDecl_Quit(&attr);
  return result;
 }
+
+PUBLIC int DCC_PARSE_CALL DCCParse_GlobalDecl(void) {
+ struct DCCType base; int error;
+ struct DCCAttrDecl attr = DCCATTRDECL_INIT;
+ error = DCCParse_CTypeDeclBase(&base,&attr,0);
+ DCCType_ASSERT(&base);
+ /* HINT: 'base' was already initialized to 'int'. */
+ if (!error) WARN(W_EXPECTED_TYPE_FOR_GLOBAL_DECLARATION);
+ /* HINT: 'DCCParse_DeclWithBase' never returns ZERO(0). */
+ error = DCCParse_DeclWithBase(&base,&attr,error);
+ DCCType_Quit(&base);
+ DCCAttrDecl_Quit(&attr);
+ return error;
+}
+
 
 
 DCC_DECL_END

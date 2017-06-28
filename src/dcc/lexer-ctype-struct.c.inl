@@ -139,7 +139,7 @@ DCCParse_Struct(struct DCCDecl *__restrict struct_decl) {
  fieldc = fielda = 0,fieldv = NULL;
  for (;;) {
   memset(&attr,0,sizeof(attr));
-  if (!DCCParse_CTypePrefix(&base,&attr)) break;
+  if (!DCCParse_CTypeDeclBase(&base,&attr,0)) break;
   for (;;) {
    sflag_t bitfield = (sflag_t)-1;
    DCCType_InitCopy(&part,&base);

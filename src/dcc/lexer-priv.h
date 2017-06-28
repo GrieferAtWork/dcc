@@ -101,10 +101,6 @@ DCCParse_Function(struct DCCDecl *fun_decl, struct TPPKeyword const *asmname,
                   struct DCCType const *__restrict fun_type,
                   struct DCCAttrDecl const *__restrict fun_attr);
 LEXDECL int DCC_PARSE_CALL
-DCCParse_DeclWithBase(struct DCCType *__restrict base_type,
-                      struct DCCAttrDecl *__restrict base_attr,
-                      int has_real_base_type);
-LEXDECL int DCC_PARSE_CALL
 DCCParse_OneDeclWithBase(struct DCCType *__restrict base_type,
                          struct DCCAttrDecl *__restrict base_attr,
                          int *__restrict has_real_base_type);
@@ -120,7 +116,6 @@ LEXDECL void DCC_PARSE_CALL DCCParse_IfStmt(void);         /* if (...) ... */
 LEXDECL void DCC_PARSE_CALL DCCParse_AsmStmt(int global);  /* __asm__(...) */
 LEXDECL void DCC_PARSE_CALL DCCParse_Scope(pflag_t f);     /* { ... } */
 LEXDECL void DCC_PARSE_CALL DCCParse_ScopeText(pflag_t f); /* {> ... <} */
-LEXDECL int  DCC_PARSE_CALL DCCParse_GlobalDecl(void);
 
 /* Parse declarations using the typedef storage class. */
 LEXDECL void DCC_PARSE_CALL

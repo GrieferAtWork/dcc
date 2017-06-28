@@ -44,23 +44,11 @@ DCCParse_BuiltinTypeStr(void) {
  assert(TOK == KWD___builtin_typestr);
  YIELD();
  DCCParse_ParPairBegin();
- query_name = DCCParse_CType(&query_type,&query_attr);
+ query_name = DCCParse_CTypeOnly(&query_type,&query_attr,0);
  DCCAttrDecl_Quit(&query_attr);
- if (query_name) {
-  type_str = DCCType_ToTPPString(&query_type,query_name);
- } else {
-  struct DCCSym *name_sym;
-  pushf();
-  compiler.c_flags |= DCC_COMPILER_FLAG_NOCGEN;
-  DCCParse_Expr1();
-  name_sym = vbottom->sv_sym;
-  type_str = DCCType_ToTPPString(&vbottom->sv_ctype,
-                                 name_sym ? name_sym->sy_name : NULL);
-  vpop(1);
-  popf();
- }
+ type_str = DCCType_ToTPPString(&query_type,query_name);
  DCCType_Quit(&query_type);
- assert(type_str),
+ assert(type_str);
  DCCVStack_PushStr(type_str->s_text,type_str->s_size);
  TPPString_Decref(type_str);
  DCCParse_ParPairEnd();
@@ -122,9 +110,9 @@ DCCParse_BuiltinTypesCompatibleP(void) {
  assert(TOK == KWD___builtin_types_compatible_p);
  YIELD();
  DCCParse_ParPairBegin();
- if (!DCCParse_CTypeUnknown(&ta,&attr)) WARN(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P);
+ DCCParse_CTypeOnly(&ta,&attr,1);
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- if (!DCCParse_CTypeUnknown(&tb,&attr)) WARN(W_EXPECTED_TYPE_AFTER_BUILTIN_TYPES_COMPATIBLE_P);
+ DCCParse_CTypeOnly(&tb,&attr,1);
  DCCParse_ParPairEnd();
  DCCAttrDecl_Quit(&attr);
  vpushi(DCCTYPE_BOOL,DCCType_IsCompatible(&ta,&tb,0));
@@ -325,7 +313,7 @@ DCCParse_BuiltinOffsetof(void) {
   * >> #define offsetof(s,m)  (__SIZE_TYPE__)&((s *)0)->m
   */
  DCCParse_ParPairBegin();
- DCCParse_CTypeOnly(&type,&attr);
+ DCCParse_CTypeOnly(&type,&attr,1);
  DCCAttrDecl_Quit(&attr);
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
  DCCType_MkPointer(&type);
@@ -535,7 +523,7 @@ DCCParse_BuiltinVaArg(void) {
  DCCParse_ParPairBegin();
  DCCParse_Expr1();
  if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
- DCCParse_CTypeOnly(&va_type,&va_attr);
+ DCCParse_CTypeOnly(&va_type,&va_attr,1);
  DCCAttrDecl_Quit(&va_attr);
  va_size = VA_SIZE(DCCType_Sizeof(&va_type,NULL,1));
  if (TOK == ',') YIELD(),DCCParse_ExprDiscard();

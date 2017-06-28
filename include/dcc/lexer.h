@@ -278,18 +278,19 @@ DCCParse_CTypeGuess(struct DCCType *__restrict self,
                     struct DCCAttrDecl *__restrict attr,
                     char const *__restrict name, size_t size);
 
-/* Same as 'DCCParse_CType', but unknown keywords
- * are interpreted as 'int', as well as warned about. */
-DCCFUN struct TPPKeyword *DCC_PARSE_CALL
-DCCParse_CTypeUnknown(struct DCCType *__restrict self,
-                      struct DCCAttrDecl *__restrict attr);
-
-/* Force-parse a full c-type, emitting a warning and instead parsing an
- * single expression who's type will be taken when no type could be found.
+/* Force-parse a full c-type, trying to guess its meaning and emitting a
+ * warning (if 'expecting_type' is set) and finally parsing a single
+ * expression who's type will be taken when no type could be found.
  * Other than that, this function behaves exactly the same as 'DCCParse_CType',
- * with the addition that instead of returning NULL, '&TPPKeyword_Empty' is returned. */
+ * with the addition that instead of returning NULL, '&TPPKeyword_Empty' is returned.
+ * @param: expecting_type: Enable type guessing and emission of warnings if the
+ *                         type of an expression is eventually be taken instead.
+ * HINT: This function never returns NULL!
+ */
 DCCFUN struct TPPKeyword *DCC_PARSE_CALL
-DCCParse_CTypeOnly(struct DCCType *__restrict self, struct DCCAttrDecl *__restrict attr);
+DCCParse_CTypeOnly(struct DCCType *__restrict self,
+                   struct DCCAttrDecl *__restrict attr,
+                   int expecting_type);
 
 /* Parse struct members, adding all to the 'd_tdecl.td_fieldv'
  * vector of the given structure type symbol 'struct_decl'.
@@ -346,7 +347,41 @@ DCCFUN void DCC_PARSE_CALL DCCParse_VInit(uint32_t flags);
  * @return: 0: Failed to parse a type.
  * @return: 1: Successfully parsed a declaration.
  * @return: 2: Successfully parsed a declaration that doesn't require a terminating ';'. */
-DCCFUN int DCC_PARSE_CALL DCCParse_Decl(void);
+DCCFUN int DCC_PARSE_CALL DCCParse_LocalDecl(void);
+
+/* Parse a global type declaration.
+ * @return: 1: Successfully parsed a declaration.
+ * @return: 2: Successfully parsed a declaration that doesn't require a terminating ';'. */
+DCCFUN int DCC_PARSE_CALL DCCParse_GlobalDecl(void);
+
+/* Parse a (usually local) declaration using the given type base & attributes.
+ * @return: 1: Successfully parsed a declaration.
+ * @return: 2: Successfully parsed a declaration that doesn't require a terminating ';'. */
+DCCFUN int DCC_PARSE_CALL
+DCCParse_DeclWithBase(struct DCCType *__restrict base_type,
+                      struct DCCAttrDecl *__restrict base_attr,
+                      int has_real_base_type);
+
+/* Similar to 'DCCParse_CTypePrefix', but should be used when
+ * parsing the base of a declaration statement, as special
+ * handling is performed for trying to guess types from their names.
+ * This function is still completely STD-C conforming and will take
+ * great case never to start guessing types unless it is clear
+ * that a totally unknown keyword is encountered that could never
+ * be part of an expression at the same location.
+ * @param: maybe_expression: Hint whether or not the statement may also
+ *                           be an expression, in which case special care
+ *                           is take to ensure no expression keywords are
+ *                           accidentally interpreted as belonging to types.
+ * @return: 0: No type could be parsed ('self' is initialized to 'int')
+ * @return: 1: A type was parsed and 'self' was filled in properly.
+ *       HINT: The call may continue using parsed data efficiently
+ *             by calling 'DCCParse_DeclWithBase(self,attr,1)'.
+ */
+DCCFUN int DCC_PARSE_CALL
+DCCParse_CTypeDeclBase(struct DCCType *__restrict self,
+                       struct DCCAttrDecl *__restrict attr,
+                       int maybe_expression);
 
 /* Parse a declaration of expression.
  * @return: 0: Parsed an expression.
