@@ -978,6 +978,7 @@ WGROUP(WG_FIXED_LENGTH_INTEGER_TYPES,"fixed-length-integer-types",WSTATE_ERROR) 
 WGROUP(WG_AUTO_IN_TYPE_EXPRESSIONS,"auto-in-type-expressions",WSTATE_ERROR) /*< Warn about use of 'auto' to refer to '__auto_type' in type expressions, besides describing automatic storage. */
 WGROUP(WG_ASM_REGISTERS_IN_EXPRESSIONS,"asm-registers-in-expressions",WSTATE_ERROR) /*< Warn about use of 'int x = %eax;' */
 WGROUP(WG_EXPRESSION_STATEMENTS,"expression-statements",WSTATE_ERROR)    /*< Warn about use of 'int x = ({ int y = 42; y*2; });' */
+WGROUP(WG_CAST_INITIALIZERS,"initializer-after-cast",WSTATE_ERROR)       /*< Warn about use of 'int *x = (int[]){ 10,20,30 };' */
 WGROUP(WG_LABEL_EXPRESSIONS,"label-expressions",WSTATE_ERROR)            /*< Warn about use of 'goto *(p + 42);' */
 WGROUP(WG_CONSTANT_CASE,"constant-case-expressions",WSTATE_ERROR)        /*< Warn about non-constant case expressions. */
 WGROUP(WG_CASE_RANGES,"case-ranges",WSTATE_ERROR)                        /*< Warn about using case-ranges. */
@@ -1456,6 +1457,7 @@ DEF_WARNING(W_EXT_ASM_REGISTERS_IN_EXPRESSIONS,(WG_ASM_REGISTERS_IN_EXPRESSIONS,
 DEF_WARNING(W_EXT_GOTO_EXPRESSIONS,(WG_LABEL_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using expressions after " Q("goto") " is a gcc extension (prepend " Q("__extension__") ")"))
 DEF_WARNING(W_EXT_LABEL_EXPRESSIONS,(WG_LABEL_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using labels in expressions is a gcc extension (prepend " Q("__extension__") ")"))
 DEF_WARNING(W_EXT_EXPRESSION_STATEMENTS,(WG_EXPRESSION_STATEMENTS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Hiding statements in expressions is a gcc extension (prepend " Q("__extension__") ")"))
+DEF_WARNING(W_EXT_CAST_INITIALIZERS,(WG_CAST_INITIALIZERS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using brace-initializers as cast argument is not supported by many compiler (prepend " Q("__extension__") ")"))
 DEF_WARNING(W_EXT_FIXED_LENGTH_INTEGER_TYPES,(WG_FIXED_LENGTH_INTEGER_TYPES,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using " TOK_S " fixed-length integer types is a vc extension (prepend " Q("__extension__") ")",TOK_A))
 DEF_WARNING(W_EXT_AUTO_USED_AS_TYPE,(WG_AUTO_IN_TYPE_EXPRESSIONS,WG_EXTENSIONS),WSTATE_WARN,WARNF("Using " Q("auto") " for automatic typing in C is a dcc extension (prepend " Q("__extension__") ")"))
 DEF_WARNING(W_MIXED_DECLARATIONS,(WG_MIXED_DECLARATIONS,WG_C99,WG_EXTENSIONS),WSTATE_WARN,

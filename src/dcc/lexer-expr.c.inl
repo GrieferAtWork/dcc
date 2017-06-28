@@ -984,15 +984,17 @@ pushval:
     if (TOK != ')') WARN(W_EXPECTED_RPAREN);
     else YIELD();
    }
-   /* Extension: Allow initializer here. */
-   /* TODO: Add a switch for this! */
    pushf();
    if ((cast_type.t_type&DCCTYPE_STOREBASE) == DCCTYPE_STATIC ||
        (cast_type.t_type&DCCTYPE_STOREBASE) == DCCTYPE_EXTERN
        ) compiler.c_flags |= (DCC_COMPILER_FLAG_SINIT);
-   if (TOK == '{')
-        DCCParse_Init(&cast_type,&cast_attr,NULL,DCCPARSE_INITFLAG_INITIAL);
-   else DCCParse_ExprUnary();
+   if (TOK == '{') {
+    /* Extension: Allow initializer here. */
+    if (force_extensions) WARN(W_EXT_CAST_INITIALIZERS);
+    DCCParse_Init(&cast_type,&cast_attr,NULL,DCCPARSE_INITFLAG_INITIAL);
+   } else {
+    DCCParse_ExprUnary();
+   }
    DCCParse_FixType(&cast_type);
    vcast(&cast_type,1);
    popf();
