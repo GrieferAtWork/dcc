@@ -2053,7 +2053,7 @@ continue_hex:
     if (ch >= '0' && ch <= '7') {
      char *maxend;
      val = (escape_uchar_t)(ch-'0');
-     if ((maxend = iter+((charsize*8)/3)-1) > end) maxend = end;
+     if ((maxend = iter+ceildiv(charsize*8,3)-1) > end) maxend = end;
      while (iter != maxend) {
       ch = *iter;
       if (ch >= '0' && ch <= '7') val = (escape_uchar_t)((val << 3)|(ch-'0'));
@@ -2181,7 +2181,8 @@ next:
    } break;
    default:
     if (ch >= '0' && ch <= '7') {
-     char *maxend = iter+(((charsize_m1+1)*8)/3)-1;
+     char *maxend = iter+ceildiv((charsize_m1+1)*8,3)-1;
+     --result;
      if (maxend > end) maxend = end;
      while (iter != maxend) {
       ch = *iter;
