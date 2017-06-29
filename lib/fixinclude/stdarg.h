@@ -17,7 +17,7 @@
  * 3. This notice may not be removed or altered from any source distribution. *
  */
 #pragma once
-#pragma GCC system_header
+//#pragma GCC system_header
 
 #include <__stdinc.h>
 

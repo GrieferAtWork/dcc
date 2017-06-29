@@ -659,7 +659,7 @@ DCCParse_BuiltinCPUVendor(void) {
  YIELD();
  DCCParse_ParPairBegin();
  if (DCCParse_IsExpr()) {
-  DCCParse_Expr1(),vused(),vcast_pt(DCCTYPE_CHAR,0);
+  DCCParse_Expr1(),vused(),vcast_pt(DCCTYPE_USERCHAR,0);
   if (TOK == ',') { YIELD(); DCCParse_ExprDiscard(); }
  } else {
   vx_alloca_n(string_size); /* ret */
@@ -775,7 +775,9 @@ DCCParse_BuiltinCPUVendor(void) {
   * >> char buf[sizeof(__builtin_cpu_brand())];
   * >> printf("brand = %s\n",__builtin_cpu_brand(buf));
   */
- { struct DCCType return_type = {DCCTYPE_CHAR,NULL};
+ { struct DCCType return_type;
+   return_type.t_type = DCCTYPE_USERCHAR;
+   return_type.t_base = NULL;
    DCCType_MkArray(&return_type,string_size);
    DCCType_MkPointer(&return_type);
    vcast(&return_type,1);

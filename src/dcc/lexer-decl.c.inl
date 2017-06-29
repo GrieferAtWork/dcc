@@ -173,7 +173,8 @@ again:
     * be forced to compile the statement as usual. */
    struct DCCAttrDecl follow_attr = DCCATTRDECL_INIT;
    struct DCCType follow_type;
-   if (DCCParse_CTypeDeclBase(&follow_type,&follow_attr,1)) {
+   if (DCCParse_CTypeDeclBase(&follow_type,&follow_attr,
+                               DCCPARSE_CTYPEDECLBASE_CTX_EXPR)) {
     /* There is a real type located after the unknown keyword.
      * So with that in mind, emit a warning and begin using
      * that ~real~ type as base for all further declarations
@@ -432,7 +433,7 @@ DCCParse_DeclWithBase(struct DCCType *__restrict base_type,
 PUBLIC int DCC_PARSE_CALL DCCParse_LocalDecl(void) {
  struct DCCType base; int result;
  struct DCCAttrDecl attr = DCCATTRDECL_INIT;
- result = DCCParse_CTypeDeclBase(&base,&attr,1);
+ result = DCCParse_CTypeDeclBase(&base,&attr,DCCPARSE_CTYPEDECLBASE_CTX_EXPR);
  if (result) result = DCCParse_DeclWithBase(&base,&attr,1);
  DCCType_Quit(&base);
  DCCAttrDecl_Quit(&attr);
@@ -442,7 +443,7 @@ PUBLIC int DCC_PARSE_CALL DCCParse_LocalDecl(void) {
 PUBLIC int DCC_PARSE_CALL DCCParse_GlobalDecl(void) {
  struct DCCType base; int error;
  struct DCCAttrDecl attr = DCCATTRDECL_INIT;
- error = DCCParse_CTypeDeclBase(&base,&attr,0);
+ error = DCCParse_CTypeDeclBase(&base,&attr,DCCPARSE_CTYPEDECLBASE_CTX_GLOB);
  DCCType_ASSERT(&base);
  /* HINT: 'base' was already initialized to 'int'. */
  if (!error) WARN(W_EXPECTED_TYPE_FOR_GLOBAL_DECLARATION);

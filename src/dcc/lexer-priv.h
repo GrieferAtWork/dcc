@@ -32,6 +32,13 @@ struct DCCDecl;
 #define LEXDECL INTDEF
 #define LEXPRIV INTERN
 
+#define SKIP_WRAPLF(iter,end) \
+ (*(iter) == '\\' && (iter) != (end)-1\
+  ? ((iter)[1] == '\n' ? ((iter) += 2,1) :\
+     (iter)[1] == '\r' ? ((iter) += \
+    ((iter) != (end)-2 && (iter)[2] == '\n') ? 3 : 2,1)\
+  : 0) : 0)
+
 LEXDECL struct TPPKeyword *DCC_PARSE_CALL tok_without_underscores(void);
 
 /* Peek the first character of what will likely be the next token. */

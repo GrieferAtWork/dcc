@@ -264,7 +264,7 @@ DCCType_MkVLA(struct DCCType *__restrict self,
 }
 
 /* old-style function declaration returning an int. */
-PRIVATE struct struct_DCCTypeDecl t_int_oldfun =
+INTERN struct struct_DCCTypeDecl t_int_oldfun =
 { /* d_refcnt */0x80000000,
   /* d_next   */NULL,
   /* d_name   */&TPPKeyword_Empty,
@@ -277,7 +277,22 @@ PRIVATE struct struct_DCCTypeDecl t_int_oldfun =
   /* d_attr   */NULL,
   /* d_tdecl  */{{0},NULL,{0},0}
 };
-PRIVATE struct struct_DCCTypeDecl t_void_oldfun =
+#if DCC_TARGET_SIZEOF_POINTER*DCC_TARGET_BITPERBYTE == 64
+INTERN struct struct_DCCTypeDecl t_int64_oldfun =
+{ /* d_refcnt */0x80000000,
+  /* d_next   */NULL,
+  /* d_name   */&TPPKeyword_Empty,
+  /* d_file   */&TPPFile_Empty,
+  /* d_line   */0,
+  /* d_kind   */DCC_DECLKIND_OLDFUNCTION,
+  /* d_flag   */DCC_DECLFLAG_INTERN,
+  /* d_depth  */0,
+  /* d_type   */{DCCTYPE_IB8,NULL},
+  /* d_attr   */NULL,
+  /* d_tdecl  */{{0},NULL,{0},0}
+};
+#endif
+INTERN struct struct_DCCTypeDecl t_void_oldfun =
 { /* d_refcnt */0x80000000,
   /* d_next   */NULL,
   /* d_name   */&TPPKeyword_Empty,
@@ -301,6 +316,9 @@ DCCType_MkOldFunc(struct DCCType *__restrict self) {
                        (DCCTYPE_FLAGSMASK&~(DCCTYPE_STOREMASK))))) {
   if (DCC_MACRO_FALSE) { case DCCTYPE_INT: self->t_base = (struct DCCDecl *)&t_int_oldfun; }
   if (DCC_MACRO_FALSE) { case DCCTYPE_VOID: self->t_base = (struct DCCDecl *)&t_void_oldfun; }
+#if DCC_TARGET_SIZEOF_POINTER*DCC_TARGET_BITPERBYTE == 64
+  if (DCC_MACRO_FALSE) { case DCCTYPE_INT64: self->t_base = (struct DCCDecl *)&t_int64_oldfun; }
+#endif
   DCCDecl_Incref(self->t_base);
   break;
  default:
@@ -323,18 +341,8 @@ DCCType_MkOldFunc(struct DCCType *__restrict self) {
 
 PUBLIC void
 DCCType_ForceDynamic(struct DCCType *__restrict self) {
- struct DCCType const *iter,*end;
  struct DCCDecl *new_decl,*base_decl = self->t_base;
- if (!base_decl || base_decl->d_name != &TPPKeyword_Empty) return;
- end = (iter = DCCType_BuiltinPointers)+16;
- for (; iter != end; ++iter) if (base_decl == iter->t_base) goto fix_type;
- end = (iter = DCCType_BuiltinConstPointers)+16;
- for (; iter != end; ++iter) if (base_decl == iter->t_base) goto fix_type;
- if (base_decl == (struct DCCDecl *)&t_int_oldfun) goto fix_type;
- if (base_decl == (struct DCCDecl *)&t_void_oldfun) goto fix_type;
- assert(self);
- return;
-fix_type:
+ if (!base_decl || !(base_decl->d_flag&DCC_DECLFLAG_INTERN)) return;
  new_decl = DCCDecl_New(&TPPKeyword_Empty);
  if likely(new_decl) {
   new_decl->d_type = base_decl->d_type;
@@ -1015,9 +1023,7 @@ DCCType_ToTPPString(struct DCCType const *__restrict self,
    return result;
   }
  }
- /* This returns the empty string. */
- TPPString_Incref(TPPFile_Empty.f_text);
- return TPPFile_Empty.f_text;
+ return TPPString_NewEmpty();
 }
 
 

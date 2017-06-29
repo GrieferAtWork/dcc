@@ -308,6 +308,8 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 #else
 #   define DCC_TARGET_SIZEOF_WCHAR_T       4
 #endif
+#   define DCC_TARGET_SIZEOF_CHAR16_T      2
+#   define DCC_TARGET_SIZEOF_CHAR32_T      4
 #   define DCC_TARGET_SIZEOF_WINT_T        DCC_TARGET_SIZEOF_INT
 #   define DCC_TARGET_SIZEOF_PTRDIFF_T     DCC_TARGET_SIZEOF_POINTER
 #   define DCC_TARGET_SIZEOF_SIG_ATOMIC_T  DCC_TARGET_SIZEOF_INT
@@ -328,6 +330,12 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 #   define DCC_TARGET_SIZEOF_INTMAX_T      8
 #   define DCC_TARGET_BITPERBYTE           8
 #   define DCC_TARGET_PAGESIZE          4096
+
+/* Default sign-ness of builtin types. */
+#   define DCC_TARGET_ISUNSIGNED_CHAR      0
+#   define DCC_TARGET_ISUNSIGNED_WCHAR     1
+#   define DCC_TARGET_ISUNSIGNED_CHAR16    1
+#   define DCC_TARGET_ISUNSIGNED_CHAR32    1
 
 
 #   define DCC_TARGET_SIZEOF_MAXALIGN_T  DCC_TARGET_SIZEOF_LONG_DOUBLE
@@ -353,23 +361,23 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 
 
 /* Default stack-alignment of normal arguments. */
-#   define DCC_TARGET_STACKALIGN           DCC_TARGET_SIZEOF_INT
+#define DCC_TARGET_STACKALIGN           DCC_TARGET_SIZEOF_INT
 
 /* Stack-alignment of variadic arguments. */
-#   define DCC_TARGET_VA_ALIGN             DCC_TARGET_SIZEOF_POINTER
+#define DCC_TARGET_VA_ALIGN             DCC_TARGET_SIZEOF_POINTER
 
 
-#   define DCC_TARGET_TLSMODE_NONE         0 /*< TLS storage is not supported. */
-#   define DCC_TARGET_TLSMODE_NATIVE       1 /*< TLS storage is supported natively (CPU-specific) (TODO: Missing) */
-#   define DCC_TARGET_TLSMODE_EMULATED     2 /*< TLS storage is emulated with extern function calls (TODO: Missing) */
-#   define DCC_TARGET_TLS                  DCC_TARGET_TLSMODE_NONE
+#define DCC_TARGET_TLSMODE_NONE         0 /*< TLS storage is not supported. */
+#define DCC_TARGET_TLSMODE_EMULATED     1 /*< TLS storage is emulated with extern function calls (TODO: Missing) */
+#define DCC_TARGET_TLSMODE_NATIVE       2 /*< TLS storage is supported natively (CPU-specific) (TODO: Missing) */
+#define DCC_TARGET_TLS                  DCC_TARGET_TLSMODE_NONE
 
 
 #if !(DCC_TARGET_SIZEOF_GP_REGISTER >= DCC_TARGET_SIZEOF_ARITH_MAX)
-#error "Invalid collellation between sizeof(GP_REGISTER) and sizeof(ARITH_MAX)"
+#error "Invalid correllation between sizeof(GP_REGISTER) and sizeof(ARITH_MAX)"
 #endif
 #if !(DCC_TARGET_SIZEOF_IMM_MAX >= DCC_TARGET_SIZEOF_GP_REGISTER)
-#error "Invalid collellation between sizeof(IMM_MAX) and sizeof(GP_REGISTER)"
+#error "Invalid correllation between sizeof(IMM_MAX) and sizeof(GP_REGISTER)"
 #endif
 
 #if ((DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_BYTE) == 8) || \

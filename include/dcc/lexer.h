@@ -28,6 +28,20 @@ DCC_DECL_BEGIN
 struct DCCSym;
 DCC_DECL_END
 
+#define TPP_UNESCAPE_MAXCHAR  DCC_TARGET_SIZEOF_CHAR
+#if TPP_UNESCAPE_MAXCHAR < DCC_TARGET_SIZEOF_CHAR32_T
+#undef TPP_UNESCAPE_MAXCHAR
+#define TPP_UNESCAPE_MAXCHAR DCC_TARGET_SIZEOF_CHAR32_T
+#endif
+#if TPP_UNESCAPE_MAXCHAR < DCC_TARGET_SIZEOF_CHAR16_T
+#undef TPP_UNESCAPE_MAXCHAR
+#define TPP_UNESCAPE_MAXCHAR DCC_TARGET_SIZEOF_CHAR16_T
+#endif
+#if TPP_UNESCAPE_MAXCHAR < DCC_TARGET_SIZEOF_WCHAR_T
+#undef TPP_UNESCAPE_MAXCHAR
+#define TPP_UNESCAPE_MAXCHAR DCC_TARGET_SIZEOF_WCHAR_T
+#endif
+
 #define DCC_DEBUG_FILE_NOPATH ((struct DCCSym *)(uintptr_t)-1)
 #define DCC_DEBUG_FILE_NOFILE ((struct DCCSym *)(uintptr_t)-1)
 #define TPP_USERTEXTDATA \
@@ -369,10 +383,10 @@ DCCParse_DeclWithBase(struct DCCType *__restrict base_type,
  * great case never to start guessing types unless it is clear
  * that a totally unknown keyword is encountered that could never
  * be part of an expression at the same location.
- * @param: maybe_expression: Hint whether or not the statement may also
- *                           be an expression, in which case special care
- *                           is take to ensure no expression keywords are
- *                           accidentally interpreted as belonging to types.
+ * @param: context: Hint whether or not the statement may also
+ *                  be an expression, in which case special care
+ *                  is take to ensure no expression keywords are
+ *                  accidentally interpreted as belonging to types.
  * @return: 0: No type could be parsed ('self' is initialized to 'int')
  * @return: 1: A type was parsed and 'self' was filled in properly.
  *       HINT: The call may continue using parsed data efficiently
@@ -381,7 +395,11 @@ DCCParse_DeclWithBase(struct DCCType *__restrict base_type,
 DCCFUN int DCC_PARSE_CALL
 DCCParse_CTypeDeclBase(struct DCCType *__restrict self,
                        struct DCCAttrDecl *__restrict attr,
-                       int maybe_expression);
+                       int context);
+#define DCCPARSE_CTYPEDECLBASE_CTX_TYPE 0 /* Type-context (Try hard to parse a type) */
+#define DCCPARSE_CTYPEDECLBASE_CTX_GLOB 1 /* Global-context (Take care not to interfere with initializers or implicit int-typing) */
+#define DCCPARSE_CTYPEDECLBASE_CTX_STMT 2 /* Statement-context (Take care not to parse something that could otherwise be an expression) */
+#define DCCPARSE_CTYPEDECLBASE_CTX_EXPR 2 /* Currently the same as statement-context. */
 
 /* Parse a declaration of expression.
  * @return: 0: Parsed an expression.
@@ -432,6 +450,7 @@ DCCFUN void DCC_PARSE_CALL DCCParse_StaticAssert(void);
   (DCC_LX_HAS(DCC(EXT_FUNCTION_STRING_LITERALS)) &&\
   ((t) == DCC(KWD___FUNCTION__) || \
    (t) == DCC(KWD___PRETTY_FUNCTION__))))
+
 DCCFUN /*ref*/struct TPPString *DCCParse_String(void);
 
 

@@ -41,6 +41,10 @@
 
 DCC_DECL_BEGIN
 
+#ifdef __DCC_VERSION__
+#pragma DCC __sleep(0)
+#endif
+
 #if DCC_DEBUG
 #if !!(DCC_HOST_OS&DCC_OS_F_WINDOWS)
 INTERN void dcc_voutf(char const *fmt, va_list args) {

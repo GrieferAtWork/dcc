@@ -49,7 +49,7 @@ DCCParse_BuiltinTypeStr(void) {
  type_str = DCCType_ToTPPString(&query_type,query_name);
  DCCType_Quit(&query_type);
  assert(type_str);
- DCCVStack_PushStr(type_str->s_text,type_str->s_size);
+ vpushstr(type_str->s_text,type_str->s_size);
  TPPString_Decref(type_str);
  DCCParse_ParPairEnd();
 }
@@ -244,7 +244,7 @@ DCCParse_BuiltinFILE(void) {
  YIELD();
  DCCParse_ParPairBegin();
  DCCParse_ParPairEnd();
- DCCVStack_PushStr(p,s);
+ vpushstr(p,s);
 }
 
 
@@ -275,8 +275,8 @@ DCCParse_BuiltinFUNCTION(void) {
   ? compiler.c_fun->d_name
   : &TPPKeyword_Empty;
  assert(function_name);
- DCCVStack_PushStr(function_name->k_name,
-                   function_name->k_size);
+ vpushstr(function_name->k_name,
+          function_name->k_size);
 }
 
 
@@ -473,7 +473,7 @@ DCCParse_BuiltinVaStart(void) {
  vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,alignment);
  vgen2('+');
  /* Store the calculated address in 'ap'. */
- vcast_pt(DCCTYPE_CHAR,1);
+ vcast_pt(DCCTYPE_BYTE,1);
  vstore(0);
  vpop(1);
  vpushv();
@@ -993,8 +993,8 @@ DCCParse_BuiltinFetchSym(void) {
  if (!TPP_ISSTRING(TOK))
   WARN(W_BUILTIN_FETCHSYM_EXPECTED_STRING);
  else {
-  struct TPPString *name = DCCParse_String();
-  if (name) {
+  struct TPPString *name;
+  if ((name = DCCParse_String()) != NULL) {
 #if DCC_CONFIG_HAVE_DRT
    if (DRT_ENABLED()) {
     struct DCCMemLoc   symloc;

@@ -1838,6 +1838,7 @@ search_suitable_end_again:
 #define MODE_INSTRING  0x01
 #define MODE_INCHAR    0x02
 #define MODE_INCOMMENT 0x04
+#define MODE_INPP      0x08
    /* >> We managed to find a text chunk suitable to our needs (ends with a non-escaped linefeed)
     *    Yet there are still some more restrictions: It must not end inside an unfinished comment,
     *    and it must not contain an unterminated string/character (if the necessary flag is set). */
@@ -1847,16 +1848,22 @@ search_suitable_end_again:
     assert(iter < end);
     if (!mode) last_zero_mode = iter;
     ch = *iter++;
-         if (ch == '\\' && iter != end) ++iter;
+    if (ch == '\\' && iter != end) { if (*iter++ == '\r' && iter != end && *iter == '\n') ++iter; }
     else if (ch == '\'' && !(mode&~(MODE_INCHAR))) mode ^= MODE_INCHAR;
     else if (ch == '\"' && !(mode&~(MODE_INSTRING))) mode ^= MODE_INSTRING;
-    /* TODO: Linefeeds should also terminate strings when the line started with a '#':
-     *    >> #define m  This macro's fine!
-     *    >> #error This error contains an unmatched ", but that's OK (< and so was that)
+    /* Linefeeds should also terminate strings when the line started with a '#':
+     * >> #define m  This macro's fine!
+     * >> #error This error contains an unmatched ", but that's OK (< and so was that)
      * NOTE: Though remember that escaped linefeeds are always more powerful!
      */
-    else if (termstring_onlf && tpp_islf(ch)) mode &= ~(MODE_INCHAR|MODE_INSTRING);
-    else if (iter != end) {
+    else if (tpp_islf(ch)) {
+     if (ch == '\r' && iter != end && *iter == '\n') ++iter;
+     mode &= ~(MODE_INPP);
+     if (termstring_onlf) mode &= ~(MODE_INCHAR|MODE_INSTRING);
+     if (iter != end && *iter == '#' &&
+       !(mode&(MODE_INCHAR|MODE_INSTRING)))
+         mode |= MODE_INPP;
+    } else if (iter != end) {
      if (mode&MODE_INCOMMENT) {
       /* End multi-line comment. */
       if (ch == '*') {
@@ -1941,169 +1948,312 @@ extend_more:
 }
 
 
+#if TPP_UNESCAPE_MAXCHAR == 8
+typedef uint64_t escape_uchar_t;
+#elif TPP_UNESCAPE_MAXCHAR == 4
+typedef uint32_t escape_uchar_t;
+#elif TPP_UNESCAPE_MAXCHAR == 2
+typedef uint16_t escape_uchar_t;
+#elif TPP_UNESCAPE_MAXCHAR == 1
+typedef uint8_t  escape_uchar_t;
+#else
+#error "Invalid value for 'TPP_UNESCAPE_MAXCHAR'"
+#endif
 
-PUBLIC char *
-TPP_Unescape(char *buf, char const *data, size_t size) {
- char *iter,*end,ch;
- unsigned char val;
+
+LOCAL char map_trichar(char ch) {
+ switch (ch) {
+ case '=':  ch = '#';  break; /* ??= */
+ case '(':  ch = '[';  break; /* ??( */
+ case '/':  ch = '\\'; break; /* ??/ */
+ case ')':  ch = ']';  break; /* ??) */
+ case '\'': ch = '^';  break; /* ??' */
+ case '<':  ch = '{';  break; /* ??< */
+ case '!':  ch = '|';  break; /* ??! */
+ case '>':  ch = '}';  break; /* ??> */
+ case '-':  ch = '~';  break; /* ??- */
+ case '?':             break; /* ??? */
+ default:   ch = '\0'; break;
+ }
+ return ch;
+}
+
+
+#if TPP_UNESCAPE_MAXCHAR == 1
+PUBLIC char *TPP_Unescape_(char *buf, char const *data, size_t size)
+#define charsize            1
+#else
+PUBLIC char *TPP_Unescape(char *buf, char const *data, size_t size, size_t charsize)
+#endif
+{
+ char *iter,*end,ch; escape_uchar_t val;
+#if TPP_UNESCAPE_MAXCHAR > 1
+ size_t i; assert(charsize);
+#define FILL_PADDING()    { i = charsize/sizeof(char); while(--i) *buf++ = '\0'; }
+#else
+#define FILL_PADDING()    /* nothing */
+#endif
  end = (iter = (char *)data)+size;
+#if TPP_UNESCAPE_ENDIAN == 1234
+#define FILL_PADDING_LE() FILL_PADDING()
+#define FILL_PADDING_BE() /* nothing */
+#else
+#define FILL_PADDING_LE() /* nothing */
+#define FILL_PADDING_BE() FILL_PADDING()
+#endif
  while (iter != end) {
-  /* TODO: en/decode trigraph character sequences. */
-  /* TODO: decode escaped linefeeds. */
   if ((ch = *iter++) == '\\' && iter != end) {
    ch = *iter++;
    switch (ch) {
-    case 'a': ch = '\a'; goto put_ch;
-    case 'b': ch = '\b'; goto put_ch;
-    case 'f': ch = '\f'; goto put_ch;
-    case 'n': ch = '\n'; goto put_ch;
-    case 'r': ch = '\r'; goto put_ch;
-    case 't': ch = '\t'; goto put_ch;
-    case 'v': ch = '\v'; goto put_ch;
-    case '\\': case '\'': case '\"': goto put_ch;
-    {
-     unsigned int ith;
-     char *start_iter;
-    case 'x':
-     start_iter = iter,val = 0;
-     for (ith = 0; ith != 2; ++ith) {
-      unsigned char partval;
-      if (iter == end) goto abort_hex;
+   case '\r': if (*iter == '\n') ++iter;
+   case '\n': break; /* Escaped linefeed. */
+   case 'a': ch = '\a'; goto put_ch;
+   case 'b': ch = '\b'; goto put_ch;
+   case 'f': ch = '\f'; goto put_ch;
+   case 'n': ch = '\n'; goto put_ch;
+   case 'r': ch = '\r'; goto put_ch;
+   case 't': ch = '\t'; goto put_ch;
+   case 'v': ch = '\v'; goto put_ch;
+   case '\\': case '\'': case '\"': goto put_ch;
+   {
+    unsigned int ith;
+    char *start_iter;
+   case 'x':
+   case 'u':
+   case 'U':
+    start_iter = iter,val = 0;
+    for (ith = 0; ith != charsize*2; ++ith) {
+     escape_uchar_t partval;
+continue_hex:
+     if (iter == end) goto abort_hex;
+     ch = *iter;
+          if (ch >= '0' && ch <= '9') partval = (escape_uchar_t)(ch-'0');
+     else if (ch >= 'a' && ch <= 'f') partval = (escape_uchar_t)(10+(ch-'a'));
+     else if (ch >= 'A' && ch <= 'F') partval = (escape_uchar_t)(10+(ch-'A'));
+     else if (ch == '\\' && iter != end-1 && tpp_islf(iter[1]))
+     { ++iter; if (*iter == '\r' && iter != end-1 && iter[1] == '\n') ++iter;
+       ++iter; goto continue_hex; }
+     else abort_hex: if (!ith) { iter = start_iter; goto def_putch; }
+     else break;
+     val = (escape_uchar_t)((val << 4)|partval);
+     ++iter;
+    }
+    goto put_val;
+   } break;
+   case 'e':
+    if (HAVE_EXTENSION_STR_E) {
+     ch = '\033';
+     goto put_ch;
+    }
+    /* fallthrough. */
+   default:
+    if (ch >= '0' && ch <= '7') {
+     char *maxend;
+     val = (escape_uchar_t)(ch-'0');
+     if ((maxend = iter+((charsize*8)/3)-1) > end) maxend = end;
+     while (iter != maxend) {
       ch = *iter;
-           if (ch >= '0' && ch <= '9') partval = (unsigned char)(ch-'0');
-      else if (ch >= 'a' && ch <= 'f') partval = (unsigned char)(10+(ch-'a'));
-      else if (ch >= 'A' && ch <= 'F') partval = (unsigned char)(10+(ch-'A'));
-      else if (!ith) {abort_hex: iter = start_iter; goto def_putch; }
-      else break;
-      val = (unsigned char)((val << 4)|partval);
+      if (ch >= '0' && ch <= '7') val = (escape_uchar_t)((val << 3)|(ch-'0'));
+      else if (ch == '\\' && iter != maxend-1 && tpp_islf(iter[1]))
+      { ++iter;
+        if (*iter == '\r' && iter != maxend-1 && iter[1] == '\n') ++iter;
+      } else break;
       ++iter;
      }
-     *buf++ = val;
-    } break;
-    case 'e':
-     if (HAVE_EXTENSION_STR_E) {
-      ch = '\033';
-      goto put_ch;
+put_val:
+#if TPP_UNESCAPE_MAXCHAR == 1
+     *(*(uint8_t  **)&buf)++ = (uint8_t)val;
+#else
+     switch (charsize) {
+#if TPP_UNESCAPE_ENDIAN == TPP_BYTEORDER
+#if TPP_UNESCAPE_MAXCHAR >= 8
+     case 8:  *(*(uint64_t **)&buf)++ = (uint64_t)val; break;
+#endif
+#if TPP_UNESCAPE_MAXCHAR >= 4
+     case 4:  *(*(uint32_t **)&buf)++ = (uint32_t)val; break;
+#endif
+#if TPP_UNESCAPE_MAXCHAR >= 2
+     case 2:  *(*(uint16_t **)&buf)++ = (uint16_t)val; break;
+#endif
+#else
+#if TPP_UNESCAPE_MAXCHAR >= 8
+     case 8:  *(*(uint64_t **)&buf)++ = __builtin_bswap64((uint64_t)val); break;
+#endif
+#if TPP_UNESCAPE_MAXCHAR >= 4
+     case 4:  *(*(uint32_t **)&buf)++ = __builtin_bswap32((uint32_t)val); break;
+#endif
+#if TPP_UNESCAPE_MAXCHAR >= 2
+     case 2:  *(*(uint16_t **)&buf)++ = __builtin_bswap16((uint16_t)val); break;
+#endif
+#endif
+     default: *(*(uint8_t  **)&buf)++ = (uint8_t)val; break;
      }
-     /* fallthrough. */
-    default:
-     if (ch >= '0' && ch <= '7') {
-      char *maxend;
-      val = (unsigned char)(ch-'0');
-      if ((maxend = iter+2) > end) maxend = end;
-      while (iter != maxend &&
-            (ch = *iter,ch >= '0' && ch <= '7')
-             ) val = (unsigned char)((val << 3)|(ch-'0')),++iter;
-      *buf++ = val;
-     } else {
+#endif
+    } else {
 def_putch:
-      *buf++ = '\\';
-      goto put_ch;
-     }
+     FILL_PADDING_BE();
+     *buf++ = '\\';
+     FILL_PADDING_LE();
+     goto put_ch;
+    }
    }
   } else {
+   if (ch == '?' && HAVE_FEATURE_TRIGRAPHS &&
+       iter < end-1 && *iter == '?') {
+    /* decode trigraph character sequences. */
+    char tri_char = map_trichar(iter[1]);
+    if (tri_char) {
+     /* Warn about use of trigraph sequences. */
+     WARN(W_ENCOUNTERED_TRIGRAPH,iter-1);
+     ch = tri_char;
+     iter += 2;
+     goto put_ch;
+    }
+   }
 put_ch:
+   FILL_PADDING_BE();
    *buf++ = ch;
+   FILL_PADDING_LE();
   }
  }
+#undef FILL_PADDING_BE
+#undef FILL_PADDING_LE
+#undef FILL_PADDING
+#undef charsize
  return buf;
 }
-PUBLIC size_t
-TPP_SizeofUnescape(char const *data, size_t size) {
+
+#if TPP_UNESCAPE_MAXCHAR == 1
+PUBLIC size_t TPP_SizeofUnescape_(char const *data, size_t size)
+#define charsize_m1         0
+#else
+PUBLIC size_t TPP_SizeofUnescape(char const *data, size_t size, size_t charsize_m1)
+#endif
+{
  char *iter,*end,ch;
  size_t result = size;
+#if TPP_UNESCAPE_MAXCHAR != 1
+ assert(charsize_m1);
+ --charsize_m1;
+#endif
  end = (iter = (char *)data)+size;
 next:
  while (iter != end) {
-  /* TODO: en/decode trigraph character sequences. */
-  /* TODO: decode escaped linefeeds. */
   if ((ch = *iter++) == '\\' && iter != end) {
    ch = *iter++;
    switch (ch) {
-    case 'e':
-     if (!HAVE_EXTENSION_STR_E) break;
-     /* fallthrough */
-    case 'a': case 'b': case 'f': case 'n':
-    case 'r': case 't': case 'v':
-    case '\\': case '\'': case '\"':
+   case '\r': if (*iter == '\n') ++iter,--result;
+   case '\n': result -= 2; break; /* Escaped linefeed. */
+   case 'e':
+    if (!HAVE_EXTENSION_STR_E) break;
+    /* fallthrough */
+   case 'a': case 'b': case 'f': case 'n':
+   case 'r': case 't': case 'v':
+   case '\\': case '\'': case '\"':
+    --result;
+    break;
+   {
+    unsigned int ith;
+    char *start_iter;
+   case 'x':
+    start_iter = iter;
+    for (ith = 0; ith != (charsize_m1+1)*2; ++ith) {
+     if (iter == end) goto abort_hex;
+     ch = *iter;
+          if (ch >= '0' && ch <= '9');
+     else if (ch >= 'a' && ch <= 'f');
+     else if (ch >= 'A' && ch <= 'F');
+     else if (ch == '\\' && iter != end-1 && tpp_islf(iter[1]))
+     { ++iter,--result;
+       if (*iter == '\r' && iter != end-1 && iter[1] == '\n') ++iter,--result;
+     } else abort_hex: if (!ith) {
+      result += (size_t)(iter-start_iter);
+      iter    = start_iter;
+      goto next;
+     } else break;
+     ++iter;
      --result;
-     break;
-    {
-     unsigned int ith;
-     char *start_iter;
-    case 'x':
-     start_iter = iter;
-     for (ith = 0; ith != 2; ++ith) {
-      if (iter == end) goto abort_hex;
+    }
+    --result;
+   } break;
+   default:
+    if (ch >= '0' && ch <= '7') {
+     char *maxend = iter+(((charsize_m1+1)*8)/3)-1;
+     if (maxend > end) maxend = end;
+     while (iter != maxend) {
       ch = *iter;
-           if (ch >= '0' && ch <= '9');
-      else if (ch >= 'a' && ch <= 'f');
-      else if (ch >= 'A' && ch <= 'F');
-      else if (!ith) {
-abort_hex:
-       result += (size_t)(iter-start_iter);
-       iter = start_iter;
-       goto next;
+      if (ch >= '0' && ch <= '7');
+      else if (ch == '\\' && iter != maxend-1 && tpp_islf(iter[1]))
+      { ++iter,--result;
+        if (*iter == '\r' && iter != maxend-1 && iter[1] == '\n') ++iter,--result;
       } else break;
-      ++iter;
-      --result;
+      ++iter,--result;
      }
-     --result;
-    } break;
-    default:
-     if (ch >= '0' && ch <= '7') {
-      char *maxend = iter+2;
-      if (maxend > end) maxend = end;
-      while (iter != maxend &&
-            (ch = *iter,ch >= '0' && ch <= '7')
-             ) --result,++iter;
-      --result;
-     }
-     break;
+    }
+    break;
+   }
+  } else {
+   if (ch == '?' && HAVE_FEATURE_TRIGRAPHS &&
+       iter < end-1 && *iter == '?' &&
+       map_trichar(iter[1])) {
+    /* decode trigraph character sequences. */
+    iter   += 2;
+    result -= 2;
    }
   }
+#if TPP_UNESCAPE_MAXCHAR != 1
+  result += charsize_m1;
+#endif
  }
  return result;
+#undef charsize_m1
 }
+
 PUBLIC char *
 TPP_Escape(char *buf, char const *data, size_t size) {
  unsigned char *iter,*end,temp,ch;
  end = (iter = (unsigned char *)data)+size;
  for (; iter != end; ++iter) {
-  /* TODO: en/decode trigraph character sequences. */
   ch = *iter;
   switch (ch) {
-   case '\a':   ch = 'a'; goto escape_ch;
-   case '\b':   ch = 'b'; goto escape_ch;
-   case '\f':   ch = 'f'; goto escape_ch;
-   case '\n':   ch = 'n'; goto escape_ch;
-   case '\r':   ch = 'r'; goto escape_ch;
-   case '\t':   ch = 't'; goto escape_ch;
-   case '\v':   ch = 'v'; goto escape_ch;
-   case '\\': case '\'': case '\"':
+  case '\a':   ch = 'a'; goto escape_ch;
+  case '\b':   ch = 'b'; goto escape_ch;
+  case '\f':   ch = 'f'; goto escape_ch;
+  case '\n':   ch = 'n'; goto escape_ch;
+  case '\r':   ch = 'r'; goto escape_ch;
+  case '\t':   ch = 't'; goto escape_ch;
+  case '\v':   ch = 'v'; goto escape_ch;
+  case '\\': case '\'': case '\"':
 escape_ch:
+   *buf++ = '\\';
+   *buf++ = (char)ch;
+   break;
+  case '?':
+   /* encode trigraph character sequences. (Convert '?' to '???') */
+   if (HAVE_FEATURE_TRIGRAPHS) {
+    *buf++ = '?';
+    *buf++ = '?';
+   }
+   goto def_encode;
+  case '\033':
+   if (HAVE_EXTENSION_STR_E) { ch = 'e'; goto escape_ch; }
+   /* fallthrough */
+  default:def_encode:
+   if (ch < 32) {
     *buf++ = '\\';
+    if (ch >= 010) *buf++ = (char)('0'+(ch/010));
+    *buf++ = (char)('0'+(ch%010));
+   } else if (ch >= 127) {
+    *buf++ = '\\';
+    *buf++ = 'x';
+    temp = (unsigned char)((ch & 0xf0) >> 4);
+    *buf++ = (char)(temp >= 10 ? 'A'+(temp-10) : '0'+temp);
+    temp = (unsigned char)(ch & 0x0f);
+    *buf++ = (char)(temp >= 10 ? 'A'+(temp-10) : '0'+temp);
+   } else {
     *buf++ = (char)ch;
-    break;
-   case '\033':
-    if (HAVE_EXTENSION_STR_E) { ch = 'e'; goto escape_ch; }
-    /* fallthrough */
-   default:
-    if (ch < 32) {
-     *buf++ = '\\';
-     if (ch >= 010) *buf++ = (char)('0'+(ch/010));
-     *buf++ = (char)('0'+(ch%010));
-    } else if (ch >= 127) {
-     *buf++ = '\\';
-     *buf++ = 'x';
-     temp = (unsigned char)((ch & 0xf0) >> 4);
-     *buf++ = (char)(temp >= 10 ? 'A'+(temp-10) : '0'+temp);
-     temp = (unsigned char)(ch & 0x0f);
-     *buf++ = (char)(temp >= 10 ? 'A'+(temp-10) : '0'+temp);
-    } else {
-     *buf++ = (char)ch;
-    }
-    break;
+   }
+   break;
   }
  }
  return buf;
@@ -2114,24 +2264,26 @@ TPP_SizeofEscape(char const *data, size_t size) {
  size_t result = size;
  end = (iter = (unsigned char *)data)+size;
  for (; iter != end; ++iter) {
-  /* TODO: en/decode trigraph character sequences. */
   ch = *iter;
   switch (ch) {
-   case '\033':
-    result += HAVE_EXTENSION_STR_E ? 1u : 2u; /* '\e' vs. '\33' */
-    break;
-   case '\a': case '\b': case '\f':
-   case '\n': case '\r': case '\t':
-   case '\v': case '\\': case '\'': case '\"':
-    ++result;
-    break;
-   default:
-    if (ch < 32) {
-     result += ch >= 010 ? 2u : 1u;
-    } else if (ch >= 127) {
-     result += 3;
-    }
-    break;
+  case '\033':
+   result += HAVE_EXTENSION_STR_E ? 1u : 2u; /* '\e' vs. '\33' */
+   break;
+  case '\a': case '\b': case '\f':
+  case '\n': case '\r': case '\t':
+  case '\v': case '\\': case '\'': case '\"':
+   ++result;
+   break;
+  case '?':
+   /* encode trigraph character sequences. (Convert '?' to '???') */
+   if (HAVE_FEATURE_TRIGRAPHS) result += 2u;
+  default:
+   if (ch < 32) {
+    result += ch >= 010 ? 2u : 1u;
+   } else if (ch >= 127) {
+    result += 3;
+   }
+   break;
   }
  }
  return result;
@@ -3636,6 +3788,7 @@ PUBLIC int TPPLexer_Init(struct TPPLexer *__restrict self) {
  self->l_warnings.w_basestate.ws_extendedv = NULL;
  self->l_warnings.w_basestate.ws_prev      = NULL;
  self->l_extensions.es_prev = NULL;
+ assert(sizeof(char) <= TPP_UNESCAPE_MAXCHAR);
  assert(sizeof(default_warnings_state) >= TPP_WARNING_BITSETSIZE &&
         sizeof(default_warnings_state) <= TPP_OFFSETAFTER(struct TPPWarningState,ws_padding));
  assert(sizeof(default_extensions_state) >= TPP_EXTENSIONS_BITSETSIZE &&
@@ -4872,7 +5025,8 @@ parse_multichar:
     char *char_begin = TOKEN.t_begin+1,*char_end = iter;
     assert(char_end >= char_begin);
     if (char_end != char_begin && char_end[-1] == '\'') --char_end;
-    if (TPP_SizeofUnescape(char_begin,(size_t)(char_end-char_begin)) != 1) {
+    if (TPP_SizeofUnescape(char_begin,(size_t)(char_end-char_begin),
+                           sizeof(char)) != sizeof(char)) {
      if unlikely(!WARN(W_MULTICHAR_NOT_ALLOWED,char_begin,
                                (size_t)(char_end-char_begin))) goto err;
     }
@@ -4883,19 +5037,9 @@ parse_multichar:
   case '?': /* Check for trigraphs. */
    if (HAVE_FEATURE_TRIGRAPHS &&
       (iter <= end-1 && *iter == '?')) {
-    switch (iter[1]) {
-     case '=':  ch = '#';  break; /* ??= */
-     case '(':  ch = '[';  break; /* ??( */
-     case '/':  ch = '\\'; break; /* ??/ */
-     case ')':  ch = ']';  break; /* ??) */
-     case '\'': ch = '^';  break; /* ??' */
-     case '<':  ch = '{';  break; /* ??< */
-     case '!':  ch = '|';  break; /* ??! */
-     case '>':  ch = '}';  break; /* ??> */
-     case '-':  ch = '~';  break; /* ??- */
-     case '?':             break; /* ??? */
-     default: goto settok;
-    }
+    char tri_ch = map_trichar(iter[1]);
+    if (!tri_ch) goto settok;
+    ch = tri_ch;
     if unlikely(!WARN(W_ENCOUNTERED_TRIGRAPH,iter-1)) goto err;
     iter += 2;
     if (tpp_ismultichar(ch)) goto parse_multichar;
@@ -6943,8 +7087,19 @@ err_substr:  TPPString_Decref(basestring);
   predefined_macro = &predef##name;\
   goto predef_macro;\
 }
+#define SET_TEXT(x)    (string_text = (x),TPPString_Incref(string_text))
+#define SET_TEXTREF(x) (string_text = (x))
+#define RT_BUILTIN_MACRO(name,value) case name:\
+{ if (!TPP_ISBUILTINMACRO(name)) break; \
+  value; \
+  if unlikely(!string_text) goto seterr; \
+  goto create_string_file; \
+}
 #include "tpp-defs.inl"
+#undef RT_BUILTIN_MACRO
 #undef BUILTIN_MACRO
+#undef SET_TEXTREF
+#undef SET_TEXT
     ;
 predef_macro:
     if (!TPP_ISBUILTINMACRO(TOK)) break;
@@ -8038,8 +8193,15 @@ TPPConst_ToString(struct TPPConst const *__restrict self) {
 #endif
 
 
+#if TPP_UNESCAPE_MAXCHAR == 1
 PUBLIC /*ref*/struct TPPString *
-TPPLexer_ParseString(void) {
+TPPLexer_ParseString(void)
+#define sizeof_char         1
+#else
+PUBLIC /*ref*/struct TPPString *
+TPPLexer_ParseStringEx(size_t sizeof_char)
+#endif
+{
  struct TPPString *result,*newbuffer;
  size_t reqsize,allocsize;
  char *string_begin,*string_end;
@@ -8050,13 +8212,14 @@ TPPLexer_ParseString(void) {
  if (string_begin != string_end && *string_begin == '\"') ++string_begin;
  if (string_begin != string_end && string_end[-1] == '\"') --string_end;
  reqsize = TPP_SizeofUnescape(string_begin,
-                             (size_t)(string_end-string_begin));
+                             (size_t)(string_end-string_begin),sizeof_char);
  result  = (struct TPPString *)malloc(TPP_OFFSETOF(struct TPPString,s_text)+
-                                     (reqsize+1)*sizeof(char));
+                                     (reqsize+sizeof(char)));
  if unlikely(!result) goto err;
  result->s_size = reqsize;
  TPP_Unescape(result->s_text,string_begin,
-             (size_t)(string_end-string_begin));
+             (size_t)(string_end-string_begin),
+              sizeof_char);
  YIELD();
  allocsize = reqsize;
  while (TOK == TOK_STRING) {
@@ -8066,16 +8229,18 @@ TPPLexer_ParseString(void) {
   if (string_begin != string_end && *string_begin == '\"') ++string_begin;
   if (string_begin != string_end && string_end[-1] == '\"') --string_end;
   reqsize = result->s_size+TPP_SizeofUnescape(string_begin,
-                                             (size_t)(string_end-string_begin));
+                                             (size_t)(string_end-string_begin),
+                                              sizeof_char);
   if (reqsize > allocsize) {
    newbuffer = (struct TPPString *)realloc(result,TPP_OFFSETOF(struct TPPString,s_text)+
-                                          (reqsize+1)*sizeof(char));
+                                          (reqsize+sizeof(char)));
    if unlikely(!newbuffer) { free(result); goto err; }
    result    = newbuffer;
    allocsize = reqsize;
   }
   TPP_Unescape(result->s_text+result->s_size,string_begin,
-              (size_t)(string_end-string_begin));
+              (size_t)(string_end-string_begin),
+               sizeof_char);
   result->s_size = reqsize;
   YIELD();
  }
@@ -8085,6 +8250,7 @@ TPPLexer_ParseString(void) {
 err:
  TPPLexer_SetErr();
  return NULL;
+#undef sizeof_char
 }
 
 PUBLIC int TPP_Atoi(int_t *__restrict pint) {
@@ -8100,14 +8266,15 @@ PUBLIC int TPP_Atoi(int_t *__restrict pint) {
   if likely(begin != end && *begin == '\'') ++begin;
   if likely(begin != end && end[-1] == '\'') --end;
   size = (size_t)(end-begin);
-  esc_size = TPP_SizeofUnescape(begin,size);
+  esc_size = TPP_SizeofUnescape(begin,size,sizeof(char));
   if (esc_size > sizeof(int_t)) {
    if unlikely(!WARN(W_CHARACTER_TOO_LONG)) goto err;
    do assert(size),--size;
-   while (TPP_SizeofUnescape(begin,size) > sizeof(int_t));
+   while (TPP_SizeofUnescape(begin,size,sizeof(char)) > sizeof(int_t));
   }
   *pint = 0;
-  size = (size_t)(TPP_Unescape((char *)pint,begin,size)-(char *)pint);
+  size = (size_t)((uintptr_t)TPP_Unescape((char *)pint,begin,size,sizeof(char))-
+                  (uintptr_t)pint);
 #if TPP_BYTEORDER == 4321
   /* Adjust for big endian. */
   *pint >>= (sizeof(int_t)-size)*8;
@@ -8254,19 +8421,8 @@ PUBLIC int TPP_PrintToken(printer_t printer, void *closure) {
   if (HAVE_FEATURE_TRIGRAPHS &&
       iter[0] == '?' && iter[1] == '?') {
    /* Decode trigraph sequences. */
-   switch (iter[2]) {
-    case '=':  temp = '#';  break; /* ??= */
-    case '(':  temp = '[';  break; /* ??( */
-    case '/':  temp = '\\'; break; /* ??/ */
-    case ')':  temp = ']';  break; /* ??) */
-    case '\'': temp = '^';  break; /* ??' */
-    case '<':  temp = '{';  break; /* ??< */
-    case '!':  temp = '|';  break; /* ??! */
-    case '>':  temp = '}';  break; /* ??> */
-    case '-':  temp = '~';  break; /* ??- */
-    case '?':  temp = '?';  break; /* ??? */
-    default: goto next;
-   }
+   temp = map_trichar(iter[2]);
+   if (!temp) goto next;
    arg[0] = temp;
    print(arg,1);
    iter += 3;

@@ -94,7 +94,7 @@ DCCParse_BuiltinStrlen(void) {
  nlen_mode = TOK == KWD___builtin_strnlen;
  YIELD();
  DCCParse_ParPairBegin();
- DCCParse_Expr1(),vcast_pt(DCCTYPE_CHAR|DCCTYPE_CONST,0),vused();
+ DCCParse_Expr1(),vcast_pt(DCCTYPE_USERCHAR|DCCTYPE_CONST,0),vused();
  vpushi(DCCTYPE_INT,'\0'); /* The search character (ZERO) */
  if (nlen_mode) {
   if (TOK != ',') WARN(W_EXPECTED_COMMA); else YIELD();
@@ -108,9 +108,9 @@ DCCParse_BuiltinStrlen(void) {
  DCCParse_ParPairEnd();
 }
 
-#define DCC_SCAS_FLAG_CHAR      0x40000000 /*< Expect character pointers as arguments. */
-#define DCC_SCAS_FLAG_UNLIMITED 0x80000000 /*< Don't parse a 3rd argument specifying the max amount of bytes to search, but assume (size_t)-1. */
-#define DCC_SCAS_MASK_VSTACK    0x00ffffff /*< Mask for flags to pass to the v-stack's 'DCCVStack_Scas' function. */
+#define DCC_SCAS_FLAG_CHAR      0x40000000u /*< Expect character pointers as arguments. */
+#define DCC_SCAS_FLAG_UNLIMITED 0x80000000u /*< Don't parse a 3rd argument specifying the max amount of bytes to search, but assume (size_t)-1. */
+#define DCC_SCAS_MASK_VSTACK    0x00ffffffu /*< Mask for flags to pass to the v-stack's 'DCCVStack_Scas' function. */
 
 #define SCAS_MODE(name) ((name)-KWD___builtin_memchr)
 PRIVATE uint32_t scas_mode[] = {

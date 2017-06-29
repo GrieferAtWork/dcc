@@ -370,7 +370,7 @@ DCCParse_CTypeOldArgumentListDef(struct DCCDecl *__restrict funtydecl,
  for (;;) {
   struct DCCType type;
   struct DCCAttrDecl attr = DCCATTRDECL_INIT;
-  if (!DCCParse_CTypeDeclBase(&type,&attr,0)) {
+  if (!DCCParse_CTypeDeclBase(&type,&attr,DCCPARSE_CTYPEDECLBASE_CTX_TYPE)) {
    if (is_first && empty_attr) DCCAttrDecl_Merge(empty_attr,&attr);
    DCCAttrDecl_Quit(&attr);
    break;
@@ -991,7 +991,7 @@ again:
   }
   newwidth = (DCCTYPE_LONG|DCCTYPE_ALTLONG);
   if (DCC_MACRO_FALSE) { case KWD_short: newwidth = DCCTYPE_SHORT; }
-  if (DCC_MACRO_FALSE) { case KWD_char:  newwidth = DCCTYPE_CHAR; if (CURRENT.l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED && !(flags&F_SIGN)) newwidth |= DCCTYPE_UNSIGNED; }
+  if (DCC_MACRO_FALSE) { case KWD_char:  newwidth = DCCTYPE_CHAR; if (DCC_ISUNSIGNED_CHAR && !(flags&F_SIGN)) newwidth |= DCCTYPE_UNSIGNED; }
   if (DCC_MACRO_FALSE) {
 #ifdef DCCTYPE_INT8
     if (DCC_MACRO_FALSE) { case KWD___int8:  newwidth = DCCTYPE_INT8; }
@@ -1259,7 +1259,12 @@ again:
  case KWD___gnuc_va_list:
  case KWD___builtin_va_list:
   if (flags&(F_INT|F_SIGN|F_WIDTH)) break;
-  *self  = DCCType_BuiltinPointers[DCCTYPE_CHAR];
+  assert(self->t_base == NULL);
+  self->t_type &= ~(DCCTYPE_ALTMASK|DCCTYPE_BASICMASK|DCCTYPE_GROUPMASK);
+  self->t_type |= DCCType_BuiltinPointers[DCCTYPE_BYTE].t_type;
+  self->t_base  = DCCType_BuiltinPointers[DCCTYPE_BYTE].t_base;
+  assert(self->t_base != NULL);
+  DCCDecl_Incref(self->t_base);
   flags |= (F_INT|F_SIGN|F_WIDTH);
   goto next;
 
@@ -1344,16 +1349,16 @@ DCCParse_CTypeOnly(struct DCCType *__restrict self,
  *        by this unless the caller set the NOCGEN flag. */
  result = DCCParse_CType(self,attr);
  if (!result) {
-  if (expecting_type) {
-   if (TPP_ISKEYWORD(TOK) &&
-       DCCParse_CTypeGuess(self,attr,
-                           TOKEN.t_kwd->k_name,
-                           TOKEN.t_kwd->k_size)) {
-    WARN(W_DECLARATION_CONTAINS_GUESSED_TYPE,self);
-    YIELD();
-    return DCCParse_CTypeSuffix(self,attr);
-   }
-   WARN(W_EXPECTED_TYPE_BUT_PARSING_EXPRESSION);
+  if (expecting_type && TPP_ISKEYWORD(TOK)) {
+   int recognized_type;
+   recognized_type = DCCParse_CTypeGuess(self,attr,
+                                         TOKEN.t_kwd->k_name,
+                                         TOKEN.t_kwd->k_size);
+   WARN(recognized_type
+        ? W_DECLARATION_CONTAINS_GUESSED_TYPE
+        : W_DECLARATION_CONTAINS_UNKNOWN_TYPE,self);
+   YIELD();
+   return DCCParse_CTypeSuffix(self,attr);
   }
   pushf();
   /* Make sure no code is generated for the discarded expression. */
@@ -1372,11 +1377,10 @@ DCCParse_CTypeOnly(struct DCCType *__restrict self,
 PUBLIC int DCC_PARSE_CALL
 DCCParse_CTypeDeclBase(struct DCCType *__restrict self,
                        struct DCCAttrDecl *__restrict attr,
-                       int maybe_expression) {
+                       int context) {
  int result;
  assert(self);
  assert(attr);
- (void)maybe_expression;
 parse_prefix:
  result = DCCParse_CTypePrefix(self,attr);
  if (!result) {
@@ -1415,8 +1419,7 @@ parse_prefix:
   next_kwd = peek_keyword(next_file,next_tok,1);
   /* Check that the next token isn't a defined macro. */
   if (!next_kwd) {
-#if 0
-   if (!maybe_expression) {
+   if (context == DCCPARSE_CTYPEDECLBASE_CTX_TYPE) {
     /* Inside of expression, we must parse like this to remain STD-C compliant:
      * >> foo (y);
      * Compiles as:
@@ -1425,38 +1428,23 @@ parse_prefix:
      * >> foo(y);
      * But outside of expression (aka. in the global scope), there can
      * be no expression, meaning we are free to parse it like this:
-     * >> int y; // Replace 'foo' with 'int' after failing to guess its typing.
+     * >> int foo(y) int y;
+     * But if we're in a type-scope, it must be parsed like this:
+     * >> int my_function(foo (y));
+     * >> int my_function(int y); // Parse like this
      */
     if (*next_tok == '*' || *next_tok == '&' ||
         *next_tok == ',' || *next_tok == ';' ||
-        *next_tok == '[') {
+        *next_tok == '[' || *next_tok == '(') {
      goto continue_error_handling;
     }
-    if (*next_tok == '(') {
-     /* NOTE: We need to be careful about applying this behavior to
-      *       '(', because of old-style conventions of omitting the
-      *       '=' before variable initializers:
-      *    >> x  (foo);
-      *       Is this:
-      *    >> int x(foo) int foo;
-      *       Or is it:
-      *    >> extern int foo();
-      *    >> int x = (foo);
-      * This ambiguity is decided on a case-by-case basis that prefers
-      * deciding in favor of the former case (simply because I've
-      * never encountered any code that actually made use of the latter)
-      */
-
-
-    }
    }
-#endif
    goto end;
   }
   if (TPPKeyword_ISDEFINED(next_kwd)) goto end;
   /* xxx: Any additional keywords that can appear after an expression must be added here! */
   if (next_kwd->k_id == KWD___pack) goto end;
-//continue_error_handling:
+continue_error_handling:
   /* As an additional check after all of the above,
    * in the event that the original keyword _is_
    * known as a type, but lacking a struct/union/enum prefix

@@ -25,6 +25,7 @@
 #include <dcc/lexer.h>
 #include <dcc/unit.h>
 #include <dcc/vstack.h>
+#include <dcc/byteorder.h>
 
 #include "lexer-priv.h"
 
@@ -286,6 +287,11 @@ struct missing_symbol {
 PRIVATE struct missing_symbol const msyms[] = {
  SYM("NULL",DCCTYPE_INT,0),
 
+ SYM("true",DCCTYPE_INT,1),
+ SYM("TRUE",DCCTYPE_INT,1),
+ SYM("false",DCCTYPE_INT,0),
+ SYM("FALSE",DCCTYPE_INT,0),
+
 #if 1 /* endian.h */
  SYM("BYTE_ORDER",      DCCTYPE_INT,DCC_TARGET_BYTEORDER),
  SYM("FLOAT_WORD_ORDER",DCCTYPE_INT,DCC_TARGET_FLOAT_WORD_ORDER),
@@ -294,7 +300,7 @@ PRIVATE struct missing_symbol const msyms[] = {
  SYM("PDP_ENDIAN",      DCCTYPE_INT,3412),
 #endif
 #if 1 /* limits.h */
- SYM("CHAR_BIT",  DCCTYPE_INT, DCC_TARGET_SIZEOF_CHAR*DCC_TARGET_BITPERBYTE),
+ SYM("CHAR_BIT",  DCCTYPE_INT,DCC_TARGET_SIZEOF_CHAR*DCC_TARGET_BITPERBYTE),
  SYM("SCHAR_MIN", DCCTYPE_CHAR,DCC_MIN_S(DCC_TARGET_SIZEOF_CHAR)),
  SYM("SCHAR_MAX", DCCTYPE_CHAR,DCC_MAX_S(DCC_TARGET_SIZEOF_CHAR)),
  SYM("UCHAR_MAX", DCCTYPE_CHAR|DCCTYPE_UNSIGNED,DCC_MAX_U(DCC_TARGET_SIZEOF_CHAR)),
@@ -396,20 +402,22 @@ DCCParse_ExprMissingSym(void) {
    goto missing;
   }
  }
+#if 0
  if (kwd_size == 8) {
   if (!memcmp(kwd_name,"CHAR_MIN",8*sizeof(char))) {
-   (TPPLexer_Current->l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
+   (DCC_ISUNSIGNED_CHAR)
     ? vpushi(DCCTYPE_CHAR|DCCTYPE_UNSIGNED,0)
     : vpushi(DCCTYPE_CHAR,DCC_MIN_S(DCC_TARGET_SIZEOF_CHAR));
    goto missing;
   }
   if (!memcmp(kwd_name,"CHAR_MAX",8*sizeof(char))) {
-   (TPPLexer_Current->l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
+   (DCC_ISUNSIGNED_CHAR)
     ? vpushi(DCCTYPE_CHAR|DCCTYPE_UNSIGNED,DCC_MAX_U(DCC_TARGET_SIZEOF_CHAR))
     : vpushi(DCCTYPE_CHAR,DCC_MAX_S(DCC_TARGET_SIZEOF_CHAR));
    goto missing;
   }
  }
+#endif
 
  WARN(W_UNKNOWN_SYMBOL_IN_EXPRESSION,TOKEN.t_kwd);
  /* Declare a new public symbol. */
@@ -437,7 +445,7 @@ LEXPRIV int DCC_PARSE_CALL DCCParse_ExprType(void) {
  /* Parse a type prefix. - Don't parse a full type due to ambiguity between:
   * >> auto x = int(*)(int) (42); // This just looks weird. - Also: The '(*' is ambiguous
   */
- error = !!DCCParse_CTypeDeclBase(&type,&attr,1);
+ error = !!DCCParse_CTypeDeclBase(&type,&attr,DCCPARSE_CTYPEDECLBASE_CTX_EXPR);
  if (!error) {
   if (TPP_ISKEYWORD(TOK)) {
    struct DCCDecl *tydecl;
@@ -708,7 +716,6 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprIf(void) {
   /* This is where we jump to skip the false-branch. */
   t_defsym(ff_label);
  }
-
 }
 
 LEXPRIV void DCC_PARSE_CALL DCCParse_ExprUnary(void) {
@@ -737,36 +744,36 @@ again:
 #define MASK2(sz) MASK_##sz
 #define MASK(sz)  MASK2(sz)
   switch (int_kind&TPP_ATOI_TYPE_MASK) {
-   case TPP_ATOI_TYPE_LONG    : tyid = DCCTYPE_ALTLONG|DCCTYPE_LONG;
-                                intmask = MASK(DCC_TARGET_SIZEOF_LONG);
-                                break;
-   case TPP_ATOI_TYPE_LONGLONG: tyid = DCCTYPE_LLONG;
-                                intmask = MASK(DCC_TARGET_SIZEOF_LONG_LONG);
-                                break;
+  case TPP_ATOI_TYPE_LONG    : tyid = DCCTYPE_ALTLONG|DCCTYPE_LONG;
+                               intmask = MASK(DCC_TARGET_SIZEOF_LONG);
+                               break;
+  case TPP_ATOI_TYPE_LONGLONG: tyid = DCCTYPE_LLONG;
+                               intmask = MASK(DCC_TARGET_SIZEOF_LONG_LONG);
+                               break;
 #ifdef DCCTYPE_INT8
-   case TPP_ATOI_TYPE_INT8    : tyid = DCCTYPE_INT8; intmask = MASK(1); break;
+  case TPP_ATOI_TYPE_INT8    : tyid = DCCTYPE_INT8; intmask = MASK(1); break;
 #endif
 #ifdef DCCTYPE_INT16
-   case TPP_ATOI_TYPE_INT16   : tyid = DCCTYPE_INT16; intmask = MASK(2); break;
+  case TPP_ATOI_TYPE_INT16   : tyid = DCCTYPE_INT16; intmask = MASK(2); break;
 #endif
 #ifdef DCCTYPE_INT32
-   case TPP_ATOI_TYPE_INT32   : tyid = DCCTYPE_INT32; intmask = MASK(4); break;
+  case TPP_ATOI_TYPE_INT32   : tyid = DCCTYPE_INT32; intmask = MASK(4); break;
 #endif
 #ifdef DCCTYPE_INT64
-   case TPP_ATOI_TYPE_INT64   : tyid = DCCTYPE_INT64; intmask = MASK(8); break;
+  case TPP_ATOI_TYPE_INT64   : tyid = DCCTYPE_INT64; intmask = MASK(8); break;
 #endif
-   default:
-    if (TOK == TOK_CHAR) {
-     /* Character constant. */
-     intmask = MASK(DCC_TARGET_SIZEOF_CHAR);
-     tyid = DCCTYPE_CHAR;
-     if (CURRENT.l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
-         tyid |= DCCTYPE_UNSIGNED;
-    } else {
-     intmask = MASK(DCC_TARGET_SIZEOF_INT);
-     tyid = DCCTYPE_INT;
-    }
-    break;
+  default:
+   if (TOK == TOK_CHAR) {
+    /* Character constant. */
+    intmask = MASK(DCC_TARGET_SIZEOF_CHAR);
+    if (intval&intmask) goto int_mask; /* Upgrade multi-char constants to int. */
+    tyid = DCCTYPE_USERCHAR;
+   } else {
+int_mask:
+    intmask = MASK(DCC_TARGET_SIZEOF_INT);
+    tyid = DCCTYPE_INT;
+   }
+   break;
   }
   if (int_kind&TPP_ATOI_UNSIGNED) tyid |= DCCTYPE_UNSIGNED;
   if (intval&intmask) {
@@ -805,8 +812,73 @@ again:
 parse_string:
   str = DCCParse_String();
   if unlikely(!str) goto push_int0;
-  DCCVStack_PushStr(str->s_text,str->s_size);
+  vpushstr(str->s_text,str->s_size);
   TPPString_Decref(str);
+ } break;
+
+ {
+  /* Special string encoding prefix. */
+  char *token_end,*file_end;
+  size_t char_size; tyid_t char_type;
+  if (DCC_MACRO_FALSE) { case KWD_L: char_size = DCC_TARGET_SIZEOF_WCHAR_T;  char_type = DCCTYPE_USERWCHAR; }
+  if (DCC_MACRO_FALSE) { case KWD_u: char_size = DCC_TARGET_SIZEOF_CHAR16_T; char_type = DCCTYPE_USERCHAR16; }
+  if (DCC_MACRO_FALSE) { case KWD_U: char_size = DCC_TARGET_SIZEOF_CHAR32_T; char_type = DCCTYPE_USERCHAR32; }
+  token_end = TOKEN.t_end;
+  /* TODO: Doesn't the standard allow something like this?
+   * >> #define WIDE L
+   * >> wchar_t *s = WIDE"foobar";
+   * NOTE: Even if it isn't, support it, but warn when it's done.
+   */
+  file_end  = TOKEN.t_file->f_end;
+  while (SKIP_WRAPLF(token_end,file_end));
+  if (*token_end == '\"') {
+   struct TPPString *str;
+   YIELD();
+   if unlikely(TOK != TOK_STRING) goto again;
+   /* Special string encoding.
+    * TODO: This is incorrect:         >> wchar_t *p = L"foo" L"bar";
+    * Current one would have to write: >> wchar_t *p = L"foo" "bar";
+    */
+   str = TPPLexer_ParseStringEx(char_size);
+   if unlikely(!str) str = TPPString_NewEmpty();
+   DCCVStack_PushStr(str->s_text,str->s_size,char_type);
+   TPPString_Decref(str);
+   break;
+  } else if (*token_end == '\'') {
+   char *begin,*end;
+   size_t esc_size,size; int_t val;
+   YIELD();
+   if unlikely(TOK != TOK_CHAR) goto again;
+   begin = TOKEN.t_begin;
+   end   = TOKEN.t_end;
+   /* Special character encoding. */
+   if likely(begin != end && *begin == '\'') ++begin;
+   if likely(begin != end && end[-1] == '\'') --end;
+   size     = (size_t)(end-begin);
+   esc_size = TPP_SizeofUnescape(begin,size,char_size);
+   if (esc_size > char_size) {
+    WARN(W_CHARACTER_TOO_LONG);
+    do assert(size),--size;
+    while (TPP_SizeofUnescape(begin,size,char_size) > char_size);
+   }
+   val = 0;
+   size = (size_t)((uintptr_t)TPP_Unescape((char *)&val,begin,size,char_size)-
+                   (uintptr_t)&val);
+#if DCC_HOST_BYTEORDER == 4321
+   /* Adjust for big endian. */
+   val >>= (sizeof(val)-size)*8;
+#elif DCC_HOST_BYTEORDER != 1234
+#   error FIXME
+#endif
+   vpushi(char_type,val);
+   YIELD();
+   break;
+  } else {
+   /* TODO: Scan ahead. If the next token is a string/character,
+    *       and no local symbol with the string prefix exists,
+    *       warn about illegal space, but still compile properly. */
+  }
+  goto default_case;
  } break;
 
  {
@@ -1038,7 +1110,7 @@ outside_function:
    name = name_kwd->k_name;
    size = name_kwd->k_size;
   }
-  DCCVStack_PushStr(name,size);
+  vpushstr(name,size);
   YIELD();
   break;
  }
@@ -1050,8 +1122,7 @@ outside_function:
   if unlikely(!compiler.c_fun) goto outside_function;
   proto = DCCType_ToTPPString(&compiler.c_fun->d_type,
                                compiler.c_fun->d_name);
-  DCCVStack_PushStr(proto->s_text,
-                    proto->s_size);
+  vpushstr(proto->s_text,proto->s_size);
   TPPString_Decref(proto);
   YIELD();
  } break;
@@ -1362,6 +1433,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLAnd(void) {
   if (!sym) return;
   do {
    last_text_offset = t_addr;
+   vused();
    vprom();
    YIELD();
    if (visconst_bool()) {
@@ -1407,7 +1479,9 @@ normal:
    vpop(1);
    vpushi(DCCTYPE_BOOL,0);
   } else if (common_test != DCC_UNITST_FIRST) {
-   if (!(vbottom->sv_flags&DCC_SFLAG_TEST) &&
+   sflag_t old_flags = vbottom->sv_flags;
+   vbottom->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
+   if (!(old_flags&DCC_SFLAG_TEST) &&
          /* 'vbottom' must be a constant true.
           * But since other components of the branch can
           * only be evaluated at runtime, and since the
@@ -1425,6 +1499,8 @@ normal:
     vpop(1);
    }
    vpusht(common_test);
+   vbottom->sv_flags |= old_flags&(DCC_SFLAG_NO_WSIGN|
+                                   DCC_SFLAG_DO_WUNUSED);
   }
   if (sym) t_defsym(sym);
 #undef F_ANORET
@@ -1460,6 +1536,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
   if (!sym) return;
   do {
    last_text_offset = t_addr;
+   vused();
    vprom();
    YIELD();
    if (visconst_bool()) {
@@ -1506,7 +1583,9 @@ normal:
    vpop(1);
    vpushi(DCCTYPE_BOOL,1);
   } else if (common_test != DCC_UNITST_FIRST) {
-   if (!(vbottom->sv_flags&DCC_SFLAG_TEST) &&
+   sflag_t old_flags = vbottom->sv_flags;
+   vbottom->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
+   if (!(old_flags&DCC_SFLAG_TEST) &&
          /* 'vbottom' must be a constant false.
           * But since other components of the branch can
           * only be evaluated at runtime, and since the
@@ -1524,6 +1603,8 @@ normal:
     vpop(1);
    }
    vpusht(common_test);
+   vbottom->sv_flags |= old_flags&(DCC_SFLAG_NO_WSIGN|
+                                   DCC_SFLAG_DO_WUNUSED);
   }
   if (sym) t_defsym(sym);
  }

@@ -49,6 +49,10 @@
 #define TPP_DEFS_DEFINES_BUILTIN_MACRO
 #define BUILTIN_MACRO(name,value)
 #endif
+#ifndef RT_BUILTIN_MACRO
+#define TPP_DEFS_DEFINES_RT_BUILTIN_MACRO
+#define RT_BUILTIN_MACRO(name,value)
+#endif
 #ifndef BUILTIN_FUNCTION
 #define TPP_DEFS_DEFINES_BUILTIN_FUNCTION
 #define BUILTIN_FUNCTION(name,argc,expr)
@@ -72,10 +76,14 @@
 #define HAS_FEATURE_IF(name,if)   KWD(KWD_##name,#name) KWD_FLAGS(KWD_##name,(if) ? TPP_KEYWORDFLAG_HAS_FEATURE : 0u)
 #define HAS_EXTENSION_IF(name,if) KWD(KWD_##name,#name) KWD_FLAGS(KWD_##name,(if) ? TPP_KEYWORDFLAG_HAS_EXTENSION : 0u)
 
-#define PREDEFINED_KWDMACRO(name,str,value)                       KWD(name,str) MACRO(name,1) BUILTIN_MACRO(name,value)
 #define PREDEFINED_KWDMACRO_IF(name,str,if,value)                 KWD(name,str) MACRO(name,if) BUILTIN_MACRO(name,value)
-#define PREDEFINED_MACRO(name,value)                              PREDEFINED_KWDMACRO(KWD_##name,#name,value)
+#define PREDEFINED_KWDMACRO(name,str,value)                       KWD(name,str) MACRO(name,1) BUILTIN_MACRO(name,value)
 #define PREDEFINED_MACRO_IF(name,if,value)                        PREDEFINED_KWDMACRO_IF(KWD_##name,#name,if,value)
+#define PREDEFINED_MACRO(name,value)                              PREDEFINED_KWDMACRO(KWD_##name,#name,value)
+#define PREDEFINED_RT_KWDMACRO_IF(name,str,if,value)              KWD(name,str) MACRO(name,if) RT_BUILTIN_MACRO(name,value)
+#define PREDEFINED_RT_KWDMACRO(name,str,value)                    KWD(name,str) MACRO(name,1) RT_BUILTIN_MACRO(name,value)
+#define PREDEFINED_RT_MACRO_IF(name,if,value)                     PREDEFINED_RT_KWDMACRO_IF(KWD_##name,#name,if,value)
+#define PREDEFINED_RT_MACRO(name,value)                           PREDEFINED_RT_KWDMACRO(KWD_##name,#name,value)
 #define PREDEFINED_KWDFUNCTION_IF(name,str,if,argc,expr)          KWD(name,str) BUILTIN_FUNCTION(name,(if) ? (int)(argc) : -1,expr)
 #define PREDEFINED_KWDFUNCTION(name,str,argc,expr)                KWD(name,str) BUILTIN_FUNCTION(name,argc,expr)
 #define PREDEFINED_FUNCTION_IF(name,if,argc,expr)                 PREDEFINED_KWDFUNCTION_IF(KWD_##name,#name,if,argc,expr)
@@ -719,18 +727,22 @@ DEF_WARNING(W_CANT_UNDEF_LOCKED_KEYWORD,(WG_VALUE),WSTATE_DISABLED,WARNF("Cannot
 
 #undef TPP_PP_STR
 #undef TPP_PP_STR2
-#undef PREDEFINED_BUILTIN_FUNCTION_IF
 #undef PREDEFINED_BUILTIN_FUNCTION
-#undef PREDEFINED_BUILTIN_KWDFUNCTION_IF
+#undef PREDEFINED_BUILTIN_FUNCTION_IF
 #undef PREDEFINED_BUILTIN_KWDFUNCTION
-#undef PREDEFINED_FUNCTION_IF
+#undef PREDEFINED_BUILTIN_KWDFUNCTION_IF
 #undef PREDEFINED_FUNCTION
-#undef PREDEFINED_KWDFUNCTION_IF
+#undef PREDEFINED_FUNCTION_IF
 #undef PREDEFINED_KWDFUNCTION
-#undef PREDEFINED_MACRO_IF
+#undef PREDEFINED_KWDFUNCTION_IF
+#undef PREDEFINED_RT_MACRO
+#undef PREDEFINED_RT_MACRO_IF
+#undef PREDEFINED_RT_KWDMACRO
+#undef PREDEFINED_RT_KWDMACRO_IF
 #undef PREDEFINED_MACRO
-#undef PREDEFINED_KWDMACRO_IF
+#undef PREDEFINED_MACRO_IF
 #undef PREDEFINED_KWDMACRO
+#undef PREDEFINED_KWDMACRO_IF
 #undef HAS_EXTENSION_IF
 #undef HAS_FEATURE_IF
 #undef HAS_BUILTIN_IF
@@ -750,6 +762,10 @@ DEF_WARNING(W_CANT_UNDEF_LOCKED_KEYWORD,(WG_VALUE),WSTATE_DISABLED,WARNF("Cannot
 #ifdef TPP_DEFS_DEFINES_BUILTIN_FUNCTION
 #undef TPP_DEFS_DEFINES_BUILTIN_FUNCTION
 #undef BUILTIN_FUNCTION
+#endif
+#ifdef TPP_DEFS_DEFINES_RT_BUILTIN_MACRO
+#undef TPP_DEFS_DEFINES_RT_BUILTIN_MACRO
+#undef RT_BUILTIN_MACRO
 #endif
 #ifdef TPP_DEFS_DEFINES_BUILTIN_MACRO
 #undef TPP_DEFS_DEFINES_BUILTIN_MACRO

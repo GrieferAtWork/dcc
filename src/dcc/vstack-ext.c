@@ -48,7 +48,9 @@ DCCVStack_PushSym_vpfun(struct DCCSym *__restrict sym) {
 }
 INTERN void DCC_VSTACK_CALL
 DCCVStack_PushSym_cpfun(struct DCCSym *__restrict sym) {
- struct DCCType type = {DCCTYPE_CHAR,NULL};
+ struct DCCType type;
+ type.t_type = DCCTYPE_USERCHAR;
+ type.t_base = NULL;
  DCCType_MkPointer(&type);
  DCCType_MkOldFunc(&type);
  vpushst(&type,sym);

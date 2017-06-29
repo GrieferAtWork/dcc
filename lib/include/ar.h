@@ -18,7 +18,7 @@
 
 /*
  * Even though this file is part of the DCC source tree,
- * no additional copyright claims apply to this other, other
+ * no additional copyright claims apply to this, other
  * that those taken from the source, which can be found above.
  *
  * NOTE: Some modifications have been made to the original file.

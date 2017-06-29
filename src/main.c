@@ -198,12 +198,9 @@ static void load_stdlib(void) {
  }
 }
 
-int get_a(void) { return 10; }
-
-
-
 int main(int argc, char *argv[]) {
  int result = 0;
+
 #if DCC_CONFIG_HAVE_DRT
  char **drt_argv_buf = NULL;
 #endif
@@ -216,10 +213,10 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-
  /*_CrtSetBreakAlloc(19434);*/
  if (!TPP_INITIALIZE()) return 1;
  DCCPreprocessor_Init(&preproc);
+
 
  /* Initialize TPP callback hooks. */
  TPPLexer_Current->l_callbacks.c_parse_pragma     = &DCCParse_Pragma;

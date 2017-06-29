@@ -382,7 +382,7 @@ LOCAL void linker_add_intpath_self(void) {
        inc_trail_iter->t[0]; ++inc_trail_iter,++inc_dst) {
    memcpy(path+path_len,inc_trail_iter->t,sizeof(inc_trail_iter->t));
    *inc_dst = TPPString_New(path,path_len+strlen(inc_trail_iter->t));
-   if (!*inc_dst) { *inc_dst = TPPFile_Empty.f_text; TPPString_Incref(TPPFile_Empty.f_text); }
+   if (!*inc_dst) *inc_dst = TPPString_NewEmpty();
   }
  }
  assert(inc_dst == TPPLexer_Current->l_syspaths.il_pathv+

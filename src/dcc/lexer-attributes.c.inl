@@ -304,8 +304,7 @@ DCCParse_AttrContent(struct DCCAttrDecl *__restrict self, int kind) {
   YIELD();
   if (TOK == '(' || TOK == KWD___pack) goto parse_alias;
   /* Empty string. */
-  text = TPPFile_Empty.f_text;
-  TPPString_Incref(TPPFile_Empty.f_text);
+  text = TPPString_NewEmpty();
   has_paren = 0;
   goto set_text;
 
@@ -326,7 +325,9 @@ parse_alias:
   else if (!TPP_ISSTRING(TOK)) {
    WARN(W_ATTRIBUTE_EXPECTED_STRING,function);
    text = NULL;
-  } else text = DCCParse_String();
+  } else {
+   text = DCCParse_String();
+  }
 set_text:
   switch (function->k_id) {
 

@@ -46,7 +46,7 @@ INTERN void DCCUNIT_IMPORTCALL
 DCCUnit_LoadSrc_C(struct DCCLibDef *__restrict def) {
  (void)def;
  compiler.c_flags |= (DCC_COMPILER_FLAG_NOCGEN);
- CURRENT.l_flags  |= (TPPLEXER_FLAG_TERMINATE_STRING_LF);
+ /*CURRENT.l_flags |= (TPPLEXER_FLAG_TERMINATE_STRING_LF);*/
 
  /* Load standard sections. */
  load_std_sections();
@@ -67,7 +67,7 @@ INTERN void DCCUNIT_IMPORTCALL
 DCCUnit_LoadSrc_ASM(struct DCCLibDef *__restrict def) {
  (void)def;
  CURRENT.l_flags |= (TPPLEXER_FLAG_ASM_COMMENTS|
-                     TPPLEXER_FLAG_TERMINATE_STRING_LF|
+                     /*TPPLEXER_FLAG_TERMINATE_STRING_LF|*/
                      TPPLEXER_FLAG_COMMENT_NOOWN_LF|
                      TPPLEXER_FLAG_WANTLF);
  CURRENT.l_extokens = TPPLEXER_TOKEN_LANG_ASM;

@@ -183,12 +183,6 @@ again:
 }
 
 
-#define SKIP_WRAPLF(iter,end) \
- (*(iter) == '\\' && (iter) != (end)-1\
-  ? ((iter)[1] == '\n' ? ((iter) += 2,1) :\
-     (iter)[1] == '\r' ? ((iter) += \
-    ((iter) != (end)-2 && (iter)[2] == '\n') ? 3 : 2,1)\
-  : 0) : 0)
 INTDEF struct TPPKeyword *
 lookup_escaped_keyword(char const *name, size_t namelen,
                        size_t unescaped_size, int create_missing);
@@ -541,8 +535,7 @@ LEXPRIV /*ref*/struct TPPString *DCC_PARSE_CALL
 DCCParse_GetPrettyFunction(void) {
  if (!compiler.c_fun) {
   WARN(W_EXPR_FUNC_OUTSIDE_OF_FUNCTION);
-  TPPString_Incref(TPPFile_Empty.f_text);
-  return TPPFile_Empty.f_text;
+  return TPPString_NewEmpty();
  }
  return DCCType_ToTPPString(&compiler.c_fun->d_type,
                              compiler.c_fun->d_name);

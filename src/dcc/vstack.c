@@ -2525,6 +2525,7 @@ DCCStackValue_Jmp(struct DCCStackValue *__restrict self) {
  DCCStackValue_LoadLValue(self);
  DCCStackValue_FixBitfield(self);
  DCCStackValue_FixTest(self);
+ self->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
  target_addr.ml_reg = self->sv_reg;
  target_addr.ml_off = self->sv_const.offset;
  target_addr.ml_sym = self->sv_sym;
@@ -2546,6 +2547,7 @@ DCCStackValue_Jcc(struct DCCStackValue *__restrict cond,
  /* Fix condition/target states. */
  OLD_VPROM(cond);
  DCCStackValue_LoadLValue(cond);
+ cond->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
  if (!(cond->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST)) &&
        DCC_RC_ISCONST(cond->sv_reg)) {
   int cond_istrue;
@@ -2565,6 +2567,7 @@ DCCStackValue_Jcc(struct DCCStackValue *__restrict cond,
  gen_test = DCC_SFLAG_GTTEST(cond->sv_flags);
  if (invert) gen_test ^= DCC_TEST_NBIT;
  assertf(gen_test <= 0xf,"gen_test = %x",gen_test);
+ target->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
  if (!(target->sv_flags&(DCC_SFLAG_LVALUE|DCC_SFLAG_TEST|DCC_SFLAG_BITFLD)) &&
        DCCTYPE_GROUP(target->sv_ctype.t_type) != DCCTYPE_LVALUE) {
   struct DCCMemLoc target_addr;
@@ -3467,20 +3470,29 @@ DCCVStack_PushReturn(struct DCCDecl const *funty_decl) {
 
 
 PUBLIC void DCC_VSTACK_CALL
-DCCVStack_PushStr(char const *__restrict p, size_t s) {
+DCCVStack_PushStr(void const *__restrict p,
+                  size_t size, tyid_t char_type) {
+ static size_t const basic_sizes[4] = {
+  /* [DCCTYPE_INT ] = */DCC_TARGET_SIZEOF_INT,
+  /* [DCCTYPE_BYTE] = */DCC_TARGET_SIZEOF_BYTE,
+  /* [DCCTYPE_WORD] = */DCC_TARGET_SIZEOF_WORD,
+  /* [DCCTYPE_IB8 ] = */8,
+ };
  struct DCCStackValue slot;
  struct DCCSym *str_sym;
+ size_t char_size;
+ assert(DCCTYPE_GROUP(char_type) == DCCTYPE_BUILTIN);
+ assert(DCCTYPE_BASIC(char_type) <  DCCTYPE_FLOAT);
+ char_size = basic_sizes[char_type&0x3];
  /* Place a data symbol for the string. */
- str_sym = DCCSection_DAllocSym(unit.u_string,p,s*sizeof(char),
-                               (s+1)*sizeof(char),1,0);
+ str_sym = DCCSection_DAllocSym(unit.u_string,p,size,
+                               (size+char_size)*sizeof(char),1,0);
  if unlikely(!str_sym) { vpushi(DCCTYPE_INT,0); return; }
  slot.sv_ctype.t_base = NULL;
  /* TODO: 'DCCTYPE_CONST' should somehow be configurable. */
- slot.sv_ctype.t_type = DCCTYPE_BUILTIN|DCCTYPE_CHAR|DCCTYPE_CONST;
- if (TPPLexer_Current->l_flags&TPPLEXER_FLAG_CHAR_UNSIGNED)
-     slot.sv_ctype.t_type |= DCCTYPE_UNSIGNED;
+ slot.sv_ctype.t_type = char_type|DCCTYPE_CONST;
  /* Use a character array as typing for the string. */
- DCCType_MkArray(&slot.sv_ctype,(s+1));
+ DCCType_MkArray(&slot.sv_ctype,(size/char_size)+1);
  assert(slot.sv_ctype.t_base);
  slot.sv_flags    = DCC_SFLAG_LVALUE|DCC_SFLAG_RVALUE;
  slot.sv_reg      = DCC_RC_CONST;
@@ -3849,10 +3861,11 @@ PUBLIC void DCC_VSTACK_CALL DCCVStack_Dup(int copy) {
  assert(dst_slot >= vstack.v_begin);
  assert(src_slot <  vstack.v_end);
  assert(src_slot == dst_slot+1);
- memcpy(dst_slot,src_slot,sizeof(struct DCCStackValue));
+ *dst_slot = *src_slot;
  if (dst_slot->sv_ctype.t_base) DCCDecl_Incref(dst_slot->sv_ctype.t_base);
  if (dst_slot->sv_sym) DCCSym_Incref(dst_slot->sv_sym);
  if (copy) dst_slot->sv_flags |= DCC_SFLAG_COPY;
+ dst_slot->sv_flags &= ~(DCC_SFLAG_DO_WUNUSED);
  vstack.v_bottom = dst_slot;
  return;
 seterr:
@@ -4545,9 +4558,20 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
   if (DCCType_IsCompatible(vtyp,type,1)) return 0;
   return W_CAST_TO_FUNCTION;
 
+ {
  case DCCTYPE_ARRAY:
-  if (DCCType_IsCompatible(vtyp,type,1)) return 0;
+  assert(type->t_base);
+  if (DCCTYPE_GROUP(vid) == DCCTYPE_ARRAY &&
+     (assert(vtyp->t_base),
+      DCCType_IsCompatible(&vtyp->t_base->d_type,
+                           &type->t_base->d_type,1))) {
+   if (type->t_base->d_tdecl.td_size <
+       vtyp->t_base->d_tdecl.td_size)
+       return W_CAST_TO_SHORTER_ARRAY;
+   return 0;
+  }
   return W_CAST_TO_ARRAY;
+ }
 
  case DCCTYPE_VARRAY:
   if (DCCType_IsCompatible(vtyp,type,1)) return 0;

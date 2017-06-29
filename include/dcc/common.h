@@ -101,6 +101,7 @@
 #define TPP_CONFIG_MINMACRO   1 /*  */
 #define TPP_CONFIG_GCCFUNC    1 /* Enable GCC builtin functions in TPP. */
 #define TPP_CONFIG_MINGCCFUNC 2 /* Setup minimal default hooks for builtin GCC function (most are added manually) */
+#define TPP_UNESCAPE_ENDIAN   DCC_TARGET_BYTEORDER
 
 /**********************************************/
 /*	Compiler/Host automatic configuration...   */

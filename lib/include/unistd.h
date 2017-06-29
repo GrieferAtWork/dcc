@@ -34,15 +34,15 @@ __STRICT_ANSI_HEADER
 #include <errno.h>
 
 #ifdef __USE_XOPEN2K8
-# define _POSIX_VERSION	200809L
+#	define _POSIX_VERSION 200809L
 #elif defined __USE_XOPEN2K
-# define _POSIX_VERSION	200112L
+#	define _POSIX_VERSION 200112L
 #elif defined __USE_POSIX199506
-# define _POSIX_VERSION	199506L
+#	define _POSIX_VERSION 199506L
 #elif defined __USE_POSIX199309
-# define _POSIX_VERSION	199309L
+#	define _POSIX_VERSION 199309L
 #else
-# define _POSIX_VERSION	199009L
+#	define _POSIX_VERSION 199009L
 #endif
 
 #ifdef __USE_XOPEN2K8
@@ -213,9 +213,9 @@ __IMP __CRT_UNSUPPORTED_MSVC ssize_t (pwrite64)(int __fd, void const *__buf, siz
 
 #if defined(__CRT_MSVC) && !defined(__INTELLISENSE__)
 __IMP __WUNUSED int (__msvc_pipe)(int __pipedes[2], __UINT32_TYPE__ __pipesize, int __textmode) __UNISTD_FUN("pipe");
-#define pipe(pipedes) __msvc_pipe((pipedes),0x400,0x8000/*_O_BINARY*/)
+#	define pipe(pipedes)        __msvc_pipe((pipedes),0x400,0x8000/*_O_BINARY*/)
 #ifdef __USE_GNU
-#define pipe(pipedes,flags) __msvc_pipe((pipedes),0x400,(flags)|0x8000/*_O_BINARY*/)
+#	define pipe2(pipedes,flags) __msvc_pipe((pipedes),0x400,(flags)|0x8000/*_O_BINARY*/)
 #endif
 #else
 __IMP int (pipe)(int __pipedes[2]);

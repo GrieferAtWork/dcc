@@ -510,10 +510,7 @@ DCCAsmOperand_Parse(struct DCCIAsmOperand *__restrict self, int is_output) {
   WARN(W_IASM_EXPECTED_STRING_FOR_CONSTRAINTS);
   constraints = NULL;
  }
- if (!constraints) {
-  constraints = TPPFile_Empty.f_text;
-  TPPString_Incref(TPPFile_Empty.f_text);
- }
+ if (!constraints) constraints = TPPString_NewEmpty();
  self->ao_constraints = constraints;
  DCCParse_ParPairBegin();
  DCCParse_Expr();
@@ -560,7 +557,7 @@ DCCIAsmOps_ParseClobber(struct DCCIAsmOps *__restrict self) {
    WARN(W_IASM_EXPECTED_STRING_FOR_CLOBBER);
    clobber = NULL;
   } else {
-   clobber = TPPLexer_ParseString();
+   clobber = DCCParse_String();
   }
 #define CLOBBER(x) \
        (clobber->s_size == DCC_COMPILER_STRLEN(x) && \
@@ -703,8 +700,7 @@ DCCIAsmOps_Format(struct DCCIAsmOps *__restrict self,
  writer.sw_stra = (str->s_size*3)/2;
  if unlikely(!writer.sw_stra) {
 return_empty:
-  TPPString_Incref(TPPFile_Empty.f_text);
-  return TPPFile_Empty.f_text;
+  return TPPString_NewEmpty();
  }
  /* Allocate an initial buffer. */
  writer.sw_strv = (struct TPPString *)malloc(DCC_COMPILER_OFFSETOF(struct TPPString,s_text)+

@@ -334,7 +334,9 @@ union DCCConstValue {
                                              *  A use qualifies as the value being:
                                              *   - The source operand in a binary/store operation
                                              *   - The target operand in a unary/binary/store operation (Only if the 'DCC_SFLAG_COPY|DCC_SFLAG_RVALUE' flags aren't set)
-                                             *   - An argument operand during a function call. */
+                                             *   - An argument operand during a function call.
+                                             *   - The target operand during a function call.
+                                             *   - The condition/target operand in a jump operation. */
 
 typedef uint32_t DCC(sflag_t); /*< Stack value flag (Set of 'DCC_SFLAG_*'). */
 
@@ -495,7 +497,7 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_PushMloc(struct DCCType const *__restrict 
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushSym(struct DCCSym *__restrict sym);              /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushSymt(struct DCCType const *__restrict type, struct DCCSym *__restrict sym); /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushDecl(struct DCCDecl *__restrict decl);           /* +1 */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_PushStr(char const *__restrict p, size_t s);         /* +1 */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_PushStr(void const *__restrict p, size_t size, DCC(tyid_t) char_type); /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushReg(DCC(rc_t) reg);                              /* +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushRegs(DCC(rc_t) reg, DCC(rc_t) reg2);             /* +1 (When 'reg2 != DCC_RC_CONST', push a register pair as 64-bit integer) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_PushXReg(DCC(rc_t) reg);                             /* +1 (Same as 'DCCVStack_PushReg', but push as explicit, allowing for questionable operations such as '%ebp += 42') */
@@ -737,7 +739,7 @@ extern struct DCCStackValue *vbottom;
 #define vpushst    DCCVStack_PushSymt
 #define vpushd     DCCVStack_PushDecl
 #define vpushv     DCCVStack_PushVoid
-#define vpushstr   DCCVStack_PushStr
+#define vpushstr(p,s) DCCVStack_PushStr(p,(s)*sizeof(char),DCCTYPE_USERCHAR)
 #define vdup       DCCVStack_Dup
 #define vrcopy     DCCVStack_ReplaceCopy
 #define vrval()   (void)(vbottom->sv_flags |= DCC_SFLAG_RVALUE)
@@ -797,10 +799,10 @@ DCC_LOCAL void vcast_t(DCC(tyid_t) id, int explicit_cast) {
 #define vx_rawmemrchr() (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_memrend())
 #define vx_rawmemlen()  (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_memlen())
 #define vx_rawmemrlen() (vpushi(DCCTYPE_SIZE|DCCTYPE_UNSIGNED,-1),vx_memrlen())
-#define vx_strlen()     (vpushi(DCCTYPE_CHAR,'\0'),vx_rawmemlen())
-#define vx_strnlen()    (vpushi(DCCTYPE_CHAR,'\0'),vswap(),vx_memlen())
-#define vx_strend()     (vpushi(DCCTYPE_CHAR,'\0'),vx_rawmemchr())
-#define vx_strnend()    (vpushi(DCCTYPE_CHAR,'\0'),vswap(),vx_memend())
+#define vx_strlen()     (vpushi(DCCTYPE_INT,'\0'),vx_rawmemlen())
+#define vx_strnlen()    (vpushi(DCCTYPE_INT,'\0'),vswap(),vx_memlen())
+#define vx_strend()     (vpushi(DCCTYPE_INT,'\0'),vx_rawmemchr())
+#define vx_strnend()    (vpushi(DCCTYPE_INT,'\0'),vswap(),vx_memend())
 #define vx_strnoff()     DCCVStack_Scas(DCC_VSTACK_SCAS_STRNOFF)
 #define vx_strnroff()    DCCVStack_Scas(DCC_VSTACK_SCAS_STRNROFF)
 #define vx_strnchr()     DCCVStack_Scas(DCC_VSTACK_SCAS_STRNCHR)
