@@ -153,26 +153,32 @@ DCCDisp_UnaryMem(tok_t op, struct DCCMemLoc const *__restrict dst,
   return;
  }
  dst_iter = *dst;
- if (dst_bytes > DCC_TARGET_SIZEOF_ARITH_MAX &&
-    (op == TOK_INC || op == TOK_DEC)) {
-  /* inc/dec for out-of-band memory arguments. */
-  struct DCCSymAddr src_val = {1,NULL};
-  DCCDisp_CstBinMem(op == TOK_INC ? '+' : '-',&src_val,
-                    &dst_iter,DCC_TARGET_SIZEOF_ARITH_MAX,1);
-  dst_iter.ml_off += DCC_TARGET_SIZEOF_ARITH_MAX;
-  dst_bytes       -= DCC_TARGET_SIZEOF_ARITH_MAX;
-  src_val.sa_off = 0;
-  while (dst_bytes >= DCC_TARGET_SIZEOF_ARITH_MAX) {
-   DCCDisp_CstBinMem(op,&src_val,&dst_iter,DCC_TARGET_SIZEOF_ARITH_MAX,1);
+ if (dst_bytes > DCC_TARGET_SIZEOF_ARITH_MAX) {
+  if (op == TOK_INC || op == TOK_DEC) {
+   /* inc/dec for out-of-band memory arguments. */
+   struct DCCSymAddr src_val = {1,NULL};
+   DCCDisp_CstBinMem(op == TOK_INC ? '+' : '-',&src_val,
+                     &dst_iter,DCC_TARGET_SIZEOF_ARITH_MAX,1);
    dst_iter.ml_off += DCC_TARGET_SIZEOF_ARITH_MAX;
    dst_bytes       -= DCC_TARGET_SIZEOF_ARITH_MAX;
-  }
+   src_val.sa_off = 0;
+   while (dst_bytes >= DCC_TARGET_SIZEOF_ARITH_MAX) {
+    DCCDisp_CstBinMem(op,&src_val,&dst_iter,DCC_TARGET_SIZEOF_ARITH_MAX,1);
+    dst_iter.ml_off += DCC_TARGET_SIZEOF_ARITH_MAX;
+    dst_bytes       -= DCC_TARGET_SIZEOF_ARITH_MAX;
+   }
 #if DCC_TARGET_SIZEOF_ARITH_MAX > 4
-  if (dst_bytes&4) { DCCDisp_CstBinMem(op,&src_val,&dst_iter,4,1); dst_iter.ml_off += 4; }
+   if (dst_bytes&4) { DCCDisp_CstBinMem(op,&src_val,&dst_iter,4,1); dst_iter.ml_off += 4; }
 #endif
-  if (dst_bytes&2) { DCCDisp_CstBinMem(op,&src_val,&dst_iter,2,1); dst_iter.ml_off += 2; }
-  if (dst_bytes&1) { DCCDisp_CstBinMem(op,&src_val,&dst_iter,1,1); }
-  return;
+   if (dst_bytes&2) { DCCDisp_CstBinMem(op,&src_val,&dst_iter,2,1); dst_iter.ml_off += 2; }
+   if (dst_bytes&1) { DCCDisp_CstBinMem(op,&src_val,&dst_iter,1,1); }
+   return;
+  } else if (op == '-') {
+   /* -x --> ~(x-1) */
+   struct DCCSymAddr src_val = {1,NULL};
+   DCCDisp_CstBinMem('-',&src_val,&dst_iter,dst_bytes,1);
+   op = '~'; /* Generate a bit-wise inversion below. */
+  }
  }
  while (dst_bytes >= DCC_TARGET_SIZEOF_ARITH_MAX) {
   DCCDisp_UnaryMemWidth(op,&dst_iter,DCC_TARGET_SIZEOF_ARITH_MAX);

@@ -8179,6 +8179,10 @@ TPPConst_ToString(struct TPPConst const *__restrict self) {
   if unlikely(!result) return NULL;
   TPP_Itos(result->s_text,self->c_data.c_int);
  }
+ assertf(!result->s_text[result->s_size],
+        ("Invalid text end in %lu characters long string '%.*s'",
+        (unsigned long)result->s_size,
+        (unsigned int)result->s_size,result->s_text));
  return result;
 }
 

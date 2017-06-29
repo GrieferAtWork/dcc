@@ -1238,8 +1238,9 @@ normal_fliptst:
  if (DCC_RC_ISCONST(self->sv_reg2)) {
   DCCDisp_UnaryReg(op,self->sv_reg);
  } else if (op == '~') {
-  DCCDisp_UnaryReg(op,self->sv_reg);
-  DCCDisp_UnaryReg(op,self->sv_reg2);
+gen_inv:
+  DCCDisp_UnaryReg('~',self->sv_reg);
+  DCCDisp_UnaryReg('~',self->sv_reg2);
  } else if (op == TOK_INC || op == TOK_DEC) {
   struct DCCSymAddr rhs_val;
   rhs_val.sa_off = 1;
@@ -1249,6 +1250,11 @@ normal_fliptst:
   DCCDisp_CstBinReg(op == TOK_INC ? '+' : '-',&rhs_val,self->sv_reg,1);
   rhs_val.sa_off = 0;
   DCCDisp_CstBinReg(op,&rhs_val,self->sv_reg2,1); /* add/sub w/ carry/borrow. */
+ } else if (op == '-') {
+  /* -x --> ~(x-1) */
+  struct DCCSymExpr cst_val = {1,NULL};
+  DCCDisp_CstBinRegs('-',&cst_val,self->sv_reg,self->sv_reg2,1);
+  goto gen_inv;
  } else {
   /* Add more/new emulated 64-bit unary operations here. */
  }
