@@ -198,6 +198,9 @@
     <ClInclude Include="..\lib\include\strings.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\lib\fixinclude\uchar.h">
+      <Filter>fixinclude</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\lib\test\sizeof.c">

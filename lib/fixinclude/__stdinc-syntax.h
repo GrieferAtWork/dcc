@@ -131,6 +131,12 @@ template<bool C, class T> struct ____INTELLISENE_enableif<false,T> {};
 #define __ORDER_BIG_ENDIAN__    4321
 #define __ORDER_PDP_ENDIAN__    3412
 
+//#define __CHAR_UNSIGNED__ 1
+#define __WCHAR_UNSIGNED__  1
+#define __CHAR16_UNSIGNED__ 1
+#define __CHAR32_UNSIGNED__ 1
+
+
 #define __SIZEOF_INT__            4
 #ifdef _WIN32
 #   define __SIZEOF_LONG__        4
@@ -160,6 +166,8 @@ template<bool C, class T> struct ____INTELLISENE_enableif<false,T> {};
 #define __SIZEOF_WINT_T__         __SIZEOF_INT__
 #define __SIZEOF_PTRDIFF_T__      __SIZEOF_POINTER__
 #define __SIZEOF_CHAR__           1
+#define __SIZEOF_CHAR16_T__       2
+#define __SIZEOF_CHAR32_T__       4
 #define __SIZEOF_INT_LEAST8_T__   1
 #define __SIZEOF_INT_LEAST16_T__  2
 #define __SIZEOF_INT_LEAST32_T__  4
@@ -209,6 +217,8 @@ template<bool C, class T> struct ____INTELLISENE_enableif<false,T> {};
 #define __SIZE_TYPE__      unsigned ____INTELLISENE_TYPE(__SIZEOF_SIZE_T__)
 #define __PTRDIFF_TYPE__     signed ____INTELLISENE_TYPE(__SIZEOF_PTRDIFF_T__)
 #define __WCHAR_TYPE__       wchar_t
+#define __CHAR16_TYPE__    unsigned __int16
+#define __CHAR32_TYPE__    unsigned __int32
 #define __WINT_TYPE__        signed ____INTELLISENE_TYPE(__SIZEOF_WINT_T__)
 #define __INTMAX_TYPE__      signed ____INTELLISENE_TYPE(__SIZEOF_INTMAX_T__)
 #define __UINTMAX_TYPE__   unsigned ____INTELLISENE_TYPE(__SIZEOF_INTMAX_T__)
@@ -237,42 +247,64 @@ template<bool C, class T> struct ____INTELLISENE_enableif<false,T> {};
 
 #define __CHAR_BIT__              ____INTELLISENE_MUL8(__SIZEOF_CHAR__)
 
+#   define __SCHAR_MIN__       ____INTELLISENE_MIN_S(__SIZEOF_CHAR__)
+#   define __SCHAR_MAX__       ____INTELLISENE_MAX_S(__SIZEOF_CHAR__)
+#   define __UCHAR_MAX__       ____INTELLISENE_MAX_U(__SIZEOF_CHAR__)
 #ifdef __CHAR_UNSIGNED__
-#define __CHAR_MIN__        ____INTELLISENE_MIN_U(__SIZEOF_CHAR__)
-#define __CHAR_MAX__        ____INTELLISENE_MAX_U(__SIZEOF_CHAR__)
+#   define __CHAR_MIN__        ____INTELLISENE_MIN_U(__SIZEOF_CHAR__)
+#   define __CHAR_MAX__        ____INTELLISENE_MAX_U(__SIZEOF_CHAR__)
 #else
-#define __CHAR_MIN__        ____INTELLISENE_MIN_S(__SIZEOF_CHAR__)
-#define __CHAR_MAX__        ____INTELLISENE_MAX_S(__SIZEOF_CHAR__)
+#   define __CHAR_MIN__        ____INTELLISENE_MIN_S(__SIZEOF_CHAR__)
+#   define __CHAR_MAX__        ____INTELLISENE_MAX_S(__SIZEOF_CHAR__)
 #endif
-#define __SCHAR_MIN__       ____INTELLISENE_MIN_S(__SIZEOF_CHAR__)
-#define __SCHAR_MAX__       ____INTELLISENE_MAX_S(__SIZEOF_CHAR__)
-#define __UCHAR_MAX__       ____INTELLISENE_MAX_U(__SIZEOF_CHAR__)
-#define __WCHAR_MIN__       0
-#define __WCHAR_MAX__       ____INTELLISENE_MAX_U(__SIZEOF_WCHAR_T__
-#define __SHRT_MIN__        ____INTELLISENE_MIN_S(__SIZEOF_SHORT__)
-#define __SHRT_MAX__        ____INTELLISENE_MAX_S(__SIZEOF_SHORT__)
-#define __USHRT_MAX__       ____INTELLISENE_MAX_U(__SIZEOF_SHORT__)
-#define __INT_MIN__         ____INTELLISENE_MIN_S(__SIZEOF_INT__)
-#define __INT_MAX__         ____INTELLISENE_MAX_S(__SIZEOF_INT__)
-#define __UINT_MAX__        ____INTELLISENE_MAX_U(__SIZEOF_INT__)
-#define __LONG_MIN__        ____INTELLISENE_MIN_S(__SIZEOF_LONG__)
-#define __LONG_MAX__        ____INTELLISENE_MAX_S(__SIZEOF_LONG__)
-#define __ULONG_MAX__       ____INTELLISENE_MAX_U(__SIZEOF_LONG__)
-#define __LONG_LONG_MIN__   ____INTELLISENE_MIN_S(__SIZEOF_LONG_LONG__)
-#define __LONG_LONG_MAX__   ____INTELLISENE_MAX_S(__SIZEOF_LONG_LONG__)
-#define __ULONG_LONG_MAX__  ____INTELLISENE_MAX_U(__SIZEOF_LONG_LONG__)
-#define __WINT_MIN__        ____INTELLISENE_MIN_S(__SIZEOF_WINT_T__)
-#define __WINT_MAX__        ____INTELLISENE_MAX_S(__SIZEOF_WINT_T__)
-#define __SIZE_MAX__        ____INTELLISENE_MAX_U(__SIZEOF_SIZE_T__)
-#define __SSIZE_MIN__       ____INTELLISENE_MIN_S(__SIZEOF_SIZE_T__)
-#define __SSIZE_MAX__       ____INTELLISENE_MAX_S(__SIZEOF_SIZE_T__)
-#define __PTRDIFF_MIN__     ____INTELLISENE_MIN_S(__SIZEOF_PTRDIFF_T__)
-#define __PTRDIFF_MAX__     ____INTELLISENE_MAX_S(__SIZEOF_PTRDIFF_T__)
-#define __INTMAX_MIN__      ____INTELLISENE_MIN_S(__SIZEOF_INTMAX_T__)
-#define __INTMAX_MAX__      ____INTELLISENE_MAX_S(__SIZEOF_INTMAX_T__)
-#define __UINTMAX_MAX__     ____INTELLISENE_MAX_U(__SIZEOF_INTMAX_T__)
-#define __SIG_ATOMIC_MIN__  ____INTELLISENE_MIN_S(__SIZEOF_SIG_ATOMIC_T__)
-#define __SIG_ATOMIC_MAX__  ____INTELLISENE_MAX_S(__SIZEOF_SIG_ATOMIC_T__)
+#if 1
+#   define __WCHAR_MIN__       L'\0'
+#   define __WCHAR_MAX__       L'\xffff'
+#elif defined(__WCHAR_UNSIGNED__)
+#   define __WCHAR_MIN__       ____INTELLISENE_MIN_U(__SIZEOF_WCHAR_T__)
+#   define __WCHAR_MAX__       ____INTELLISENE_MAX_U(__SIZEOF_WCHAR_T__)
+#else
+#   define __WCHAR_MIN__       ____INTELLISENE_MIN_S(__SIZEOF_WCHAR_T__)
+#   define __WCHAR_MAX__       ____INTELLISENE_MAX_S(__SIZEOF_WCHAR_T__)
+#endif
+#ifdef __CHAR16_UNSIGNED__
+#   define __CHAR16_MIN__      ____INTELLISENE_MIN_U(__SIZEOF_CHAR16_T__)
+#   define __CHAR16_MAX__      ____INTELLISENE_MAX_U(__SIZEOF_CHAR16_T__)
+#else
+#   define __CHAR16_MIN__      ____INTELLISENE_MIN_S(__SIZEOF_CHAR16_T__)
+#   define __CHAR16_MAX__      ____INTELLISENE_MAX_S(__SIZEOF_CHAR16_T__)
+#endif
+#ifdef __CHAR32_UNSIGNED__
+#   define __CHAR32_MIN__      ____INTELLISENE_MIN_U(__SIZEOF_CHAR32_T__)
+#   define __CHAR32_MAX__      ____INTELLISENE_MAX_U(__SIZEOF_CHAR32_T__)
+#else
+#   define __CHAR32_MIN__      ____INTELLISENE_MIN_S(__SIZEOF_CHAR32_T__)
+#   define __CHAR32_MAX__      ____INTELLISENE_MAX_S(__SIZEOF_CHAR32_T__)
+#endif
+#   define __SHRT_MIN__        ____INTELLISENE_MIN_S(__SIZEOF_SHORT__)
+#   define __SHRT_MAX__        ____INTELLISENE_MAX_S(__SIZEOF_SHORT__)
+#   define __USHRT_MAX__       ____INTELLISENE_MAX_U(__SIZEOF_SHORT__)
+#   define __INT_MIN__         ____INTELLISENE_MIN_S(__SIZEOF_INT__)
+#   define __INT_MAX__         ____INTELLISENE_MAX_S(__SIZEOF_INT__)
+#   define __UINT_MAX__        ____INTELLISENE_MAX_U(__SIZEOF_INT__)
+#   define __LONG_MIN__        ____INTELLISENE_MIN_S(__SIZEOF_LONG__)
+#   define __LONG_MAX__        ____INTELLISENE_MAX_S(__SIZEOF_LONG__)
+#   define __ULONG_MAX__       ____INTELLISENE_MAX_U(__SIZEOF_LONG__)
+#   define __LONG_LONG_MIN__   ____INTELLISENE_MIN_S(__SIZEOF_LONG_LONG__)
+#   define __LONG_LONG_MAX__   ____INTELLISENE_MAX_S(__SIZEOF_LONG_LONG__)
+#   define __ULONG_LONG_MAX__  ____INTELLISENE_MAX_U(__SIZEOF_LONG_LONG__)
+#   define __WINT_MIN__        ____INTELLISENE_MIN_S(__SIZEOF_WINT_T__)
+#   define __WINT_MAX__        ____INTELLISENE_MAX_S(__SIZEOF_WINT_T__)
+#   define __SIZE_MAX__        ____INTELLISENE_MAX_U(__SIZEOF_SIZE_T__)
+#   define __SSIZE_MIN__       ____INTELLISENE_MIN_S(__SIZEOF_SIZE_T__)
+#   define __SSIZE_MAX__       ____INTELLISENE_MAX_S(__SIZEOF_SIZE_T__)
+#   define __PTRDIFF_MIN__     ____INTELLISENE_MIN_S(__SIZEOF_PTRDIFF_T__)
+#   define __PTRDIFF_MAX__     ____INTELLISENE_MAX_S(__SIZEOF_PTRDIFF_T__)
+#   define __INTMAX_MIN__      ____INTELLISENE_MIN_S(__SIZEOF_INTMAX_T__)
+#   define __INTMAX_MAX__      ____INTELLISENE_MAX_S(__SIZEOF_INTMAX_T__)
+#   define __UINTMAX_MAX__     ____INTELLISENE_MAX_U(__SIZEOF_INTMAX_T__)
+#   define __SIG_ATOMIC_MIN__  ____INTELLISENE_MIN_S(__SIZEOF_SIG_ATOMIC_T__)
+#   define __SIG_ATOMIC_MAX__  ____INTELLISENE_MAX_S(__SIZEOF_SIG_ATOMIC_T__)
 
 #define __INT8_MIN__     ____INTELLISENE_MIN_S1
 #define __INT16_MIN__    ____INTELLISENE_MIN_S2
@@ -315,9 +347,6 @@ template<bool C, class T> struct ____INTELLISENE_enableif<false,T> {};
 #define __INTPTR_MIN__  ____INTELLISENE_MIN_S(__SIZEOF_POINTER__)
 #define __INTPTR_MAX__  ____INTELLISENE_MAX_S(__SIZEOF_POINTER__)
 #define __UINTPTR_MAX__ ____INTELLISENE_MAX_U(__SIZEOF_POINTER__)
-
-//#define __CHAR_UNSIGNED__ 1
-#define __WCHAR_UNSIGNED__  1
 
 #if 1 /* Better highlighting for illegal usage cases. */
 #define __NULL__     nullptr

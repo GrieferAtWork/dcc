@@ -30,6 +30,7 @@
     <ClInclude Include="..\lib\fixinclude\string.h" />
     <ClInclude Include="..\lib\fixinclude\strings.h" />
     <ClInclude Include="..\lib\fixinclude\time.h" />
+    <ClInclude Include="..\lib\fixinclude\uchar.h" />
     <ClInclude Include="..\lib\fixinclude\varargs.h" />
     <ClInclude Include="..\lib\fixinclude\wchar.h" />
     <ClInclude Include="..\lib\fixinclude\__stdinc-syntax.h" />

@@ -21,25 +21,13 @@
 
 #include <__stdinc.h>
 
-#if __has_include_next(<wchar.h>)
-#include_next <wchar.h>
+#if __has_include_next(<uchar.h>)
+#include_next <uchar.h>
 #endif
 
-/* Fixed/optimized system header <wchar.h> for DCC */
-#undef size_t
-#undef wchar_t
-#undef wint_t
-typedef __SIZE_TYPE__  size_t;
-#ifndef __INTELLISENSE__
-typedef __WCHAR_TYPE__ wchar_t;
-#endif
-typedef __WINT_TYPE__  wint_t;
+/* Fixed/optimized system header <uchar.h> for DCC */
+#define __STD_UTF_16__ 1
+#define __STD_UTF_32__ 1
 
-#define NULL       __NULL__
-#define WCHAR_MIN  __WCHAR_MIN__
-#define WCHAR_MAX  __WCHAR_MAX__
-
-
-
-
-
+typedef __CHAR16_TYPE__ char16_t;
+typedef __CHAR32_TYPE__ char32_t;
