@@ -301,7 +301,7 @@ PREDEFINED_MACRO(__TPP_VERSION__,TPP_PP_STR(TPP_PREPROCESSOR_VERSION))
 #if TPP_CONFIG_GCCFUNC
 #if TPP_CONFIG_MINGCCFUNC == 0
 /* Builtin functions recognized in expressions. */
-#ifdef DECLARE_BUILTIN_FUNCTIONS
+#ifdef DEFINE_GLOBAL_SYMBOLS
 PRIVATE int_t tpp_ffs(int_t i) {
  int_t result;
  if (!i) return 0;

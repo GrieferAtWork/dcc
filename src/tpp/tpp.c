@@ -1860,9 +1860,12 @@ search_suitable_end_again:
      if (ch == '\r' && iter != end && *iter == '\n') ++iter;
      mode &= ~(MODE_INPP);
      if (termstring_onlf) mode &= ~(MODE_INCHAR|MODE_INSTRING);
+#if 1
+     if (!mode) last_zero_mode = iter;
      if (iter != end && *iter == '#' &&
        !(mode&(MODE_INCHAR|MODE_INSTRING)))
          mode |= MODE_INPP;
+#endif
     } else if (iter != end) {
      if (mode&MODE_INCOMMENT) {
       /* End multi-line comment. */
@@ -1871,7 +1874,7 @@ search_suitable_end_again:
        if (*iter == '/') mode &= ~(MODE_INCOMMENT);
        ++iter;
       }
-     } else if (!mode && ch == '/') {
+     } else if (!(mode&(MODE_INSTRING|MODE_INCHAR)) && ch == '/') {
       while (SKIP_WRAPLF(iter,end));
       ch = *iter;
       if (ch == '*') {
@@ -3246,21 +3249,6 @@ keyword_clrassert(struct TPPKeyword *__restrict self) {
 
 
 
-PUBLIC int
-TPP_ISBUILTINMACRO(tok_t id) {
- int result = 0;
- /* Check if builtin macros are even enabled. */
- if (!(CURRENT.l_flags&TPPLEXER_FLAG_NO_BUILTIN_MACROS)) {
-  switch (id) {
-#define MACRO(name,if) case name: result = !!(if); break;
-#include "tpp-defs.inl"
-#undef MACRO
-   default: break;
-  }
- }
- return result;
-}
-
 #if TPP_CONFIG_ONELEXER
 #define KWD(name,str) \
 static struct {\
@@ -3287,7 +3275,9 @@ struct kwd_def {
  const builtin_##name = {name,COMPILER_STRLEN(str),str};
 #endif
 #endif
+#define DEFINE_GLOBAL_SYMBOLS
 #include "tpp-defs.inl"
+#undef DEFINE_GLOBAL_SYMBOLS
 #undef KWD
 
 #if TPP_CONFIG_ONELEXER
@@ -3301,6 +3291,21 @@ const builtin_keywords[_KWD_COUNT] = {
 #include "tpp-defs.inl"
 };
 #undef KWD
+
+PUBLIC int
+TPP_ISBUILTINMACRO(tok_t id) {
+ int result = 0;
+ /* Check if builtin macros are even enabled. */
+ if (!(CURRENT.l_flags&TPPLEXER_FLAG_NO_BUILTIN_MACROS)) {
+  switch (id) {
+#define MACRO(name,if) case name: result = !!(if); break;
+#include "tpp-defs.inl"
+#undef MACRO
+   default: break;
+  }
+ }
+ return result;
+}
 
 PRIVATE void
 cleanup_keyword(struct TPPKeyword *__restrict self) {
@@ -8445,12 +8450,6 @@ PUBLIC int TPP_PrintComment(printer_t printer, void *closure) {
 }
 
 #if TPP_CONFIG_GCCFUNC
-#ifndef __INTELLISENSE__
-#define DECLARE_BUILTIN_FUNCTIONS
-#include "tpp-defs.inl"
-#undef DECLARE_BUILTIN_FUNCTIONS
-#endif
-
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4065)

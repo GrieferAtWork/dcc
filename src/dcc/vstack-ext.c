@@ -506,10 +506,17 @@ dcc_memrchr(void const *p, int c, size_t n) {
 #endif
 
 
+#if 1
+#define PRIVATE_GETSYM0(name) DCCUnit_GetSyms(name)
+#define PRIVATE_GETSYM1(name) DCCUnit_NewSyms(name,DCC_SYMFLAG_NONE)
+#define PRIVATE_GETSYM(avail,name) PRIVATE_GETSYM##avail(name)
+#define GET_SYM(avail,name) PRIVATE_GETSYM(avail,name)
+#else
 #define GET_SYM(avail,name) \
  (DCC_MACRO_COND(avail) \
   ? DCCUnit_NewSyms(name,DCC_SYMFLAG_NONE)\
   : DCCUnit_GetSyms(name))
+#endif
 
 #define VS_PTR  (&vbottom[2])
 #define VS_CHAR (&vbottom[1])
@@ -737,7 +744,7 @@ no_compiletime:
   } /* DCCSTACKVALUE_ISCONST_INT(VS_CHAR) */
   /* Only the search size is known. */
   if (ct_size == (target_siz_t)-1) {
-   /* Try to generate calls to 'rawmemchr'/'rawmemrchr'/'rawmemlen'/'rawmemrlen' */
+   /* Try to generate calls to raw/unlimited scanners. */
    if (!(flags&DCC_VSTACK_SCAS_FLAG_REV)) {
     if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
        ? (        (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
@@ -748,10 +755,11 @@ no_compiletime:
        : (        (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
        ? GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMLEN,"rawmemlen")
        : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMCHR,"rawmemchr"))) != NULL) {
-     vpop(1); /* ptr, char */
-     (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
-      ? DCCVStack_PushSym_szfun(funsym)
-      : DCCVStack_PushSym_vpfun(funsym); /* ptr, char, func */
+call_inf_fun:
+     vpop(1);  /* ptr, char */
+     (flags&DCC_VSTACK_SCAS_FLAG_SIZE) ? DCCVStack_PushSym_szfun(funsym) :
+     (flags&DCC_VSTACK_SCAS_FLAG_NUL)  ? DCCVStack_PushSym_cpfun(funsym) :
+                                         DCCVStack_PushSym_vpfun(funsym);
      vlrot(3); /* func, ptr, char */
      vcall(2); /* ret */
      return;
@@ -766,20 +774,7 @@ no_compiletime:
        : (        (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
        ? GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMRLEN,"rawmemrlen")
        : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMRCHR,"rawmemrchr"))) != NULL) {
-               /* ptr, char, size */
-     vrrot(3); /* char, size, ptr */
-     vcast_t(DCCTYPE_INTPTR|DCCTYPE_UNSIGNED,1);
-     vrcopy();
-     vswap();        /* char, ptr, size */
-     vgen2('+');     /* char, ptr+size */
-     vgen1(TOK_DEC); /* char, (ptr+size)-1 */
-     vswap();        /* (ptr+size)-1, char */
-     (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
-      ? DCCVStack_PushSym_szfun(funsym)
-      : DCCVStack_PushSym_vpfun(funsym);
-     vlrot(3); /* func, (ptr+size)-1, char */
-     vcall(2); /* ret */
-     return;
+     goto call_inf_fun;
     }
    }
   }
