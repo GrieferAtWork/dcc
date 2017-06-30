@@ -51,19 +51,31 @@ extern unsigned short __cdecl _byteswap_ushort(unsigned short);
 #pragma intrinsic(_byteswap_ushort)
 #endif
 
+#ifdef __INT8_C
+#   define DCC_UINT8_C  __INT8_C
+#   define DCC_UINT16_C __INT16_C
+#   define DCC_UINT32_C __INT32_C
+#   define DCC_UINT64_C __INT64_C
+#else
+#   define DCC_UINT8_C(x)  x##u
+#   define DCC_UINT16_C(x) x##u
+#   define DCC_UINT32_C(x) x##ul
+#   define DCC_UINT64_C(x) x##ull
+#endif
+
 #define DCC_CONSTANT_BSWAP16(x) \
  ((uint16_t)(x) >> 8 | (uint16_t)(x) << 8)
 #define DCC_CONSTANT_BSWAP32(x) \
- ((uint32_t)(x) << 24 | ((uint32_t)(x) & 0xff00) << 8 |\
- (((uint32_t)(x) >> 8) & 0xff00) | ((uint32_t)(x) >> 24))
+ ((uint32_t)(x) << 24 | ((uint32_t)(x) & DCC_UINT16_C(0xff00)) << 8 |\
+ (((uint32_t)(x) >> 8) & DCC_UINT16_C(0xff00)) | ((uint32_t)(x) >> 24))
 #define DCC_CONSTANT_BSWAP64(x) \
  ((uint64_t)(x) << 56 |\
- ((uint64_t)(x) & 0x000000000000FF00ull) << 40 |\
- ((uint64_t)(x) & 0x0000000000FF0000ull) << 24 |\
- ((uint64_t)(x) & 0x00000000FF000000ull) << 8 |\
- ((uint64_t)(x) & 0x000000FF00000000ull) >> 8 |\
- ((uint64_t)(x) & 0x0000FF0000000000ull) >> 24 |\
- ((uint64_t)(x) & 0x00FF000000000000ull) >> 40 |\
+ ((uint64_t)(x) & DCC_UINT64_C(0x000000000000FF00)) << 40 |\
+ ((uint64_t)(x) & DCC_UINT64_C(0x0000000000FF0000)) << 24 |\
+ ((uint64_t)(x) & DCC_UINT64_C(0x00000000FF000000)) << 8 |\
+ ((uint64_t)(x) & DCC_UINT64_C(0x000000FF00000000)) >> 8 |\
+ ((uint64_t)(x) & DCC_UINT64_C(0x0000FF0000000000)) >> 24 |\
+ ((uint64_t)(x) & DCC_UINT64_C(0x00FF000000000000)) >> 40 |\
  ((uint64_t)(x) >> 56))
 
 
@@ -97,7 +109,8 @@ DCC_LOCAL uint64_t dcc_byteswap64_impl(uint64_t x) { return DCC_CONSTANT_BSWAP64
 #endif
 
 
-#if defined(__GNUC__) || __has_builtin(__builtin_constant_p)
+#if (defined(__GNUC__) || __has_builtin(__builtin_constant_p)) && \
+    !defined(__DCC_VERSION__) /* DCC already performs constant folding in __builtin_bswapCC */
 #   define DCC_BSWAP16(x) (__builtin_constant_p(x) ? DCC_CONSTANT_BSWAP16(x) : DCC_COMPILER_BSWAP16(x))
 #   define DCC_BSWAP32(x) (__builtin_constant_p(x) ? DCC_CONSTANT_BSWAP32(x) : DCC_COMPILER_BSWAP32(x))
 #   define DCC_BSWAP64(x) (__builtin_constant_p(x) ? DCC_CONSTANT_BSWAP64(x) : DCC_COMPILER_BSWAP64(x))
@@ -107,79 +120,195 @@ DCC_LOCAL uint64_t dcc_byteswap64_impl(uint64_t x) { return DCC_CONSTANT_BSWAP64
 #   define DCC_BSWAP64     DCC_COMPILER_BSWAP64
 #endif
 
-/* Convert between host & target integers. */
-#if DCC_HOST_BYTEORDER == DCC_TARGET_BYTEORDER
-#   define DCC_H2T16   /* nothing */
-#   define DCC_H2T32   /* nothing */
-#   define DCC_H2T64   /* nothing */
-#   define DCC_T2H16   /* nothing */
-#   define DCC_T2H32   /* nothing */
-#   define DCC_T2H64   /* nothing */
-#elif (DCC_HOST_BYTEORDER == 1234 && DCC_TARGET_BYTEORDER == 4321) || \
-      (DCC_HOST_BYTEORDER == 4321 && DCC_TARGET_BYTEORDER == 1234)
-#   define DCC_H2T16   DCC_BSWAP16
-#   define DCC_H2T32   DCC_BSWAP32
-#   define DCC_H2T64   DCC_BSWAP64
-#   define DCC_T2H16   DCC_BSWAP16
-#   define DCC_T2H32   DCC_BSWAP32
-#   define DCC_T2H64   DCC_BSWAP64
-#endif
+#define DCC_LE2LE16  /* nothing */
+#define DCC_BE2LE16  DCC_BSWAP16
+#define DCC_LE2LE32  /* nothing */
+#define DCC_BE2LE32  DCC_BSWAP32
+#define DCC_LE2LE64  /* nothing */
+#define DCC_BE2LE64  DCC_BSWAP64
+#define DCC_LE2BE16  DCC_BSWAP16
+#define DCC_BE2BE16  /* nothing */
+#define DCC_LE2BE32  DCC_BSWAP32
+#define DCC_BE2BE32  /* nothing */
+#define DCC_LE2BE64  DCC_BSWAP64
+#define DCC_BE2BE64  /* nothing */
+
+#define DCC_LE2PE16  /* nothing */
+#define DCC_BE2PE16  DCC_BSWAP16
+#define DCC_LE2PE32(x) ((x)&DCC_UINT32_C(0x0000ffff) << 16 | /* 1234 --> 3412 */ \
+                        (x)&DCC_UINT32_C(0xffff0000) >> 16)
+#define DCC_BE2PE32(x) (DCC_BSWAP16((x)&DCC_UINT16_C(    0xffff)) | /* 4321 --> 3412 */\
+                        DCC_BSWAP16((x)&DCC_UINT32_C(0xffff0000) >> 16) << 16) 
+#define DCC_LE2PE64(x) (DCC_LE2PE32((x)&DCC_UINT32_C(0xffffffff)) | /* 12345678 --> 78563412 */\
+                        DCC_LE2PE32((x) >> 32) << 32)
+#define DCC_BE2PE64(x) (DCC_BSWAP16((x)&DCC_UINT16_C(            0xffff)) | /* 87654321 --> 78563412 */ \
+                        DCC_BSWAP16((x)&DCC_UINT32_C(        0xffff0000) >> 16) << 16 | \
+                        DCC_BSWAP16((x)&DCC_UINT64_C(0x0000ffff00000000) >> 32) << 32 | \
+                        DCC_BSWAP16((x)&DCC_UINT64_C(0xffff000000000000) >> 48) << 48)
+
+#define DCC_PE2LE16  DCC_LE2PE16
+#define DCC_PE2BE16  DCC_BE2PE16
+#define DCC_PE2PE16  /* nothing */
+#define DCC_PE2LE32  DCC_LE2PE32
+#define DCC_PE2BE32  DCC_BE2PE32
+#define DCC_PE2PE32  /* nothing */
+#define DCC_PE2LE64  DCC_LE2PE64
+#define DCC_PE2BE64  DCC_BE2PE64
+#define DCC_PE2PE64  /* nothing */
 
 /* Little-endian/Big-endian --> Host */
 #if DCC_HOST_BYTEORDER == 1234
-#   define DCC_LE2H16  /* nothing */
-#   define DCC_BE2H16  DCC_BSWAP16
-#   define DCC_LE2H32  /* nothing */
-#   define DCC_BE2H32  DCC_BSWAP32
-#   define DCC_LE2H64  /* nothing */
-#   define DCC_BE2H64  DCC_BSWAP64
+#   define DCC_LE2H16  DCC_LE2LE16
+#   define DCC_BE2H16  DCC_BE2LE16
+#   define DCC_PE2H16  DCC_PE2LE16
+#   define DCC_LE2H32  DCC_LE2LE32
+#   define DCC_BE2H32  DCC_BE2LE32
+#   define DCC_PE2H32  DCC_PE2LE32
+#   define DCC_LE2H64  DCC_LE2LE64
+#   define DCC_BE2H64  DCC_BE2LE64
+#   define DCC_PE2H64  DCC_PE2LE64
+#   define DCC_H2LE16  DCC_LE2LE16
+#   define DCC_H2BE16  DCC_LE2BE16
+#   define DCC_H2PE16  DCC_LE2PE16
+#   define DCC_H2LE32  DCC_LE2LE32
+#   define DCC_H2BE32  DCC_LE2BE32
+#   define DCC_H2PE32  DCC_LE2PE32
+#   define DCC_H2LE64  DCC_LE2LE64
+#   define DCC_H2BE64  DCC_LE2BE64
+#   define DCC_H2PE64  DCC_LE2PE64
 #elif DCC_HOST_BYTEORDER == 4321
-#   define DCC_LE2H16  DCC_BSWAP16
-#   define DCC_BE2H16  /* nothing */
-#   define DCC_LE2H32  DCC_BSWAP32
-#   define DCC_BE2H32  /* nothing */
-#   define DCC_LE2H64  DCC_BSWAP64
-#   define DCC_BE2H64  /* nothing */
+#   define DCC_LE2H16  DCC_LE2BE16
+#   define DCC_BE2H16  DCC_BE2BE16
+#   define DCC_PE2H16  DCC_PE2BE16
+#   define DCC_LE2H32  DCC_LE2BE32
+#   define DCC_BE2H32  DCC_BE2BE32
+#   define DCC_PE2H32  DCC_PE2BE32
+#   define DCC_LE2H64  DCC_LE2BE64
+#   define DCC_BE2H64  DCC_BE2BE64
+#   define DCC_PE2H64  DCC_PE2BE64
+#   define DCC_H2LE16  DCC_BE2LE16
+#   define DCC_H2BE16  DCC_BE2BE16
+#   define DCC_H2PE16  DCC_BE2PE16
+#   define DCC_H2LE32  DCC_BE2LE32
+#   define DCC_H2BE32  DCC_BE2BE32
+#   define DCC_H2PE32  DCC_BE2PE32
+#   define DCC_H2LE64  DCC_BE2LE64
+#   define DCC_H2BE64  DCC_BE2BE64
+#   define DCC_H2PE64  DCC_BE2PE64
+#elif DCC_HOST_BYTEORDER == 3412
+#   define DCC_LE2H16  DCC_LE2PE16
+#   define DCC_BE2H16  DCC_BE2PE16
+#   define DCC_PE2H16  DCC_PE2PE16
+#   define DCC_LE2H32  DCC_LE2PE32
+#   define DCC_BE2H32  DCC_BE2PE32
+#   define DCC_PE2H32  DCC_PE2PE32
+#   define DCC_LE2H64  DCC_LE2PE64
+#   define DCC_BE2H64  DCC_BE2PE64
+#   define DCC_PE2H64  DCC_PE2PE64
+#   define DCC_H2LE16  DCC_PE2LE16
+#   define DCC_H2BE16  DCC_PE2BE16
+#   define DCC_H2PE16  DCC_PE2PE16
+#   define DCC_H2LE32  DCC_PE2LE32
+#   define DCC_H2BE32  DCC_PE2BE32
+#   define DCC_H2PE32  DCC_PE2PE32
+#   define DCC_H2LE64  DCC_PE2LE64
+#   define DCC_H2BE64  DCC_PE2BE64
+#   define DCC_H2PE64  DCC_PE2PE64
+#else
+#   error "FIXME (Unsupported value for 'DCC_HOST_BYTEORDER')"
+#endif
+
+#ifndef DCC_TARGET_DATA_BYTEORDER
+#define DCC_TARGET_DATA_BYTEORDER DCC_TARGET_BYTEORDER
 #endif
 
 /* Little-endian/Big-endian --> Target */
-#if DCC_TARGET_BYTEORDER == 1234
-#   define DCC_LE2T16  /* nothing */
-#   define DCC_BE2T16  DCC_BSWAP16
-#   define DCC_LE2T32  /* nothing */
-#   define DCC_BE2T32  DCC_BSWAP32
-#   define DCC_LE2T64  /* nothing */
-#   define DCC_BE2T64  DCC_BSWAP64
-#elif DCC_TARGET_BYTEORDER == 4321
-#   define DCC_LE2T16  DCC_BSWAP16
-#   define DCC_BE2T16  /* nothing */
-#   define DCC_LE2T32  DCC_BSWAP32
-#   define DCC_BE2T32  /* nothing */
-#   define DCC_LE2T64  DCC_BSWAP64
-#   define DCC_BE2T64  /* nothing */
+#if DCC_TARGET_DATA_BYTEORDER == 1234
+#   define DCC_LE2T16  DCC_LE2LE16
+#   define DCC_BE2T16  DCC_BE2LE16
+#   define DCC_PE2T16  DCC_PE2LE16
+#   define DCC_LE2T32  DCC_LE2LE32
+#   define DCC_BE2T32  DCC_BE2LE32
+#   define DCC_PE2T32  DCC_PE2LE32
+#   define DCC_LE2T64  DCC_LE2LE64
+#   define DCC_BE2T64  DCC_BE2LE64
+#   define DCC_PE2T64  DCC_PE2LE64
+#   define DCC_T2LE16  DCC_LE2LE16
+#   define DCC_T2BE16  DCC_LE2BE16
+#   define DCC_T2PE16  DCC_LE2PE16
+#   define DCC_T2LE32  DCC_LE2LE32
+#   define DCC_T2BE32  DCC_LE2BE32
+#   define DCC_T2PE32  DCC_LE2PE32
+#   define DCC_T2LE64  DCC_LE2LE64
+#   define DCC_T2BE64  DCC_LE2BE64
+#   define DCC_T2PE64  DCC_LE2PE64
+#elif DCC_TARGET_DATA_BYTEORDER == 4321
+#   define DCC_LE2T16  DCC_LE2BE16
+#   define DCC_BE2T16  DCC_BE2BE16
+#   define DCC_PE2T16  DCC_PE2BE16
+#   define DCC_LE2T32  DCC_LE2BE32
+#   define DCC_BE2T32  DCC_BE2BE32
+#   define DCC_PE2T32  DCC_PE2BE32
+#   define DCC_LE2T64  DCC_LE2BE64
+#   define DCC_BE2T64  DCC_BE2BE64
+#   define DCC_PE2T64  DCC_PE2BE64
+#   define DCC_T2LE16  DCC_BE2LE16
+#   define DCC_T2BE16  DCC_BE2BE16
+#   define DCC_T2PE16  DCC_BE2PE16
+#   define DCC_T2LE32  DCC_BE2LE32
+#   define DCC_T2BE32  DCC_BE2BE32
+#   define DCC_T2PE32  DCC_BE2PE32
+#   define DCC_T2LE64  DCC_BE2LE64
+#   define DCC_T2BE64  DCC_BE2BE64
+#   define DCC_T2PE64  DCC_BE2PE64
+#elif DCC_TARGET_DATA_BYTEORDER == 3412
+#   define DCC_LE2T16  DCC_LE2PE16
+#   define DCC_BE2T16  DCC_BE2PE16
+#   define DCC_PE2T16  DCC_PE2PE16
+#   define DCC_LE2T32  DCC_LE2PE32
+#   define DCC_BE2T32  DCC_BE2PE32
+#   define DCC_PE2T32  DCC_PE2PE32
+#   define DCC_LE2T64  DCC_LE2PE64
+#   define DCC_BE2T64  DCC_BE2PE64
+#   define DCC_PE2T64  DCC_PE2PE64
+#   define DCC_T2LE16  DCC_PE2LE16
+#   define DCC_T2BE16  DCC_PE2BE16
+#   define DCC_T2PE16  DCC_PE2PE16
+#   define DCC_T2LE32  DCC_PE2LE32
+#   define DCC_T2BE32  DCC_PE2BE32
+#   define DCC_T2PE32  DCC_PE2PE32
+#   define DCC_T2LE64  DCC_PE2LE64
+#   define DCC_T2BE64  DCC_PE2BE64
+#   define DCC_T2PE64  DCC_PE2PE64
+#else
+#   error "FIXME (Unsupported value for 'DCC_TARGET_DATA_BYTEORDER')"
 #endif
 
-
-/* Host --> Little-endian/Big-endian */
-#ifdef DCC_LE2H16
-#define DCC_H2LE16  DCC_LE2H16
-#define DCC_H2BE16  DCC_BE2H16
-#define DCC_H2LE32  DCC_LE2H32
-#define DCC_H2BE32  DCC_BE2H32
-#define DCC_H2LE64  DCC_LE2H64
-#define DCC_H2BE64  DCC_BE2H64
+/* Convert between host & target integers. */
+#if DCC_TARGET_DATA_BYTEORDER == 1234
+#   define DCC_H2T16   DCC_H2LE16
+#   define DCC_H2T32   DCC_H2LE32
+#   define DCC_H2T64   DCC_H2LE64
+#   define DCC_T2H16   DCC_LE2H16
+#   define DCC_T2H32   DCC_LE2H32
+#   define DCC_T2H64   DCC_LE2H64
+#elif DCC_TARGET_DATA_BYTEORDER == 4321
+#   define DCC_H2T16   DCC_H2BE16
+#   define DCC_H2T32   DCC_H2BE32
+#   define DCC_H2T64   DCC_H2BE64
+#   define DCC_T2H16   DCC_BE2H16
+#   define DCC_T2H32   DCC_BE2H32
+#   define DCC_T2H64   DCC_BE2H64
+#elif DCC_TARGET_DATA_BYTEORDER == 3412
+#   define DCC_H2T16   DCC_H2PE16
+#   define DCC_H2T32   DCC_H2PE32
+#   define DCC_H2T64   DCC_H2PE64
+#   define DCC_T2H16   DCC_PE2H16
+#   define DCC_T2H32   DCC_PE2H32
+#   define DCC_T2H64   DCC_PE2H64
+#else
+#   error "FIXME (Unsupported value for 'DCC_TARGET_DATA_BYTEORDER')"
 #endif
-
-/* Target --> Little-endian/Big-endian */
-#ifdef DCC_LE2T16
-#define DCC_T2LE16  DCC_LE2T16
-#define DCC_T2BE16  DCC_BE2T16
-#define DCC_T2LE32  DCC_LE2T32
-#define DCC_T2BE32  DCC_BE2T32
-#define DCC_T2LE64  DCC_LE2T64
-#define DCC_T2BE64  DCC_BE2T64
-#endif
-
 
 DCC_DECL_END
 

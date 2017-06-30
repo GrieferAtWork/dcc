@@ -39,6 +39,11 @@ DEF_OPCODE(aad,{
     /* aad $imm8 */OVERLOAD_1(0xd5,  8,0,0,DCC_ASMOPT_IMM_8) // EXTENSION
     OVERLOAD_SENTINAL
 })
+DEF_OPCODE(aam,{ /* https://en.wikipedia.org/wiki/X86_instruction_listings#Original_8086.2F8088_instructions */
+    /* aam       */OVERLOAD_0(0xd40a,8,0,0)
+    /* aam $imm8 */OVERLOAD_1(0xd4,  8,0,0,DCC_ASMOPT_IMM_8) // EXTENSION
+    OVERLOAD_SENTINAL
+})
 DEF_OPCODE(aas,{ /* aas */OVERLOAD_0(0x3f,8,0,0) OVERLOAD_SENTINAL })
 DEF_OPCODE(adc,{
     /* adc $imm8,  %al   */OVERLOAD_2(0x14,8, 0,  0,                               DCC_ASMOPT_IMM_8, DCC_ASMOPT_R_8| DCC_ASMOPT_EAX)

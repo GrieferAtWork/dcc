@@ -331,5 +331,8 @@
     <None Include="..\src\dcc\vstack-cmp.c.inl">
       <Filter>src\dcc</Filter>
     </None>
+    <None Include="..\src\dcc\x86_util-instrlen-ops.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
   </ItemGroup>
 </Project>

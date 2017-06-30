@@ -1028,7 +1028,7 @@ TPPFile_NewExplicitInherited(/*ref*/struct TPPString *__restrict inherited_text)
 
 /* Locate a suitable chunk ending not ending in an escape linefeed. */
 LOCAL char *
-string_find_suitable_end(char *begin, size_t length) {
+string_find_suitable_end(char *__restrict begin, size_t length) {
  char *last_linefeed,*temp;
 again:
  /* Check for special case: Empty or terminating linefeed unknown.
@@ -1053,7 +1053,7 @@ again:
 }
 
 LOCAL char *
-string_find_eol(char *begin, size_t length) {
+string_find_eol(char *__restrict begin, size_t length) {
  char *linefeed,*temp;
 again:
  linefeed = (char *)memchr(begin,'\n',length*sizeof(char));
@@ -1094,7 +1094,7 @@ string_find_eol_after_comments(char *iter, char *end) {
 }
 
 LOCAL size_t 
-string_count_lf(char *iter, size_t length) {
+string_count_lf(char *__restrict iter, size_t length) {
  char *end = iter+length;
  size_t result = 0;
  while (iter != end) {
@@ -1114,8 +1114,9 @@ string_count_lf(char *iter, size_t length) {
 
 
 PUBLIC /*ref*/struct TPPFile *
-TPPFile_OpenStream(stream_t stream, char const *name) {
+TPPFile_OpenStream(stream_t stream, char const *__restrict name) {
  struct TPPFile *result;
+ assert(name);
  result = (struct TPPFile *)malloc(TPPFILE_SIZEOF_TEXT);
  if unlikely(!result) return NULL;
  memset(&result->f_textfile,0,sizeof(result->f_textfile));
@@ -1394,9 +1395,10 @@ TPPLexer_Basefile(void) {
 
 
 PUBLIC /*ref*/struct TPPFile *
-TPPFile_Open(char const *filename) {
+TPPFile_Open(char const *__restrict filename) {
  stream_t stream;
  struct TPPFile *result;
+ assert(filename);
 #ifdef _WIN32
  stream = CreateFileA(filename,GENERIC_READ,FILE_SHARE_READ|
                       FILE_SHARE_WRITE|FILE_SHARE_DELETE,NULL,
@@ -1986,10 +1988,14 @@ LOCAL char map_trichar(char ch) {
 
 
 #if TPP_UNESCAPE_MAXCHAR == 1
-PUBLIC char *TPP_Unescape_(char *buf, char const *data, size_t size)
+PUBLIC char *TPP_Unescape_(char *__restrict buf,
+                           char const *__restrict data,
+                           size_t size)
 #define charsize            1
 #else
-PUBLIC char *TPP_Unescape(char *buf, char const *data, size_t size, size_t charsize)
+PUBLIC char *TPP_Unescape(char *__restrict buf,
+                          char const *__restrict data,
+                          size_t size, size_t charsize)
 #endif
 {
  char *iter,*end,ch; escape_uchar_t val;
@@ -2130,10 +2136,12 @@ put_ch:
 }
 
 #if TPP_UNESCAPE_MAXCHAR == 1
-PUBLIC size_t TPP_SizeofUnescape_(char const *data, size_t size)
+PUBLIC size_t TPP_SizeofUnescape_(char const *__restrict data,
+                                  size_t size)
 #define charsize_m1         0
 #else
-PUBLIC size_t TPP_SizeofUnescape(char const *data, size_t size, size_t charsize_m1)
+PUBLIC size_t TPP_SizeofUnescape(char const *__restrict data,
+                                 size_t size, size_t charsize_m1)
 #endif
 {
  char *iter,*end,ch;
@@ -2217,7 +2225,9 @@ next:
 }
 
 PUBLIC char *
-TPP_Escape(char *buf, char const *data, size_t size) {
+TPP_Escape(char *__restrict buf,
+           char const *__restrict data,
+           size_t size) {
  unsigned char *iter,*end,temp,ch;
  end = (iter = (unsigned char *)data)+size;
  for (; iter != end; ++iter) {
@@ -2266,7 +2276,7 @@ escape_ch:
  return buf;
 }
 PUBLIC size_t
-TPP_SizeofEscape(char const *data, size_t size) {
+TPP_SizeofEscape(char const *__restrict data, size_t size) {
  unsigned char *iter,*end,ch;
  size_t result = size;
  end = (iter = (unsigned char *)data)+size;
@@ -2297,7 +2307,7 @@ TPP_SizeofEscape(char const *data, size_t size) {
 }
 
 PUBLIC char *
-TPP_Itos(char *buf, int_t i) {
+TPP_Itos(char *__restrict buf, int_t i) {
  char *result;
  assert(buf);
  if (i < 0) *buf++ = '-',i = -i;
@@ -2317,7 +2327,7 @@ TPP_SizeofItos(int_t i) {
 }
 
 PUBLIC char *
-TPP_Ftos(char *buf, float_t f) {
+TPP_Ftos(char *__restrict buf, float_t f) {
  (void)f; /* TODO */
  return buf;
 }
@@ -2329,7 +2339,7 @@ TPP_SizeofFtos(float_t f) {
 
 
 LOCAL size_t
-wraplf_memlen(char const *iter, size_t n) {
+wraplf_memlen(char const *__restrict iter, size_t n) {
  char const *end = iter+n;
  size_t result = 0;
  while (iter != end) {
@@ -2340,7 +2350,7 @@ wraplf_memlen(char const *iter, size_t n) {
  return result;
 }
 LOCAL void
-wraplf_memcpy(char *dst, char const *src, size_t n) {
+wraplf_memcpy(char *__restrict dst, char const *__restrict src, size_t n) {
  char const *end = src+n;
  while (src != end) {
   while (SKIP_WRAPLF(src,end));
@@ -2358,14 +2368,14 @@ struct codewriter {
 };
 #define CODEWRITER_INIT  {NULL,NULL,NULL}
 
-LOCAL void codewriter_quit(struct codewriter *self) { free(self->cw_begin); }
-LOCAL funop_t *codewriter_pack(struct codewriter *self) {
+LOCAL void codewriter_quit(struct codewriter *__restrict self) { free(self->cw_begin); }
+LOCAL funop_t *codewriter_pack(struct codewriter *__restrict self) {
  if (self->cw_pos) *self->cw_pos = TPP_FUNOP_END;
  return self->cw_begin;
 }
 LOCAL int
-codewriter_putp(struct codewriter *self,
-                funop_t const *p, size_t s) {
+codewriter_putp(struct codewriter *__restrict self,
+                funop_t const *__restrict p, size_t s) {
  funop_t *newvec; size_t avail,newsize;
  avail = (size_t)(self->cw_end-self->cw_pos);
  if (avail < s) {
@@ -2384,13 +2394,13 @@ codewriter_putp(struct codewriter *self,
  self->cw_pos += s;
  return 1;
 }
-LOCAL int codewriter_put0(struct codewriter *self, funop_t op) {
+LOCAL int codewriter_put0(struct codewriter *__restrict self, funop_t op) {
  LOG(LOG_MC_OPGEN,("[MC] OPx0: %lx -> %x\n",
                   (unsigned long)(self->cw_pos-self->cw_begin),
                   (unsigned int)op));
  return codewriter_putp(self,&op,1);
 }
-LOCAL int codewriter_put1(struct codewriter *self, funop_t op, size_t a1) {
+LOCAL int codewriter_put1(struct codewriter *__restrict self, funop_t op, size_t a1) {
  funop_t buf[1+ceildiv(sizeof(size_t)*8,7)];
  funop_t *iter = buf; *iter++ = op;
  LOG(LOG_MC_OPGEN,("[MC] OPx1: %lx -> %x (%lx)\n",
@@ -2399,7 +2409,8 @@ LOCAL int codewriter_put1(struct codewriter *self, funop_t op, size_t a1) {
  iter = funop_putarg(iter,a1);
  return codewriter_putp(self,buf,(size_t)(iter-buf));
 }
-LOCAL int codewriter_put2(struct codewriter *self, funop_t op, size_t a1, size_t a2) {
+LOCAL int codewriter_put2(struct codewriter *__restrict self,
+                          funop_t op, size_t a1, size_t a2) {
  funop_t buf[1+ceildiv(sizeof(size_t)*8,7)];
  funop_t *iter = buf; *iter++ = op;
  LOG(LOG_MC_OPGEN,("[MC] OPx2: %lx -> %x (%lx, %lx)\n",
@@ -2412,7 +2423,7 @@ LOCAL int codewriter_put2(struct codewriter *self, funop_t op, size_t a1, size_t
 
 
 PRIVDEF struct TPPKeyword *
-lookup_escaped_keyword(char const *name, size_t namelen,
+lookup_escaped_keyword(char const *__restrict name, size_t namelen,
                        size_t unescaped_size, int create_missing);
 
 #define func self->f_macro.m_function
@@ -2421,7 +2432,7 @@ lookup_escaped_keyword(char const *name, size_t namelen,
  * @return: * : Text-pointer to the end of the function block.
  * @return: NULL: An error occurred and a lexer error was set. */
 PRIVATE char *
-macro_function_scan_block_traditional(struct TPPFile *self) {
+macro_function_scan_block_traditional(struct TPPFile *__restrict self) {
  struct codewriter writer = CODEWRITER_INIT;
  struct arginfo_t *argv_iter,*argv_begin,*argv_end;
  char *iter,*end,ch,*last_text_pointer;
@@ -2565,7 +2576,7 @@ seterr: TPPLexer_SetErr();
 err: iter = NULL; codewriter_quit(&writer); goto done;
 }
 PRIVATE int
-macro_function_scan_block(struct TPPFile *self) {
+macro_function_scan_block(struct TPPFile *__restrict self) {
  struct codewriter writer = CODEWRITER_INIT;
  struct arginfo_t *iter,*begin,*end;
  char const *last_text_pointer,*preglue_end,*preglue_begin;
@@ -3034,7 +3045,7 @@ skip_argument_name:
  result->f_pos = result->f_begin;
  {
   int warn_error;
-  uint32_t kwd_flags = TPPKeyword_Getflags(keyword_entry);
+  uint32_t kwd_flags = TPPKeyword_GetFlags(keyword_entry);
   if (keyword_entry->k_macro) {
    struct TPPFile *oldfile = keyword_entry->k_macro;
    if (((size_t)(oldfile->f_end-oldfile->f_begin) !=
@@ -3079,7 +3090,7 @@ err_arginfo: free(arginfo_v);
 #endif
 
 PRIVATE int
-keyword_pushmacro(struct TPPKeyword *self) {
+keyword_pushmacro(struct TPPKeyword *__restrict self) {
  struct TPPFile *macro;
  assert(self);
  if (!self->k_macro) return 1;
@@ -3102,7 +3113,8 @@ keyword_pushmacro(struct TPPKeyword *self) {
  return 1;
 }
 PRIVATE void
-keyword_popmacro(struct TPPKeyword *self, int maybe_keep_current) {
+keyword_popmacro(struct TPPKeyword *__restrict self,
+                 int maybe_keep_current) {
  struct TPPFile *macro;
  assert(self);
  /* Drop a reference to a current definition of the macro. */
@@ -3131,7 +3143,7 @@ done:
 }
 
 PRIVATE void
-rare_rehash_asserts(struct TPPRareKeyword *self, size_t newsize) {
+rare_rehash_asserts(struct TPPRareKeyword *__restrict self, size_t newsize) {
  struct TPPAssertion **newvec,*iter,*next,**bucket;
  struct TPPAssertion **bucket_iter,**bucket_end;
  assert(newsize);
@@ -3280,16 +3292,29 @@ struct kwd_def {
 #endif
 #endif
 #define DEFINE_GLOBAL_SYMBOLS
+#define EXPAND_GROUPS(...)           {__VA_ARGS__,-1}
+#define WARNING(name,groups,default) PRIVATE wgroup_t const wgroups_##name[] = EXPAND_GROUPS groups;
 #include "tpp-defs.inl"
+#undef WARNING
+#undef EXPAND_GROUPS
 #undef DEFINE_GLOBAL_SYMBOLS
 #undef KWD
 
+
+PRIVATE wgroup_t const *const w_associated_groups[W_COUNT] = {
+#ifndef __INTELLISENSE__
+#define WARNING(name,groups,default) wgroups_##name,
+#include "tpp-defs.inl"
+#undef WARNING
+#endif
+};
+
 #if TPP_CONFIG_ONELEXER
 #define KWD(name,str)   (struct TPPKeyword *)&builtin_##name,
-static struct TPPKeyword *
+PRIVATE struct TPPKeyword *
 #else
 #define KWD(name,str)   (struct kwd_def *)&builtin_##name,
-static struct kwd_def const *
+PRIVATE struct kwd_def const *
 #endif
 const builtin_keywords[_KWD_COUNT] = {
 #include "tpp-defs.inl"
@@ -3727,22 +3752,6 @@ PRIVATE wstate_t do_invoke_wid(int wid) {
  }
  return state;
 }
-
-#ifndef __INTELLISENSE__
-#define EXPAND_GROUPS(...)  {__VA_ARGS__,-1}
-#define WARNING(name,groups,default) PRIVATE wgroup_t const wgroups_##name[] = EXPAND_GROUPS groups;
-#include "tpp-defs.inl"
-#undef WARNING
-#undef EXPAND_GROUPS
-#endif
-
-PRIVATE wgroup_t const *const w_associated_groups[W_COUNT] = {
-#ifndef __INTELLISENSE__
-#define WARNING(name,groups,default) wgroups_##name,
-#include "tpp-defs.inl"
-#undef WARNING
-#endif
-};
 
 PUBLIC int TPPLexer_InvokeWarning(int wnum) {
  wstate_t state; int found_warn = 0;
@@ -4898,7 +4907,7 @@ TPPLexer_LookupEscapedKeyword(char const *name, size_t namelen,
 
 
 PUBLIC uint32_t
-TPPKeyword_Getflags(struct TPPKeyword const *__restrict self) {
+TPPKeyword_GetFlags(struct TPPKeyword const *__restrict self) {
  uint32_t result;
  assert(self);
  assert(TPPLexer_Current);
@@ -5715,7 +5724,7 @@ def_skip_until_lf:
      keyword = TOKEN.t_kwd;
      assert(keyword);
      if (keyword->k_macro) {
-      if (TPPKeyword_Getflags(keyword)&TPP_KEYWORDFLAG_LOCKED)
+      if (TPPKeyword_GetFlags(keyword)&TPP_KEYWORDFLAG_LOCKED)
           WARN(W_CANT_UNDEF_LOCKED_KEYWORD,keyword);
       else TPPKeyword_Undef(keyword);
      } else if (TPP_ISBUILTINMACRO(TOK)) {
@@ -6622,7 +6631,7 @@ create_int_file:
       if (FALSE) { case KWD___has_extension:          mask  = TPP_KEYWORDFLAG_HAS_EXTENSION;          }
       if (FALSE) { case KWD___has_feature:            mask  = TPP_KEYWORDFLAG_HAS_FEATURE;
                  if (HAVE_EXTENSION_EXT_ARE_FEATURES) mask |= TPP_KEYWORDFLAG_HAS_EXTENSION; }
-      intval = !!(TPPKeyword_Getflags(keyword)&mask);
+      intval = !!(TPPKeyword_GetFlags(keyword)&mask);
       break;
      }
     }

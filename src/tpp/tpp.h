@@ -573,7 +573,7 @@ TPPFile_ColumnAt(struct TPPFile const *__restrict self,
 
 /* Returns the human-readable filename of a given file.
  * NOTE: For macro files, the returned filename continues
- *       to referr to the file that the macro was defined
+ *       to refer to the file that the macro was defined
  *       within.
  * NOTE: Returns NULL if no name is associated with the
  *       given file, such as for predefined macros. */
@@ -590,12 +590,12 @@ TPPFile_CopyForInclude(struct TPPFile *__restrict self);
 /* Opens a file and caches the first block of data.
  * NOTE: The given filename is what will appear as text when expanding __FILE__
  * @return: NULL: Failed to open the given file (see 'errno' either set to ENOMEM or ENOENT) */
-TPPFUN /*ref*/struct TPPFile *TPPFile_Open(char const *filename);
+TPPFUN /*ref*/struct TPPFile *TPPFile_Open(char const *__restrict filename);
 
 /* Similar to 'TPPFile_Open', but allows the caller to specify a stream,
  * allowing them to use this function for opening things like STD handles.
  * @return: NULL: Not enough available memory. */
-TPPFUN /*ref*/struct TPPFile *TPPFile_OpenStream(TPP(stream_t) stream, char const *name);
+TPPFUN /*ref*/struct TPPFile *TPPFile_OpenStream(TPP(stream_t) stream, char const *__restrict name);
 
 /* Parse a #define-style preprocessor command, expecting the
  * current lexer's token to point at the name of the macro.
@@ -605,16 +605,6 @@ TPPFUN /*ref*/struct TPPFile *TPPFile_OpenStream(TPP(stream_t) stream, char cons
  * WARNING: This function expects the 'TPPLEXER_FLAG_WANTLF' flag to be set.
  * WARNING: This function does _not_ return a reference. */
 TPPFUN struct TPPFile *TPPFile_NewDefine(void);
-
-/* Create a new keyword-style macro, as provided from the commandline.
- * NOTE: The NULL is passed for 'text', an internally optimized
- *       string equal to "1" is installed as text instead.
- *       Otherwise whitespace is truncated from the given text.
- * WARNING: The caller may choose to specify 'f_macro.m_deffile',
- *          which is initialized to NULL. */
-TPPFUN /*ref*/struct TPPFile *
-TPPFile_NewKWMacro(char const *name, size_t name_size,
-                   char const *text, size_t text_size);
 
 /* Advances the given file to its next chunk.
  * NOTE: When 'flags' contains 'TPPFILE_NEXTCHUNK_FLAG_EXTEND', instead of dropping
@@ -641,21 +631,21 @@ TPPFUN int TPPFile_NextChunk(struct TPPFile *__restrict self, int flags);
 /* Escape/Unescape a given block of data.
  * NOTE: 'TPP_Unescape/TPP_Escape' will return the surrounding  */
 #if TPP_UNESCAPE_MAXCHAR == 1
-TPPFUN char *TPP_Unescape_(char *buf, char const *data, size_t size);
-TPPFUN size_t TPP_SizeofUnescape_(char const *data, size_t size);
+TPPFUN char *TPP_Unescape_(char *__restrict buf, char const *__restrict data, size_t size);
+TPPFUN size_t TPP_SizeofUnescape_(char const *__restrict data, size_t size);
 #define TPP_Unescape(buf,data,size,charsize)   TPP_Unescape_(buf,data,size)
 #define TPP_SizeofUnescape(data,size,charsize) TPP_SizeofUnescape_(data,size)
 #else
-TPPFUN char *TPP_Unescape(char *buf, char const *data, size_t size, size_t charsize);
-TPPFUN size_t TPP_SizeofUnescape(char const *data, size_t size, size_t charsize);
+TPPFUN char *TPP_Unescape(char *__restrict buf, char const *__restrict data, size_t size, size_t charsize);
+TPPFUN size_t TPP_SizeofUnescape(char const *__restrict data, size_t size, size_t charsize);
 #endif
-TPPFUN char *TPP_Escape(char *buf, char const *data, size_t size);
-TPPFUN char *TPP_Itos(char *buf, TPP(int_t) i);
-TPPFUN char *TPP_Ftos(char *buf, TPP(float_t) f);
-TPPFUN size_t TPP_SizeofEscape(char const *data, size_t size);
+TPPFUN char *TPP_Escape(char *__restrict buf, char const *__restrict data, size_t size);
+TPPFUN char *TPP_Itos(char *__restrict buf, TPP(int_t) i);
+TPPFUN char *TPP_Ftos(char *__restrict buf, TPP(float_t) f);
+TPPFUN size_t TPP_SizeofEscape(char const *__restrict data, size_t size);
 TPPFUN size_t TPP_SizeofItos(TPP(int_t) i);
 TPPFUN size_t TPP_SizeofFtos(TPP(float_t) f);
-TPPFUN TPP(hash_t) TPP_Hashof(void const *data, size_t size);
+TPPFUN TPP(hash_t) TPP_Hashof(void const *__restrict data, size_t size);
 
 enum{
  /* Special tokens. */
@@ -858,7 +848,7 @@ struct TPPCallbacks {
   * function to attempt more voodoo-magic in an attempt to locate it.
   * @return: NULL: Still failed to find the file (unless a lexer error was set, only emit a warning)
   * @return: * :   The file we now managed to successfully open. */
- struct TPPFile *(*c_unknown_file)(char *filename, size_t filename_size);
+ struct TPPFile *(*c_unknown_file)(char *__restrict filename, size_t filename_size);
 };
 
 struct TPPWarningStateEx {   /* Extended state for a 11-warning (aka. 'WSTATE_SUPPRESS'). */
@@ -1058,7 +1048,7 @@ struct TPPKeyword {
 
 /* Returns the effective keyword flags of 'self'.
  * @return: A set of 'TPP_KEYWORDFLAG_*' */
-TPPFUN uint32_t TPPKeyword_Getflags(struct TPPKeyword const *__restrict self);
+TPPFUN uint32_t TPPKeyword_GetFlags(struct TPPKeyword const *__restrict self);
 
 
 struct TPPKeywordMap {

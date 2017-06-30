@@ -18,12 +18,16 @@
  */
 #ifndef GUARD_DCC_X86_UTIL_INSTRLEN_C
 #define GUARD_DCC_X86_UTIL_INSTRLEN_C 1
+#ifdef __DEEMON__
+#pragma warning(disable: 16)
+#pragma warning(disable: 43)
+#endif
 
 #include <dcc/common.h>
 
 #include "x86_util.h"
 
-#if DCC_CONFIG_NEED_X86_INSTRLEN
+#if DCC_CONFIG_NEED_X86_INSTRLEN || defined(__DEEMON__)
 #include <dcc/target.h>
 #include <dcc/unit.h>
 
@@ -40,7 +44,199 @@ INTERN uint8_t  *instrlen_base   = 0;
 #define ADDR(x) (instrlen_offset+(size_t)((x)-instrlen_base))
 #endif /* INSTRLEN_DEBUG */
 
-uint8_t const *x86_instrlen(uint8_t const *p) {
+#if 1 /* Use pregenerated property vectors. */
+
+#ifndef SMALL_OPFLAG
+/*  */
+#define SMALL_OPFLAG 1
+#endif
+
+typedef uint8_t opflag_t;
+#define F_COM     0x0 /* Common opcode (no operand data). */
+#define F_PFX16   0x1 /* Prefix opcode ('0x66'). */
+#define F_PFX     0x2 /* Prefix opcode. */
+#define F_1B      0x3 /* 1 byte immediate. */
+#define F_24B     0x4 /* 2/4 byte immediate (based on F_PFX16 prefix). */
+#define F_46B     0x5 /* 4/6 byte immediate (based on F_PFX16 prefix). */
+#define F_RM_1B   0x6 /* modr/m operand + 1 byte immediate. */
+#define F_RM_24B  0x7 /* modr/m operand + 2/4 byte immediate (based on F_PFX16 prefix). */
+#define F_RM      0x8 /* modr/m operand. */
+#define F_2B      0x9 /* 2 byte immediate. */
+#define F_3B      0xa /* 3 byte immediate. */
+#define F_SPEC1   0xb /* Special opcode #1 (Special arithmetic opcodes). */
+#define F_SPEC2   0xc /* Special opcode #2 (Prefix byte: '0x0f'). */
+/*      ...       0xd    ... */
+/*      ...       0xe    ... */
+#if INSTRLEN_DEBUG
+#define F_NK(x)   0xf /* Unknown opcode (Syntactically the same as 'F_COMMON'). */
+#else
+#define F_NK(x)   0x0 /* Unknown opcode (Syntactically the same as 'F_COMMON'). */
+#endif
+
+#if SMALL_OPFLAG
+#   define F_GET(group,op) (group[(op)/2] >> ((op)%2)*8)
+#else
+#   define F_GET(group,op)  group[op]
+#endif
+
+
+#ifdef __DEEMON__
+#define BEGIN_GROUP(name) \
+{ local gname = #name; \
+  local glist = [none]*256;
+#define END_GROUP(name) \
+  assert gname == #name;\
+  print_group(gname,glist);\
+}
+#define BEGIN(kind) { local fkind = #kind;
+#define END }
+#define O(...) \
+{ for (local x: [__VA_ARGS__]) {\
+    if (glist[x] !is none) \
+        print file.io.stderr: "Opcode %x was already defined" % x; \
+    glist[x] = fkind;\
+  }\
+}
+#endif
+
+#if SMALL_OPFLAG
+#define P(a,b) a<<4|b
+#else
+#define P(a,b)    a,b
+#endif
+
+/*[[[deemon
+#include <file>
+function print_group(name,content) {
+    print "PRIVATE opflag_t const "+name+"[256/(1+!!SMALL_OPFLAG)] = {";
+    local i = 0,j = 0;
+    local first = none;
+    for (local x: content) {
+        if (!i) print "    ",;
+        if (x is none) x = "F_NK";
+        if (x == "F_NK") x = "F_NK(%.2x)" % j;
+        if (first is none) first = x;
+        else {
+            print "P("+(first+",").ljust(9)+x+"),"+(" "*(8-#x)),;
+            first = none;
+        }
+        if (++i == 16) { print; i = 0; }
+        ++j;
+    }
+    print "};";
+}
+#include "x86_util-instrlen-ops.c.inl"
+
+]]]*/
+PRIVATE opflag_t const x86_asm_common[256/(1+!!SMALL_OPFLAG)] = {
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_1B,    F_24B),   P(F_COM,   F_COM),   P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_1B,    F_24B),   P(F_COM,   F_SPEC2), 
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_1B,    F_24B),   P(F_COM,   F_COM),   P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_1B,    F_24B),   P(F_COM,   F_COM),   
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_1B,    F_24B),   P(F_PFX,   F_COM),   P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_1B,    F_24B),   P(F_PFX,   F_COM),   
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_1B,    F_24B),   P(F_PFX,   F_COM),   P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_1B,    F_24B),   P(F_PFX,   F_COM),   
+    P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   
+    P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   
+    P(F_COM,   F_COM),   P(F_RM,    F_RM),    P(F_PFX,   F_PFX),   P(F_PFX16, F_PFX),   P(F_24B,   F_RM_24B),P(F_1B,    F_RM_1B), P(F_COM,   F_COM),   P(F_COM,   F_COM),   
+    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_1B,    F_1B),    
+    P(F_RM_1B, F_RM_24B),P(F_RM_1B, F_RM_1B), P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    
+    P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_46B,   F_PFX),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   
+    P(F_1B,    F_24B),   P(F_1B,    F_24B),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_1B,    F_24B),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   
+    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_24B,   F_24B),   P(F_24B,   F_24B),   P(F_24B,   F_24B),   P(F_24B,   F_24B),   
+    P(F_RM_1B, F_RM_1B), P(F_2B,    F_COM),   P(F_RM,    F_RM),    P(F_RM_1B, F_RM_24B),P(F_3B,    F_COM),   P(F_1B,    F_COM),   P(F_COM,   F_1B),    P(F_COM,   F_COM),   
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_1B,    F_1B),    P(F_COM,   F_COM),   P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    
+    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_1B,    F_1B),    P(F_24B,   F_24B),   P(F_46B,   F_1B),    P(F_COM,   F_COM),   P(F_COM,   F_COM),   
+    P(F_PFX,   F_COM),   P(F_PFX,   F_PFX),   P(F_COM,   F_COM),   P(F_SPEC1, F_SPEC1), P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_RM,    F_RM),    
+};
+PRIVATE opflag_t const x86_asm_0f[256/(1+!!SMALL_OPFLAG)] = {
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_NK(0a),F_COM),   P(F_NK(0c),F_NK(0d)),P(F_NK(0e),F_NK(0f)),
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_NK(19)),P(F_NK(1a),F_NK(1b)),P(F_NK(1c),F_NK(1d)),P(F_NK(1e),F_NK(1f)),
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_NK(25)),P(F_RM,    F_NK(27)),P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    
+    P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_NK(36),F_NK(37)),P(F_NK(38),F_NK(39)),P(F_NK(3a),F_NK(3b)),P(F_NK(3c),F_NK(3d)),P(F_NK(3e),F_NK(3f)),
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    
+    P(F_RM_1B, F_RM_1B), P(F_RM_1B, F_RM_1B), P(F_RM,    F_RM),    P(F_RM,    F_COM),   P(F_NK(78),F_NK(79)),P(F_NK(7a),F_NK(7b)),P(F_RM,    F_RM),    P(F_RM,    F_RM),    
+    P(F_24B,   F_24B),   P(F_24B,   F_24B),   P(F_24B,   F_24B),   P(F_24B,   F_24B),   P(F_24B,   F_24B),   P(F_24B,   F_24B),   P(F_24B,   F_24B),   P(F_24B,   F_24B),   
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    
+    P(F_COM,   F_COM),   P(F_COM,   F_RM),    P(F_RM_1B, F_RM),    P(F_NK(a6),F_NK(a7)),P(F_COM,   F_COM),   P(F_COM,   F_RM),    P(F_RM_1B, F_RM),    P(F_RM,    F_RM),    
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_NK(b8),F_COM),   P(F_RM_1B, F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    
+    P(F_RM,    F_RM),    P(F_RM_1B, F_RM),    P(F_RM_1B, F_RM_1B), P(F_RM_1B, F_RM),    P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   P(F_COM,   F_COM),   
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    
+    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_RM),    P(F_RM,    F_NK(ff)),
+};
+//[[[end]]]
+#undef P
+
+INTERN uint8_t const *x86_instrlen(uint8_t const *p) {
+#if INSTRLEN_DEBUG
+ uint8_t const *start = p;
+#endif
+ uint8_t data;
+ unsigned char has_16b = 2;
+ size_t suffix = 0;
+again:
+ data = *p++;
+ data = F_GET(x86_asm_common,data);
+main_switch:
+ switch (data) {
+ case F_PFX16 : if (has_16b != 2) break;
+                has_16b = 4; /* fallthrough */
+ case F_PFX   : goto again;
+ case F_1B    : done_p1: p += 1; break;
+ case F_24B   : p += has_16b; break;
+ case F_46B   : p += 2+has_16b; break;
+ case F_RM_1B : suffix = 1; goto modrm;
+ case F_RM_24B: suffix = has_16b; /* fallthrough */
+ case F_RM    : goto modrm;
+ case F_2B    : p += 2; break;
+ case F_3B    : p += 3; break;
+ case F_SPEC1 : data = *p++;
+                /* 'test' (with a r/m group of '0' ('MODRM_REG_MASK')
+                 *         has 8/16/32 bits of immediate data) */
+                if ((data&MODRM_REG_MASK) == 0) {
+                 if (p[-2] == 0xf6) suffix += 1;
+                 else               suffix += has_16b;
+                }
+                goto modrm_fetched;
+ case F_SPEC2 : data = *p++;
+                data = F_GET(x86_asm_common,data);
+                goto main_switch;
+ default      : break; /* Simple, one-byte opcode. */
+#if INSTRLEN_DEBUG
+ case F_NK(*):
+  printf("ADDR(%8x): Unknown opcode %2x\n",ADDR(start),opcode);
+  break;
+#endif /* INSTRLEN_DEBUG */
+ }
+done:
+ p += suffix;
+ return p;
+modrm:
+ data = *p++;
+modrm_fetched:
+ if (data >= 0xC0) goto done; /* Register operand. */
+ /* memory access */
+ if (MODRM_GETRM(data) == MODRM_SIBREGISTER) {
+  /* instruction with SIB byte */
+  uint8_t sib = *p++;
+  if ((sib & 0x7) == 0x05) {
+   if ((data & 0xC0) == 0x40) goto done_p1;
+done_p4:
+   p += 4;
+   goto done;
+  }
+ }
+ switch (data & 0xC0) {
+ case 0x0: /* 0/4 byte displacement */
+  if ((data & 0x07) == 0x05) goto done_p4;
+  goto done; /* 0-length offset */
+ case 0x80: goto done_p4; /* 4 byte offset */
+ default: goto done_p1;   /* one byte offset */
+ }
+}
+
+#else
+INTERN uint8_t const *x86_instrlen(uint8_t const *p) {
 #if INSTRLEN_DEBUG
  uint8_t const *start = p;
 #endif
@@ -518,7 +714,7 @@ done_2or4:
   case 0x57: /* xorpd xmm2/m128, xmm1 / xorps xmm2/m128, xmm1 */
    goto modrm;
 
-   /* === 2-byte opcodes with 8-bit & modr/m operands. */
+   /* === 2-byte opcodes with 8-bit immediate & modr/m operands. */
   case 0xc5: /* pextrw $imm8, mm, r32 / pextrw $imm8, xmm, r32 */
   case 0xc4: /* pinsrw $imm8, r/m32, mm / pinsrw $imm8, r/m32, xmm */
   case 0x70: /* pshufw $imm8, mm2/m64, mm1 / pshufd $imm8, xmm2/m128, xmm1
@@ -622,6 +818,7 @@ modrm_fetched:
  default: goto done_p1;   /* one byte offset */
  }
 }
+#endif
 
 
 INTERN struct DCCSection *
