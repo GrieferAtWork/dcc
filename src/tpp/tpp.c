@@ -448,7 +448,10 @@ do{ tok_t              _old_tok_id    = TOKEN.t_id;\
 /* Given two pointer 'iter' and 'end', skip a wrapped linefeed
  * in 'iter' so long as it doesn't overflow into 'end'.
  * @return: 0: No wrapped linefeed was found.
- * @return: 1: A wrapped linefeed was skipped. */
+ * @return: 1: A wrapped linefeed was skipped.
+ * TODO: This macro is overkill in a lot of places
+ *       when '*end' is known to equal '\0'
+ *    >> It would be much faster to use a version stripped of end-checks */
 #define SKIP_WRAPLF(iter,end) \
  (*(iter) == '\\' && (iter) != (end)-1\
   ? ((iter)[1] == '\n' ? ((iter) += 2,1) :\
@@ -2306,7 +2309,7 @@ TPP_Itos(char *buf, int_t i) {
 PUBLIC size_t
 TPP_SizeofItos(int_t i) {
  size_t result = 0;
- assert(i != 0 || i == 0);
+ assertf(i != 0 || i == 0,("i = %ld",(long)i));
  if (i < 0) ++result,i = -i;
  do ++result;
  while ((i /= 10) != 0);

@@ -444,7 +444,9 @@ int main(int argc, char *argv[]) {
 end:
  if (!OK) { fprintf(stderr,"A fatal error caused dcc to abort!\n"); }
  result = OK ? 0 : 1;
- //if (!OK) dcc_dump_symbols();
+#ifdef __DCC_VERSION__
+ /*if (!OK) dcc_dump_symbols();*/
+#endif
 
  DRT_Quit();
  DCCUnit_Quit(&unit);

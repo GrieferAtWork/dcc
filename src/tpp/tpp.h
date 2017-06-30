@@ -22,28 +22,28 @@
 /* TPP Configuration. (Extensions can be enabled/disabled at runtime). */
 #ifndef TPP_CONFIG_DEBUG
 #ifdef NDEBUG
-#define TPP_CONFIG_DEBUG      0
+#   define TPP_CONFIG_DEBUG      0
 #else
-#define TPP_CONFIG_DEBUG      1
+#   define TPP_CONFIG_DEBUG      1
 #endif
 #endif
 #ifndef TPP_CONFIG_ONELEXER
 /* Globally provide only one lexer (faster, but more restrictive). */
-#define TPP_CONFIG_ONELEXER   1
+#   define TPP_CONFIG_ONELEXER   1
 #endif
 #ifndef TPP_CONFIG_MINMACRO
 /* When configured to non-zero, don't define builtin macro
  * describing the host platform, cpu or standard c-types.
  * >> Basically, disable 'EXT_*_MACROS' extensions. */
-#define TPP_CONFIG_MINMACRO   0
+#   define TPP_CONFIG_MINMACRO   0
 #endif
 #ifndef TPP_CONFIG_GCCFUNC
 /* Make builtin support for various GCC functions available in expressions. */
-#define TPP_CONFIG_GCCFUNC    1
+#   define TPP_CONFIG_GCCFUNC    1
 #endif
 
 #ifndef TPP_CONFIG_MINGCCFUNC
-#define TPP_CONFIG_MINGCCFUNC 0
+#   define TPP_CONFIG_MINGCCFUNC 0
 #endif
 
 #define TPP_PREPROCESSOR_VERSION 200 /* Preprocessor version. */
@@ -194,11 +194,11 @@
 #include <stdlib.h>
 
 #ifdef _MSC_VER
-#define TPP_SYMARRAY_SIZE 4096
-#define TPP_MACRO_FALSE   0,0
+#   define TPP_SYMARRAY_SIZE 4096
+#   define TPP_MACRO_FALSE   0,0
 #else
-#define TPP_SYMARRAY_SIZE 1
-#define TPP_MACRO_FALSE   0
+#   define TPP_SYMARRAY_SIZE 1
+#   define TPP_MACRO_FALSE   0
 #endif
 
 /* Special strings inserted into warnings. */
@@ -222,7 +222,7 @@
 #endif
 
 #ifndef TPPFUN
-#define TPPFUN  extern
+#   define TPPFUN  extern
 #endif
 #if defined(__cplusplus) || defined(inline)
 #   define TPP_LOCAL            static inline
@@ -303,8 +303,8 @@ extern "C" {
 #endif
 
 #ifndef TPP
-#define TPP_NAMESPACE_DEFINED
-#define TPP(x) TPP_##x /* Use TPP-specific namespace. */
+#   define TPP_NAMESPACE_DEFINED
+#   define TPP(x) TPP_##x /* Use TPP-specific namespace. */
 #endif
 
 /* OS-specific data type for a stream handle. */
@@ -313,7 +313,7 @@ typedef /*HANDLE*/void *TPP(stream_t);
 #define TPP_STREAM_INVALID  ((TPP(stream_t))(size_t)-1)
 #else
 typedef int TPP(stream_t);
-#define TPP_STREAM_INVALID  -1
+#define TPP_STREAM_INVALID  (-1)
 #endif
 
 typedef int           TPP(tok_t);      /*< Unique token id. */
@@ -453,26 +453,25 @@ struct TPPMacroFile {
 #define TPP_MACROFILE_KIND_KEYWORD           0x00000000 /*< Keyword-style macro (without string/concat operations). */
 #define TPP_MACROFILE_KIND_FUNCTION          0x00000001 /*< Function-style macro. */
 #define TPP_MACROFILE_FLAG_FUNC_VARIADIC     0x00000100 /*< The last argument of the function is variadic. */
-#define TPP_MACROFILE_FLAG_FUNC_SELFEXPAND   0x00000200 /*< After being expanded, this function is allowed to re-invoke itself and be
-                                                         *  expanded, when the generated text is not identical to a previous iteration. */
-#define TPP_MACROFILE_FLAG_OWNSNAME          0x00000400 /*< The associated "f_name" member is owned. */
+#define TPP_MACROFILE_FLAG_FUNC_SELFEXPAND   0x00000200 /*< After being expanded, this function is allowed to re-invoke itself and be expanded, when
+                                                         *  the generated text is not identical to a previous iteration. (s.a.: '-fmacro-recursion') */
+#define TPP_MACROFILE_FLAG_OWNSNAME          0x00000400 /*< The associated ":f_name" member is owned. */
 #define TPP_MACROFILE_MASK_FUNC_STARTCH      0x00003000 /*< The character that should be recognized as start of an argument list (one of the macros below). */
 #define TPP_MACROFILE_FUNC_START_LPAREN      0x00000000 /*< '(...)' */
 #define TPP_MACROFILE_FUNC_START_LBRACKET    0x00001000 /*< '[...]' */
 #define TPP_MACROFILE_FUNC_START_LBRACE      0x00002000 /*< '{...}' */
 #define TPP_MACROFILE_FUNC_START_LANGLE      0x00003000 /*< '<...>' */
 #define TPP_MACROFILE_FUNC_START(ch) \
- ((ch) == '(' ? TPP_MACROFILE_FUNC_START_LPAREN :\
-  (ch) == '[' ? TPP_MACROFILE_FUNC_START_LBRACKET :\
-  (ch) == '{' ? TPP_MACROFILE_FUNC_START_LBRACE :\
+ ((ch) == '(' ? TPP_MACROFILE_FUNC_START_LPAREN : \
+  (ch) == '[' ? TPP_MACROFILE_FUNC_START_LBRACKET : \
+  (ch) == '{' ? TPP_MACROFILE_FUNC_START_LBRACE : \
                 TPP_MACROFILE_FUNC_START_LANGLE)
-#define TPP_MACROFILE_KIND_EXPANDED        0x00000002 /*< Expanded version of a function macro. */
+#define TPP_MACROFILE_KIND_EXPANDED          0x00000002 /*< Expanded version of a function macro. */
  uint32_t               m_flags;         /*< [const] Macro flags. */
- /*ref*/struct TPPFile *m_deffile;       /*< [const][0..1][(!= NULL) == (m_textref != NULL)] The file that originally defined this macro (or NULL if predefined, or from the commandline). */
+ /*ref*/struct TPPFile *m_deffile;       /*< [const][0..1] The file that originally defined this macro (or NULL if predefined, or from the commandline). */
  struct TPPLCInfo       m_defloc;        /*< [const] Line/col where this macro was defined (based on first character of the macro's text, aka. ':f_begin'). */
  /*ref*/struct TPPFile *m_pushprev;      /*< [0..1] Previous version of a pushed macro. */
  size_t                 m_pushcount;     /*< The amount of times this macro was pushed (used to handle multiple calls to 'push_macro'). */
- /* The following */
 union{struct{
  size_t                 f_argc;          /*< [const] Amount of arguments this function takes. */
  size_t                 f_expansions;    /*< The amount of existing expansions of this macro.
@@ -484,11 +483,11 @@ union{struct{
  size_t                 f_n_vacomma;     /*< [const] Amount of times 'TPP_FUNOP_VA_COMMA' is used in 'f_expand'. */
  size_t                 f_n_vanargs;     /*< [const] Amount of times 'TPP_FUNOP_VA_NARGS' is used in 'f_expand'. */
  void                  *f_argbuf;        /*< [0..1][owned] Internal preallocated cache for a required temporary buffer used during expansion.
-                                          *   NOTE: Implementation-wise, this is a vector of 'argcache_t' (internal, hidden data structure). */
+                                          *   NOTE: Implementation-wise, this is a vector of 'argcache_t' (an internal, hidden data structure). */
 }                       m_function;      /*< [TPP_MACROFILE_KIND_KEYWORD]. */
 struct {
  /*ref*/struct TPPFile *e_expand_origin; /*< [const][1..1] Original macro-file that was expanded.
-                                          *   NOTE: This pointer also holds a reference to 'e_expand_origin->f_macro.m_function.f_onstack'. */
+                                          *   NOTE: This pointer also holds a reference to 'e_expand_origin->f_macro.m_function.f_expansions'. */
 }                       m_expand;        /*< [TPP_MACROFILE_KIND_EXPANDED]. */
 } TPP_UNNAMED_UNION_DEF(m_specific);
 };

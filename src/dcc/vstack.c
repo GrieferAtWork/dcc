@@ -68,6 +68,7 @@ PRIVATE void DCC_VSTACK_CALL DCCStackValue_BinMem(struct DCCStackValue *__restri
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_BinReg(struct DCCStackValue *__restrict self, tok_t op, rc_t dst, rc_t dst2);                             /* *op self, %dst; mov self, %dst2 */
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Binary(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict target, tok_t op);
+PRIVATE test_t DCC_VSTACK_CALL DCCStackValue_Compare(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict target, test_t test);
 PRIVATE int  DCC_VSTACK_CALL DCCStackValue_ConstBinary(struct DCCStackValue *__restrict self, tok_t op, struct DCCSymExpr const *__restrict exprval, struct DCCStackValue *__restrict other);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Cast(struct DCCStackValue *__restrict self, struct DCCType const *__restrict type);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Call(struct DCCStackValue *__restrict self);
@@ -78,6 +79,8 @@ PRIVATE void DCC_VSTACK_CALL DCCStackValue_Subscript(struct DCCStackValue *__res
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Dup(struct DCCStackValue *__restrict self);
 PRIVATE int  DCC_VSTACK_CALL DCCStackValue_IsDuplicate(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict duplicate);
 PRIVATE int  DCC_VSTACK_CALL DCCStackValue_IsCopyDuplicate(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict duplicate);
+LOCAL int DCC_VSTACK_CALL DCCStackValue_IsUnsignedReg(struct DCCStackValue const *__restrict self);
+LOCAL int DCC_VSTACK_CALL DCCStackValue_IsUnsignedOrPtr(struct DCCStackValue const *__restrict self);
 
 #if 1
 #define OLD_VPROM(x) (void)0
@@ -316,7 +319,7 @@ DCCStackValue_Load(struct DCCStackValue *__restrict self) {
   if unlikely(local_target.sv_reg2 == local_target.sv_reg) {
    /* Make sure not to use the same register twice! */
    local_target.sv_reg2 = DCCVStack_GetRegOf(DCC_RC_I32,
-                                            (uint8_t)~(1 << (local_target.sv_reg&7)));
+                                            (rcset_t)~(1 << (local_target.sv_reg&7)));
   }
  } else
 #endif
@@ -902,7 +905,7 @@ DCCStackValue_Dup(struct DCCStackValue *__restrict self) {
   if (DCCTYPE_ISSIGNLESSBASIC(source_type->t_type,DCCTYPE_INT64)) {
    /* Need a second 32-bit register for this. */
    copy.sv_reg2 = DCCVStack_GetRegOf(DCC_RC_I32,
-                                    (uint8_t)~(1 << (copy.sv_reg&DCC_RI_MASK)));
+                                    (rcset_t)~(1 << (copy.sv_reg&DCC_RI_MASK)));
   }
 #endif
  }
@@ -1610,7 +1613,7 @@ DCCStackValue_Swap(struct DCCStackValue *__restrict a,
  *b = temp;
 }
 
-PRIVATE void DCC_VSTACK_CALL
+INTERN void DCC_VSTACK_CALL
 DCCStackValue_Binary(struct DCCStackValue *__restrict self,
                      struct DCCStackValue *__restrict target,
                      tok_t op) {
@@ -1920,19 +1923,10 @@ xcmp_oreq:
     goto end_cmp;
    }
   }
-  /* Kill all tests.
-   * This needs to be done for cases like this:
-   * >> assert((a == b) == (c == d));
-   */
-  DCCVStack_KillTst();
-  assert(!(lhs->sv_flags&DCC_SFLAG_TEST) || (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN));
-  assert(!(rhs->sv_flags&DCC_SFLAG_TEST) || (compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN));
-  /* Generate a compare operation. */
-  DCCStackValue_Binary(self,target,'?');
   {
-   int test;
+   test_t test;
    static struct cmpid {
-    uint16_t tok,cmp,ucmp;
+    tok_t tok; test_t cmp,ucmp;
    } const compare_ids[] = {
     {TOK_LOWER,        DCC_TEST_L, DCC_TEST_B},
     {TOK_LOWER_EQUAL,  DCC_TEST_LE,DCC_TEST_BE},
@@ -1947,6 +1941,8 @@ xcmp_oreq:
        DCCStackValue_IsUnsignedOrPtr(target))
         test = compare_ids[test].ucmp;
    else test = compare_ids[test].cmp;
+   /* Generate a compare operation. */
+   test = DCCStackValue_Compare(self,target,test);
    /* Setup the flags according to the test that should take place. */
    target->sv_flags   = DCC_SFLAG_MKTEST(test);
   }
@@ -2901,7 +2897,7 @@ DCCStackValue_PromoteInt(struct DCCStackValue *__restrict self) {
 PUBLIC rc_t DCC_VSTACK_CALL
 DCCVStack_GetReg(rc_t rc, int allow_ptr_regs) {
  struct DCCStackValue *iter,*end;
- uint8_t r,in_use,pref; /* Bitset of registers already in use. */
+ uint8_t r,pref; rcset_t in_use; /* Bitset of registers already in use. */
  int second_pass;
 #ifdef DCC_RC_I64
  if (rc&DCC_RC_I64) rc |= DCC_RC_I32;
@@ -3051,9 +3047,9 @@ again:
  return rcr;
 }
 PUBLIC rc_t DCC_VSTACK_CALL
-DCCVStack_GetRegOf(rc_t rc, uint8_t wanted_set) {
+DCCVStack_GetRegOf(rc_t rc, rcset_t wanted_set) {
  struct DCCStackValue *iter,*end;
- uint8_t r,in_use; /* Bitset of registers already in use. */
+ uint8_t r; rcset_t in_use; /* Bitset of registers already in use. */
  int second_pass;
  assertf(!(rc&DCC_RI_MASK),"The register part of RC must be ZERO");
 #ifdef DCC_RC_I64
@@ -3238,7 +3234,7 @@ DCCVStack_KillAll(size_t n_skip) {
  }
 }
 PUBLIC void DCC_VSTACK_CALL
-DCCVStack_KillInt(uint8_t mask) {
+DCCVStack_KillInt(rcset_t mask) {
  struct DCCStackValue *iter,*end;
  if unlikely(compiler.c_flags&DCC_COMPILER_FLAG_NOCGEN) return;
  end   = compiler.c_vstack.v_end;
@@ -4341,7 +4337,7 @@ DCCVStack_StoreCC(int invert_test,
 
 
 
-static target_ptr_t const basic_type_weights[] = {
+static target_siz_t const basic_type_weights[] = {
  DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_INT,   /* DCCTYPE_INT */
  DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_CHAR,  /* DCCTYPE_BYTE */
  DCC_TARGET_BITPERBYTE*DCC_TARGET_SIZEOF_SHORT, /* DCCTYPE_SHORT */
@@ -4403,7 +4399,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
    return explicit_cast ? 0 : W_CAST_TO_VOID;
   }
   if (DCCTYPE_GROUP(vid) == DCCTYPE_BUILTIN) {
-   target_ptr_t tweight;
+   target_siz_t tweight;
    if (explicit_cast) return 0; /* Always OK for explicit casts. */
    tid &= DCCTYPE_BASICMASK;
    vid &= DCCTYPE_BASICMASK;
@@ -4430,7 +4426,7 @@ DCCStackValue_AllowCast(struct DCCStackValue const *__restrict value,
      * and can better decide what it really needs. */
     int_t iv = value->sv_const.it;
     unsigned int is_signed = iv < 0;
-    unsigned int req_bits = 0;
+    target_siz_t req_bits = 0;
     if (is_signed) iv = -iv;
     while (iv) ++req_bits,*(uint_t *)&iv >>= 1;
     /*req_bits += is_signed;*/
@@ -4760,7 +4756,7 @@ DCCVStack_Cast(struct DCCType const *__restrict t,
 }
 
 PUBLIC void DCC_VSTACK_CALL
-DCCVStack_CastTst(uint8_t test) {
+DCCVStack_CastTst(test_t test) {
  test_t old_test;
  assert(vsize >= 1);
  assert(test == DCC_TEST_Z || test == DCC_TEST_NZ);
@@ -4782,8 +4778,8 @@ DCCVStack_CastTst(uint8_t test) {
   vbottom->sv_flags |=  (test << DCC_SFLAG_TEST_SHIFT);
  }
 }
-PUBLIC uint8_t DCC_VSTACK_CALL
-DCCVStack_UniTst(uint8_t test) {
+PUBLIC test_t DCC_VSTACK_CALL
+DCCVStack_UniTst(test_t test) {
  if (test == DCC_UNITST_FIRST) {
   vgen1('!'),vgen1('!');
   if (vbottom->sv_flags&DCC_SFLAG_TEST) {
@@ -5206,5 +5202,9 @@ DCCVStack_Subscript(struct TPPKeyword const *__restrict name) {
 
 
 DCC_DECL_END
+
+#ifndef __INTELLISENSE__
+#include "vstack-cmp.c.inl"
+#endif
 
 #endif /* !GUARD_DCC_VSTACK_C */

@@ -325,5 +325,11 @@
     <None Include="..\src\dcc\lexer-ctype-guess.c.inl">
       <Filter>src\dcc</Filter>
     </None>
+    <None Include="..\src\dcc\gen-cmp.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
+    <None Include="..\src\dcc\vstack-cmp.c.inl">
+      <Filter>src\dcc</Filter>
+    </None>
   </ItemGroup>
 </Project>

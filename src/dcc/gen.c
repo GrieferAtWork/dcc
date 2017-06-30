@@ -555,6 +555,24 @@ PUBLIC test_t const DCCDisp_TestOrEq[16] = {
  /* [DCC_TEST_LE] = */DCC_TEST_LE, /* [<=] test: less or equal (ZF=1 or SF<>OF). */
  /* [DCC_TEST_G ] = */DCC_TEST_GE, /* [> ] test: greater (ZF=0 and SF=OF). */
 };
+PUBLIC test_t const DCCDisp_TestUnsigned[16] = {
+ /* [DCC_TEST_O ] = */DCC_TEST_O,  /* [  ] test: overflow (OF=1). */
+ /* [DCC_TEST_NO] = */DCC_TEST_NO, /* [  ] test: not overflow (OF=0). */
+ /* [DCC_TEST_B ] = */DCC_TEST_B,  /* [< ] test: below (CF=1). */
+ /* [DCC_TEST_AE] = */DCC_TEST_AE, /* [>=] test: above or equal (CF=0). */
+ /* [DCC_TEST_E ] = */DCC_TEST_E,  /* [==] test: equal (ZF=1). */
+ /* [DCC_TEST_NE] = */DCC_TEST_NE, /* [!=] test: not equal (ZF=0). */
+ /* [DCC_TEST_BE] = */DCC_TEST_BE, /* [<=] test: below or equal (CF=1 or ZF=1). */
+ /* [DCC_TEST_A ] = */DCC_TEST_A,  /* [> ] test: above (CF=0 and ZF=0). */
+ /* [DCC_TEST_S ] = */DCC_TEST_S,  /* [  ] test: sign (SF=1). */
+ /* [DCC_TEST_NS] = */DCC_TEST_NS, /* [  ] test: not sign (SF=0). */
+ /* [DCC_TEST_PE] = */DCC_TEST_PE, /* [  ] test: parity even (PF=1). */
+ /* [DCC_TEST_PO] = */DCC_TEST_PO, /* [  ] test: parity odd (PF=0). */
+ /* [DCC_TEST_L ] = */DCC_TEST_B,  /* [< ] test: less (SF<>OF). */
+ /* [DCC_TEST_GE] = */DCC_TEST_AE, /* [>=] test: greater or equal (SF=OF). */
+ /* [DCC_TEST_LE] = */DCC_TEST_BE, /* [<=] test: less or equal (ZF=1 or SF<>OF). */
+ /* [DCC_TEST_G ] = */DCC_TEST_A,  /* [> ] test: greater (ZF=0 and SF=OF). */
+};
 
 PUBLIC void
 DCCDisp_ScxReg(test_t t, rc_t reg) {
@@ -632,6 +650,23 @@ DCCDisp_SetTst(test_t tst) {
  if (DCC_MACRO_FALSE) {orf:  DCCDisp_CstBinMem('|',&val,&flgs,4,1); }
  if (DCC_MACRO_FALSE) {andf: DCCDisp_CstBinMem('&',&val,&flgs,4,1); }
  t_putb(0x9d); /* popf */
+}
+
+PUBLIC void
+DCCDisp_SccTst(test_t cond, test_t tst) {
+ struct DCCSym *tt_jmp,*ff_jmp;
+ assert(cond <= 0xf);
+ assert(tst <= 0xf);
+ if (cond == tst) return;
+ /* TODO: This can be done _much_ better! */
+ if unlikely((tt_jmp = DCCUnit_AllocSym()) == NULL ||
+             (ff_jmp = DCCUnit_AllocSym()) == NULL) return;
+ DCCDisp_SymJcc(DCC_TEST_NOT(cond),ff_jmp);
+ DCCDisp_SetTst(tst);
+ DCCDisp_SymJmp(tt_jmp);
+ t_defsym(ff_jmp);
+ DCCDisp_SetTst(DCC_TEST_NOT(tst));
+ t_defsym(tt_jmp);
 }
 
 
@@ -814,6 +849,7 @@ DCC_DECL_END
 
 #ifndef __INTELLISENSE__
 #include "gen-bin.c.inl"
+#include "gen-cmp.c.inl"
 #include "gen-jmp.c.inl"
 #include "gen-large.c.inl"
 #include "gen-misc.c.inl"

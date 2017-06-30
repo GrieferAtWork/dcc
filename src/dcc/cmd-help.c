@@ -109,7 +109,7 @@ INTERN void dcc_dump_symbols(void) {
 #elif defined(__GNUC__)
 #   define DCC_HOST_COMPILER "gcc " DCC_PP_STR(__GNUC__) "." DCC_PP_STR(__GNUC_MINOR__) "." DCC_PP_STR(__GNUC_PATCHLEVEL__)
 #elif defined(__DCC_VERSION__)
-#   define DCC_HOST_COMPILER "dcc " DCC_PP_STR(__DCC_VERSION__) " (That's me!)"
+#   define DCC_HOST_COMPILER "dcc " DCC_PP_STR(__DCC_VERSION__) " - Yay for recursion!"
 #elif defined(__TINYC__)
 #   define DCC_HOST_COMPILER "tcc " DCC_PP_STR(__TINYC__)
 #elif defined(__cplusplus)

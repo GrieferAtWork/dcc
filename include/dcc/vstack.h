@@ -511,10 +511,10 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_Swap(void);                               
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Unary(DCC(tok_t) op);                                /* -1, +1 ('*', '&', '!', '-', '~') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Binary(DCC(tok_t) op);                               /* -2, +1 ('+', '-', '|', '&', '^', TOK_INC, TOK_DEC, '*', '/', '%', TOK_SHL, TOK_SHR, '?') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Cast(struct DCCType const *__restrict t, int explicit_case); /* -1, +1 */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_CastTst(uint8_t test);                               /* -1, +1 (Set EFLAGS according to 'test' when 'vbottom' evaluates to TRUE. Required for merging test branches in conditional expressions)
+DCCFUN void DCC_VSTACK_CALL DCCVStack_CastTst(DCC(test_t) test);                           /* -1, +1 (Set EFLAGS according to 'test' when 'vbottom' evaluates to TRUE. Required for merging test branches in conditional expressions)
                                                                                             * WARNING: 'test' must be one of 'DCC_TEST_Z', 'DCC_TEST_NZ'. NOTE: no-op for constant expressions. */
-DCCFUN uint8_t DCC_VSTACK_CALL DCCVStack_UniTst(uint8_t test);                             /* -1, +1 (Unify test conditions. - Always returns 'test', unless 'DCC_UNISTS_FIRST' is passed, in which case a common test is
-                                                                                            *         determined that should be performed for all other conditions; NOTE: no-op for constant expressions) */
+DCCFUN DCC(test_t) DCC_VSTACK_CALL DCCVStack_UniTst(DCC(test_t) test);                     /* -1, +1 (Unify test conditions. - Always returns 'test', unless 'DCC_UNISTS_FIRST' is passed, in which case a common
+                                                                                            *         test is determined that should be performed for all other conditions; NOTE: no-op for constant expressions) */
 #define DCC_UNITST_FIRST 0xff
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Store(int initial_store);                            /* -2, +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_StoreCC(int invert_test, int initial_store);         /* -3, +1: <target, source, cond>: if (vbottom[0] ^ invert_test) vbottom[2] = vbottom[1]; LEAVE(vbottom[2]); */
@@ -580,12 +580,12 @@ DCCFUN DCC(rc_t) DCC_VSTACK_CALL DCCVStack_GetRegExact(DCC(rc_t) rcr);
 
 /* Similar to 'DCCVStack_GetReg', but only allow registers set in 'wanted_set':
  * >> rc_t reg;
- * >> uint8_t set = 0;
+ * >> rcset_t set = 0;
  * >> set |= (1 << DCC_ASMREG_EAX);
  * >> set |= (1 << DCC_ASMREG_EDX);
  * >> reg = DCCVStack_GetRegOf(DCC_RC_I32,set);
  * >> // Reg is now either EAX, or EDX */
-DCCFUN DCC(rc_t) DCC_VSTACK_CALL DCCVStack_GetRegOf(DCC(rc_t) rc, uint8_t wanted_set);
+DCCFUN DCC(rc_t) DCC_VSTACK_CALL DCCVStack_GetRegOf(DCC(rc_t) rc, DCC(rcset_t) wanted_set);
 
 /* Returns true if the given register is in use. */
 DCCFUN int DCC_VSTACK_CALL DCCVStack_GetRegInuse(DCC(rc_t) rcr);
@@ -613,7 +613,7 @@ DCCFUN void DCC_VSTACK_CALL DCCVStack_KillAll(size_t n_skip);
 DCCFUN void DCC_VSTACK_CALL DCCVStack_KillTst(void);
 
 /* Kill all integer registers apart of the given 'mask' */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_KillInt(uint8_t mask);
+DCCFUN void DCC_VSTACK_CALL DCCVStack_KillInt(DCC(rcset_t) mask);
 
 /* Returns 1/0 indicating that the v-stack contains test slots. */
 DCCFUN int DCC_VSTACK_CALL DCCVStack_HasTst(void);

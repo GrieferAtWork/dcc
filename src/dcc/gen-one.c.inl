@@ -117,10 +117,10 @@ DCCDisp_UnaryStaWidth(tok_t op, void *__restrict dst,
  assert(CHECK_WIDTH(width));
  v = readw(dst,width,0);
  switch (op) {
- case '-': v = -v; break;
+ case '-': v = -v; break; /* TODO: This isn't correct */
  case '~': v = ~v; break;
- case TOK_INC: ++v; break;
- case TOK_DEC: --v; break;
+ case TOK_INC: ++v; break; /* TODO: This isn't correct */
+ case TOK_DEC: --v; break; /* TODO: This isn't correct */
  default: break;
  }
  writew(dst,v,width);
@@ -147,6 +147,13 @@ DCCDisp_UnaryMem(tok_t op, struct DCCMemLoc const *__restrict dst,
                  target_siz_t dst_bytes) {
  struct DCCMemLoc dst_iter; void *cdst;
  if (!dst_bytes) return;
+ /* TODO: Optimization for this:
+  * >> int foo();
+  * >> static int (*const pfoo)() = &foo;
+  * >> int main() {
+  * >>     return (*pfoo)(); // This can technically be forwarded perfectly
+  * >> }
+  */
  if (op != '(' &&
     (cdst = DCCMemLoc_CompilerAddr(dst,dst_bytes)) != NULL) {
   DCCDisp_UnarySta(op,cdst,dst_bytes);

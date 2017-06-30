@@ -771,6 +771,8 @@ typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INT_FAST64_T),_t) DCC(target
 typedef DCC_PP_CAT3( int,DCC_MUL8(DCC_TARGET_SIZEOF_INTMAX_T),_t) DCC(target_intmax_t);
 typedef DCC_PP_CAT3(uint,DCC_MUL8(DCC_TARGET_SIZEOF_INTMAX_T),_t) DCC(target_uintmax_t);
 
+/* DCC target test code (One of 'DCC_TEST_*' from <dcc/gen.h>) */
+typedef uint8_t DCC(test_t);
 
 /* Register class/descriptor:
  * Certain combinations of 'DCC_RC_*', potentially or'd together with one of 'DCC_ASMREG_*'. */

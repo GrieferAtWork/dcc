@@ -183,7 +183,16 @@ DCCFUN void DCCDisp_UnaryMem(DCC(tok_t) op, struct DCCMemLoc const *__restrict d
  *  - '&'          dst = dst & src;
  *  - '-'          dst = dst - src;
  *  - '^'          dst = dst ^ src;
- *  - '?'          set_eflags(dst - src); // compare (set EFLAGS accordingly)
+ *  - '?'          set_eflags(dst - src); // compare memory
+ *                 WARNING: somewhat broken due to missing explicit step-size on little-endian:
+ *              >> a: AA CC EE FF
+ *              >> b: DD BB 99 88
+ *                 DCCDisp_MemBinMem('?',a,b)
+ *                 One would expect the result to be DCC_TEST_B/DCC_TEST_L,
+ *                 yet the actual result may be DCC_TEST_A/DCC_TEST_G because
+ *                 while memcmp() would require AA and DD to be compared first,
+ *                 this opcode may choose to compare in 4 bytes at once, leading to
+ *                 an incorrect result of causing a result of comparing 'FF' with '88'
  *  - '*':         dst = dst * src;
  *  - '%':         dst = dst % src;
  *  - '/':         dst = dst / src;
@@ -232,7 +241,6 @@ DCCFUN void DCCDisp_CstBinMem(DCC(tok_t) op,
                               struct DCCMemLoc const *__restrict dst,
                               DCC(width_t) width, int src_unsigned);
 
-
 /* Add the given 'val' to 'dst'
  * NOTE: Special optimizations are performed when the
  *       absolute value of 'val' is known at compile-time. */
@@ -273,15 +281,15 @@ DCCFUN void DCCDisp_LeaReg(struct DCCMemLoc const *__restrict addr, DCC(rc_t) ds
 DCCFUN void DCCDisp_LeaMem(struct DCCMemLoc const *__restrict addr,
                            struct DCCMemLoc const *__restrict dst, DCC(width_t) width);
 
-typedef uint8_t DCC(test_t);
-
 #if DCC_TARGET_HASI(I_X86)
 #define DCC_TEST_NBIT        1
 #define DCC_TEST_NOT(x)    ((x)^DCC_TEST_NBIT)
 #define DCC_TEST_MIRROR(x)   DCCDisp_TestMirror[x]
 #define DCC_TEST_OREQ(x)     DCCDisp_TestOrEq[x]
-DCCDAT DCC(test_t) const DCCDisp_TestMirror[16]; /* Mirror '<' --> '>', etc. */
-DCCDAT DCC(test_t) const DCCDisp_TestOrEq[16];   /* Convert the test to include <or-equal> (if not possible, return the original test) */
+#define DCC_TEST_UNSIGNED(x) DCCDisp_TestUnsigned[x]
+DCCDAT DCC(test_t) const DCCDisp_TestMirror[16];   /* Mirror '<' --> '>', etc. */
+DCCDAT DCC(test_t) const DCCDisp_TestOrEq[16];     /* Convert the test to include <or-equal> (if not possible, return the original test) */
+DCCDAT DCC(test_t) const DCCDisp_TestUnsigned[16]; /* Convert the test to its unsigned counterpart. */
 
 #define DCC_TEST_O    0x0 /* test: overflow (OF=1). */
 #define DCC_TEST_NO   0x1 /* test: not overflow (OF=0). */
@@ -321,6 +329,9 @@ DCCDAT DCC(test_t) const DCCDisp_TestOrEq[16];   /* Convert the test to include 
  * NOTE: After this process, 'tst' will mirror 1,
  *       but the state of any other test will be undefined. */
 DCCFUN void DCCDisp_SetTst(DCC(test_t) tst);
+
+/* Conditionally set a given test. */
+DCCFUN void DCCDisp_SccTst(DCC(test_t) cond, DCC(test_t) tst);
 
 /* Unconditionally jump to/call the given
  * register/memory-location/address-read-from-memory. */
@@ -365,6 +376,36 @@ DCCFUN void DCCDisp_SccMem(DCC(test_t) t, struct DCCMemLoc const *__restrict dst
 DCCFUN void DCCDisp_ScxReg(DCC(test_t) t, DCC(rc_t) reg);
 DCCFUN void DCCDisp_ScxMem(DCC(test_t) t, struct DCCMemLoc const *__restrict dst,
                            DCC(target_siz_t) n);
+
+
+/* Integer-compare memory/registers.
+ * @return: * : The test that should be performed to check the result of the given 'test' */
+#define DCCDisp_MemIcmpReg(test,src,dst)       (DCCDisp_MemBinReg('?',src,dst,1),test)
+#define DCCDisp_RegIcmpMem(test,src,dst)       (DCCDisp_RegBinMem('?',src,dst,1),test)
+#define DCCDisp_CstIcmpReg(test,val,dst)       (DCCDisp_CstBinReg('?',val,dst,1),test)
+#define DCCDisp_CstIcmpMem(test,val,dst,width) (DCCDisp_CstBinMem('?',val,dst,width,1),test)
+DCCFUN DCC(test_t) DCCDisp_MemIcmpMem(DCC(test_t) test,
+                                      struct DCCMemLoc const *__restrict src, DCC(target_siz_t) src_bytes, int src_unsigned,
+                                      struct DCCMemLoc const *__restrict dst, DCC(target_siz_t) dst_bytes, int dst_unsigned);
+DCCFUN DCC(test_t) DCCDisp_MemsIcmpRegs(DCC(test_t) test, struct DCCMemLoc const *__restrict src,
+                                        DCC(target_siz_t) src_bytes, int src_unsigned,
+                                        DCC(rc_t) dst, DCC(rc_t) dst2, int dst_unsigned);
+DCCFUN DCC(test_t) DCCDisp_RegsIcmpMems(DCC(test_t) test, DCC(rc_t) src, DCC(rc_t) src2,
+                                        int src_unsigned, struct DCCMemLoc const *__restrict dst,
+                                        DCC(target_siz_t) dst_bytes, int dst_unsigned);
+DCCFUN DCC(test_t) DCCDisp_RegsIcmpRegs(DCC(test_t) test,
+                                        DCC(rc_t) src, DCC(rc_t) src2, int src_unsigned,
+                                        DCC(rc_t) dst, DCC(rc_t) dst2, int dst_unsigned);
+#if DCC_TARGET_SIZEOF_ARITH_MAX < 8
+DCCFUN DCC(test_t) DCCDisp_CstIcmpRegs(DCC(test_t) test, struct DCCSymExpr const *__restrict val,
+                                       int src_unsigned, DCC(rc_t) dst, DCC(rc_t) dst2);
+#endif
+
+/* Returns the effective test to execute when checking whether
+ * or not to jump to the end of an integer compare block. */
+#define DCC_DISP_ICMP_JCC(test) \
+  ((test) == DCC_TEST_NE ? DCC_TEST_NE : DCC_TEST_NOT(DCC_TEST_OREQ(test)))
+
 
 /* mov $cst, %dst (Simply a proxy for 'DCCDisp_CstMovReg') */
 DCC_LOCAL void DCCDisp_IntMovReg(DCC(target_off_t) cst, DCC(rc_t) dst);

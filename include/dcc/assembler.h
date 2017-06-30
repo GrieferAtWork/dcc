@@ -21,10 +21,10 @@
 
 #include "common.h"
 #include "lexer.h"
+#include "target.h"
 
 #include <stddef.h>
 #include <stdint.h>
-#include <dcc/target.h>
 
 DCC_DECL_BEGIN
 

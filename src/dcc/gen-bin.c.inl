@@ -35,8 +35,16 @@ PUBLIC void
 DCCDisp_MemsBinReg(tok_t op, struct DCCMemLoc const *__restrict src,
                    target_siz_t src_bytes, rc_t dst, int src_unsigned) {
  rc_t temp;
+ target_siz_t dst_size;
  if (op == '=') { DCCDisp_MemsMovReg(src,src_bytes,dst,src_unsigned); return; }
- if (src_bytes <= DCC_RC_SIZE(dst)) { DCCDisp_MemBinReg(op,src,dst,src_unsigned); return; }
+ dst_size = DCC_RC_SIZE(dst);
+ if (src_bytes >= dst_size) {
+  if (op == '?' && src_bytes != dst_size) {
+   /* TODO: We need to know if 'dst' is signed or unsigned! */
+  }
+  DCCDisp_MemBinReg(op,src,dst,src_unsigned);
+  return;
+ }
  temp = DCCVStack_GetReg(DCC_RC_FORSIZE(src_bytes),1);
  DCCDisp_MemMovReg(src,temp);
  DCCDisp_RegBinReg(op,temp,dst,src_unsigned);
@@ -89,11 +97,11 @@ PUBLIC void
 DCCDisp_MemsBinRegs(tok_t op, struct DCCMemLoc const *__restrict src,
                     target_siz_t src_bytes, rc_t dst, rc_t dst2, int src_unsigned) {
  struct DCCMemLoc new_src;
- if (dst2 != DCC_RC_CONST && IS_LARGE_OP(op)) {
+ if (!DCC_RC_ISCONST(dst2) && IS_LARGE_OP(op)) {
   DCCDisp_LargeMemsBinRegs(op,src,src_bytes,dst,dst2,src_unsigned);
   return;
  }
- if (dst2 != DCC_RC_CONST) {
+ if (!DCC_RC_ISCONST(dst2)) {
   target_siz_t s = DCC_RC_SIZE(dst);
   struct DCCSym *jsym = NULL;
   if (s > src_bytes) s = src_bytes;
@@ -101,13 +109,25 @@ DCCDisp_MemsBinRegs(tok_t op, struct DCCMemLoc const *__restrict src,
   if (src->ml_reg != DCC_RC_CONST &&
      (src->ml_reg&DCC_RI_MASK) == (dst&DCC_RI_MASK)) {
    /* Special case: The source value is offset from a register that overlaps with 'dst'.
-    * Based on the opcode, we must either update 'src' to use an additional regsiter,
+    * Based on the opcode, we must either update 'src' to use an additional register,
     * or simply invert the register operation order. */
    if (op == '=' || op == '|' || op == '&' || op == '^') {
     /* We can invert the operation order for these operands. */
-    new_src.ml_off += s;
-    DCCDisp_MemsBinReg(op,&new_src,src_bytes-s,dst2,src_unsigned);
     DCCDisp_MemsBinReg(op,src,s,dst,src_unsigned);
+    new_src.ml_off += s;
+    if (src_bytes == s && !src_unsigned) {
+     /* Must sign-extend the source location. */
+     rc_t temp = DCCVStack_GetRegOf(dst2&DCC_RC_MASK,(uint8_t)~(
+                                   (DCC_RC_ISCONST(src->ml_reg) ? 0 : (1 << (src->ml_reg&DCC_RI_MASK)))|
+                                   (1 << (dst&DCC_RI_MASK))|
+                                   (1 << (dst2&DCC_RI_MASK))));
+     --new_src.ml_off;
+     DCCDisp_MemMovReg(&new_src,temp);
+     DCCDisp_SignMirrorReg(temp);
+     DCCDisp_RegBinReg(op,temp,dst2,0);
+    } else {
+     DCCDisp_MemsBinReg(op,&new_src,src_bytes-s,dst2,src_unsigned);
+    }
     return;
    }
    /* Allocate an additional register to use instead of that from 'src'. */
@@ -124,7 +144,18 @@ DCCDisp_MemsBinRegs(tok_t op, struct DCCMemLoc const *__restrict src,
   src_bytes -= s;
        if (op == '+') op = TOK_INC;
   else if (op == '-') op = TOK_DEC;
-  DCCDisp_MemsBinReg(op,&new_src,src_bytes,dst2,src_unsigned);
+  if (!src_bytes) {
+   rc_t temp = DCCVStack_GetRegOf(dst2&DCC_RC_MASK,(uint8_t)~(
+                                 (DCC_RC_ISCONST(src->ml_reg) ? 0 : (1 << (src->ml_reg&DCC_RI_MASK)))|
+                                 (1 << (dst&DCC_RI_MASK))|
+                                 (1 << (dst2&DCC_RI_MASK))));
+   --new_src.ml_off;
+   DCCDisp_MemMovReg(&new_src,temp);
+   DCCDisp_SignMirrorReg(temp);
+   DCCDisp_RegBinReg(op,temp,dst2,0);
+  } else {
+   DCCDisp_MemsBinReg(op,&new_src,src_bytes,dst2,src_unsigned);
+  }
   if (jsym) t_defsym(jsym);
  } else {
   DCCDisp_MemsBinReg(op,src,src_bytes,dst,src_unsigned);
@@ -164,7 +195,7 @@ DCCDisp_RegsBinMems(tok_t op, rc_t src, rc_t src2,
    if ((jsym = DCCUnit_AllocSym()) != NULL)
         DCCDisp_SymJcc(DCC_TEST_NE,jsym);
   }
-  if (src2) {
+  if (!DCC_RC_ISCONST(src2)) {
 #ifdef DCC_RC_I64
    if (dst_bytes < 8) src2 &= ~(DCC_RC_I64);
 #endif
@@ -635,13 +666,13 @@ DCCDisp_CstBinRegs(tok_t op, struct DCCSymExpr const *__restrict val,
   if unlikely(!jmp.ml_sym) return;
   jmp.ml_reg = DCC_RC_CONST;
   jmp.ml_off = 0;
-  aval.sa_off = (target_off_t)(val->e_int >> 32);
-  aval.sa_sym = NULL;
-  DCCDisp_CstBinReg('?',&aval,dst2,src_unsigned);
-  DCCDisp_LocJcc(DCC_TEST_NE,&jmp);
   aval.sa_off = (target_off_t)val->e_int;
   aval.sa_sym = val->e_sym;
   DCCDisp_CstBinReg('?',&aval,dst,src_unsigned);
+  DCCDisp_LocJcc(DCC_TEST_NE,&jmp);
+  aval.sa_off = (target_off_t)(val->e_int >> 32);
+  aval.sa_sym = NULL;
+  DCCDisp_CstBinReg('?',&aval,dst2,src_unsigned);
   t_defsym(jmp.ml_sym);
  } else {
   aval.sa_off = (target_off_t)val->e_int;
@@ -1431,14 +1462,10 @@ DCCDisp_MemCmpMem_fixed(struct DCCMemLoc const *__restrict src,
  else if (n_bytes >= 2) temp_register = DCC_RC_I16;
  else                   temp_register = DCC_RC_I8;
  temp_register = DCCVStack_GetReg(temp_register,!(n_bytes&1));
- src_iter.ml_off += n_bytes;
- dst_iter.ml_off += n_bytes;
  for (;;) {
        if (n_bytes >= 4) part = 4;
   else if (n_bytes >= 2) part = 2,temp_register &= ~(DCC_RC_I32);
   else                   part = 1,temp_register &= ~(DCC_RC_I32|DCC_RC_I16);
-  src_iter.ml_off -= part;
-  dst_iter.ml_off -= part;
   /* Load memory from 'src' and compare it with 'dst'. */
   DCCDisp_MemMovReg(&src_iter,temp_register);
   DCCDisp_RegBinMem('?',temp_register,&dst_iter,0);
@@ -1446,6 +1473,8 @@ DCCDisp_MemCmpMem_fixed(struct DCCMemLoc const *__restrict src,
   if (!n_bytes) break;
   /* If the compared memory is non-equal, jump to the end of the full comparison. */
   DCCDisp_LocJcc(DCC_TEST_NE,nejmp);
+  src_iter.ml_off += part;
+  dst_iter.ml_off += part;
  }
 }
 
@@ -1481,8 +1510,10 @@ DCCDisp_MemBinMem(tok_t op,
   jmp.ml_reg = DCC_RC_CONST;
   jmp.ml_off = 0;
   dst_bytes -= common_size;
-  /* Since X86 is little endian, we must start comparing the most
-   * significant bytes, meaning that we must begin at the very top! */
+  /* Generate compare across the shared region of memory. */
+  DCCDisp_MemCmpMem_fixed(src,dst,common_size,&jmp);
+  /* Generate the missing jump for overflow memory. */
+  if (common_size && dst_bytes) DCCDisp_LocJcc(DCC_TEST_NE,&jmp);
   if (!src_bytes)
    DCCDisp_BytCmpMem_impl(0,dst,dst_bytes,&jmp);
   else if (dst_bytes) {
@@ -1508,10 +1539,6 @@ DCCDisp_MemBinMem(tok_t op,
     DCCDisp_ByrCmpMem_impl(sign_extension,max_width,&high_dst,dst_bytes,&jmp);
    }
   }
-  /* Generate the missing jump for overflow memory. */
-  if (common_size && dst_bytes) DCCDisp_LocJcc(DCC_TEST_NE,&jmp);
-  /* Generate compare across the shared region of memory. */
-  DCCDisp_MemCmpMem_fixed(src,dst,common_size,&jmp);
   /* Declare the jump target used when non-equal  */
   t_defsym(jmp.ml_sym);
   return;
