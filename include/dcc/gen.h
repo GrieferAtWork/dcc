@@ -401,11 +401,6 @@ DCCFUN DCC(test_t) DCCDisp_CstIcmpRegs(DCC(test_t) test, struct DCCSymExpr const
                                        int src_unsigned, DCC(rc_t) dst, DCC(rc_t) dst2);
 #endif
 
-/* Returns the effective test to execute when checking whether
- * or not to jump to the end of an integer compare block. */
-#define DCC_DISP_ICMP_JCC(test) \
-  ((test) == DCC_TEST_NE ? DCC_TEST_NE : DCC_TEST_NOT(DCC_TEST_OREQ(test)))
-
 
 /* mov $cst, %dst (Simply a proxy for 'DCCDisp_CstMovReg') */
 DCC_LOCAL void DCCDisp_IntMovReg(DCC(target_off_t) cst, DCC(rc_t) dst);

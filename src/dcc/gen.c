@@ -661,11 +661,11 @@ DCCDisp_SccTst(test_t cond, test_t tst) {
  /* TODO: This can be done _much_ better! */
  if unlikely((tt_jmp = DCCUnit_AllocSym()) == NULL ||
              (ff_jmp = DCCUnit_AllocSym()) == NULL) return;
- DCCDisp_SymJcc(DCC_TEST_NOT(cond),ff_jmp);
- DCCDisp_SetTst(tst);
+ DCCDisp_SymJcc(cond,ff_jmp);
+ DCCDisp_SetTst(DCC_TEST_NOT(tst));
  DCCDisp_SymJmp(tt_jmp);
  t_defsym(ff_jmp);
- DCCDisp_SetTst(DCC_TEST_NOT(tst));
+ DCCDisp_SetTst(tst);
  t_defsym(tt_jmp);
 }
 

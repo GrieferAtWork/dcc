@@ -52,9 +52,11 @@ DCCStackValue_CmpMem(struct DCCStackValue *__restrict self,
    * >> x <  0; -->  (((uint8_t *)&x)[7]&0x80)
    * >> ...
    */
-
   target_siz_t src_siz = DCCType_Sizeof(&self->sv_ctype,NULL,1);
+  target_off_t sign_byte = 0;
+  int is_unsigned = DCCStackValue_IsUnsignedOrPtr(self);
   if (src_siz > sizeof(int_t)) src_siz = sizeof(int_t);
+  if (!is_unsigned && self->sv_const.it < 0) sign_byte = -1;
   while (n > DCC_TARGET_SIZEOF_ARITH_MAX || n&(n-1)) {
    test_t utest;
    target_siz_t part_size = DCC_TARGET_SIZEOF_ARITH_MAX;
@@ -72,18 +74,18 @@ DCCStackValue_CmpMem(struct DCCStackValue *__restrict self,
     }
    }
    n -= part_size;
-   temp.sa_off = 0;
    temp.sa_sym = NULL;
-   if (n < src_siz) {
-    temp.sa_off = (target_off_t)((target_ptr_t)self->sv_const.it >> (n*8));
-   }
+   if (n >= src_siz) temp.sa_off = sign_byte;
+   else if (is_unsigned)
+        temp.sa_off = (target_off_t)((target_ptr_t)self->sv_const.it >> (n*8));
+   else temp.sa_off = (target_off_t)((target_off_t)self->sv_const.it >> (n*8));
    used_target = *target;
    used_target.ml_off += n;
    if (!done_sym && (done_sym = DCCUnit_AllocSym()) == NULL) goto end;
    utest = DCC_TEST_UNSIGNED(test);
    DCCDisp_CstBinMem('?',&temp,&used_target,part_size,1);
    DCCDisp_SccTst(test,utest),test = utest;
-   DCCDisp_SymJcc(DCC_DISP_ICMP_JCC(test),done_sym);
+   DCCDisp_SymJcc(DCC_TEST_NE,done_sym);
   }
   temp.sa_off = (target_off_t)self->sv_const.it;
   temp.sa_sym = self->sv_sym;

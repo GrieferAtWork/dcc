@@ -153,7 +153,7 @@ again:
    if (!done_sym && (done_sym = DCCUnit_AllocSym()) == NULL) goto end;
    utest = DCC_TEST_UNSIGNED(test);
    DCCDisp_SccTst(test,utest),test = utest;
-   DCCDisp_SymJcc(DCC_DISP_ICMP_JCC(test),done_sym);
+   DCCDisp_SymJcc(DCC_TEST_NE,done_sym);
   }
  }
  assert(!uncommon_size);
@@ -190,7 +190,7 @@ again:
    if (!done_sym && (done_sym = DCCUnit_AllocSym()) == NULL) goto end;
    utest = DCC_TEST_UNSIGNED(test);
    DCCDisp_SccTst(test,utest),test = utest;
-   DCCDisp_SymJcc(DCC_DISP_ICMP_JCC(test),done_sym);
+   DCCDisp_SymJcc(DCC_TEST_NE,done_sym);
   }
  }
  assert(!memcmp(&used_dst,dst,sizeof(struct DCCMemLoc)));
@@ -249,7 +249,7 @@ signed_upper_cmp:
     /* Compare high memory against sign-extended integer register. */
     DCCDisp_MemBinReg('?',&used_src,temp,1);
     DCCDisp_SccTst(test,utest),test = utest;
-    DCCDisp_SymJcc(DCC_DISP_ICMP_JCC(test),done_sym);
+    DCCDisp_SymJcc(DCC_TEST_NE,done_sym);
    } while (src_bytes > dst_bytes);
    used_src.ml_off -= src_bytes;
    goto again_compare;
@@ -282,7 +282,7 @@ unsigned_upper_cmp:
     /* Compare high memory against sign-extended integer register. */
     DCCDisp_CstBinMem('?',&cmp_val,&used_src,part_size,1);
     DCCDisp_SccTst(test,utest),test = utest;
-    DCCDisp_SymJcc(DCC_DISP_ICMP_JCC(test),done_sym);
+    DCCDisp_SymJcc(DCC_TEST_NE,done_sym);
    } while (src_bytes > dst_bytes);
    used_src.ml_off -= src_bytes;
    goto again_compare;
@@ -350,7 +350,7 @@ again:
    DCCDisp_RegBinReg('?',src,dst2,1);
    DCCDisp_PopReg(src);
    DCCDisp_SccTst(test,utest),test = utest;
-   DCCDisp_SymJcc(DCC_DISP_ICMP_JCC(test),done_sym);
+   DCCDisp_SymJcc(DCC_TEST_NE,done_sym);
    DCCDisp_RegBinReg('?',src,dst,0);
    t_defsym(done_sym);
   } else {
@@ -366,7 +366,7 @@ again:
    val.sa_sym = NULL;
    DCCDisp_CstBinReg('?',&val,dst2,1);
    DCCDisp_SccTst(test,utest),test = utest;
-   DCCDisp_SymJcc(DCC_DISP_ICMP_JCC(test),done_sym);
+   DCCDisp_SymJcc(DCC_TEST_NE,done_sym);
    DCCDisp_RegBinReg('?',src,dst,0);
    t_defsym(done_sym);
   }
@@ -384,7 +384,7 @@ again:
    DCCDisp_RegBinReg('?',src2,dst,1);
    DCCDisp_PopReg(dst);
    DCCDisp_SccTst(test,utest),test = utest;
-   DCCDisp_SymJcc(DCC_DISP_ICMP_JCC(test),done_sym);
+   DCCDisp_SymJcc(DCC_TEST_NE,done_sym);
    DCCDisp_RegBinReg('?',src,dst,0);
    t_defsym(done_sym);
   } else {
@@ -403,7 +403,7 @@ again:
   utest = DCC_TEST_UNSIGNED(test);
   DCCDisp_RegBinReg('?',src2,dst2,1);
   DCCDisp_SccTst(test,utest),test = utest;
-  DCCDisp_SymJcc(DCC_DISP_ICMP_JCC(test),done_sym);
+  DCCDisp_SymJcc(DCC_TEST_NE,done_sym);
   DCCDisp_RegBinReg('?',src,dst,0);
   t_defsym(done_sym);
  }
@@ -431,7 +431,7 @@ DCCDisp_CstIcmpRegs(test_t test, struct DCCSymExpr const *__restrict val,
  utest = DCC_TEST_UNSIGNED(test);
  DCCDisp_CstBinReg('?',&val32,dst2,1);
  DCCDisp_SccTst(test,utest),test = utest;
- DCCDisp_SymJcc(DCC_DISP_ICMP_JCC(test),done_sym);
+ DCCDisp_SymJcc(DCC_TEST_NE,done_sym);
  val32.sa_off = (target_off_t)val->e_int;
  val32.sa_sym = val->e_sym;
  DCCDisp_CstBinReg('?',&val32,dst,1);
