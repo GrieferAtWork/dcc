@@ -465,6 +465,43 @@ DCCSection_Clear(struct DCCSection *__restrict self) {
  }
 }
 
+/* Similar to 'DCCSection_Clear', but only accept data
+ * sections & clear some additional information. */
+PRIVATE void
+DCCSection_Clear2(struct DCCSection *__restrict self) {
+ assert(self);
+ assert(!DCCSection_ISIMPORT(self));
+ DCCSection_Clear(self);
+ /* Delete allocation trackers. */
+ { struct DCCAllocRange *iter,*next;
+   iter = self->sc_dat.sd_alloc;
+   self->sc_dat.sd_alloc = NULL;
+   while (iter) {
+    next = iter->ar_next;
+    free(iter);
+    iter = next;
+   }
+ }
+ /* Delete free section data information. */
+ DCCFreeData_Quit(&self->sc_dat.sd_free);
+ self->sc_dat.sd_free.fd_begin = NULL;
+
+ /* Delete Addr2line debug information. */
+ DCCA2l_Quit(&self->sc_dat.sd_a2l);
+ self->sc_dat.sd_a2l.d_chunka = 0;
+ self->sc_dat.sd_a2l.d_chunkc = 0;
+ self->sc_dat.sd_a2l.d_chunkv = NULL;
+
+#if DCC_CONFIG_HAVE_DRT
+ /* Delete DRT information. */
+ DCCSection_RTQuit(self);
+ self->sc_dat.sd_rt.rs_vaddr          = NULL;
+ self->sc_dat.sd_rt.rs_pagea          = 0;
+ self->sc_dat.sd_rt.rs_pagev          = NULL;
+ self->sc_dat.sd_rt.rs_mtext.fd_begin = NULL;
+#endif /* DCC_CONFIG_HAVE_DRT */
+}
+
 
 /* *** */
 /* SYM */
@@ -2459,7 +2496,7 @@ DCCUnit_AllocSym(void) {
 
 #if DCC_DEBUG
 PUBLIC void DCCUnit_ClearCache(void) {
- DCCSection_Clear(&DCCSection_Abs);
+ DCCSection_Clear2(&DCCSection_Abs);
 }
 #else
 /* Cache allocators. */
@@ -2489,7 +2526,7 @@ PUBLIC void DCCUnit_ClearCache(void) {
   free(iter);
   iter = next;
  }
- DCCSection_Clear(&DCCSection_Abs);
+ DCCSection_Clear2(&DCCSection_Abs);
 }
 #endif
 

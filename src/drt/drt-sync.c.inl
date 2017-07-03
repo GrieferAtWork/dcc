@@ -227,9 +227,9 @@ has_symbol:
      rel_end = rel_iter+relc;
      for (; rel_iter != rel_end; ++rel_iter) {
       if (!DRT_CheckSymbolReferences(rel_iter->r_sym,sec,
-       rel_iter->r_addr,
-       warn_failure))
-       return 0;
+                                     rel_iter->r_addr,
+                                     warn_failure))
+           return 0;
      }
     }
    }
