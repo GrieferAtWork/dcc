@@ -112,6 +112,21 @@ GROUP_BEGIN(grp_main) /* Main options group */
    OPTION_O(OPT_d,OPTION_FLAG_NONE,"d",NULL,NULL) /* -d */
 #endif
 
+   /* Command-line feature detection. */
+   /* Print a '\n' (line-feed) separated list of supported host compiler features,
+    * such as 'drt' for drt-support and the '-d' commandline switch.
+    * Afterwards, exit the application with an integer describing
+    * the amount of supported features (aka. printed lines). */
+   OPTION_A(OPT_enum_feature,OPTION_FLAG_NONE,NULL,"enum-features",NULL) /* --enum-features */
+   OPTION_O(OPT_enum_feature,OPTION_FLAG_NONE,NULL,"enum-feature",NULL) /* --enum-feature */
+   /* '$ dcc --has-feature <name>'
+    * >> If 'name' is a supported feature, write '1' to stdout and exit() with '0'
+    *    If 'name' is omitted, not recognized, or not supported, write '0' to stdout and exit() with '1'.
+    * NOTE: Name recognition ignores string casing.
+    * NOTE: No did-you-mean hint is printed if an unknown specified feature looks similar to a known.
+    * NOTE: No (explicit) terminating line-feed is printed to stdout after either '1' or '0' */
+   OPTION_O(OPT_has_feature,OPTION_FLAG_VALUE,NULL,"has-feature",NULL) /* --has-feature <name> */
+
    OPTION_O(OPT_P,OPTION_FLAG_NONE,"P",NULL,NULL) /* -P */
    OPTION_O(OPT_MMD,OPTION_FLAG_NONE,"MMD",NULL,NULL) /* -MMD */
    OPTION_O(OPT_MM,OPTION_FLAG_NONE,"MM",NULL,NULL) /* -MM */

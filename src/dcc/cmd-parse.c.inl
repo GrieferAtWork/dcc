@@ -34,10 +34,14 @@
 #include "lexer-priv.h"
 #include "cmd.h"
 
-#include <string.h>
-
 #if DCC_TARGET_BIN == DCC_BINARY_PE
 #include "linker-pe.h"
+#endif
+
+#include <stdio.h>
+#include <string.h>
+#if !defined(_MSC_VER) && !defined(__KOS__)
+#include <strings.h>
 #endif
 
 DCC_DECL_BEGIN
@@ -130,10 +134,51 @@ INTDEF size_t /* From 'tpp.c' */
 fuzzy_match(char const *__restrict a, size_t alen,
             char const *__restrict b, size_t blen);
 
+#define MAX_FEATURE_NAME 8
+typedef char host_feature[MAX_FEATURE_NAME];
+PRIVATE host_feature const host_features[] = {
+#if DCC_CONFIG_HAVE_DRT
+ "drt",
+#endif
+ "",
+};
+
+
 #define CMD_ONLY() do{if (!from_cmd) goto illegal; }while(DCC_MACRO_FALSE)
 INTERN void exec_cmd(struct cmd *__restrict c, int from_cmd) {
  char *v = c->c_val;
  switch (c->c_id) {
+
+ /* Feature query/enumeration. */
+ {
+  host_feature const *iter;
+ case OPT_enum_feature:
+  if (!from_cmd) goto illegal;
+  iter = host_features;
+  while (**iter) {
+   printf("%." DCC_PP_STR(MAX_FEATURE_NAME) "s\n",*iter);
+   ++iter;
+  }
+  exit((sizeof(host_features)/sizeof(*host_features))-1);
+ case OPT_has_feature:
+  if (v) {
+   iter = host_features;
+   while (**iter) {
+#if defined(_MSC_VER) || defined(__KOS__)
+    if (!_stricmp(*iter,v))
+#else
+    if (!strcasecmp(*iter,v))
+#endif
+    {
+     printf("1");
+     exit(0);
+    }
+    ++iter;
+   }
+  }
+  printf("0");
+  exit(1);
+ } break;
 
  case OPT_Wl_Bsymbolic: linker.l_flags |= DCC_LINKER_FLAG_SYMBOLIC; break;
  case OPT_Wl_shared:    linker.l_flags |= DCC_LINKER_FLAG_SHARED; break;

@@ -224,24 +224,24 @@ INTERN void dcc_help(char const *subject) {
    fprintf(stderr,"Preprocessor options:\n"
                   INDENT "-trigraphs                  Enable recognition of trigraph character sequences\n"
                   INDENT "-undef                      Disable all builtin macros\n"
-                  INDENT "-P                          Disable emission of #line adjustment directives.\n"
-                  INDENT "-M                          Instead of emitting preprocessor output, emit a make-style list of dependencies.\n"
-                  INDENT "-MM                         Similar to '-M', but don't include system headers.\n"
-                  INDENT "-MD                         Like '-M', but don't disable preprocessing.\n"
-                  INDENT "-MMD                        Like '-MD', but don't disable preprocessing.\n"
-                  INDENT "-MG                         Disable preprocessing, but include missing files as dependencies, assuming they will be generated.\n"
-                  INDENT "-MP                         Emit dummy targets for every dependency.\n"
-                  INDENT "-MF <file>                  Enable dependency tracking and emit its output to <file>, but also preprocess regularly.\n"
-                  INDENT "-MT <target>                Specify the target object name used within the generated make dependency.\n"
-                  INDENT "-MQ <target>                Same as '-MT', but escape characters special to make, such as '$'.\n"
-                  INDENT "--tok                       Outline all tokens using the [...] notation (Default: off).\n"
-                  INDENT "--pp                        Enable preprocess-mode, which emits all tokens separated by '\\0'-bytes.\n"
+                  INDENT "-P                          Disable emission of #line adjustment directives\n"
+                  INDENT "-M                          Instead of emitting preprocessor output, emit a make-style list of dependencies\n"
+                  INDENT "-MM                         Similar to '-M', but don't include system headers\n"
+                  INDENT "-MD                         Like '-M', but don't disable preprocessing\n"
+                  INDENT "-MMD                        Like '-MD', but don't disable preprocessing\n"
+                  INDENT "-MG                         Disable preprocessing, but include missing files as dependencies, assuming they will be generated\n"
+                  INDENT "-MP                         Emit dummy targets for every dependency\n"
+                  INDENT "-MF <file>                  Enable dependency tracking and emit its output to <file>, but also preprocess regularly\n"
+                  INDENT "-MT <target>                Specify the target object name used within the generated make dependency\n"
+                  INDENT "-MQ <target>                Same as '-MT', but escape characters special to make, such as '$'\n"
+                  INDENT "--tok                       Outline all tokens using the [...] notation (Default: off)\n"
+                  INDENT "--pp                        Enable preprocess-mode, which emits all tokens separated by '\\0'-bytes\n"
                   INDENT "                            Enabling this option also disabled SPACE and LF tokens, though\n"
-                  INDENT "                            they can be re-enabled using the -spc and -lf switches.\n"
-                  INDENT "-f[no-]magiclf              Enable/Disable magic linefeeds sometimes used in place of #line (Default: off).\n"
-                  INDENT "-f[(cpp|no)-]line           Enable/Disable emission of #line directives (Default: '-fcpp-line').\n"
-                  INDENT "-f[no-]decode               Enable/Disable decoding of di/tri-graphs, as well as escaped linefeeds in output (Default: on).\n"
-                  INDENT "-f[no-]unify-pragma         Unify all unknown pragmas to use the preprocessor-directive syntax before re-emission (Default: on).\n"
+                  INDENT "                            they can be re-enabled using the -spc and -lf switches\n"
+                  INDENT "-f[no-]magiclf              Enable/Disable magic linefeeds sometimes used in place of #line (Default: off)\n"
+                  INDENT "-f[(cpp|no)-]line           Enable/Disable emission of #line directives (Default: '-fcpp-line')\n"
+                  INDENT "-f[no-]decode               Enable/Disable decoding of di/tri-graphs, as well as escaped linefeeds in output (Default: on)\n"
+                  INDENT "-f[no-]unify-pragma         Unify all unknown pragmas to use the preprocessor-directive syntax before re-emission (Default: on)\n"
                   INDENT "-f[no-]spc                  Enable/Disable SPACE tokens (useful in '--pp'-mode)\n"
                   INDENT "-f[no-]lf                   Enable/Disable LF tokens (useful in '--pp'-mode)\n"
                   INDENT "-f[no-]comments             Enable/Disable COMMENT tokens (useful in '--pp'-mode)\n"
@@ -315,17 +315,24 @@ INTERN void dcc_help(char const *subject) {
   fprintf(stderr,"Unknown help subject: '%s'\n",subject);
   goto done;
  }
- fprintf(stderr,"Usage: %s [options...] [-o outfile] [-|infile...|-llib...]\n"
+ fprintf(stderr,"Usage: %s [options...] [-o outfile] [-|INFILE...|-lLIB...]\n"
+#if DCC_CONFIG_HAVE_DRT
+                "       %s [options...] [-d] [-|INFILE...|-lLIB...]\n"
+#endif /* DCC_CONFIG_HAVE_DRT */
+                "       %s --has-feature FEATURE\n"
                 "options:\n"
+#if DCC_CONFIG_HAVE_DRT
+                INDENT "-d                          Directly execute generated assembly asynchronously\n"
+#endif /* DCC_CONFIG_HAVE_DRT */
                 INDENT "-c                          Create a relocatable object file instead of a binary\n"
                 INDENT "-E                          Enable preprocessor mode (s.a.: 'dcc --help pp')\n"
                 INDENT "-o <name>                   Redirect output to a given file (defauls to '" DCC_OUTFILE_STDEXE "'/'" DCC_OUTFILE_STDOBJ "')\n"
                 INDENT "-On                         Set the level of compiler/linker optimizations to 'n'\n"
                 INDENT "-shared                     Create a shared library instead of an executable\n"
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
-                INDENT "-symbolic                   Bind global references to those from shared libraries.\n"
+                INDENT "-symbolic                   Bind global references to those from shared libraries\n"
 #else
-                INDENT "-symbolic                   Ignored by the target binary.\n"
+                INDENT "-symbolic                   Ignored by the target binary\n"
 #endif
                 INDENT "-nostdinc                   Don't include standard include/library paths\n"
                 INDENT "-nostdlib                   Don't link against standard libraries\n"
@@ -359,10 +366,17 @@ INTERN void dcc_help(char const *subject) {
                 INDENT "-std=name                   Set the effective C dialect to 'name' (s.a.: '--help std')\n"
                 INDENT "-traditional[-cpp]          Emulate traditional C-compiler behavior, not warning about old-style\n"
                 INDENT "                            functions and accepting old-style spelling of inplace operation tokens\n"
-                "-:      Use <stdin> as input source file\n"
-                "infile: A list of input source files intermixed with object files\n"
-                "-llib:  Add 'lib' as a dynamic library dependency\n"
-         ,"dcc");
+                INDENT "--enum-feature(s)           Enumerate all host features supported by DCC\n"
+                INDENT "--has-feature <name>        Check host feature 'name' and print '1' + exit with '0' when found, or the reverse otherwise\n"
+                "-:       Use <stdin> as input source file\n"
+                "INFILE:  A list of input source files intermixed with object files\n"
+                "LIB:     Add 'LIB' as a dynamic library dependency\n"
+                "FEATURE: Name of a feature to query (Enumerate known with 'dcc --enum-features')\n"
+               ,"dcc"
+#if DCC_CONFIG_HAVE_DRT
+               ,"dcc"
+#endif /* DCC_CONFIG_HAVE_DRT */
+               ,"dcc");
 #undef INDENT
 done:
  fflush(stderr);
