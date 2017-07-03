@@ -74,9 +74,9 @@ typedef uint8_t opflag_t;
 #endif
 
 #if SMALL_OPFLAG
-#   define F_GET(group,op) (group[(op)/2] >> ((op)%2)*8)
+#   define F_GET(group,op) ((group[(op)/2] >> ((op)%2)*8)&0xf)
 #else
-#   define F_GET(group,op)  group[op]
+#   define F_GET(group,op)   group[op]
 #endif
 
 
