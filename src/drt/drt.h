@@ -29,7 +29,8 @@
 
 #ifdef _MSC_VER
 #   include <intrin.h>
-#   define MEMORY_BARRIER() _ReadWriteBarrier()
+#   pragma intrinsic(_ReadWriteBarrier)
+#   define MEMORY_BARRIER   _ReadWriteBarrier
 #else
 #   define MEMORY_BARRIER() __asm__ __volatile__("" : : : "memory");
 #endif
@@ -82,15 +83,14 @@ INTDEF void
 DRT_FaultRel(uint8_t DRT_USER *__restrict uaddr,
              struct DCCRel const *__restrict rel);
 
+#define DRT_U_STACKRESERVE 0x1000 /* Amount of user-stack bytes to reserve for DRT itself. */
+#define DRT_U_FILLER       0xf4   /* hlt - Will raise a #GP because DCC isn't meant to run in kernel space. */
 
 /* User-code functions.
  * All of these functions can be called either
  * directly, or indirectly from DRT user-space. */
 
-#define DRT_U_STACKRESERVE 0x1000 /* Amount of user-stack bytes to reserve for DRT itself. */
-#define DRT_U_FILLER       0xf4   /* hlt - Will raise a #GP because DCC isn't meant to run in kernel space. */
-
-
+/* Signal an event 'code' and wait for its completion. */
 INTDEF void DRT_USER DRT_U_WaitEvent(uint32_t code);
 
 /* Fetch data & relocations within the given address range.

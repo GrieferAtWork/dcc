@@ -1426,10 +1426,12 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLAnd(void) {
 #define F_CFALSE 0x01 /* Found a constant-false operand (meaning that all following are unreachable). */
 #define F_RTEVAL 0x02 /* Found an operand that can only be evaluated at runtime. */
 #define F_NORET  0x04 /* Found an operand that doesn't return (meaning that all following are unreachable). */
-#define F_ANORET 0x08 /* Set when a noreturn operand is encountered when neither 'F_RTEVAL' nor 'F_CFALSE' are set. (With this set, the land doesn't return, either) */
+#define F_ANORET 0x08 /* Set when a noreturn operand is encountered when neither 'F_RTEVAL' nor 'F_CFALSE' are set. (With this set, the l-and doesn't return, either) */
   int flags = 0;
   if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD)
       flags |= (F_NORET|F_ANORET);
+  else if (!visconst_bool())
+      flags |= (F_RTEVAL);
   if (!sym) return;
   do {
    last_text_offset = t_addr;
@@ -1529,10 +1531,12 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprLOr(void) {
 #define F_CTRUE  0x01 /* Found a constant-true operand (meaning that all following are unreachable). */
 #define F_RTEVAL 0x02 /* Found an operand that can only be evaluated at runtime. */
 #define F_NORET  0x04 /* Found an operand that doesn't return (meaning that all following are unreachable). */
-#define F_ANORET 0x08 /* Set when a noreturn operand is encountered when neither 'F_RTEVAL' nor 'F_CFALSE' are set. (With this set, the land doesn't return, either) */
+#define F_ANORET 0x08 /* Set when a noreturn operand is encountered when neither 'F_RTEVAL' nor 'F_CTRUE' are set. (With this set, the l-or doesn't return, either) */
   int flags = 0;
   if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD)
       flags |= (F_NORET|F_ANORET);
+  else if (!visconst_bool())
+      flags |= (F_RTEVAL);
   if (!sym) return;
   do {
    last_text_offset = t_addr;

@@ -645,7 +645,7 @@ post:
 #undef EVENT
 
 PUBLIC int DCC_ATTRIBUTE_FASTCALL
-DRT_H_SyncAll(DCC(target_int_t) *exitcode) {
+DRT_H_SyncAll(target_int_t *exitcode) {
  int error;
  assert(drt.rt_flags&DRT_FLAG_STARTED);
  drt.rt_flags |= DRT_FLAG_JOINING;
@@ -670,6 +670,13 @@ DRT_H_SyncAll(DCC(target_int_t) *exitcode) {
    *exitcode = code;
   }
 #else
+  {
+   void *code;
+   if (pthread_join(drt.rt_thread,&code) != 0)
+       code = (void *)(uintptr_t)-1;
+   if (exitcode)
+      *exitcode = (target_int_t)code;
+  }
 #endif
  } else {
   drt.rt_flags &= ~(DRT_FLAG_JOINING);

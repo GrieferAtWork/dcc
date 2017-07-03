@@ -19,6 +19,29 @@
 #ifndef GUARD_DCC_UNIT_MERGE_C
 #define GUARD_DCC_UNIT_MERGE_C 1
 
+/* This file houses DCC's implementation of what
+ * ELF commonly refers to as the 'LINK EDITOR'.
+ * 
+ * Basically, code below is capable of merging two
+ * compilation units together, correctly merging/linking
+ * symbols while considering their visibility to each other,
+ * concating section data, as well as generating new
+ * relocations at the appropriate memory locations.
+ * 
+ * Special care is taken to properly handle import symbols
+ * that would otherwise remain undefined, as well as properly
+ * re-link PE-indirection ('__imp_*') symbols to point at the
+ * proper implementation symbol.
+ *
+ * Alias symbols are relinked as well, essentially implementing
+ * the back-end of compile-time symbol hard-links (something
+ * that not even GCC is capable of doing)
+ *
+ * HINT: Since only one unit can be active at once (the current unit),
+ *       use of functions below relies on the caller providing an
+ *       appropriate unit to be merged with (s.a.: '/include/dcc/unit.h').
+ */
+
 #define DCC(x) x
 
 #include <dcc/common.h>
@@ -38,12 +61,12 @@
 #include "linker-pe.h"
 #endif
 
-
 #ifdef _MSC_VER
 #include <malloc.h>
 #else
 #include <alloca.h>
 #endif
+
 
 DCC_DECL_BEGIN
 
@@ -137,6 +160,8 @@ PRIVATE void DCCSection_InsAlloc(struct DCCSection *__restrict self,
  }
 }
 
+/* Enable some special-case optimizations
+ * to speed up unit mering considerably. */
 #define MERGE_OPTIMIZE_EMPTY   1
 #define MERGE_OPTIMIZE_REVERSE 1
 
@@ -572,10 +597,12 @@ merge_symflags:
            memcmp(dst_sym->sy_name->k_name,"main",
                   4*sizeof(char)) != 0) {
         /* TODO: Display A2L file&line information. */
-        WARN(W_LINKER_REDECLARATION_DIFFERENT_VISIBILITY,
-             dst_sym->sy_name,
-             IS_REV ? newvis : oldvis,
-             IS_REV ? oldvis : newvis);
+        if (IS_REV)
+             WARN(W_LINKER_REDECLARATION_DIFFERENT_VISIBILITY,
+                  dst_sym->sy_name,newvis,oldvis);
+        else WARN(W_LINKER_REDECLARATION_DIFFERENT_VISIBILITY,
+                  dst_sym->sy_name,oldvis,newvis);
+
        }
        dst_sym->sy_flags &= ~(DCC_SYMFLAG_VISIBILITY);
        dst_sym->sy_flags |= DCC_SYMFLAG_VISCOMMON(oldvis,newvis);
@@ -672,15 +699,15 @@ dont_redef:
    /* Adjust disposition relocations (Must subtract 'merge_base'). */
    switch (reldst->r_type) {
 #if DCC_TARGET_HASM(M_I386)
-    case R_386_PC8:     *(int8_t  *)reldata -= (int8_t )merge_base; break;
-    case R_386_PC16:    *(int16_t *)reldata -= (int16_t)merge_base; break;
-    case R_386_PC32:    *(int32_t *)reldata -= (int32_t)merge_base; break;
+   case R_386_PC8:     *(int8_t  *)reldata -= (int8_t )merge_base; break;
+   case R_386_PC16:    *(int16_t *)reldata -= (int16_t)merge_base; break;
+   case R_386_PC32:    *(int32_t *)reldata -= (int32_t)merge_base; break;
 #elif DCC_TARGET_HASF(F_X86_64)
-    case R_X86_64_PC8:  *(int8_t  *)reldata -= (int8_t )merge_base; break;
-    case R_X86_64_PC16: *(int16_t *)reldata -= (int16_t)merge_base; break;
-    case R_X86_64_PC32: *(int32_t *)reldata -= (int32_t)merge_base; break;
+   case R_X86_64_PC8:  *(int8_t  *)reldata -= (int8_t )merge_base; break;
+   case R_X86_64_PC16: *(int16_t *)reldata -= (int16_t)merge_base; break;
+   case R_X86_64_PC32: *(int32_t *)reldata -= (int32_t)merge_base; break;
 #endif
-    default: break;
+   default: break;
    }
   }
   free(rel_vec); /* Inherit _all_ symbols. */

@@ -106,10 +106,13 @@ int main(int argc, char *argv[]) {
 
  x = 10,y = 20,z = 1;
  /* Check simple runtime-evaluation */
+ __asm__("nop\nnop\nnop\n");
  ( (x != y)) || nrt();
+ __asm__("nop\nnop\nnop\n");
  (!(x == y)) || nrt();
  ( (x == y)) && nrt();
  (!(x != y)) && nrt();
+
 
  /* Check advanced runtime-evaluation */
  ( (z == (x != y))) || nrt();
@@ -120,7 +123,7 @@ int main(int argc, char *argv[]) {
  (!(z == (x == y))) || nrt();
  ( (z == (x == y))) && nrt();
  (!(z != (x == y))) && nrt();
-
+ 
  /* Check conditional reachability using the ?: operator. */
  B { 1 ? yyy() : nnn(); yyy(); }
  B { 0 ? nnn() : yyy(); yyy(); }

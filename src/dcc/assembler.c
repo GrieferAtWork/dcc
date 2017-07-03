@@ -964,6 +964,7 @@ PRIVATE struct TPPKeyword *
 lookup_asm_opkwd(char const *__restrict name, size_t size) {
  struct TPPKeyword *result;
  result = TPPLexer_LookupKeyword(name,size,0);
+ /* Extension for case-insensitive asm instructions. */
  if ((!result || TPP_ISUSERKEYWORD(result->k_id)) &&
        HAS(EXT_ASM_CASE_INSENSITIVE)) {
   /* Search again, but with a lower-case opcode string. */
@@ -1032,7 +1033,6 @@ check_instr_name:
      instr_name < DCC_OPCODE_FIRST+X86_OPCODE_COUNT) {
   ops = x86_opcodes[instr_name-DCC_OPCODE_FIRST];
  } else if (instr_kwd && !size_override) { /* Make sure this is the first pass. */
-  /* TODO: Extension for case-insensitive asm instructions. */
   size_t suffix_length = 1;
   char last_ch = instr_kwd->k_name[instr_kwd->k_size-1];
        if (last_ch == 'b') size_override = 1;
