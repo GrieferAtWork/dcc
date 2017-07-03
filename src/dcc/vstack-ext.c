@@ -21,13 +21,15 @@
 #define _GNU_SOURCE /* enable 'memrchr' */
 
 #include <dcc/common.h>
-#include <dcc/vstack.h>
-#include <dcc/unit.h>
-#include <dcc/gen.h>
-#include <dcc/type.h>
-#include <dcc/compiler.h>
-#include <dcc/linker.h>
 #include <dcc/byteorder.h>
+#include <dcc/compiler.h>
+#include <dcc/gen.h>
+#include <dcc/linker.h>
+#include <dcc/target-crt.h>
+#include <dcc/target.h>
+#include <dcc/type.h>
+#include <dcc/unit.h>
+#include <dcc/vstack.h>
 
 DCC_DECL_BEGIN
 
@@ -102,9 +104,9 @@ pe_alloca:
       !DCCVStack_GetRegInuse(DCC_RR_XAX)) {
    DCCStackValue_LoadExplicit(vbottom,DCC_RR_XAX);
    eax_mode = 1;
-   sym = DCCUnit_NewSyms("__pe_alloca_eax",DCC_SYMFLAG_HIDDEN);
+   sym = DCCUnit_NewSyms(DCC_TARGET_CRT_ALLOCA_EAX,DCC_SYMFLAG_HIDDEN);
   } else {
-   sym = DCCUnit_NewSyms("__pe_alloca",DCC_SYMFLAG_HIDDEN);
+   sym = DCCUnit_NewSyms(DCC_TARGET_CRT_ALLOCA,DCC_SYMFLAG_HIDDEN);
   }
   sym ? DCCVStack_PushSym_stdcall_vpfun(sym) : vpushv();
   vswap();
@@ -374,7 +376,7 @@ fix_stack:
 #endif
  } else {
   struct DCCSym *funsym;
-  funsym = DCCUnit_NewSyms("memcmp",DCC_SYMFLAG_NONE);
+  funsym = DCCUnit_NewSyms(DCC_TARGET_RT_NAME_MEMCMP,DCC_SYMFLAG_NONE);
   if (funsym) DCCVStack_PushSym_ifun(funsym);
   else vpushv(); /* a, b, size, memcmp */
   vlrot(4);      /* memcmp, a, b, size */
@@ -420,7 +422,7 @@ DCCVStack_Memset(void) {
   vpop(1);
  } else {
   struct DCCSym *funsym;
-  funsym = DCCUnit_NewSyms("memset",DCC_SYMFLAG_NONE);
+  funsym = DCCUnit_NewSyms(DCC_TARGET_RT_NAME_MEMSET,DCC_SYMFLAG_NONE);
   if (funsym) DCCVStack_PushSym_vpfun(funsym);
   else vpushv(); /* dst, byte, size, memset */
   vlrot(4);      /* memset, dst, byte, size */
@@ -485,7 +487,15 @@ fix_stack:
  } else {
   struct DCCSym *funsym;
 call_extern:
-  funsym = DCCUnit_NewSyms(may_overlap ? "memmove" : "memcpy",DCC_SYMFLAG_NONE);
+#if DCC_TARGET_RT_HAVE_MEMCPY
+  funsym = DCCUnit_NewSyms(may_overlap
+                           ? DCC_TARGET_RT_NAME_MEMMOVE
+                           : DCC_TARGET_RT_NAME_MEMCPY,
+                           DCC_SYMFLAG_NONE);
+#else
+  funsym = DCCUnit_NewSyms(DCC_TARGET_RT_NAME_MEMMOVE,
+                           DCC_SYMFLAG_NONE);
+#endif
   if (funsym) DCCVStack_PushSym_vpfun(funsym);
   else vpushv(); /* dst, src, size, memcpy */
   vlrot(4);      /* memcpy, dst, src, size */
@@ -528,7 +538,8 @@ DCCVStack_Scas_Strnlen(uint32_t flags) {
  /* Generate a str(n)len/str(n)end function calls. */
  if (flags&DCC_VSTACK_SCAS_FLAG_NULL) return 0;
  if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
-  if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STRNLEN,"strnlen")) != NULL) {
+  if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STRNLEN,
+                        DCC_TARGET_RT_NAME_STRNLEN)) != NULL) {
    vswap(); /* ptr, size, char */
    vpop(1); /* ptr, size */
    DCCVStack_PushSym_szfun(funsym);
@@ -538,7 +549,8 @@ DCCVStack_Scas_Strnlen(uint32_t flags) {
    return 1;
   }
  } else {
-  if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STRNEND,"strnend")) != NULL) {
+  if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STRNEND,
+                        DCC_TARGET_RT_NAME_STRNEND)) != NULL) {
    /* The symbol has been declared, so we assume it exists! */
    vswap(); /* ptr, size, char */
    vpop(1); /* ptr, size */
@@ -556,7 +568,8 @@ DCCVStack_Scas_Strlen(uint32_t flags, target_siz_t ct_size) {
  struct DCCSym *funsym;
  if (ct_size == (target_siz_t)-1) {
   if (flags&DCC_VSTACK_SCAS_FLAG_SIZE) {
-   if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STRLEN,"strlen")) != NULL) {
+   if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STRLEN,
+                         DCC_TARGET_RT_NAME_STRLEN)) != NULL) {
     vswap(); /* ptr, size, char */
     vpop(1); /* ptr, size */
     /* Maxlen (aka. unlimited search --> strlen) */
@@ -568,7 +581,8 @@ DCCVStack_Scas_Strlen(uint32_t flags, target_siz_t ct_size) {
     return 1;
    }
   } else {
-   if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STREND,"strend")) != NULL) {
+   if ((funsym = GET_SYM(DCC_TARGET_RT_HAVE_STREND,
+                         DCC_TARGET_RT_NAME_STREND)) != NULL) {
     /* The symbol has been declared, so we assume it exists! */
     vswap(); /* ptr, size, char */
     vpop(1); /* ptr, size */
@@ -748,13 +762,13 @@ no_compiletime:
    if (!(flags&DCC_VSTACK_SCAS_FLAG_REV)) {
     if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
        ? (        (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
-       ? GET_SYM(DCC_TARGET_RT_HAVE_STROFF,"stroff")
+       ? GET_SYM(DCC_TARGET_RT_HAVE_STROFF,DCC_TARGET_RT_NAME_STROFF)
        : (        (flags&DCC_VSTACK_SCAS_FLAG_NULL)
-       ? GET_SYM(DCC_TARGET_RT_HAVE_STRCHR,"strchr")
-       : GET_SYM(DCC_TARGET_RT_HAVE_STRCHRNUL,"strchrnul")))
+       ? GET_SYM(DCC_TARGET_RT_HAVE_STRCHR,DCC_TARGET_RT_NAME_STRCHR)
+       : GET_SYM(DCC_TARGET_RT_HAVE_STRCHRNUL,DCC_TARGET_RT_NAME_STRCHRNUL)))
        : (        (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
-       ? GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMLEN,"rawmemlen")
-       : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMCHR,"rawmemchr"))) != NULL) {
+       ? GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMLEN,DCC_TARGET_RT_NAME_RAWMEMLEN)
+       : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMCHR,DCC_TARGET_RT_NAME_RAWMEMCHR))) != NULL) {
 call_inf_fun:
      vpop(1);  /* ptr, char */
      (flags&DCC_VSTACK_SCAS_FLAG_SIZE) ? DCCVStack_PushSym_szfun(funsym) :
@@ -767,13 +781,13 @@ call_inf_fun:
    } else {
     if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
        ? (        (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
-       ? GET_SYM(DCC_TARGET_RT_HAVE_STRROFF,"strroff")
+       ? GET_SYM(DCC_TARGET_RT_HAVE_STRROFF,DCC_TARGET_RT_NAME_STRROFF)
        : (        (flags&DCC_VSTACK_SCAS_FLAG_NULL)
-       ? GET_SYM(DCC_TARGET_RT_HAVE_STRRCHR,"strrchr")
-       : GET_SYM(DCC_TARGET_RT_HAVE_STRRCHRNUL,"strrchrnul")))
+       ? GET_SYM(DCC_TARGET_RT_HAVE_STRRCHR,DCC_TARGET_RT_NAME_STRRCHR)
+       : GET_SYM(DCC_TARGET_RT_HAVE_STRRCHRNUL,DCC_TARGET_RT_NAME_STRRCHRNUL)))
        : (        (flags&DCC_VSTACK_SCAS_FLAG_SIZE)
-       ? GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMRLEN,"rawmemrlen")
-       : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMRCHR,"rawmemrchr"))) != NULL) {
+       ? GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMRLEN,DCC_TARGET_RT_NAME_RAWMEMRLEN)
+       : GET_SYM(DCC_TARGET_RT_HAVE_RAWMEMRCHR,DCC_TARGET_RT_NAME_RAWMEMRCHR))) != NULL) {
      goto call_inf_fun;
     }
    }
@@ -791,11 +805,11 @@ call_inf_fun:
   /* Try to call memlen/memrlen */
   if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
      ? (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
-     ? GET_SYM(DCC_TARGET_RT_HAVE_STRNOFF,"strnoff")
-     : GET_SYM(DCC_TARGET_RT_HAVE_STRNROFF,"strnroff"))
+     ? GET_SYM(DCC_TARGET_RT_HAVE_STRNOFF,DCC_TARGET_RT_NAME_STRNOFF)
+     : GET_SYM(DCC_TARGET_RT_HAVE_STRNROFF,DCC_TARGET_RT_NAME_STRNROFF))
      : (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
-     ? GET_SYM(DCC_TARGET_RT_HAVE_MEMLEN,"memlen")
-     : GET_SYM(DCC_TARGET_RT_HAVE_MEMRLEN,"memrlen"))) != NULL) {
+     ? GET_SYM(DCC_TARGET_RT_HAVE_MEMLEN,DCC_TARGET_RT_NAME_MEMLEN)
+     : GET_SYM(DCC_TARGET_RT_HAVE_MEMRLEN,DCC_TARGET_RT_NAME_MEMRLEN))) != NULL) {
    DCCVStack_PushSym_szfun(funsym);
              /* ptr, char, size, mem(r)len */
    vlrot(4); /* mem(r)len, ptr, char, size */
@@ -807,11 +821,11 @@ call_inf_fun:
   /* Try to call memend/memrend */
   if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
      ? (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
-     ? GET_SYM(DCC_TARGET_RT_HAVE_STRNCHR,"strnchr")
-     : GET_SYM(DCC_TARGET_RT_HAVE_STRNRCHR,"strnrchr"))
+     ? GET_SYM(DCC_TARGET_RT_HAVE_STRNCHR,DCC_TARGET_RT_NAME_STRNCHR)
+     : GET_SYM(DCC_TARGET_RT_HAVE_STRNRCHR,DCC_TARGET_RT_NAME_STRNRCHR))
      : (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
-     ? DCCUnit_NewSyms("memchr",DCC_SYMFLAG_NONE)
-     : DCCUnit_NewSyms("memrchr",DCC_SYMFLAG_NONE))) != NULL) {
+     ? DCCUnit_NewSyms(DCC_TARGET_RT_NAME_MEMCHR,DCC_SYMFLAG_NONE)
+     : DCCUnit_NewSyms(DCC_TARGET_RT_NAME_MEMRCHR,DCC_SYMFLAG_NONE))) != NULL) {
    DCCVStack_PushSym_vpfun(funsym);
              /* ptr, char, size, mem(r)end */
    vlrot(4); /* mem(r)len, ptr, char, size */
@@ -823,11 +837,11 @@ call_inf_fun:
   /* Try to call memend/memrend */
   if ((funsym = (flags&DCC_VSTACK_SCAS_FLAG_NUL)
      ? (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
-     ? GET_SYM(DCC_TARGET_RT_HAVE_STRNCHRNUL,"strnchrnul")
-     : GET_SYM(DCC_TARGET_RT_HAVE_STRNRCHRNUL,"strnrchrnul"))
+     ? GET_SYM(DCC_TARGET_RT_HAVE_STRNCHRNUL, DCC_TARGET_RT_NAME_STRNCHRNUL)
+     : GET_SYM(DCC_TARGET_RT_HAVE_STRNRCHRNUL,DCC_TARGET_RT_NAME_STRNRCHRNUL))
      : (        (flags&DCC_VSTACK_SCAS_FLAG_REV)
-     ? GET_SYM(DCC_TARGET_RT_HAVE_MEMEND,"memend")
-     : GET_SYM(DCC_TARGET_RT_HAVE_MEMREND,"memrend"))) != NULL) {
+     ? GET_SYM(DCC_TARGET_RT_HAVE_MEMEND, DCC_TARGET_RT_NAME_MEMEND)
+     : GET_SYM(DCC_TARGET_RT_HAVE_MEMREND,DCC_TARGET_RT_NAME_MEMREND))) != NULL) {
    DCCVStack_PushSym_vpfun(funsym);
              /* ptr, char, size, mem(r)end */
    vlrot(4); /* mem(r)len, ptr, char, size */
@@ -838,8 +852,8 @@ call_inf_fun:
 
  if (flags&DCC_VSTACK_SCAS_FLAG_NUL) {
   funsym = (flags&DCC_VSTACK_SCAS_FLAG_REV)
-          ? GET_SYM(DCC_TARGET_RT_HAVE_STRNCHR,"strnchr")
-          : GET_SYM(DCC_TARGET_RT_HAVE_STRNRCHR,"strnrchr");
+          ? GET_SYM(DCC_TARGET_RT_HAVE_STRNCHR, DCC_TARGET_RT_NAME_STRNCHR)
+          : GET_SYM(DCC_TARGET_RT_HAVE_STRNRCHR,DCC_TARGET_RT_NAME_STRNRCHR);
   if (!funsym) {
    /* Manually call strnlen & use its return value as minimum operand. */
    /* >> strnchr(p,c,s); --> memchr(p,c,strnlen(p,s)); */
@@ -854,8 +868,10 @@ call_inf_fun:
   }
  } else {
   /* Fallback: Call memchr/memrchr */
-  funsym = DCCUnit_NewSyms((flags&DCC_VSTACK_SCAS_FLAG_REV) ?
-                           "memrchr" : "memchr",DCC_SYMFLAG_NONE);
+  funsym = DCCUnit_NewSyms((flags&DCC_VSTACK_SCAS_FLAG_REV)
+                           ? DCC_TARGET_RT_NAME_MEMRCHR
+                           : DCC_TARGET_RT_NAME_MEMCHR,
+                           DCC_SYMFLAG_NONE);
  }
  /* Generate with inline code calling either 'memchr' or 'memrchr'
   * NOTE: This is why DCC assumes that the runtime be implementing at least these! */
@@ -1039,8 +1055,8 @@ PUBLIC void DCC_VSTACK_CALL DCCVStack_Strcpy(int append) {
   }
 no_const_src:
   if (maxlen == (size_t)-1) {
-   funsym = append ? GET_SYM(DCC_TARGET_RT_HAVE_STRCAT,"strcat")
-                   : GET_SYM(DCC_TARGET_RT_HAVE_STRCPY,"strcpy");
+   funsym = append ? GET_SYM(DCC_TARGET_RT_HAVE_STRCAT,DCC_TARGET_RT_NAME_STRCAT)
+                   : GET_SYM(DCC_TARGET_RT_HAVE_STRCPY,DCC_TARGET_RT_NAME_STRCPY);
    if (funsym) {
     vpop(1);
     funsym ? DCCVStack_PushSym_cpfun(funsym)
@@ -1053,7 +1069,9 @@ no_const_src:
  }
 default_fallback:
  /* Fallback: Call strncpy/strncat */
- funsym = DCCUnit_NewSyms(append ? "strncat" : "strncpy",
+ funsym = DCCUnit_NewSyms(append
+                          ? DCC_TARGET_RT_NAME_STRNCAT
+                          : DCC_TARGET_RT_NAME_STRNCPY,
                           DCC_SYMFLAG_DEFAULT);
  funsym ? DCCVStack_PushSym_cpfun(funsym)
         : vpushv(); /* dst, src, max, strncpy */

@@ -29,6 +29,27 @@ DCC_DECL_BEGIN
 
 PRIVATE struct DCCSymAddr const symaddr_zero = {0,NULL};
 
+/* TODO: Add optimizations for special cases:
+ * >> uint32_t a = (uint32_t)0xff;
+ * >> assert(a != (int8_t)a);
+ * ASM:
+ * >>    movl    a, %eax
+ * >>    movsxbl a, %ecx
+ * >>    cmp     %eax, %ecx
+ * Currently (very confusing & inefficient, but any size combination):
+ * >>    mov    a,    %al
+ * >>    sar    $0x7, %al
+ * >>    cbtw   // Same as 'movsxbw %al, %ax'
+ * >>    cmp    %ax,  a+2
+ * >>    jne    1f
+ * >>    cmp    %al,  a+1
+ * >>    jne    1f
+ * >>    mov    a,    %al
+ * >>    cmp    %al,  a
+ * >>1:
+ */
+
+
 PUBLIC test_t
 DCCDisp_MemIcmpMem(test_t test,
                    struct DCCMemLoc const *__restrict src, target_siz_t src_bytes, int src_unsigned,
@@ -69,8 +90,8 @@ again:
       if (max_part_size >= 4) rc_part_size = 4;
  else if (max_part_size >= 2) rc_part_size = 2;
  else                         rc_part_size = 1;
- used_src = *src,used_src.ml_off += (common_size+uncommon_size);
- used_dst = *dst,used_dst.ml_off += (common_size+uncommon_size);
+ used_src = *src;
+ used_dst = *dst;
  temp_storage = DCC_RC_CONST;
  uncommon_sign = DCC_RC_CONST;
  if (src_bytes && dst_bytes) {
@@ -98,17 +119,19 @@ again:
    if (uncommon_size < 2) uncommon_sign &= ~(DCC_RC_I16);
    assert((uncommon_sign&DCC_RC_MASK) != 0);
    if (uncommon_sign_kind == 1) {
-    --used_src.ml_off;
+    used_src.ml_off += (src_bytes-1);
     DCCDisp_MemSignExtendReg(&used_src,uncommon_sign);
-    ++used_src.ml_off;
+    used_src.ml_off -= (src_bytes-1);
    } else {
     assert(uncommon_sign_kind == 2);
-    --used_dst.ml_off;
+    used_dst.ml_off += (dst_bytes-1);
     DCCDisp_MemSignExtendReg(&used_dst,uncommon_sign);
-    ++used_dst.ml_off;
+    used_dst.ml_off -= (dst_bytes-1);
    }
   }
  }
+ used_src.ml_off += (common_size+uncommon_size);
+ used_dst.ml_off += (common_size+uncommon_size);
  while (uncommon_size) {
   part_size = uncommon_size;
   if (part_size > rc_part_size)

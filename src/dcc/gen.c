@@ -450,8 +450,8 @@ asm_modmem(uint8_t group, struct DCCMemLoc const *__restrict ml) {
   if (rm_reg == MODRM_SIBREGISTER) {
    /* Add the SIB byte. */
    t_putb((uint8_t)(MODRM_MOD(0)| /* shift */
-                      MODRM_REG(MODRM_SIBREGISTER)| /* No index */
-                      MODRM_RM(rm_reg)));
+                    MODRM_REG(MODRM_SIBREGISTER)| /* No index */
+                    MODRM_RM(rm_reg)));
   }
   /* add offset */
        if (mod == MODRM_MOD(B(01))) t_putb((uint8_t)ml->ml_off);

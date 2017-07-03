@@ -2415,8 +2415,10 @@ DCCStackValue_Cast(struct DCCStackValue *__restrict self,
    /* TODO: Cast to/from/between floating point types. */
   }
   /* Handle any other types (such as 'void' or 'auto') as int. */
-  if (to >= DCCTYPE_FLOAT) to = DCCTYPE_INT;
-  if (tn >= DCCTYPE_FLOAT) tn = DCCTYPE_INT;
+       if (to == DCCTYPE_BOOL)  to = DCCTYPE_IBN(DCC_TARGET_SIZEOF_BOOL);
+  else if (to >= DCCTYPE_FLOAT) to = DCCTYPE_INT;
+       if (tn == DCCTYPE_BOOL)  tn = DCCTYPE_IBN(DCC_TARGET_SIZEOF_BOOL);
+  else if (tn >= DCCTYPE_FLOAT) tn = DCCTYPE_INT;
   to &= ~(DCCTYPE_UNSIGNED);
   tn &= ~(DCCTYPE_UNSIGNED);
   /* Special case: No change in size. */

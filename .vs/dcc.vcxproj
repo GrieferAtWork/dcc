@@ -53,6 +53,7 @@
     <ClInclude Include="..\include\dcc\linker.h" />
     <ClInclude Include="..\include\dcc\preprocessor.h" />
     <ClInclude Include="..\include\dcc\stream.h" />
+    <ClInclude Include="..\include\dcc\target-crt.h" />
     <ClInclude Include="..\include\dcc\target.h" />
     <ClInclude Include="..\include\dcc\type.h" />
     <ClInclude Include="..\include\dcc\unit.h" />

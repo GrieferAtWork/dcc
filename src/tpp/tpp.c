@@ -3811,6 +3811,8 @@ PUBLIC int TPPLexer_Init(struct TPPLexer *__restrict self) {
         sizeof(default_warnings_state) <= TPP_OFFSETAFTER(struct TPPWarningState,ws_padding));
  assert(sizeof(default_extensions_state) >= TPP_EXTENSIONS_BITSETSIZE &&
         sizeof(default_extensions_state) <= TPP_OFFSETAFTER(struct TPPExtState,es_padding));
+#if defined(__DCC_VERSION__) && __DCC_INDIRECTION__ > __DCC_VERSION__
+#endif
  memcpy(self->l_extensions.es_bitset,&default_extensions_state,TPP_EXTENSIONS_BITSETSIZE);
  memcpy(self->l_warnings.w_basestate.ws_state,&default_warnings_state,TPP_WARNING_BITSETSIZE);
  memset(&self->l_callbacks,0,sizeof(struct TPPCallbacks));

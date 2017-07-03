@@ -117,7 +117,7 @@ __IMP __WUNUSED size_t (strnlen)(char const *__str, size_t __max_chars);
 __IMP __WUNUSED void *(memrchr)(void const *__ptr, int __byte, size_t __max_bytes);
 __IMP __WUNUSED void *(rawmemchr)(const void *__ptr, int __byte)
 #if defined(__CRT_KOS)
-	__asm__("umemend");
+	__asm__("_umemend");
 #endif
 ;
 #endif
@@ -128,9 +128,12 @@ __IMP __WUNUSED void *(rawmemchr)(const void *__ptr, int __byte)
 #endif
 
 #if defined(__USE_MISC) || defined (__USE_XOPEN)
-__IMP __CRT_UNSUPPORTED_KOS
-void *(memccpy)(void *__restrict __dst, void const *__restrict __src,
-                int __end_byte, size_t __max_bytes);
+__IMP void *(memccpy)(void *__restrict __dst, void const *__restrict __src,
+                      int __end_byte, size_t __max_bytes)
+#ifdef __CRT_MSVC
+    __asm__("_memccpy")
+#endif
+;
 #endif
 
 

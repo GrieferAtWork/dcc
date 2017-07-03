@@ -1694,9 +1694,9 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
     DCCVStack_KillAll(1); /* Kill all registers before the jump. */
     vpushs(tt_label);
     vgen1('&');
-    vjcc(1);             /* Jump across the true-branch. */
+    vjcc(1);              /* Jump across the true-branch. */
     pushf();
-    DCCParse_Expr();     /* Generate the true-branch. */
+    DCCParse_Expr();      /* Generate the true-branch. */
     if (compiler.c_flags&DCC_COMPILER_FLAG_DEAD) is_dead |= 1;
     popf();
    }
@@ -1743,7 +1743,8 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
     }
    }
    /* Make sure any potential register offsets have been flushed. */
-   DCCStackValue_FixRegOffset(vbottom);
+   if (!(vbottom->sv_flags&DCC_SFLAG_LVALUE))
+         DCCStackValue_FixRegOffset(vbottom);
    shared_storage = *vbottom; /* Keep track of how the true-branch was stored (so that the false-branch can mirror it). */
    ++vbottom;                 /* Don't destroy this. */
    assert(!(shared_storage.sv_flags&DCC_SFLAG_COPY));
@@ -1785,7 +1786,7 @@ LEXPRIV void DCC_PARSE_CALL DCCParse_ExprCond(void) {
     * we must store its value in the shared storage. */
    --vbottom,*vbottom = shared_storage;
    /* Duplicate the shared storage virtual value, but don't copy it for real */
-   vpromi2(); /* ..., rhs, shared */
+   //vpromi2(); /* ..., rhs, shared */ /* This promotion cannot be performed, because it'd only happen within the false-branch! */
    vdup(0);   /* ..., rhs, shared, shared */
    vrrot(3);  /* ..., shared, shared, rhs */
    vstore(1); /* ..., shared, shared */

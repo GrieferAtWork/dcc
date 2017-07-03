@@ -489,6 +489,9 @@ PREDEFINED_MACRO_IF(__PIE__,HAS(EXT_SYSTEM_MACROS) && (linker.l_flags&DCC_LINKER
 /* Add the dcc-version predefined macro.
  * >> Got'a identify this compiler somehow! */
 PREDEFINED_MACRO(__DCC_VERSION__,DCC_PP_STR(DCC_COMPILER_VERSION))
+#if DCC_DEBUG && defined(__DCC_VERSION__)
+PREDEFINED_MACRO(__DCC_INDIRECTION__,DCC_PP_STR(__TPP_EVAL(__DCC_VERSION__+1)))
+#endif
 
 #if DCC_CONFIG_HAVE_DRT
 /* Define a preprocessor symbol '__DRT__' when compiling in direct mode.

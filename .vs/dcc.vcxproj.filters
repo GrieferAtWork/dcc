@@ -197,6 +197,9 @@
     <ClInclude Include="..\include\dcc\dl.h">
       <Filter>include\dcc</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\dcc\target-crt.h">
+      <Filter>include\dcc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\dcc\lexer-attributes.c.inl">
