@@ -1224,6 +1224,7 @@ DEF_WARNING(W_PRAGMA_UNKNOWN,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Unknown pr
 DEF_WARNING(W_PRAGMA_COMMENT_EXPECTED_KEYWORD,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected keyword after #pragma comment group, but got " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_COMMENT_EXPECTED_STRING,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected string after #pragma comment group, but got " TOK_S,TOK_A))
 DEF_WARNING(W_PRAGMA_COMMENT_UNKNOWN,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Unknown #pragma comment group " TOK_S,TOK_A))
+DEF_WARNING(W_PRAGMA_COMMENT_NOT_AN_ARGUMENT,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Operand " Q("%s") " supplied to #pragma comment was not processed",ARG(char *)))
 DEF_WARNING(W_PRAGMA_PACK_NOTHING_TO_POP,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("No old packing state to pop in " Q("#pragma pack(pop)")))
 DEF_WARNING(W_PRAGMA_PACK_EXPECTED_POWER_OF_TWO,(WG_ATTRIBUTE,WG_VALUE),WSTATE_WARN,WARNF("Expected power-of-2 for " Q("#pragma pack(...)") ", but got " Q("%lu"),(unsigned long)ARG(DCC(target_siz_t))))
 DEF_WARNING(W_PRAGMA_GCC_VISIBILITY_EXPECTED_PUSH_OR_POP,(WG_PRAGMA,WG_SYNTAX),WSTATE_WARN,WARNF("Expected " Q("push") " or " Q("pop") " after " Q("#pragma GCC visibility") ", but got " TOK_S,TOK_A))

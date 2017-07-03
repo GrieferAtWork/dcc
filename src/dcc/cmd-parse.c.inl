@@ -31,6 +31,7 @@
 #include <drt/drt.h>
 #endif
 
+#include "lexer-priv.h"
 #include "cmd.h"
 
 #include <string.h>
@@ -542,13 +543,68 @@ INTERN void DCCCmd_Exec(int grp, int *argc, char ***argv) {
  *argv = c.c_argv;
 }
 
-INTERN void DCCCmd_ExecString(int grp, char const *str, size_t len) {
- int argc;
- char **argv;
- (void)len; /* TODO: Split arguments. */
- argc = 1;
- argv = (char **)&str;
- DCCCmd_Exec(grp,&argc,&argv);
+
+#define ARGV_BUFSIZE   1
+LOCAL char **split_argv(char *__restrict cmd, size_t len,
+                        int *__restrict argc) {
+ /* Taken from another project of mine: KOS ('/userland/sh/sh.c') */
+ char *iter = cmd,*arg_start = cmd,*cmd_end = cmd+len;
+ char **result,**res_iter,**res_end,**newresult;
+ int in_quote = 0; size_t result_size = ARGV_BUFSIZE;
+ result = (char **)malloc((ARGV_BUFSIZE+1)*sizeof(char *));
+ assert(cmd || !len);
+ assert(argc);
+ if unlikely(cmd[len]) cmd[len] = '\0';
+ if (!result) return NULL;
+ res_end = (res_iter = result)+ARGV_BUFSIZE;
+ for (;;) {
+  if ((!*iter && iter == cmd_end) ||
+      (!in_quote && *iter == ' ' && iter[-1] != '\\')) {
+   if (arg_start != iter) {
+    if (res_iter == res_end) {
+     size_t newsize = result_size*2;
+     newresult = (char **)realloc(result,(newsize+1)*sizeof(char *));
+     if unlikely(!newresult) {
+      free(result);
+      DCC_AllocFailed((newsize+1)*sizeof(char *));
+      return NULL;
+     }
+     res_iter    = newresult+(res_iter-result);
+     result      = newresult;
+     result_size = newsize;
+    }
+    *res_iter++ = arg_start;
+    if (iter == cmd_end) break;
+   }
+   arg_start = iter+1;
+   *iter = '\0';
+  } else if (in_quote <= 1 && *iter == '"') {
+   in_quote = !in_quote;
+  } else if (*iter == '\'') {
+   in_quote = in_quote == 2 ? 0 : 2;
+  }
+  ++iter;
+ }
+ *res_iter = NULL;
+ *argc = (int)(res_iter-result);
+ return result;
+}
+
+INTERN void DCCCmd_ExecString(int grp, char *str, size_t len) {
+ char **argv,**pargv; int argc;
+ /* Split arguments. */
+ argv = split_argv(str,len,&argc);
+ if unlikely(!argv) return;
+ pargv = argv;
+ DCCCmd_Exec(grp,&argc,&pargv);
+ /* Warn about all operands that where not parsed. */
+ while (argc--) {
+  char *arg = *pargv++;
+  assert(arg);
+  while (tpp_isspace(*arg)) ++arg;
+  if (*arg) WARN(W_PRAGMA_COMMENT_NOT_AN_ARGUMENT,arg);
+ }
+ free(argv);
 }
 
 

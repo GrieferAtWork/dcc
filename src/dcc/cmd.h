@@ -117,9 +117,9 @@ INTDEF void exec_cmd(struct cmd *__restrict c, int from_cmd);
 INTDEF void DCCCmd_Exec(int grp, int *argc, char ***argv);
 
 /* Same as 'DCCCmd_Exec', but the commandline isn't split into argc|argv.
- * NOTE: This function is used for implementing '#pragma comment(compiler|linker,...)' */
-INTDEF void DCCCmd_ExecString(int grp, char const *str, size_t len);
-
+ * NOTE: This function is used for implementing '#pragma comment(compiler|linker,...)'
+ * WARNING: This function may modify the passed 'str..+=(len+1)' when non-empty. */
+INTDEF void DCCCmd_ExecString(int grp, char *str, size_t len);
 
 DCC_DECL_END
 
