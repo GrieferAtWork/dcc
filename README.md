@@ -28,7 +28,7 @@ Note that DCC is still fairly early in its development, meaning that anything ca
   - Full AT&T assembly support with many GNU assembler extensions (see below).
   - Full ELF binary target support.
   - Fully working live execution of C source code.
-  - DCC can compile itself with single-indirection (due to few remaining bugs, the resulting binary cannot compile itself again, yet can compile simpler C programs)
+  - DCC can fully compile itself (And the result can compile itself again!)
 
 ## Planned features:
   - Support for X86-64/AMD64 CPU architectures.

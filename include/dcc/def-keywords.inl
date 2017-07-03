@@ -489,8 +489,23 @@ PREDEFINED_MACRO_IF(__PIE__,HAS(EXT_SYSTEM_MACROS) && (linker.l_flags&DCC_LINKER
 /* Add the dcc-version predefined macro.
  * >> Got'a identify this compiler somehow! */
 PREDEFINED_MACRO(__DCC_VERSION__,DCC_PP_STR(DCC_COMPILER_VERSION))
-#if DCC_DEBUG && defined(__DCC_VERSION__)
-PREDEFINED_MACRO(__DCC_INDIRECTION__,DCC_PP_STR(__TPP_EVAL(__DCC_VERSION__+1)))
+
+#ifdef __DCC_VERSION__
+#pragma extension(push,"-ftpp-eval-macro")
+#endif
+
+#ifdef __DCC_VERSION__
+/* An indicator of the level of self-indirection applicable at the time when DCC was compiled.
+ *  - Each time DCC compiles itself, the resulting binary has this value incremented by 1.
+ *  - A DCC compiler binary not compiled with DCC itself doesn't define this value.
+ *  - The first time DCC compiles itself, this macro is pre-initialized to '1'
+ */
+#ifdef __DCC_HOSTED__
+/* NOTE: Running under DCC, we can assume that '__TPP_EVAL' is available as well! */
+PREDEFINED_MACRO(__DCC_HOSTED__,DCC_PP_STR(__TPP_EVAL(__DCC_HOSTED__+1)))
+#else
+PREDEFINED_MACRO(__DCC_HOSTED__,"1")
+#endif
 #endif
 
 #if DCC_CONFIG_HAVE_DRT
@@ -498,11 +513,15 @@ PREDEFINED_MACRO(__DCC_INDIRECTION__,DCC_PP_STR(__TPP_EVAL(__DCC_VERSION__+1)))
  * NOTE: The symbol recursively describes a larger number to detect
  *       DRT self-hosting/recursion depth (if that is even possible). */
 #ifdef __DRT__
-PREDEFINED_MACRO_IF(__DRT__,DRT_ENABLED(),TPP_PP_STR(__TPP_EVAL(__DRT__+1)))
+PREDEFINED_MACRO_IF(__DRT__,DRT_ENABLED(),DCC_PP_STR(__TPP_EVAL(__DRT__+1)))
 #else
 PREDEFINED_MACRO_IF(__DRT__,DRT_ENABLED(),"1")
 #endif
 #endif /* DCC_CONFIG_HAVE_DRT */
+
+#ifdef __DCC_VERSION__
+#pragma extension(pop)
+#endif
 
 #if DCC_TARGET_BIN == DCC_BINARY_ELF
 PREDEFINED_MACRO_IF(__ELF__,HAS(EXT_SYSTEM_MACROS),"1")
