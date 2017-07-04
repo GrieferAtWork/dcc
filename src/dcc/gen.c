@@ -46,7 +46,9 @@ PRIVATE void DCCDisp_SymAddr32(struct DCCSymAddr const *__restrict expr);
 PRIVATE void DCCDisp_SymDisp32(struct DCCSymAddr const *__restrict expr);
 #if DCC_TARGET_SIZEOF_IMM_MAX >= 8
 PRIVATE void DCCDisp_SymAddr64(struct DCCSymAddr const *__restrict expr);
+#ifdef DCC_R_DISP_64
 PRIVATE void DCCDisp_SymDisp64(struct DCCSymAddr const *__restrict expr);
+#endif
 #endif
 
 
@@ -135,7 +137,7 @@ DCCDisp_Probe_(struct DCCMemLoc const *__restrict addr,
 
 LOCAL void *
 DCCMemLoc_CompilerAddr_impl(struct DCCMemLoc const *__restrict l,
-                            void **update_ptr, size_t n_bytes) {
+                            void **update_ptr, target_siz_t n_bytes) {
  if ((compiler.c_flags&DCC_COMPILER_FLAG_SINIT) &&
       DCCMEMLOC_ISMEMOFF_S(l)) {
   struct DCCSymAddr symaddr;
@@ -170,7 +172,7 @@ DCCMemLoc_CompilerAddr_impl(struct DCCMemLoc const *__restrict l,
 
 LOCAL void const *
 DCCMemLoc_CompilerData_impl(struct DCCMemLoc const *__restrict l,
-                            void **update_ptr, size_t n_bytes) {
+                            void **update_ptr, target_siz_t n_bytes) {
  if (DCCMEMLOC_ISMEMOFF_S(l)) {
   struct DCCSymAddr symaddr;
   if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0) &&
@@ -210,22 +212,26 @@ DCCMemLoc_CompilerData_impl(struct DCCMemLoc const *__restrict l,
 }
 
 PUBLIC void *
-DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
+DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l,
+                       target_siz_t n_bytes) {
  return DCCMemLoc_CompilerAddr_impl(l,NULL,n_bytes);
 }
 PUBLIC void const *
-DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l, size_t n_bytes) {
+DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l,
+                       target_siz_t n_bytes) {
  return DCCMemLoc_CompilerData_impl(l,NULL,n_bytes);
 }
 PUBLIC void *
 DCCMemLoc_CompilerAddrUpdate(struct DCCMemLoc const *__restrict l,
-                             void **__restrict update_ptr, size_t n_bytes) {
+                             void **__restrict update_ptr,
+                             target_siz_t n_bytes) {
  assert(update_ptr);
  return DCCMemLoc_CompilerAddr_impl(l,update_ptr,n_bytes);
 }
 PUBLIC void const *
 DCCMemLoc_CompilerDataUpdate(struct DCCMemLoc const *__restrict l,
-                             void **__restrict update_ptr, size_t n_bytes) {
+                             void **__restrict update_ptr,
+                             target_siz_t n_bytes) {
  assert(update_ptr);
  return DCCMemLoc_CompilerData_impl(l,update_ptr,n_bytes);
 }
@@ -234,7 +240,7 @@ DCCMemLoc_CompilerDataUpdate(struct DCCMemLoc const *__restrict l,
 PUBLIC void const *
 DCCMemLoc_CompilerText(struct DCCMemLoc const *__restrict l,
                        struct DCCCompilerText *__restrict text,
-                       size_t n_bytes) {
+                       target_siz_t n_bytes) {
  if (DCCMEMLOC_ISMEMOFF_S(l)) {
   struct DCCSymAddr symaddr;
   if (DCCSym_LoadAddr(l->ml_sym,&symaddr,0) &&
@@ -358,7 +364,9 @@ PRIVATE void DCCDisp_SymAddr32(struct DCCSymAddr const *__restrict expr) { t_put
 PRIVATE void DCCDisp_SymDisp32(struct DCCSymAddr const *__restrict expr) { t_putl(DCC_H2T32((uint32_t)((int32_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_32)-4))); }
 #if DCC_TARGET_SIZEOF_IMM_MAX >= 8
 PRIVATE void DCCDisp_SymAddr64(struct DCCSymAddr const *__restrict expr) { t_putq(DCC_H2T64((uint64_t)DCCDisp_PutAddrRel(expr,DCC_R_DATA_64))); }
+#ifdef DCC_R_DISP_64
 PRIVATE void DCCDisp_SymDisp64(struct DCCSymAddr const *__restrict expr) { t_putq(DCC_H2T64((uint64_t)((int64_t)DCCDisp_PutDispRel(expr,DCC_R_DISP_64)-8))); }
+#endif
 #endif
 
 PUBLIC void
@@ -383,7 +391,7 @@ DCCDisp_SymDisp(struct DCCSymAddr const *__restrict expr,
  switch (width) {
  case 1:  DCCDisp_SymDisp8(expr); break;
  case 2:  DCCDisp_SymDisp16(expr); break;
-#if DCC_TARGET_SIZEOF_IMM_MAX >= 8
+#if DCC_TARGET_SIZEOF_IMM_MAX >= 8 && defined(DCC_R_DISP_64)
  case 4:  DCCDisp_SymDisp32(expr); break;
  default: DCCDisp_SymDisp64(expr); break;
 #else
@@ -602,7 +610,7 @@ DCCDisp_ScxMem(test_t t, struct DCCMemLoc const *__restrict dst,
  DCCDisp_SymJcc(DCC_TEST_NOT(DCC_TEST_MIRROR(t)),skip_sym);
  minus_one.sa_off = -1;
  minus_one.sa_sym = NULL;
- DCCDisp_CstMovMem(&minus_one,dst,n);
+ DCCDisp_CstMovMems(&minus_one,dst,n,0);
  t_defsym(skip_sym);
 }
 
@@ -819,7 +827,7 @@ DCCDisp_GenProlog(struct DCCDispFunction *__restrict info) {
  *prologue++ = 0x89,*prologue++ = 0xe5; /* mov %esp, %ebp */
  if (stack_size) {
   *prologue++ = 0x81,*prologue++ = 0xec; /* sub $stack_size, %esp */
-  *(uint32_t *)prologue = stack_size;
+  *(uint32_t *)prologue = (uint32_t)stack_size;
 #if MAX_PROLOG_SIZE == 10
   *prologue++ = DCCGEN_NOPBYTE; /* nop. */
 #elif MAX_PROLOG_SIZE > 9

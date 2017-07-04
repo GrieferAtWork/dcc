@@ -1095,13 +1095,13 @@ PUBLIC void DCCParse_AsmDirective(void) {
  switch (mode) {
 
  {
-  size_t v;
+  target_siz_t v;
   int filler;
  case KWD_align:
  case KWD_skip:
  case KWD_space:
   YIELD();
-  v = (size_t)DCCParse_AsmExprI();
+  v = (target_siz_t)DCCParse_AsmExprI();
   if (mode == KWD_align && v) {
    target_ptr_t aligned_addr;
    if (v & (v-1)) WARN(W_ASM_INVALID_ALIGNMENT,v);
@@ -1113,7 +1113,7 @@ PUBLIC void DCCParse_AsmDirective(void) {
    aligned_addr = t_addr;
    aligned_addr = (aligned_addr+(v-1))&~(v-1);
    if (aligned_addr < t_addr) aligned_addr = t_addr;
-   v = aligned_addr-t_addr;
+   v = (target_siz_t)(aligned_addr-t_addr);
   }
   filler = 0;
   if (TOK == ',') {
@@ -1123,7 +1123,7 @@ PUBLIC void DCCParse_AsmDirective(void) {
 fill_data:
   {
    void *dat = t_alloc(v);
-   if (dat) memset(dat,filler,v);
+   if (dat) memset(dat,filler,(size_t)v);
   }
   break;
 
@@ -1134,7 +1134,7 @@ fill_data:
   new_origin = (target_ptr_t)DCCParse_AsmExprI();
   if (new_origin > t_addr) {
    /* Skip ahead. */
-   v = new_origin-t_addr;
+   v = (target_siz_t)(new_origin-t_addr);
    filler = 0;
    goto fill_data;
   } else {

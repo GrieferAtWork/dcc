@@ -838,7 +838,7 @@ INTERN void
 x86_mkrel_textdisp(struct DCCSection *__restrict text_section,
                    target_ptr_t image_base) {
  uint8_t *begin,*iter,*trail,*dispaddr;
- ptrdiff_t oldpos,oldmax; size_t textend; rel_t type;
+ ptrdiff_t oldpos,oldmax; target_ptr_t textend; rel_t type;
  assert(text_section);
  assert(text_section->sc_start.sy_flags&DCC_SYMFLAG_SEC_X);
  oldmax = text_section->sc_dat.sd_text.tb_max-text_section->sc_dat.sd_text.tb_begin;

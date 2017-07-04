@@ -864,6 +864,15 @@ put_expr:
 }
 
 PUBLIC void
+DCCDisp_CstBinMems(tok_t op,
+                   struct DCCSymAddr const *__restrict val,
+                   struct DCCMemLoc const *__restrict dst,
+                   target_siz_t dst_bytes, int src_unsigned) {
+ /* TODO: Extended-length constant arithmetic. */
+ DCCDisp_CstBinMem(op,val,dst,(width_t)dst_bytes,src_unsigned);
+}
+
+PUBLIC void
 DCCDisp_CstBinMem(tok_t op,
                   struct DCCSymAddr const *__restrict val,
                   struct DCCMemLoc  const *__restrict dst,
@@ -1015,7 +1024,7 @@ DCCDisp_StaBinStaWidth(tok_t op,
 PRIVATE void
 DCCDisp_BytBinStaWidth(tok_t op, target_off_t src,
                        void       *__restrict dst,
-                       width_t width, unsigned int *eflags) {
+                       width_t width, target_ptr_t *eflags) {
  target_off_t vdst = readw(dst,width,1);
  target_ptr_t newflags = 0;
  switch (op) {
@@ -1317,7 +1326,7 @@ DCCDisp_BytCmpMem_impl(int src, struct DCCMemLoc const *__restrict dst,
  filler.sa_off *= 0x01010101;
 #endif
  for (;;) {
-  target_siz_t part;
+  width_t part;
 #if DCC_TARGET_SIZEOF_ARITH_MAX > 4
        if (dst_bytes >= 8) part = 8;
   else
@@ -1525,7 +1534,7 @@ DCCDisp_MemBinMem(tok_t op,
     /* Simple case: Just compare the higher regions with '0' */
     DCCDisp_BytCmpMem_impl(0,&high_dst,dst_bytes,&jmp);
    } else {
-    target_siz_t max_width = 1;
+    width_t max_width = 1;
     rc_t sign_extension;
     struct DCCMemLoc high_src = *dst;
     high_src.ml_off += (src_bytes-1);
@@ -1824,7 +1833,7 @@ DCCDisp_AddProtReg(struct DCCSymAddr const *__restrict val, rc_t dst) {
 PUBLIC void
 DCCDisp_LeaMem(struct DCCMemLoc const *__restrict addr,
                struct DCCMemLoc const *__restrict dst,
-               DCC(width_t) width) {
+               width_t width) {
  assert(CHECK_WIDTH(width));
       if (addr->ml_reg == DCC_RC_CONST) DCCDisp_CstMovMem(&addr->ml_sad,dst,width); /* Without a register, simply move the constant address. */
  else if (addr->ml_reg == dst->ml_reg) DCCDisp_AddMem(&addr->ml_sad,dst,width); /* Special case: Same register. */

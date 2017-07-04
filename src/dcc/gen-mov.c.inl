@@ -236,11 +236,12 @@ DCCDisp_DoRepMemMovMem(struct DCCMemLoc const *__restrict src, target_siz_t src_
   dst_bytes -= common_size;
   if (src_unsigned && CHECK_WIDTH(dst_bytes)) {
    struct DCCMemLoc dst_end;
+   struct DCCSymAddr val = {0,NULL};
    dst_end.ml_reg = DCC_RR_XDI;
    dst_end.ml_off = 0;
    dst_end.ml_sym = NULL;
    /* Special case: Fill remainder destination with one byte. */
-   DCCDisp_CstMovMem(0,&dst_end,dst_bytes);
+   DCCDisp_CstMovMems(&val,&dst_end,dst_bytes,src_unsigned);
   } else {
    rc_t ax;
    struct DCCMemLoc src_last = *src;
@@ -308,7 +309,7 @@ DCCDisp_DoRepBytMovMem(int                                src, target_siz_t src_
    used_dst.ml_sym = NULL;
    filler.sa_off = used_src;
    filler.sa_sym = NULL;
-   DCCDisp_CstMovMem(&filler,&used_dst,dst_bytes);
+   DCCDisp_CstMovMems(&filler,&used_dst,dst_bytes,src_unsigned);
   } else {
    DCCDisp_IntMovReg(used_src,ax); /* Load the overflow byte into '(E)AX' */
    DCCDisp_AXMovDI(4,common_size); /* Fill the destination with '(E)AX' */
@@ -679,11 +680,11 @@ DCCDisp_VecMovMem(void             const *__restrict src, target_siz_t src_bytes
  /* Special case: Move at compile-time. */
  /* TODO: This fails when 'src' is memory from the same section! */
  if ((cdst = DCCMemLoc_CompilerAddrUpdate(dst,(void **)&src,dst_bytes)) != NULL) {
-  memmove(cdst,src,common_size);
+  memmove(cdst,src,(size_t)common_size);
   if (!src_unsigned && ((uint8_t *)src)[src_bytes-1]&0x80) filler = 0xff; /* sign-extend. */
-  *(uintptr_t *)&cdst += common_size;
+  *(uintptr_t *)&cdst += (uintptr_t)common_size;
   common_size = dst_bytes-common_size;
-  memset(cdst,filler,common_size);
+  memset(cdst,filler,(size_t)common_size);
   return;
  }
  /* Fallback. */
@@ -714,7 +715,7 @@ DCCDisp_BytMovMem(int                                src, target_siz_t src_bytes
  common_size = dst_bytes < src_bytes ? dst_bytes : src_bytes;
  /* Special case: Move at compile-time. */
  if ((cdst = DCCMemLoc_CompilerAddr(dst,dst_bytes)) != NULL) {
-  memset(cdst,src,common_size);
+  memset(cdst,src,(size_t)common_size);
   if (!src_unsigned && (src&0x80)) filler = 0xff; /* sign-extend. */
   new_dst = *dst;
   new_dst.ml_off += common_size;
@@ -952,10 +953,10 @@ def_reloc(struct DCCSymAddr const *__restrict expr,
 
 
 PUBLIC void
-DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict val,
+DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict src,
                   struct DCCMemLoc  const *__restrict dst,
                   width_t width) {
- assert(val),assert(dst);
+ assert(src),assert(dst);
  if ((compiler.c_flags&DCC_COMPILER_FLAG_SINIT) && dst->ml_sym) {
   struct DCCSymAddr target_addr;
   if (DCCSym_LoadAddr(dst->ml_sym,&target_addr,0) &&
@@ -982,7 +983,7 @@ DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict val,
                 width == 4 ? DCC_R_DATA_32 :
                 width == 2 ? DCC_R_DATA_16 :
                              DCC_R_DATA_8;
-    target_off_t v = def_reloc(val,target_sec,target_addr.sa_off,rel);
+    target_off_t v = def_reloc(src,target_sec,target_addr.sa_off,rel);
     /* Store the initial value inside the target data. */
 #if DCC_TARGET_SIZEOF_IMM_MAX >= 8
          if (width == 8) *(int64_t *)target_data = (int64_t)v;
@@ -995,7 +996,37 @@ DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict val,
    return;
   }
  }
- DCCDisp_DoCstMovMem(val,dst,width);
+ DCCDisp_DoCstMovMem(src,dst,width);
+}
+
+PUBLIC void
+DCCDisp_CstMovMems(struct DCCSymAddr const *__restrict src,
+                   struct DCCMemLoc  const *__restrict dst,
+                   target_siz_t dst_bytes, int src_unsigned) {
+ struct DCCSymAddr used_src;
+ struct DCCMemLoc used_dst;
+ assert(src);
+ assert(dst);
+ used_src = *src;
+ used_dst = *dst;
+ while (dst_bytes > DCC_TARGET_SIZEOF_IMM_MAX) {
+  DCCDisp_CstMovMem(&used_src,&used_dst,
+                    DCC_TARGET_SIZEOF_IMM_MAX);
+  used_src.sa_sym = NULL;
+#if DCC_TARGET_SIZEOF_IMM_MAX >= DCC_TARGET_SIZEOF_POINTER
+  if (src_unsigned)
+       used_src.sa_off   = 0;
+  else used_src.sa_off >>= (DCC_TARGET_SIZEOF_IMM_MAX*8)-1;
+#else
+  if (src_unsigned)
+   *(target_ptr_t *)&used_src.sa_off >>= (DCC_TARGET_SIZEOF_IMM_MAX*8);
+  else               used_src.sa_off >>= (DCC_TARGET_SIZEOF_IMM_MAX*8);
+#endif
+  used_dst.ml_off += DCC_TARGET_SIZEOF_IMM_MAX;
+  dst_bytes       -= DCC_TARGET_SIZEOF_IMM_MAX;
+ }
+ if (dst_bytes)
+     DCCDisp_CstMovMem(&used_src,&used_dst,(width_t)dst_bytes);
 }
 
 

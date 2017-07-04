@@ -183,7 +183,7 @@ DCCDisp_UnaryMem(tok_t op, struct DCCMemLoc const *__restrict dst,
   } else if (op == '-') {
    /* -x --> ~(x-1) */
    struct DCCSymAddr src_val = {1,NULL};
-   DCCDisp_CstBinMem('-',&src_val,&dst_iter,dst_bytes,1);
+   DCCDisp_CstBinMems('-',&src_val,&dst_iter,dst_bytes,1);
    op = '~'; /* Generate a bit-wise inversion below. */
   }
  }

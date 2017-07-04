@@ -80,7 +80,7 @@ LOCAL Elf(Off) elf_faddrof(Elf(Phdr) *__restrict hdrv, size_t hdrc,
   if (addr >= iter->p_vaddr &&
       addr <  iter->p_vaddr+iter->p_filesz) {
    /* Found it! */
-   *max_bytes = (iter->p_vaddr+iter->p_filesz)-addr;
+   *max_bytes = (size_t)((iter->p_vaddr+iter->p_filesz)-addr);
    return iter->p_offset+(addr-iter->p_vaddr);
   }
  }
@@ -101,7 +101,7 @@ elf_gnuhash_findmaxsym(size_t *__restrict result,
  size_t    indexsize = is64b ? 8 : 4;
  ptrdiff_t read_error;
  if unlikely(hash_siz < sizeof(hdr)) return 0;
- s_seek(fd,hash_off,SEEK_SET);
+ s_seek(fd,(soff_t)hash_off,SEEK_SET);
  if unlikely(!s_reada(fd,&hdr,sizeof(hdr))) return 0;
  bucket_offset = sizeof(Elf(GNUHash))+hdr.gh_bitmask_nwords*indexsize;
  if (bucket_offset > hash_siz) return 0;
@@ -110,7 +110,7 @@ elf_gnuhash_findmaxsym(size_t *__restrict result,
      bucket_count = (size_t)hdr.gh_nbuckets;
  bucket_vector = (uint32_t *)DCC_Malloc(bucket_count*4,0);
  if unlikely(!bucket_vector) return 0;
- s_seek(fd,hash_off+bucket_offset,SEEK_SET);
+ s_seek(fd,(soff_t)(hash_off+bucket_offset),SEEK_SET);
  read_error = s_read(fd,bucket_vector,bucket_count*4);
  if (read_error < 0) read_error = 0;
  read_error /= 4;
@@ -137,10 +137,10 @@ elf_loadsection(Elf(Shdr) const *__restrict hdr,
  ptrdiff_t readsize;
  assert(hdr);
  assert(text);
- data = (uint8_t *)DCC_Malloc(hdr->sh_size,0);
+ data = (uint8_t *)DCC_Malloc((size_t)hdr->sh_size,0);
  if unlikely(!data) goto empty;
- s_seek(fd,start+hdr->sh_offset,SEEK_SET);
- readsize = s_read(fd,data,hdr->sh_size);
+ s_seek(fd,(soff_t)(start+hdr->sh_offset),SEEK_SET);
+ readsize = s_read(fd,data,(size_t)hdr->sh_size);
  if (readsize < 0) readsize = 0;
  if (readsize == 0) { DCC_Free(data); goto empty; }
  if ((size_t)readsize == (size_t)hdr->sh_size)
@@ -221,7 +221,7 @@ link_dynamic:
    phdr_data = (Elf(Phdr) *)DCC_Malloc(phdr_size,0);
    if unlikely(!phdr_data) goto fail;
    if likely(ehdr.e_phentsize == sizeof(Elf(Phdr))) {
-    s_seek(fd,start+ehdr.e_phoff,SEEK_SET);
+    s_seek(fd,(soff_t)(start+ehdr.e_phoff),SEEK_SET);
     read_error = s_read(fd,phdr_data,phdr_size);
     if (read_error < 0) goto fail_dyn;
     if (phdr_size > (size_t)read_error)
@@ -238,7 +238,7 @@ link_dynamic:
     assert(common_size);
     phdr_size /= sizeof(Elf(Phdr));
     for (i = 0; i < ehdr.e_phnum; ++i) {
-     s_seek(fd,start+ehdr.e_phoff+i*ehdr.e_phentsize,SEEK_SET);
+     s_seek(fd,(soff_t)(start+ehdr.e_phoff+i*ehdr.e_phentsize),SEEK_SET);
      if (!s_reada(fd,phdr_data+i,common_size)) { phdr_size = i; break; }
     }
    }
@@ -291,9 +291,9 @@ link_dynamic:
      Elf(Dyn) *dyn_iter,*dyn_end;
      size_t dynsiz;
      assert(iter->p_type == PT_DYNAMIC);
-     dynsiz = iter->p_filesz;
-     if (dynsiz > iter->p_memsz)
-         dynsiz = iter->p_memsz;
+     dynsiz = (size_t)iter->p_filesz;
+     if (dynsiz > (size_t)iter->p_memsz)
+         dynsiz = (size_t)iter->p_memsz;
      /* Align the size to truncate with the size of a dynamic header. */
      dynsiz &= ~(sizeof(Elf(Dyn))-1);
      if unlikely(!dynsiz) continue;
@@ -302,7 +302,7 @@ link_dynamic:
      if unlikely(!dynvec) goto fail_dyn;
      /* XXX: Does ELF guaranty that PT_DYNAMIC contains proper offset information?
       *      Or do we have to find a PT_LOAD header containing the PT_DYNAMIC virtual address? */
-     s_seek(fd,start+iter->p_offset,SEEK_SET);
+     s_seek(fd,(soff_t)(start+iter->p_offset),SEEK_SET);
      read_error = s_read(fd,dynvec,dynsiz);
      if unlikely(dynsiz > (size_t)read_error || read_error < 0) {
       if (read_error < 0) dynsiz = 0;
@@ -313,13 +313,18 @@ link_dynamic:
      assert(dynsiz >= sizeof(Elf(Dyn)));
      {
       /* Iterate the dynamic header commands. */
-      Elf(Addr) dt_soname   = 0;                /* DT_SONAME (Optional; Points into 'dt_strtab' defaults to 'def->ld_name') */
-      Elf(Addr) dt_hash     = 0;                /* DT_HASH (Optional; Address of dymbol hash table; can be dereferenced for symbol count) */
-      Elf(Addr) dt_gnu_hash = 0;                /* DT_GNU_HASH (Optional; Many ELF binaries no longer contain DT_HASH, but only 'DT_GNU_HASH'. - We use the later to figure out how many symbols exist) */
-      Elf(Addr) dt_strtab   = 0;                /* DT_STRTAB (Mandatory; Contains the address of the string table) */
-      Elf(Addr) dt_symtab   = 0;                /* DT_SYMTAB (Mandatory; Contains the address of the symbol table) */
-      Elf(Word) dt_strsz    = 0;                /* DT_STRSZ (Optional; When omited, assume 'abs(dt_symtab-dt_strtab)' and always truncate by PT_LOAD constraints) */
-      Elf(Word) dt_syment   = sizeof(Elf(Sym)); /* DT_SYMENT (Optional; size of a single symbol table entry) */
+      Elf(Addr)   dt_soname   = 0;                /* DT_SONAME (Optional; Points into 'dt_strtab' defaults to 'def->ld_name') */
+      Elf(Addr)   dt_hash     = 0;                /* DT_HASH (Optional; Address of dymbol hash table; can be dereferenced for symbol count) */
+      Elf(Addr)   dt_gnu_hash = 0;                /* DT_GNU_HASH (Optional; Many ELF binaries no longer contain DT_HASH, but only 'DT_GNU_HASH'. - We use the later to figure out how many symbols exist) */
+      Elf(Addr)   dt_strtab   = 0;                /* DT_STRTAB (Mandatory; Contains the address of the string table) */
+      Elf(Addr)   dt_symtab   = 0;                /* DT_SYMTAB (Mandatory; Contains the address of the symbol table) */
+#if DCC_TARGET_ELF_SIZE == 8
+      Elf64_Xword dt_strsz    = 0;                /* DT_STRSZ (Optional; When omited, assume 'abs(dt_symtab-dt_strtab)' and always truncate by PT_LOAD constraints) */
+      Elf64_Xword dt_syment   = sizeof(Elf(Sym)); /* DT_SYMENT (Optional; size of a single symbol table entry) */
+#else
+      Elf(Word)   dt_strsz    = 0;                /* DT_STRSZ (Optional; When omited, assume 'abs(dt_symtab-dt_strtab)' and always truncate by PT_LOAD constraints) */
+      Elf(Word)   dt_syment   = sizeof(Elf(Sym)); /* DT_SYMENT (Optional; size of a single symbol table entry) */
+#endif
       dynsiz /= sizeof(Elf(Dyn));
       dyn_end = (dyn_iter = dynvec)+dynsiz;
       for (; dyn_iter != dyn_end; ++dyn_iter) {
@@ -361,11 +366,11 @@ done_dynhdr1:
          goto no_dynhash;
         }
         if (hash_siz < 8) goto no_dynhash;
-        s_seek(fd,start+hash_off+4,SEEK_SET);
+        s_seek(fd,(soff_t)(start+hash_off+4),SEEK_SET);
         read_error = s_read(fd,&hashcnt,4);
         if (read_error < 4) goto no_dynhash;
         /* Clamp the symbol table size using the value read from the hash table. */
-        hashcnt *= dt_syment;
+        hashcnt *= (uint32_t)dt_syment;
         if (symtab_siz > hashcnt)
             symtab_siz = hashcnt;
        } else if (dt_gnu_hash) {
@@ -395,26 +400,27 @@ no_dynhash:
         ;
        }
        /* Constrict the max symbol table size using the PT_DYNAMIC header. */
-       if (dt_strsz < strtab_siz) strtab_siz = dt_strsz;
+       if (strtab_siz > (size_t)dt_strsz)
+           strtab_siz = (size_t)dt_strsz;
        /* Allocate & read the string table. */
        strtab = (char *)DCC_Malloc(strtab_siz+1,0);
        if unlikely(!strtab) goto next_dynhdr;
        /* Make sure the string table is ZERO-terminated,
         * so we can safely use strlen on its elements. */
        strtab[strtab_siz] = '\0';
-       s_seek(fd,start+strtab_off,SEEK_SET);
+       s_seek(fd,(soff_t)(start+strtab_off),SEEK_SET);
        read_error = s_read(fd,strtab,strtab_siz);
        if unlikely(read_error < 0) goto end_free_strtab;
        if (strtab_siz > (size_t)read_error)
            strtab_siz = (size_t)read_error;
        strtab_siz /= sizeof(char);
        { /* The string table has been read! Now to read the symbol table */
-        size_t symcnt = (symtab_siz/dt_syment)*sizeof(Elf(Sym));
+        size_t symcnt = (size_t)(symtab_siz/dt_syment)*sizeof(Elf(Sym));
         symtab = (Elf(Sym) *)DCC_Malloc(symcnt,0);
         if unlikely(!symtab) goto end_free_strtab;
         if likely(dt_syment == sizeof(Elf(Sym))) {
          /* Likely case: We can read the symbol table as-is. */
-         s_seek(fd,start+symtab_off,SEEK_SET);
+         s_seek(fd,(soff_t)(start+symtab_off),SEEK_SET);
          read_error = s_read(fd,symtab,symcnt);
          if (read_error < 0) goto end_free_symtab;
          if (symcnt > (size_t)read_error)
@@ -425,12 +431,12 @@ no_dynhash:
          /* Difficult case: Must read each entry individually. */
          if (dt_syment < sizeof(Elf(Sym))) {
           memset(symtab,0,symcnt);
-          common_size = dt_syment;
+          common_size = (size_t)dt_syment;
          }
          symcnt /= sizeof(Elf(Sym));
          for (i = 0; i < symcnt; ++i) {
-          s_seek(fd,start+symtab_off+i*dt_syment,SEEK_SET);
-          if (!s_reada(fd,&symtab[i],dt_syment)) { symcnt = i; break; }
+          s_seek(fd,(soff_t)(start+symtab_off+i*dt_syment),SEEK_SET);
+          if (!s_reada(fd,&symtab[i],(size_t)dt_syment)) { symcnt = i; break; }
          }
         }
         /* Store the symbol table element count as its size. */
@@ -555,7 +561,7 @@ nosechdr:
   secv = (Elf(Shdr) *)DCC_Malloc(secc*sizeof(Elf(Shdr)),0);
   if unlikely(!secv) goto fail;
   if (ehdr.e_shentsize == sizeof(Elf(Shdr))) {
-   s_seek(fd,start+ehdr.e_shoff,SEEK_SET);
+   s_seek(fd,(soff_t)(start+ehdr.e_shoff),SEEK_SET);
    read_error = s_read(fd,secv,secc*sizeof(Elf(Shdr)));
    if (read_error < 0) read_error = 0;
    read_error /= sizeof(Elf(Shdr));
@@ -568,7 +574,7 @@ nosechdr:
     common_size = ehdr.e_shentsize;
    }
    for (i = 0; i < secc; ++i) {
-    s_seek(fd,start+ehdr.e_shoff+i*ehdr.e_shentsize,SEEK_SET);
+    s_seek(fd,(soff_t)(start+ehdr.e_shoff+i*ehdr.e_shentsize),SEEK_SET);
     if (!s_reada(fd,&secv[i],common_size)) { secc = i; break; }
    }
   }
@@ -680,12 +686,12 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
     struct DCCSym **symdef; struct DCCTextBuf symstr_text;
     if (iter->sh_type != SHT_SYMTAB) continue;
     if (!iter->sh_entsize) iter->sh_entsize = sizeof(Elf(Sym));
-    symcnt = iter->sh_size/iter->sh_entsize;
+    symcnt = (size_t)(iter->sh_size/iter->sh_entsize);
     if unlikely(!symcnt) {null_symvec: symvec = NULL; goto done_symvec; }
     symvec = (Elf(Sym) *)DCC_Malloc(symcnt*sizeof(Elf(Sym)),0);
     if (iter->sh_entsize == sizeof(Elf(Sym))) {
      symcnt *= sizeof(Elf(Sym));
-     s_seek(fd,start+iter->sh_offset,SEEK_SET);
+     s_seek(fd,(soff_t)(start+iter->sh_offset),SEEK_SET);
      read_error = s_read(fd,symvec,symcnt);
      if (read_error < 0) read_error = 0;
      if (symcnt > (size_t)read_error)
@@ -696,10 +702,10 @@ sec_unused: SEC_DCCSEC(iter) = NULL;
      /* Difficult case: Must read each entry individually. */
      if (iter->sh_entsize < sizeof(Elf(Sym))) {
       memset(symvec,0,symcnt*sizeof(Elf(Sym)));
-      common_size = iter->sh_entsize;
+      common_size = (size_t)iter->sh_entsize;
      }
      for (i = 0; i < symcnt; ++i) {
-      s_seek(fd,start+iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
+      s_seek(fd,(soff_t)(start+iter->sh_offset+i*iter->sh_entsize),SEEK_SET);
       if (!s_reada(fd,&symvec[i],common_size)) { symcnt = i; break; }
      }
     }
@@ -812,7 +818,7 @@ done_symvec:
      struct DCCSym **symv,**sym_iter; size_t symc;
      /* Parse extended symbol flags. */
      if (!iter->sh_entsize) iter->sh_entsize = sizeof(Elf(DCCSymFlg));
-     if unlikely((flgc = iter->sh_size/iter->sh_entsize) == 0) continue;
+     if unlikely((flgc = (size_t)(iter->sh_size/iter->sh_entsize)) == 0) continue;
      if unlikely((symc = SEC_SYMCNTI(iter->sh_link)) == 0) continue;
      if unlikely((symv = SEC_SYMVECI(iter->sh_link)) == NULL) continue;
      if (symc < flgc) flgc = symc;
@@ -820,7 +826,7 @@ done_symvec:
      if unlikely(!flgv) continue;
      if (iter->sh_entsize == sizeof(Elf(DCCSymFlg))) {
       flgc *= sizeof(Elf(DCCSymFlg));
-      s_seek(fd,start+iter->sh_offset,SEEK_SET);
+      s_seek(fd,(soff_t)(start+iter->sh_offset),SEEK_SET);
       read_error = s_read(fd,flgv,flgc);
       if (read_error < 0) read_error = 0;
       if (flgc > (size_t)read_error)
@@ -831,10 +837,10 @@ done_symvec:
       /* Difficult case: Must read each entry individually. */
       if (iter->sh_entsize < sizeof(Elf(DCCSymFlg))) {
        memset(flgv,0,flgc*sizeof(Elf(DCCSymFlg)));
-       common_size = iter->sh_entsize;
+       common_size = (size_t)iter->sh_entsize;
       }
       for (i = 0; i < flgc; ++i) {
-       s_seek(fd,start+iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
+       s_seek(fd,(soff_t)(start+iter->sh_offset+i*iter->sh_entsize),SEEK_SET);
        if (!s_reada(fd,&flgv[i],common_size)) { flgc = i; break; }
       }
      }
@@ -981,7 +987,7 @@ done_symvec:
     } else {
      size_t i,common_size = sizeof(Elf(Rel));
      /* Adjust relocation data in 'relo_text'. */
-     relcnt = iter->sh_size/iter->sh_entsize;
+     relcnt = (size_t)(iter->sh_size/iter->sh_entsize);
      relo_text.tb_begin = (uint8_t *)DCC_Malloc(relcnt*sizeof(Elf(Rel)),0);
      if unlikely(!relo_text.tb_begin) {
       memset(&relo_text,0,sizeof(struct DCCTextBuf));
@@ -989,10 +995,10 @@ done_symvec:
      }
      if (iter->sh_entsize < common_size) {
       memset(relo_text.tb_begin,0,relcnt*sizeof(Elf(Rel)));
-      common_size = iter->sh_entsize;
+      common_size = (size_t)iter->sh_entsize;
      }
      for (i = 0; i < relcnt; ++i) {
-      s_seek(fd,start+iter->sh_offset+i*iter->sh_entsize,SEEK_SET);
+      s_seek(fd,(soff_t)(start+iter->sh_offset+i*iter->sh_entsize),SEEK_SET);
       if (!s_reada(fd,relo_text.tb_begin+(i*sizeof(Elf(Rel))),common_size)) break;
      }
      if (i != relcnt) {

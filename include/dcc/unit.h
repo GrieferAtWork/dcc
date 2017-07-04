@@ -417,20 +417,7 @@ DCCFUN int DCCSym_Contains(struct DCCSym const *__restrict v, DCC(target_siz_t) 
 typedef uint32_t DCC(rel_t); /* One of 'DCC_R_*', or CPU-specific ELF relocation. */
 
 /* ELF relocation types. */
-#if DCC_TARGET_HASM(M_I386)
-#   define DCC_R_NONE      R_386_NONE /* Empty relocation (used for symbol dependency) */
-#   define DCC_R_DATA_8    R_386_8
-#   define DCC_R_DATA_16   R_386_16
-#   define DCC_R_DATA_32   R_386_32
-#   define DCC_R_DATA_PTR  R_386_32
-#   define DCC_R_DISP_8    R_386_PC8
-#   define DCC_R_DISP_16   R_386_PC16
-#   define DCC_R_DISP_32   R_386_PC32
-#   define DCC_R_JMP_SLOT  R_386_JMP_SLOT
-#   define DCC_R_COPY      R_386_COPY
-#   define DCC_R_RELATIVE  R_386_RELATIVE
-#   define DCC_R_NUM       R_386_NUM
-#elif DCC_TARGET_HASF(F_X86_64)
+#if DCC_TARGET_HASF(F_X86_64)
 #   define DCC_R_NONE      R_X86_64_NONE
 #   define DCC_R_DATA_8    R_X86_64_8
 #   define DCC_R_DATA_16   R_X86_64_16
@@ -444,6 +431,19 @@ typedef uint32_t DCC(rel_t); /* One of 'DCC_R_*', or CPU-specific ELF relocation
 #   define DCC_R_COPY      R_X86_64_COPY
 #   define DCC_R_RELATIVE  R_X86_64_RELATIVE
 #   define DCC_R_NUM       R_X86_64_NUM
+#elif DCC_TARGET_HASM(M_I386)
+#   define DCC_R_NONE      R_386_NONE /* Empty relocation (used for symbol dependency) */
+#   define DCC_R_DATA_8    R_386_8
+#   define DCC_R_DATA_16   R_386_16
+#   define DCC_R_DATA_32   R_386_32
+#   define DCC_R_DATA_PTR  R_386_32
+#   define DCC_R_DISP_8    R_386_PC8
+#   define DCC_R_DISP_16   R_386_PC16
+#   define DCC_R_DISP_32   R_386_PC32
+#   define DCC_R_JMP_SLOT  R_386_JMP_SLOT
+#   define DCC_R_COPY      R_386_COPY
+#   define DCC_R_RELATIVE  R_386_RELATIVE
+#   define DCC_R_NUM       R_386_NUM
 #else
 #   error FIXME
 #endif

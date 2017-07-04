@@ -273,7 +273,7 @@ DCCDisp_FFSMem(struct DCCMemLoc const *__restrict src,
  /* Special optimizations for small/empty sources. */
  switch (n_bytes) {
  case 0: DCCDisp_IntMovReg(0,dst); return;
- case 1: case 2: case 4: DCCDisp_FFSMem_fixed(src,dst,n_bytes); return;
+ case 1: case 2: case 4: DCCDisp_FFSMem_fixed(src,dst,(width_t)n_bytes); return;
  default: break;
  }
  {
@@ -292,7 +292,7 @@ DCCDisp_FFSMem(struct DCCMemLoc const *__restrict src,
   /*    mov -1, %dst */
   /* 1: inc %dst */
   while (n_bytes) {
-   target_siz_t part;
+   width_t part;
         if (n_bytes >= 4) part = 4;
    else if (n_bytes >= 2) part = 2;
    else                   part = 1;
@@ -367,7 +367,7 @@ DCCDisp_CLZMem(struct DCCMemLoc const *__restrict src,
  /* Special optimizations for small/empty sources. */
  switch (n_bytes) {
  case 0: DCCDisp_IntMovReg(0,dst); return;
- case 1: case 2: case 4: DCCDisp_CLZMem_fixed(src,dst,n_bytes); return;
+ case 1: case 2: case 4: DCCDisp_CLZMem_fixed(src,dst,(width_t)n_bytes); return;
  default: break;
  }
  {
@@ -400,7 +400,7 @@ DCCDisp_CLZMem(struct DCCMemLoc const *__restrict src,
   val.sa_sym = NULL;
   start_offset = 0;
   for (;;) {
-   target_siz_t part;
+   width_t part;
         if (n_bytes >= 4) part = 4;
    else if (n_bytes >= 2) part = 2;
    else                   part = 1;

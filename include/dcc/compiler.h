@@ -74,15 +74,15 @@ union{
 #endif
 };
  struct DCCStructField *td_fieldv;       /*< [0..td_size|0..0][owned] Vector of structure fields/function arguments. */
+ DCC(target_siz_t)      td_struct_size;  /*< Used for struct/union types: Total size of the structure. */
 union{
- size_t                 td_struct_size;  /*< Used for struct/union types: Total size of the structure. */
 #ifdef DCC_PRIVATE_API
  scopeid_t              td_vlascope;     /*< Scope id in which 'td_vlaoff' resides. */
 #else
  DCC(scopeid_t)         td_vlascope;     /*< Scope id in which 'td_vlaoff' resides. */
 #endif
 };
- size_t                 td_struct_align; /*< Used for struct/union types: Minimum alignment of the structure. */
+ DCC(target_siz_t)      td_struct_align; /*< Used for struct/union types: Minimum alignment of the structure. */
 };
 
 struct DCCMemDecl {

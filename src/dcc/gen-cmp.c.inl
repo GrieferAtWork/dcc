@@ -170,7 +170,7 @@ again:
     *       is handled explicitly at the beginning, meaning that we can only ever get
     *       here when a sign-register has been set. */
    assert(src_bytes </*=*/ dst_bytes);
-   DCCDisp_CstBinMem('?',&symaddr_zero,&used_dst,part_size,1);
+   DCCDisp_CstBinMem('?',&symaddr_zero,&used_dst,(width_t)part_size,1);
   }
   if (uncommon_size || common_size) {
    if (!done_sym && (done_sym = DCCUnit_AllocSym()) == NULL) goto end;
@@ -303,7 +303,7 @@ unsigned_upper_cmp:
     used_src.ml_off -= part_size;
     src_bytes   -= part_size;
     /* Compare high memory against sign-extended integer register. */
-    DCCDisp_CstBinMem('?',&cmp_val,&used_src,part_size,1);
+    DCCDisp_CstBinMem('?',&cmp_val,&used_src,(width_t)part_size,1);
     DCCDisp_SccTst(test,utest),test = utest;
     DCCDisp_SymJcc(DCC_TEST_NE,done_sym);
    } while (src_bytes > dst_bytes);

@@ -224,7 +224,7 @@ DCCParse_FixType(struct DCCType *__restrict type) {
    type->t_type |=  (orig_qual);
   }
  } else if (DCCTYPE_GROUP(real_sym_type->t_type) == DCCTYPE_VARRAY) {
-  size_t array_size;
+  target_siz_t array_size;
   if (DCCTYPE_GROUP(vbottom->sv_ctype.t_type) == DCCTYPE_ARRAY) {
    struct DCCDecl *array_decl = vbottom->sv_ctype.t_base;
    assert(array_decl);

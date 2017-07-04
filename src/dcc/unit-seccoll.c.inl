@@ -143,7 +143,7 @@ DCCSection_CollapseSymbols(struct DCCSection *__restrict self) {
    DCCSection_Movrel(self,below_addr,sym->sy_addr,sym->sy_size);
    DCCA2l_Mov(&self->sc_dat.sd_a2l,below_addr,sym->sy_addr,sym->sy_size);
    /* Copy symbol data to lower memory. */
-   memcpy(dst_data,src_data,sym->sy_size);
+   memcpy(dst_data,src_data,(size_t)sym->sy_size);
    /* Update section data reference counters. */
    DCCSection_DIncref(self,below_addr,sym->sy_size);
    DCCSection_DDecref(self,sym->sy_addr,sym->sy_size);

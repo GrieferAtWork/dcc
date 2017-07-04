@@ -87,7 +87,7 @@ static PE_HEADER const pe_template = {
  /* ohdr.SizeOfUninitializedData     */0, /* Filled later? */
  /* ohdr.AddressOfEntryPoint         */0, /* Filled later. */
  /* ohdr.BaseOfCode                  */0, /* Filled later. */
-#if DCC_TARGET_CPUM != DCC_CPU_X86_64
+#if !(DCC_TARGET_CPUF&DCC_CPUF_X86_64)
  /* ohdr.BaseOfData                  */0, /* Filled later. */
 #endif
  /* ohdr.ImageBase                   */0x00100000,
@@ -292,8 +292,8 @@ pe_mk_reldat(struct DCCSection *__restrict relocs) {
    hdr = (PIMAGE_BASE_RELOCATION)DCCSection_GetText(relocs,blockaddr,
                                                     sizeof(IMAGE_BASE_RELOCATION));
    if (hdr) {
-    hdr->VirtualAddress = offset-pe.pe_imgbase;
-    hdr->SizeOfBlock    = count*sizeof(WORD)+sizeof(IMAGE_BASE_RELOCATION);
+    hdr->VirtualAddress = (DWORD)(offset-pe.pe_imgbase);
+    hdr->SizeOfBlock    = (DWORD)(count*sizeof(WORD)+sizeof(IMAGE_BASE_RELOCATION));
     count               = 0;
    }
   }
@@ -315,12 +315,10 @@ pe_toupper(char *p, size_t s) {
 PRIVATE void
 pe_mk_imptab(struct DCCSection *__restrict thunk) {
  struct DCCSection *lib;
- size_t symbol_count = 0;
- target_ptr_t dll_name,dll_ptr;
- target_ptr_t thunk_ptr,entry_ptr;
- target_siz_t total_size;
- PIMAGE_IMPORT_DESCRIPTOR hdr;
- DWORD thunk_base = DCCSection_BASE(thunk)-pe.pe_imgbase;
+ PIMAGE_IMPORT_DESCRIPTOR hdr; size_t symbol_count = 0;
+ target_ptr_t dll_name,dll_ptr,thunk_ptr,entry_ptr;
+ target_siz_t total_size; DWORD thunk_base;
+ thunk_base = (DWORD)(DCCSection_BASE(thunk)-pe.pe_imgbase);
  assert(thunk);
  assert(!DCCSection_ISIMPORT(thunk));
  /* Count the total number of import symbols. */
@@ -333,9 +331,9 @@ pe_mk_imptab(struct DCCSection *__restrict thunk) {
  /* Allocate memory for the import table & import address table. */
  total_size     = pe.pe_imp_size+2*pe.pe_iat_size;
  dll_ptr        = DCCSection_DAlloc(thunk,total_size,16,0);
- pe.pe_imp_addr = dll_ptr;
+ pe.pe_imp_addr = (DWORD)dll_ptr;
  /* The address table is located directly after the import table. */
- pe.pe_iat_addr = dll_ptr+pe.pe_imp_size;
+ pe.pe_iat_addr = (DWORD)(dll_ptr+pe.pe_imp_size);
 
  /* Allocate the text. */
  if unlikely(!DCCSection_GetText(thunk,dll_ptr,total_size)) return;
@@ -357,9 +355,9 @@ pe_mk_imptab(struct DCCSection *__restrict thunk) {
   }
   hdr      = (PIMAGE_IMPORT_DESCRIPTOR)(thunk->sc_dat.sd_text.tb_begin+dll_ptr);
   dll_ptr += sizeof(IMAGE_IMPORT_DESCRIPTOR);
-  hdr->FirstThunk         = thunk_ptr+thunk_base;
-  hdr->OriginalFirstThunk = entry_ptr+thunk_base;
-  hdr->Name               = dll_name+thunk_base;
+  hdr->FirstThunk         = (DWORD)(thunk_ptr+thunk_base);
+  hdr->OriginalFirstThunk = (DWORD)(entry_ptr+thunk_base);
+  hdr->Name               = (DWORD)(dll_name+thunk_base);
 
   { struct DCCSym **biter,**bend,*sym,*next;
     bend = (biter = lib->sc_symv)+lib->sc_syma;
@@ -601,7 +599,7 @@ pe_mk_exptab(struct DCCSection *__restrict thunk) {
  target_ptr_t ord_addr;     /* Vector of WORD identifying function ordinals used as import hints. */
  assert(thunk);
  /* generate the export directory */
- thunk_base = DCCSection_BASE(thunk)-pe.pe_imgbase;
+ thunk_base = (DWORD)(DCCSection_BASE(thunk)-pe.pe_imgbase);
  /* Allocate section memory for the export directory, function pointers and function IDS.
   * NOTE: Memory for the function names must be allocated dynamically later! */
  expdir_addr = DCCSection_DAlloc(thunk,sizeof(IMAGE_EXPORT_DIRECTORY),16,0);
@@ -623,13 +621,13 @@ pe_mk_exptab(struct DCCSection *__restrict thunk) {
                                                            sizeof(IMAGE_EXPORT_DIRECTORY));
  if unlikely(!expdir_data) goto end;
  expdir_data->Characteristics        = 0; /* ??? */
- expdir_data->Name                   = dll_name;
+ expdir_data->Name                   = (DWORD)dll_name;
  expdir_data->Base                   = 1; /* ??? */
  expdir_data->NumberOfFunctions      = (DWORD)pe.pe_exportc;
  expdir_data->NumberOfNames          = (DWORD)pe.pe_exportc;
- expdir_data->AddressOfFunctions     = func_addr+thunk_base;
- expdir_data->AddressOfNames         = name_addr+thunk_base;
- expdir_data->AddressOfNameOrdinals  = ord_addr+thunk_base;
+ expdir_data->AddressOfFunctions     = (DWORD)(func_addr+thunk_base);
+ expdir_data->AddressOfNames         = (DWORD)(name_addr+thunk_base);
+ expdir_data->AddressOfNameOrdinals  = (DWORD)(ord_addr+thunk_base);
  /* Enumerate all symbols and write them to the export list. */
  { struct DCCSym **iter,**end; WORD ord = 0;
    end = (iter = pe.pe_exportv)+pe.pe_exportc;
@@ -665,9 +663,9 @@ pe_mk_exptab(struct DCCSection *__restrict thunk) {
   *       might be allocated out of this range.
   *       But that can easily be prevented by explicitly allocating a '.thunk' section,
   *       or by simply not marking it as mergeable (which it shouldn't be to begin with) */
- pe.pe_exp_addr  = expdir_addr;
+ pe.pe_exp_addr  = (DWORD)expdir_addr;
  pe.pe_exp_size  = (DWORD)(thunk->sc_dat.sd_text.tb_max-thunk->sc_dat.sd_text.tb_begin);
- pe.pe_exp_size -= expdir_addr;
+ pe.pe_exp_size -= (DWORD)expdir_addr;
 end:;
 }
 
@@ -841,8 +839,8 @@ pe_checksum(void const *data, size_t s, DWORD sum) {
 PRIVATE void
 pe_mk_writefile(stream_t fd) {
 #define DEFDIR(id,p,s) \
- (hdr.ohdr.DataDirectory[id].VirtualAddress = (p),\
-  hdr.ohdr.DataDirectory[id].Size = (s))
+ (hdr.ohdr.DataDirectory[id].VirtualAddress = (DWORD)(p),\
+  hdr.ohdr.DataDirectory[id].Size           = (DWORD)(s))
  PE_HEADER hdr;
  DWORD file_offset;
  struct secinfo *iter,*end;
@@ -851,8 +849,8 @@ pe_mk_writefile(stream_t fd) {
  file_offset = pe_alignfile(sizeof(PE_HEADER)+pe.pe_secc*
                             sizeof(IMAGE_SECTION_HEADER));
  hdr.ohdr.SizeOfHeaders    = file_offset;
- hdr.ohdr.SectionAlignment = pe.pe_secalign;
- hdr.ohdr.FileAlignment    = pe.pe_filalign;
+ hdr.ohdr.SectionAlignment = (DWORD)(pe.pe_secalign);
+ hdr.ohdr.FileAlignment    = (DWORD)(pe.pe_filalign);
  end = (iter = pe.pe_secv)+pe.pe_secc;
  for (; iter != end; ++iter) {
   target_ptr_t addr,size;
@@ -863,14 +861,16 @@ pe_mk_writefile(stream_t fd) {
   assert(size >= iter->si_msize);
   switch (iter->si_type) {
   case SECTY_TEXT:
-   hdr.ohdr.BaseOfCode = addr;
-   hdr.ohdr.SizeOfCode = size;
+   hdr.ohdr.BaseOfCode = (DWORD)addr;
+   hdr.ohdr.SizeOfCode = (DWORD)size;
    break;
 #if DCC_TARGET_CPUM != DCC_CPU_X86_64
   case SECTY_DATA:
-   hdr.ohdr.BaseOfData              = addr;
-   hdr.ohdr.SizeOfInitializedData   = iter->si_msize;
-   hdr.ohdr.SizeOfUninitializedData = size-iter->si_msize;
+#if !(DCC_TARGET_CPUF&DCC_CPUF_X86_64)
+   hdr.ohdr.BaseOfData              = (DWORD)addr;
+#endif
+   hdr.ohdr.SizeOfInitializedData   = (DWORD)(iter->si_msize);
+   hdr.ohdr.SizeOfUninitializedData = (DWORD)(size-iter->si_msize);
    break;
 #endif
   case SECTY_RELOC: DEFDIR(IMAGE_DIRECTORY_ENTRY_BASERELOC,addr,size); break;
@@ -936,10 +936,10 @@ pe_mk_writefile(stream_t fd) {
     else if (sec_align >=    2) iter->si_hdr.Characteristics |= IMAGE_SCN_ALIGN_2BYTES;
     else                        iter->si_hdr.Characteristics |= IMAGE_SCN_ALIGN_1BYTES;
   }
-  iter->si_hdr.VirtualAddress   = addr;
-  iter->si_hdr.Misc.VirtualSize = size;
+  iter->si_hdr.VirtualAddress   = (DWORD)addr;
+  iter->si_hdr.Misc.VirtualSize = (DWORD)size;
   {
-   DWORD newsize = pe_alignsec(addr+size);
+   DWORD newsize = (DWORD)pe_alignsec(addr+size);
    if (hdr.ohdr.SizeOfImage < newsize)
        hdr.ohdr.SizeOfImage = newsize;
   }
@@ -960,9 +960,9 @@ pe_mk_writefile(stream_t fd) {
     entryaddr.sa_sym = &linker.l_text->sc_start;
     entryaddr.sa_off = 0;
    }
-   hdr.ohdr.AddressOfEntryPoint = (entryaddr.sa_sym->sy_addr+entryaddr.sa_off+
-                                   DCCSection_BASE(entryaddr.sa_sym->sy_sec))-
-                                   pe.pe_imgbase;
+   hdr.ohdr.AddressOfEntryPoint = (DWORD)((entryaddr.sa_sym->sy_addr+entryaddr.sa_off+
+                                           DCCSection_BASE(entryaddr.sa_sym->sy_sec))-
+                                           pe.pe_imgbase);
  }
  hdr.fhdr.NumberOfSections = (WORD)pe.pe_secc;
  hdr.ohdr.ImageBase        = pe.pe_imgbase;

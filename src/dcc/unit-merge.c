@@ -235,7 +235,9 @@ DCCUnit_Merge(struct DCCUnit *__restrict other, uint32_t flags) {
     dst_buffer = (uint8_t *)DCCSection_GetText(dstsec,other_sec_base,other_sec_size);
     if unlikely(!dst_buffer) goto end;
     /* Append raw section memory to the end. */
-    memcpy(dst_buffer,srcsec->sc_dat.sd_text.tb_begin,other_sec_size);
+    memcpy(dst_buffer,
+           srcsec->sc_dat.sd_text.tb_begin,
+          (size_t)other_sec_size);
    }
    dstsec->sc_dat.sd_merge = other_sec_base;
    /* Inherit all allocated data ranges. */

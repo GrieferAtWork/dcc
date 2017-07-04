@@ -333,12 +333,11 @@ ill_reloc:
      uint32_t relvalue;
      struct DCCSection *addrtarget;
     case IMAGE_REL_BASED_HIGHLOW:
-     /* i386 ELF call this 'R_386_RELATIVE', but we implement it as 'DCC_R_DATA_PTR' */
+     /* i386 ELF call this 'R_386_RELATIVE', but we implement it as 'DCC_R_DATA_32' */
      if ((size_t)offset+4 >= region_size) goto oob_reloc;
      /* Adjust the relocation data from image-relative to section-relative. */
      relvalue   = *(uint32_t *)reldata;
-
-     relvalue  -= hdr.ohdr.ImageBase;
+     relvalue  -= (uint32_t)hdr.ohdr.ImageBase;
      addrtarget = dcc_getsec((target_ptr_t)relvalue);
      if (!addrtarget) {
       WARN(W_STA_PE_UNKNOWN_RELOCATION_TARGET,
@@ -351,10 +350,10 @@ ill_reloc:
          ((uintptr_t)relhdr-(uintptr_t)reldat_base));
       continue;
      }
-     relvalue            -= DCCSection_BASE(addrtarget);
+     relvalue            -= (uint32_t)DCCSection_BASE(addrtarget);
      rel.r_sym            = &addrtarget->sc_start;
      *(uint32_t *)reldata = relvalue;
-     rel.r_type           = DCC_R_DATA_PTR;
+     rel.r_type           = DCC_R_DATA_32;
     } break;
     default:
      relwarn = W_STA_PE_UNKNOWN_RELOC;

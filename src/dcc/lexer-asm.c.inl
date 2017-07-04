@@ -999,7 +999,7 @@ DCCIAsmOps_Store(struct DCCIAsmOps *__restrict self) {
    if (sval->sv_flags&DCC_SFLAG_LVALUE) {
     if (!(iter->ao_flags&ASMIOP_FLAG_LLOCAL)) {
      struct DCCType *type_iter = &sval->sv_ctype;
-     struct DCCMemLoc ml; size_t type_size;
+     struct DCCMemLoc ml; target_siz_t type_size;
      type_size = DCCType_Sizeof(type_iter,NULL,1);
      if (type_size) {
       ml.ml_off = sval->sv_const.offset;

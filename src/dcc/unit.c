@@ -1409,7 +1409,7 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
   aligned_result &= ~(new_align-1);
   aligned_result += new_offset;
   if (aligned_result != result) {
-   size_t alignment_offset = result-aligned_result;
+   target_siz_t alignment_offset = result-aligned_result;
    assert(result >= aligned_result);
    /* Make sure that 'result' is aligned by 'new_align' */
    if (DCCSection_DAllocAt(self,aligned_result,alignment_offset) == DCC_FREEDATA_INVPTR) {
@@ -1432,7 +1432,7 @@ DCCSection_DRealloc(struct DCCSection *__restrict self,
     DCCSection_Movrel(self,aligned_result,old_addr,new_size);
     DCCA2l_Mov(&self->sc_dat.sd_a2l,aligned_result,old_addr,new_size);
     /* Move memory. */
-    memmove(newvec,oldvec,new_size);
+    memmove(newvec,oldvec,(size_t)new_size);
     DCCSection_DFree(self,old_addr,alignment_offset);
    }
    result = aligned_result;
@@ -1465,7 +1465,7 @@ alloc_newblock:
    DCCSection_Movrel(self,result,old_addr,old_size);
    DCCA2l_Mov(&self->sc_dat.sd_a2l,result,old_addr,old_size);
    /* Move the common memory to the new location. */
-   memmove(newvec,oldvec,old_size);
+   memmove(newvec,oldvec,(size_t)old_size);
    /* Free overlap/the old vector. */
    if (old_new_overlap) {
     target_ptr_t unaligned_result = old_addr-more_mem;
@@ -1512,7 +1512,7 @@ DCCSection_DMerge(struct DCCSection *__restrict self,
   if (addr_data >= search_end) goto end;
   search_end     = (search_iter+addr)-size;
   while (search_iter <= search_end) {
-   if (!memcmp(search_iter,addr_data,size)) {
+   if (!memcmp(search_iter,addr_data,(size_t)size)) {
     target_ptr_t new_result; /* We've got a match! */
     new_result = (target_ptr_t)(search_iter-self->sc_dat.sd_text.tb_begin);
     /* Make sure the match is actually allocated. */
@@ -1591,7 +1591,7 @@ DCCSection_DAllocMem(struct DCCSection *__restrict self,
  if (end >= self->sc_dat.sd_text.tb_end) goto alloc_normal;
  iter += offset;
  while (iter < end) {
-  if (memeq_sized(iter,size,(uint8_t const *)memory,mem_size)) {
+  if (memeq_sized(iter,(size_t)size,(uint8_t const *)memory,mem_size)) {
    /* We've got a match! */
    result = (target_ptr_t)(iter-self->sc_dat.sd_text.tb_begin);
    goto done;
@@ -1678,7 +1678,7 @@ DCCSection_DFree(struct DCCSection *__restrict self,
   allocated_size = 0;
  }
  /* ZERO-initialize the free & allocated memory. */
- memset(addr_ptr,0,allocated_size);
+ memset(addr_ptr,0,(size_t)allocated_size);
  if (addr_end == (target_ptr_t)(self->sc_dat.sd_text.tb_max-
                                 self->sc_dat.sd_text.tb_begin)) {
   /* Special case: The given address range is located just at the end of theoretical memory.

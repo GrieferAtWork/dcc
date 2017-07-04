@@ -98,9 +98,11 @@ PRIVATE void DCCDisp_SymAddr32(struct DCCSymAddr const *__restrict expr);
 PRIVATE void DCCDisp_SymDisp32(struct DCCSymAddr const *__restrict expr);
 #if DCC_TARGET_SIZEOF_IMM_MAX >= 8
 PRIVATE void DCCDisp_SymAddr64(struct DCCSymAddr const *__restrict expr);
+#ifdef DCC_R_DISP_64
 PRIVATE void DCCDisp_SymDisp64(struct DCCSymAddr const *__restrict expr);
-#define      DCCDisp_SymAddrI  DCCDisp_SymAddr64
 #define      DCCDisp_SymDispI  DCCDisp_SymDisp64
+#endif
+#define      DCCDisp_SymAddrI  DCCDisp_SymAddr64
 #else
 #define      DCCDisp_SymAddrI  DCCDisp_SymAddr32
 #define      DCCDisp_SymDispI  DCCDisp_SymDisp32

@@ -441,7 +441,7 @@ done_symflg:;
     uint8_t *alloc_end;
     /* Skip empty sections (e.g.: import sections) */
     if (shdr_iter->s_buf.tb_begin == shdr_iter->s_buf.tb_max) continue;
-    DCCStream_PadAddr(fd,shdr_iter->s_hdr.sh_offset);
+    DCCStream_PadAddr(fd,(soff_t)shdr_iter->s_hdr.sh_offset);
     alloc_end = shdr_iter->s_buf.tb_end;
     if (alloc_end > shdr_iter->s_buf.tb_max)
         alloc_end = shdr_iter->s_buf.tb_max;

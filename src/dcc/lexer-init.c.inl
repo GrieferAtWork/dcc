@@ -304,7 +304,7 @@ parse_field:
      if (TOK != ']') WARN(W_EXPECTED_RBRACKET); else YIELD();
      if (TOK != '=') WARN(W_EXPECTED_EQUAL_AFTER_ARRAY_INDEX); else YIELD();
      if (index_begin < 0) WARN(W_NEGATIVE_INDEX_IN_ARRAY_INITIALIZER,type),index_begin = 0;
-     if (kind != KIND_VARRAY && index_end > target_maxindex)
+     if (kind != KIND_VARRAY && index_end > (int_t)target_maxindex)
       WARN(W_OUT_OF_BOUNDS_IN_ARRAY_INITIALIZER,type),
       index_end = target_maxindex;
      if (index_begin > index_end)

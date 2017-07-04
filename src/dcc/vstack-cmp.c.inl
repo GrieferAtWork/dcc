@@ -58,8 +58,8 @@ DCCStackValue_CmpMem(struct DCCStackValue *__restrict self,
   if (src_siz > sizeof(int_t)) src_siz = sizeof(int_t);
   if (!is_unsigned && self->sv_const.it < 0) sign_byte = -1;
   while (n > DCC_TARGET_SIZEOF_ARITH_MAX || n&(n-1)) {
-   test_t utest;
-   target_siz_t part_size = DCC_TARGET_SIZEOF_ARITH_MAX;
+   test_t utest; width_t part_size;
+   part_size = DCC_TARGET_SIZEOF_ARITH_MAX;
    if (part_size > n) {
 #if DCC_TARGET_SIZEOF_ARITH_MAX > 8
 #error FIXME
@@ -89,7 +89,7 @@ DCCStackValue_CmpMem(struct DCCStackValue *__restrict self,
   }
   temp.sa_off = (target_off_t)self->sv_const.it;
   temp.sa_sym = self->sv_sym;
-  DCCDisp_CstBinMem('?',&temp,target,n,1);
+  DCCDisp_CstBinMem('?',&temp,target,(width_t)n,1);
   if (done_sym) t_defsym(done_sym);
  } else {
   DCCStackValue_FixRegOffset(self);

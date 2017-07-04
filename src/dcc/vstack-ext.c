@@ -197,7 +197,7 @@ DCCVStack_Scanner(tok_t mode) {
   if (vbottom->sv_sym)
 cstdef: DCCStackValue_Load(vbottom);
   else { /* Constant optimizations. */
-   uint64_t iv,shift; int result;
+   uint64_t iv,shift; target_int_t result;
    switch (size) {
    case 1: iv = (uint64_t)vbottom->sv_const.u8; break;
    case 2: iv = (uint64_t)vbottom->sv_const.u16; break;
@@ -213,7 +213,7 @@ cstdef: DCCStackValue_Load(vbottom);
      shift >>= 1;
     }
     /* Adjust for zero-padding on constants. */
-    result -= (8-size)*8;
+    result -= (target_int_t)((8-size)*8);
    } else {
     result = 1,shift = 1;
     while (!(iv&shift)) {
@@ -329,10 +329,10 @@ fix_stack:
    void const *data_a,*data_b;
    if ((data_a = DCCMemLoc_CompilerData(&a_loc,cmp_size)) != NULL &&
        (data_b = DCCMemLoc_CompilerDataUpdate(&b_loc,(void **)&data_a,cmp_size)) != NULL) {
-    int result = memcmp(data_a,data_b,cmp_size);
+    int result = memcmp(data_a,data_b,(size_t)cmp_size);
     /* Clamp the result to -1, 0 or 1 */
-         if (result < 0) result = -1;
-    else if (result > 0) result = 1;
+         if (result < -1) result = -1;
+    else if (result >  1) result = 1;
     vpop(1);
     vpop(1);
     vpushi(DCCTYPE_INT,result);

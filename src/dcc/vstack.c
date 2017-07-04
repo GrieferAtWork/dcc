@@ -64,7 +64,7 @@ INTDEF void dcc_outf(char const *fmt, ...);
 
 /* Internal generator functions. */
 INTDEF  void DCC_VSTACK_CALL DCCStackValue_Store(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict target, int initial_store); /* mov self, target */
-PRIVATE void DCC_VSTACK_CALL DCCStackValue_BinMem(struct DCCStackValue *__restrict self, tok_t op, struct DCCMemLoc const *__restrict target, size_t n);  /* *op self, target */
+PRIVATE void DCC_VSTACK_CALL DCCStackValue_BinMem(struct DCCStackValue *__restrict self, tok_t op, struct DCCMemLoc const *__restrict target, target_siz_t n);  /* *op self, target */
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_BinReg(struct DCCStackValue *__restrict self, tok_t op, rc_t dst, rc_t dst2);                             /* *op self, %dst; mov self, %dst2 */
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Unary(struct DCCStackValue *__restrict self, tok_t op);
 PRIVATE void DCC_VSTACK_CALL DCCStackValue_Binary(struct DCCStackValue *__restrict self, struct DCCStackValue *__restrict target, tok_t op);
@@ -108,9 +108,9 @@ PUBLIC tyid_t DCC_VSTACK_CALL DCC_RC_GETTYPE(rc_t rc) {
  return result;
 }
 
-PUBLIC DCC(target_siz_t) DCC_VSTACK_CALL
+PUBLIC target_siz_t DCC_VSTACK_CALL
 DCC_RC_SIZE(rc_t rc) {
- size_t result;
+ target_siz_t result;
 #ifdef DCC_RC_I64
  if (rc&DCC_RC_I64) result = 8;
  else
@@ -1255,8 +1255,13 @@ gen_inv:
   DCCDisp_CstBinReg(op,&rhs_val,self->sv_reg2,1); /* add/sub w/ carry/borrow. */
  } else if (op == '-') {
   /* -x --> ~(x-1) */
+#if DCC_TARGET_SIZEOF_ARITH_MAX < 8
   struct DCCSymExpr cst_val = {1,NULL};
   DCCDisp_CstBinRegs('-',&cst_val,self->sv_reg,self->sv_reg2,1);
+#else
+  struct DCCSymAddr cst_val = {1,NULL};
+  DCCDisp_CstBinReg('-',&cst_val,self->sv_reg,1);
+#endif
   goto gen_inv;
  } else {
   /* Add more/new emulated 64-bit unary operations here. */
@@ -1276,7 +1281,7 @@ end_exclaim:
 
 PRIVATE void DCC_VSTACK_CALL
 DCCStackValue_BinMem(struct DCCStackValue *__restrict self, tok_t op,
-                     struct DCCMemLoc const *__restrict target, size_t n) {
+                     struct DCCMemLoc const *__restrict target, target_siz_t n) {
  struct DCCSymAddr temp;
  assert(self);
  assert(target);
@@ -1299,7 +1304,7 @@ DCCStackValue_BinMem(struct DCCStackValue *__restrict self, tok_t op,
   case 1: temp.sa_off = (target_off_t)self->sv_const.u8; goto integral_common;
   case 2: temp.sa_off = (target_off_t)DCC_H2T16(self->sv_const.u16); goto integral_common;
   case 4: temp.sa_off = (target_off_t)DCC_H2T32(self->sv_const.u32);
-integral_common: DCCDisp_CstBinMem(op,&temp,target,n,DCCStackValue_IsUnsignedOrPtr(self)); break;
+integral_common: DCCDisp_CstBinMem(op,&temp,target,(width_t)n,DCCStackValue_IsUnsignedOrPtr(self)); break;
 #ifdef DCC_RC_I64
   case 8: temp.sa_off = (target_off_t)DCC_H2T64(self->sv_const.u64); goto integral_common;
 #endif
@@ -4867,7 +4872,7 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
 #elif DCC_TARGET_SIZEOF_IMM_MAX < 8
   DCCDisp_CstPush(&symaddr.ml_sad,curr_size > 4 ? 4 : curr_size);
 #else
-  DCCDisp_CstPush(&symaddr.ml_sad,curr_size);
+  DCCDisp_CstPush(&symaddr.ml_sad,(width_t)curr_size);
 #endif
 #if DCC_TARGET_SIZEOF_IMM_MAX < 8 && \
    (DCC_TARGET_BYTEORDER == 1234) ^ DCC_TARGET_STACKDOWN
@@ -5010,12 +5015,12 @@ DCCStackValue_PushAligned(struct DCCStackValue *__restrict self,
 #pragma warning(disable: 4701)
 #endif
 PUBLIC void DCC_VSTACK_CALL
-DCCVStack_Call(size_t n_args) {
+DCCVStack_Call(target_siz_t n_args) {
  struct DCCStackValue *arg_first,*function;
  struct DCCDecl *funty_decl;
  struct DCCAttrDecl *funty_attr;
  target_siz_t arg_size,stack_align;
- uint32_t cc; size_t argc,untyped;
+ uint32_t cc; target_siz_t argc,untyped;
  struct DCCStructField *argv;
  struct DCCStackValue return_value;
  assert(vsize >= (1+n_args));

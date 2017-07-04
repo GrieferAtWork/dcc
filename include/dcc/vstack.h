@@ -248,7 +248,7 @@ struct TPPString;
 DCCFUN DCC(tyid_t) DCC_VSTACK_CALL DCC_RC_GETTYPE(DCC(rc_t) rc);
 DCCFUN DCC(target_siz_t) DCC_VSTACK_CALL DCC_RC_SIZE(DCC(rc_t) rc);
 DCCFUN DCC(rc_t) DCC_VSTACK_CALL DCC_RC_FORTYPE(struct DCCType const *__restrict t);
-DCC_LOCAL DCC(rc_t) DCC_RC_FORSIZE(size_t n) {
+DCC_LOCAL DCC(rc_t) DCC_RC_FORSIZE(DCC(target_siz_t) n) {
  switch (n) {
 #ifdef DCC_RC_I64
   case 4:  return DCC_RC_I8|DCC_RC_I16|DCC_RC_I32;
@@ -347,6 +347,7 @@ struct DCCStackValue {
  sflag_t               sv_flags; /*< Stack-value flags. */
  rc_t                  sv_reg;   /*< First associated register, or location (One of 'DCC_ASMREG_*').
                                   *  This value determines what 'sv_const' and 'sv_sym' are used for. */
+ /* TODO: sv_reg2 shouldn't be required when 'DCC_TARGET_SIZEOF_ARITH_MAX >= 8' */
  rc_t                  sv_reg2;  /*< Second register, or 'DCC_RC_CONST' when not used. */
 #else
  DCC(sflag_t)          sv_flags; /*< Stack-value flags. */
@@ -518,7 +519,7 @@ DCCFUN DCC(test_t) DCC_VSTACK_CALL DCCVStack_UniTst(DCC(test_t) test);          
 #define DCC_UNITST_FIRST 0xff
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Store(int initial_store);                            /* -2, +1 */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_StoreCC(int invert_test, int initial_store);         /* -3, +1: <target, source, cond>: if (vbottom[0] ^ invert_test) vbottom[2] = vbottom[1]; LEAVE(vbottom[2]); */
-DCCFUN void DCC_VSTACK_CALL DCCVStack_Call(size_t n_args);                                 /* -n_args, -1, +1 (NOTE: Args are popped first, and in reverse, meaning that the last argument should be in 'vbottom') */
+DCCFUN void DCC_VSTACK_CALL DCCVStack_Call(DCC(target_siz_t) n_args);                      /* -n_args, -1, +1 (NOTE: Args are popped first, and in reverse, meaning that the last argument should be in 'vbottom') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Jcc(int invert);                                     /* -2 (Jump to 'vbottom[0]' if 'vbottom[1]^invert' is true) */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Jmp(void);                                           /* -1 (Jump to 'vbottom[0]') */
 DCCFUN void DCC_VSTACK_CALL DCCVStack_Bitfldf(DCC(sflag_t) flags);                         /* -1, +1 */

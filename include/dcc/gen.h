@@ -75,16 +75,16 @@ DCCFUN void DCCDisp_ProbeSym_(struct DCCSymAddr const *__restrict addr, size_t n
  *                - [DCCMemLoc_CompilerData] Relocations were present inside the text are (use 'DCCMemLoc_CompilerText' instead)
  * 'DCCMemLoc_CompilerData' does the same, but only for constant data that may be used for
  * compile-time optimizations where operands are static constants that are not allowed to be changed. */
-DCCFUN void       *DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l, size_t n_bytes);
-DCCFUN void const *DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l, size_t n_bytes);
+DCCFUN void       *DCCMemLoc_CompilerAddr(struct DCCMemLoc const *__restrict l, DCC(target_siz_t) n_bytes);
+DCCFUN void const *DCCMemLoc_CompilerData(struct DCCMemLoc const *__restrict l, DCC(target_siz_t) n_bytes);
 
 /* Same as the two function above, but accept an additional argument 'update_ptr' that describes
  * any kind of compile-time pointer (doesn't even have to be part of a section), that will be
  * updated in the even that in order to access section data, the section buffer must be re-allocated.
  * >> This is a very crude work-around for such cases, but required for
  *    compile-time implementation of something like 'DCCDisp_VecMovMem()'. */
-DCCFUN void       *DCCMemLoc_CompilerAddrUpdate(struct DCCMemLoc const *__restrict l, void **__restrict update_ptr, size_t n_bytes);
-DCCFUN void const *DCCMemLoc_CompilerDataUpdate(struct DCCMemLoc const *__restrict l, void **__restrict update_ptr, size_t n_bytes);
+DCCFUN void       *DCCMemLoc_CompilerAddrUpdate(struct DCCMemLoc const *__restrict l, void **__restrict update_ptr, DCC(target_siz_t) n_bytes);
+DCCFUN void const *DCCMemLoc_CompilerDataUpdate(struct DCCMemLoc const *__restrict l, void **__restrict update_ptr, DCC(target_siz_t) n_bytes);
 
 struct DCCCompilerText {
  struct DCCSection *ct_sec;  /*< [0..1] Section that the text is located inside of. */
@@ -101,7 +101,7 @@ struct DCCCompilerText {
  * @return: * : The compile-time text address of the given memory location. */
 DCCFUN void const *DCCMemLoc_CompilerText(struct DCCMemLoc const *__restrict l,
                                           struct DCCCompilerText *__restrict text,
-                                          size_t n_bytes);
+                                          DCC(target_siz_t) n_bytes);
 
 /* mov !src, %dst (size depends on register) */
 DCCFUN void DCCDisp_MemMovReg(struct DCCMemLoc const *__restrict src, DCC(rc_t) dst);
@@ -147,13 +147,16 @@ DCCFUN void DCCDisp_LocMovReg(struct DCCMemLoc const *__restrict val, DCC(rc_t) 
 DCCFUN void DCCDisp_CstMovReg(struct DCCSymAddr const *__restrict val, DCC(rc_t) dst);
 DCCFUN void DCCDisp_CstMovRegRaw(struct DCCSymAddr const *__restrict val, DCC(rc_t) dst);
 
-/* lea !val, !dst (Set 'n' bytes of memory at 'dst' to an address from 'val')
+/* lea !src, !dst (Set 'n' bytes of memory at 'dst' to an address from 'src')
  * NOTE: If static initialization is enabled, memory may be moved at compile-time.
  * TODO: This function must be able to handle more than just a bus-width in 'dst'!
  *       It's even already being used in such a way, so compiler crashes can happen with this! */
-DCCFUN void DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict val,
+DCCFUN void DCCDisp_CstMovMem(struct DCCSymAddr const *__restrict src,
                               struct DCCMemLoc  const *__restrict dst,
                               DCC(width_t) width);
+DCCFUN void DCCDisp_CstMovMems(struct DCCSymAddr const *__restrict src,
+                               struct DCCMemLoc  const *__restrict dst,
+                               DCC(target_siz_t) dst_bytes, int src_unsigned);
 
 /* Perform a unary in-place operation.
  * @param: op: One of:
@@ -240,6 +243,10 @@ DCCFUN void DCCDisp_CstBinMem(DCC(tok_t) op,
                               struct DCCSymAddr const *__restrict val,
                               struct DCCMemLoc const *__restrict dst,
                               DCC(width_t) width, int src_unsigned);
+DCCFUN void DCCDisp_CstBinMems(DCC(tok_t) op,
+                               struct DCCSymAddr const *__restrict val,
+                               struct DCCMemLoc const *__restrict dst,
+                               DCC(target_siz_t) dst_bytes, int src_unsigned);
 
 /* Add the given 'val' to 'dst'
  * NOTE: Special optimizations are performed when the

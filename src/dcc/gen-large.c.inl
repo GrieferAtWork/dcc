@@ -56,7 +56,7 @@ DCCMemLoc_MinAlign(struct DCCMemLoc const *__restrict self) {
  if (offset) {
   i = 0;
   while (!(offset&1)) ++i,offset >>= 1;
-  result = (1 << i);
+  result = ((target_ptr_t)1 << i);
  }
  return result;
 }
@@ -288,18 +288,19 @@ DCCDisp_LargeVecBinMem(tok_t op,
  if (src_bytes > reqbytes) src_bytes = reqbytes;
  else if (src_bytes != reqbytes) {
   int filler = 0;
-  fixed_source_data = malloc(reqbytes);
+  fixed_source_data = malloc((size_t)reqbytes);
   if unlikely(!fixed_source_data) goto seterr;
-  memcpy(fixed_source_data,src,reqbytes);
+  memcpy(fixed_source_data,src,(size_t)reqbytes);
   if (src_bytes && !src_unsigned && ((uint8_t *)src)[src_bytes-1]&0x80) filler = 0xff;
   memset((uint8_t *)fixed_source_data+src_bytes,
-          filler,reqbytes-src_bytes);
+          filler,(size_t)(reqbytes-src_bytes));
  }
  used_src.ml_off = 0;
  used_src.ml_reg = DCC_RC_CONST;
  DCCSection_TBEGIN(unit.u_data);
  used_src.ml_sym = DCCSection_DAllocSym(unit.u_data,fixed_source_data,
-                                        reqbytes,reqbytes,REQALIGN(op,dst),0);
+                                       (size_t)reqbytes,reqbytes,
+                                        REQALIGN(op,dst),0);
  DCCSection_TEND(unit.u_data);
  if (fixed_source_data != src) free(fixed_source_data);
  DCCDisp_LargeMemBinMem_fixed(op,&used_src,dst,dst_bytes,src_unsigned);
@@ -314,18 +315,19 @@ DCCDisp_LargeBytBinMem(tok_t op, int                      src, target_siz_t src_
  void *fixed_source_data;
  target_siz_t reqbytes = REQSIZE(op,dst_bytes);
  if (src_bytes > reqbytes) src_bytes = reqbytes;
- fixed_source_data = malloc(reqbytes);
+ fixed_source_data = malloc((size_t)reqbytes);
  if unlikely(!fixed_source_data) goto seterr;
- memset(fixed_source_data,src,reqbytes);
+ memset(fixed_source_data,src,(size_t)reqbytes);
  filler = 0;
  if (src_bytes && !src_unsigned && src&0x80) filler = 0xff;
  memset((uint8_t *)fixed_source_data+src_bytes,
-         filler,reqbytes-src_bytes);
+         filler,(size_t)(reqbytes-src_bytes));
  used_src.ml_off = 0;
  used_src.ml_reg = DCC_RC_CONST;
  DCCSection_TBEGIN(unit.u_data);
  used_src.ml_sym = DCCSection_DAllocSym(unit.u_data,fixed_source_data,
-                                        reqbytes,reqbytes,REQALIGN(op,dst),0);
+                                       (size_t)reqbytes,reqbytes,
+                                        REQALIGN(op,dst),0);
  DCCSection_TEND(unit.u_data);
  free(fixed_source_data);
  DCCDisp_LargeMemBinMem_fixed(op,&used_src,dst,dst_bytes,src_unsigned);

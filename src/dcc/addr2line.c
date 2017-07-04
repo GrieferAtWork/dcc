@@ -775,7 +775,7 @@ DCCA2lChunk_DeleteRange(struct DCCA2lChunk *__restrict self,
 PRIVATE struct DCCA2lChunk *
 DCCA2l_GetChunkFor(struct DCCA2l *__restrict self,
                    target_ptr_t addr) {
- size_t index = addr/DCC_A2L_CHUNK_SIZE;
+ size_t index = (size_t)(addr/DCC_A2L_CHUNK_SIZE);
  assert(self);
  assert(self->d_chunkc <= self->d_chunka);
  if (index >= self->d_chunkc) {
@@ -1060,8 +1060,8 @@ DCCA2l_Lookup(struct DCCA2l const *__restrict self,
  a2l_op_t const *code;
  assert(self);
  assert(result);
- addr = result->s_addr;
- index = addr/DCC_A2L_CHUNK_SIZE;
+ addr  = result->s_addr;
+ index = (size_t)(addr/DCC_A2L_CHUNK_SIZE);
  A2lState_RESET(result);
  if (index >= self->d_chunkc) return 0;
  chunk = self->d_chunkv+index;

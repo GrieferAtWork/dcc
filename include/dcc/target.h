@@ -94,6 +94,7 @@ enum{F_X86_64,F_MMX,F_SSE,F_SSE2,F_SSE3,F_MMXP,};
 #endif
 #ifndef DCC_TARGET_CPUF
 #  define DCC_TARGET_CPUF    DCC_CPUF_NONE
+/*#define DCC_TARGET_CPUF    DCC_CPUF_X86_64*/
 /*#define DCC_TARGET_CPUF    DCC_HOST_CPUF*/
 #endif
 
